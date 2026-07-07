@@ -42,7 +42,7 @@ Rust has no garbage collector. Instead, every value has exactly one **owner** �
 
 This sounds restrictive because it is. The payoff is that an entire category of testbench bug — the monitor that holds a stale handle to a re-built component, the two tasks that mutate one transaction concurrently — becomes a compile error instead of a 2 a.m. debug session.
 
-**Why rustvm cares:** the UVM component tree is a graph with parent↔child cycles, which is the single worst-case data structure for an ownership system. §5.2 spends most of its length on this. The design chooses an arena/ID scheme precisely so that ownership stays simple.
+**Why rustvm cares:** the UVM component tree, as pyuvm builds it, is a graph with parent↔child cycles — the single worst-case data structure for an ownership system. §5.2 spends most of its length on this. The design's answer is to make the ownership tree itself the component tree: children are struct fields, and the cycles never exist.
 
 ### 0.2 Borrowing: references with rules
 
@@ -59,16 +59,16 @@ When you genuinely need Python-like shared mutability — several components hol
 Python gave pyuvm three tools that Rust doesn't have: class inheritance, duck typing, and metaclasses. Rust replaces all three with **traits** — explicit, named collections of method signatures that a type opts into:
 
 ```rust
-pub trait Phased {
-    fn build_phase(&mut self, ctx: &mut PhaseCtx);
-    fn connect_phase(&mut self, ctx: &mut PhaseCtx);
+pub trait Component {
+    fn start(&mut self, ctx: &mut RunCtx);
+    fn check(&mut self, errors: &mut CheckSink);
     // ... default (empty) bodies provided, like pyuvm's no-op phase methods
 }
 ```
 
 Key contrasts:
 
-- **No inheritance.** `uvm_driver(uvm_component)` in pyuvm becomes a `Driver` struct that *contains* its component state and *implements* the `Component` and `Phased` traits. Composition plus traits, never subclassing.
+- **No inheritance.** `uvm_driver(uvm_component)` in pyuvm becomes a `Driver` struct that *contains* its state and *implements* the `Component` lifecycle trait. Composition plus traits, never subclassing.
 - **Default methods** replace the base-class no-op pattern. pyuvm's `uvm_component` defines empty `build_phase()` etc. (pyuvm: `_s13_uvm_component.py` lines 403–419); a Rust trait provides those as default method bodies you override selectively.
 - **Two dispatch styles.** Generics (`fn drive<T: Transaction>(t: T)`) are resolved at compile time — zero cost, like C++ templates but type-checked. Trait objects (`Box<dyn Component>`) are resolved at runtime through a vtable — this is what lets rustvm store heterogeneous components in one hierarchy, the way Python lists hold anything.
 - **Duck typing becomes bounds.** "This function needs anything with a `write()` method" becomes `T: Subscriber` — checked at compile time, documented in the signature.
@@ -99,10 +99,10 @@ Two consequences matter enormously for rustvm:
 Rust has no import time and no metaclasses. Its equivalent power tool is the **procedural macro**: a function that runs *inside the compiler*, receives your code as a token stream, and emits replacement code. Three kinds matter here:
 
 - **Attribute macros** — `#[rustvm::test]` sits where `@cocotb.test()` sat and rewrites the annotated `async fn` into a registered test entry.
-- **Derive macros** — `#[derive(Transaction)]` sits where pyuvm's reliance on `__dict__` introspection sat: since Rust can't discover struct fields at runtime, the macro generates field-wise `do_copy`/`do_compare`/`convert2string` at compile time.
+- **Derive macros** — these sit where pyuvm's reliance on `__dict__` introspection sat: since Rust can't discover struct fields at runtime, macros generate field-wise code at compile time. For transactions, the *standard* derives (`Clone`/`PartialEq`/`Debug`) already do the job (§5.1); rustvm adds one derive of its own, `#[derive(Component)]`, which generates hierarchy traversal from a struct's fields (§5.2, §6.3).
 - **Declarative macros** (`macro_rules!`) — simple pattern-based rewriting, used sparingly.
 
-The catch: because macros run at compile time, *runtime registration must be replaced by link-time collection*. There is no moment when "all classes have been imported" — so rustvm uses distributed static registration (the technique behind the `inventory`/`linkme` crates) to build the test list and factory registry before `main` runs. ⚠ This mechanism has platform-specific subtleties (§8, OQ-4).
+The catch: because macros run at compile time, *runtime registration must be replaced by link-time collection*. There is no moment when "all classes have been imported" — so rustvm uses distributed static registration (the technique behind the `inventory`/`linkme` crates) to build the test list before the runner starts. (Component creation needs no registry at all — constructor injection, §5.5.) ⚠ This mechanism has platform-specific subtleties (§8, OQ-4).
 
 ### 0.6 `Result`/`Option` vs. exceptions
 
@@ -115,7 +115,7 @@ fn get_dut_signal(dut: &HierarchyHandle, name: &str) -> Result<LogicHandle, Hand
 
 Contrasts that matter for rustvm's API design:
 
-- pyuvm raises `UVMConfigItemNotFound` when a ConfigDB key is missing (pyuvm: `_s13_uvm_component.py`, `ConfigDB._not_found`); rustvm returns `Result<T, ConfigError>` — the *signature* tells you it can fail.
+- cocotb raises `AttributeError` when a DUT signal name doesn't resolve (cocotb: `handle.py`, `HierarchyObject.__getattr__`); rustvm's `dut.child("name")` returns a `Result` — the *signature* tells you it can fail. (pyuvm's `UVMConfigItemNotFound` disappears by a different route: configuration is compile-time-checked structs, §5.4.)
 - cocotb marks a test failed by letting any exception propagate out of the test coroutine (cocotb: `regression.py`, `_score_test`). rustvm tests return `Result<(), TestError>`; an `Err` fails the test.
 - Rust *does* have `panic!` — an abort-the-task mechanism for "this is a bug" situations, used by `assert!`/`assert_eq!`. Panics in a rustvm test are caught at the task boundary and scored as test failure, mirroring how cocotb catches `BaseException` per task (cocotb: `task.py`, `Task._resume`). Panics are for assertion failures; `Result` is for expected fallibility (missing signals, config lookups). This split is a designed convention, stated in §7.
 
@@ -143,9 +143,9 @@ Legend: **[C]** = cocotb source, **[P]** = pyuvm source, **[B]** = *Python for R
 | 5 | `Task` 7-state machine (UNSTARTED…CANCELLED) | `TaskState` enum, same seven states | Proven model; keep debugging story identical | [C] `task.py` `_TaskState` |
 | 6 | `task.kill()` / `task.cancel()` + `CancelledError` | `TaskHandle::cancel()` → future dropped; cleanup via `Drop` | Rust cancellation is drop-based — semantic shift ⚠ (§4.6, OQ-5) | [C] `task.py` `cancel` |
 | 7 | `TaskManager` / `async with` task groups | `TaskGroup` with RAII guard (`Drop` cancels children) | Context-manager → RAII is the idiomatic translation | [C] `_task_manager.py` |
-| 8 | Metaclass side effects (`FactoryMeta`) | Derive macro + link-time registration | No metaclasses; only compile/link-time hooks exist ⚠ | [P] `_utility_classes.py` |
-| 9 | `getattr(comp, "build_phase")()` string dispatch | `Phased` trait, direct method calls | Reflection unavailable; traits are faster and checked | [P] `_s09_phasing.py` `uvm_phase.execute` |
-| 10 | Store-anything containers (`dict` of `Any`) | `Box<dyn Any>` + typed `downcast` at retrieval | Type erasure is explicit and checked at the boundary | [P] `ConfigDB` |
+| 8 | Metaclass side effects (`FactoryMeta`) | Link-time registration for test discovery only ⚠; component creation is constructor injection (review-memo R5) | No metaclasses; only compile/link-time hooks exist | [P] `_utility_classes.py` |
+| 9 | `getattr(comp, "build_phase")()` string dispatch | `Component` lifecycle trait, direct method calls; build/connect are constructors (review-memo R3) | Reflection unavailable; traits are faster and checked | [P] `_s09_phasing.py` `uvm_phase.execute` |
+| 10 | Store-anything containers (`dict` of `Any`) | Typed config structs (§5.4); type erasure not ported (review-memo R4) | The store-anything pattern was mechanism, not need | [P] `ConfigDB` |
 | 11 | Python `logging` hierarchy (`cocotb.task.X`) | `tracing` crate with span/target hierarchy ⚠ | Structured, hierarchical, filterable; maps to GPI log handler | [C] `logging.py`, `gpi.h` logging group |
 
 ### 1.2 cocotb core layer
@@ -172,22 +172,22 @@ Legend: **[C]** = cocotb source, **[P]** = pyuvm source, **[B]** = *Python for R
 
 | # | Python (pyuvm) | Rust (rustvm design) | Rationale | Source |
 |---|---|---|---|---|
-| 27 | `uvm_object` base class | `UvmObject` trait (+ `#[derive(UvmObject)]`) | Name/id/type-name surface without inheritance | [P] `_s05_base_classes.py` |
-| 28 | `clone/copy/compare` via `do_copy/do_compare` hooks | `Transaction` derive generating field-wise ops, with overridable trait methods | No runtime `__dict__`; compile-time field enumeration | [P] `_s05_base_classes.py` |
-| 29 | `uvm_component(name, parent)` tree of references | Arena-owned tree: `ComponentId` keys, `Box<dyn Component>` storage | Breaks parent↔child ownership cycle (§5.2) | [P] `_s13_uvm_component.py` |
-| 30 | `uvm_root()` singleton | Explicit `UvmRoot` owned by the test runner (no global) ⚠ | Global mutable state is hostile in Rust; runner owns the world (OQ-12) | [P] `UVM_ROOT_Singleton` |
-| 31 | 9 common phases, topdown/bottomup traversal | Same phase list & traversal orders; `Phased` trait | Faithful port of pyuvm's simplification of IEEE 1800.2 | [P] `_s09_phasing.py` |
+| 27 | `uvm_object` base class | Plain structs; `Debug` + `std::any::type_name` cover the surface — no base trait (review-memo R1) | Rust derives what Python had to hand-roll | [P] `_s05_base_classes.py` |
+| 28 | `clone/copy/compare` via `do_copy/do_compare` hooks | std derives (`Clone`/`PartialEq`/`Debug`); comparison policy lives in the scoreboard (review-memo R1) | Field enumeration at compile time is the language's job | [P] `_s05_base_classes.py` |
+| 29 | `uvm_component(name, parent)` tree of references | Ownership tree: children are struct fields; `#[derive(Component)]` traversal (review-memo R2) | The ownership tree *is* the component tree (§5.2) | [P] `_s13_uvm_component.py` |
+| 30 | `uvm_root()` singleton | Deleted — the `#[rustvm::test]` fn constructs and owns the env (review-memo R2) | No global state; test-by-name lives in the runner registry | [P] `UVM_ROOT_Singleton` |
+| 31 | 9 common phases, topdown/bottomup traversal | build/connect become constructor conventions; `start`/`extract`/`check`/`report`/`final` on the `Component` trait, same traversal orders (review-memo R3) | Two-stage construction was a factory artifact; the rest is methodology | [P] `_s09_phasing.py` |
 | 32 | `raise_objection`/`drop_objection` + handler singleton | `ObjectionGuard` RAII handle from `ctx.raise_objection(desc)` | Drop-based release is strictly safer than manual drop | [P] `ObjectionHandler`; `uvm_component.objection()` |
-| 33 | `ConfigDB().set/get` glob paths, `Any` values | `ConfigDb::set::<T>/get::<T>` — glob paths, `Box<dyn Any>`, typed downcast, `Result` errors | Same wildcard semantics incl. build-phase depth precedence | [P] `ConfigDB` |
-| 34 | `uvm_factory()` create-by-name/type, overrides | `Factory` registry: name→constructor map, type/inst overrides with chain+loop detection | Port `find_override` algorithm as-is | [P] `_s08_factory_classes.py`, `_utility_classes.py` `FactoryData.find_override` |
-| 35 | TLM-1 ports/exports (blocking/nonblocking put/get/peek/transport) | `Port<T>`/`Export<T>` generic types over a channel core; async trait methods ⚠ | Full taxonomy preserved; dyn-compatibility of async traits is OQ-3 | [P] `_s12_uvm_tlm_interfaces.py` |
+| 33 | `ConfigDB().set/get` glob paths, `Any` values | Typed, nested config structs passed to constructors (review-memo R4) | Compile-time contract replaces runtime store; its failure modes become compile errors | [P] `ConfigDB` |
+| 34 | `uvm_factory()` create-by-name/type, overrides | Constructor injection: config-carried maker closures at designed variation points (review-memo R5); string registry survives for test discovery only | Rust passes constructors as values; no chains to chase, no loops to detect | [P] `_s08_factory_classes.py`, `_utility_classes.py` `FactoryData.find_override` |
+| 35 | TLM-1 ports/exports (blocking/nonblocking put/get/peek/transport) | `channel<T>()` → `Sender`/`Receiver`; `AnalysisPort<T>` and `TlmFifo<T>` kept as semantically distinct (review-memo R6) | Twelve port classes become six methods on two types | [P] `_s12_uvm_tlm_interfaces.py` |
 | 36 | `uvm_analysis_port.write()` fan-out | `AnalysisPort<T>`: broadcast to N subscribers, non-blocking | 1-to-many, fire-and-forget, as in UVM | [P] `_s12` `uvm_analysis_port` |
 | 37 | `uvm_tlm_fifo`, analysis FIFO, req/rsp channel | `TlmFifo<T>` etc. on `sim::Queue<T>` | Same size-1 default, `used()`, `flush()` surface | [P] `_s12` `uvm_tlm_fifo_base` |
 | 38 | `uvm_sequence.start/start_item/finish_item/get_response` | `Sequence` trait with `async fn body(&mut self, ctx: SeqCtx<REQ, RSP>)` | Handshake protocol preserved event-for-event (§5.6) | [P] `_s14_15_python_sequences.py` |
 | 39 | `ResponseQueue` txn-id cherry-picking | `ResponseQueue<RSP>` with `get_response(Option<TxnId>)` | Same select-by-id or FIFO-order behavior | [P] `ResponseQueue` |
 | 40 | `uvm_driver` with `seq_item_port` | `Driver<REQ, RSP>` generic struct + `SeqItemPort<REQ, RSP>` | Typed transactions end run-time type errors at the driver boundary | [P] `_s13_predefined_component_classes.py` |
 | 41 | `uvm_subscriber.write()` abstract method | `Subscriber<T>` trait: `fn write(&mut self, item: &T)` | Abstract method → required trait method | [P] `uvm_subscriber` |
-| 42 | `uvm_agent` active/passive via ConfigDB | Same: `Agent` reads `is_active` from ConfigDB in `build_phase` | Behavior parity with book's agent chapters | [P] `uvm_agent`; [B] testbench 6.0 chapters |
+| 42 | `uvm_agent` active/passive via ConfigDB | Config enum + `Option` children: a passive agent doesn't construct a driver (review-memo R2/R4) | Illegal states become unrepresentable vs. pyuvm's runtime warning path | [P] `uvm_agent`; [B] testbench 6.0 chapters |
 
 ---
 
@@ -202,8 +202,8 @@ rustvm/                          # cargo workspace root
 ├── rustvm-sim/                  # executor, tasks, triggers, time, clock, queues
 │   └── (modules) executor, task, trigger, handle, types, clock, simtime, queue
 ├── rustvm-uvm/                  # the UVM analog
-│   └── (modules) object, component, hierarchy, phase, objection,
-│       config_db, factory, tlm, sequence, predefined
+│   └── (modules) component, lifecycle, objection, config,
+│       channel, analysis, fifo, sequence, predefined
 ├── rustvm-macros/               # proc macros: #[test], #[parametrize], derives
 ├── rustvm-runner/               # regression manager, test registry, entry point,
 │                                #   cdylib bootstrap, result reporting (xUnit)
@@ -609,9 +609,9 @@ Governing principle: **a macro is justified only where pyuvm/cocotb used runtime
 |---|---|---|
 | Decorator wrapping + global registration | `@cocotb.test()` (cocotb: `_decorators.py`) | `#[rustvm::test]` attribute macro |
 | Runtime test generation | `TestFactory`, `@parametrize` (cocotb: `_test_factory.py`, `_decorators.py`) | `#[rustvm::parametrize]` compile-time expansion ⚠ OQ-10 |
-| Metaclass class registration | `FactoryMeta` (pyuvm: `_utility_classes.py`) | `#[derive(Component)]` + link-time inventory |
-| `__dict__` field walking | `do_copy`/`do_compare` defaults (pyuvm: `_s05`) | `#[derive(Transaction)]` field-wise codegen |
-| `getattr` phase dispatch | `uvm_phase.execute` (pyuvm: `_s09`) | **no macro** — the `Phased` trait suffices |
+| Metaclass class registration | `FactoryMeta` (pyuvm: `_utility_classes.py`) | link-time inventory for `#[rustvm::test]` only; component creation is constructor injection (review-memo R5) |
+| `__dict__` field walking | `do_copy`/`do_compare` defaults (pyuvm: `_s05`) | std derives (`Clone`/`PartialEq`/`Debug`) — no rustvm macro needed (review-memo R1) |
+| `getattr` phase dispatch | `uvm_phase.execute` (pyuvm: `_s09`) | **no macro** — the `Component` lifecycle trait suffices |
 | `__getattr__` DUT discovery | `HierarchyObject` (cocotb: `handle.py`) | **no macro required** — dynamic `child()` API; optional codegen is OQ-6 |
 
 ### 6.1 `#[rustvm::test]`
@@ -624,13 +624,14 @@ cocotb's `@parametrize` produces one test per option combination with suffixed n
 
 ### 6.3 Derives
 
-- **`#[derive(UvmObject)]`** — name/id storage + trait impl for a struct with a `uvm: UvmObjectFields` field (or macro-injected equivalent ⚠ minor design point: field injection vs. required field; leaning required-field for transparency).
-- **`#[derive(Transaction)]`** — implies `UvmObject`; generates field-wise `do_copy`, `do_compare`, `convert_to_string` honoring `#[uvm(skip)]` / `#[uvm(compare = false)]` field attributes (covering the book's "exclude the timestamp from compare" pattern; book: uvm_object chapter exercises).
-- **`#[derive(Component)]`** — implies `UvmObject`; emits the factory `ComponentRegistration` (§5.5) and the hierarchy plumbing glue for `init`.
+*(Revised per review-memo R1/R2: the `UvmObject` and `Transaction` derives are deleted along with the traits they served; `#[derive(Component)]` is redefined.)*
+
+- **Transactions need no rustvm derive.** `#[derive(Clone, Debug, PartialEq)]` covers copy/compare/print (§5.1). Comparison policy lives in the scoreboard, not on the data type, so the `#[uvm(skip)]` field-attribute machinery is gone with it.
+- **`#[derive(Component)]`** — generates the structural plumbing of §5.2 as a `ComponentNode` impl: traversal of `#[component(child)]` fields (`T`, `Option<T>`, `Vec<T>`), hierarchical-name synthesis from field names, logging-span wiring, and the `visit_children` debug walker. It emits **no** factory registration — component creation is constructor injection (§5.5). This is now the design's single load-bearing macro; its complexity is tracked as OQ-15, and `ComponentNode` stays hand-implementable so the derive is convenience, not requirement.
 
 ### 6.4 What deliberately stays macro-free
 
-Phasing, TLM connection, ConfigDB access, sequences — all plain code. Two reasons: macro-heavy APIs are miserable to debug for exactly the audience this project serves (error messages point into generated code), and every one of these has a clean trait/generic expression as §5 showed. The bar for adding a macro later: it must delete user-visible boilerplate *and* be explainable in one book paragraph.
+The lifecycle, channel wiring, configuration, sequences — all plain code. Two reasons: macro-heavy APIs are miserable to debug for exactly the audience this project serves (error messages point into generated code), and every one of these has a clean trait/generic expression as §5 showed. The bar for adding a macro later: it must delete user-visible boilerplate *and* be explainable in one book paragraph.
 
 ---
 
@@ -656,13 +657,13 @@ tinyalu_tb/
 
 ### 7.2 The pieces, by signature
 
-**Transactions** — one derive line replaces the `uvm_sequence_item` subclass with manual `__eq__`/`__str__` (book: sequence chapters):
+**Transactions** — std derives replace the `uvm_sequence_item` subclass with manual `__eq__`/`__str__` (book: sequence chapters); no rustvm-specific derive (review-memo R1):
 
 ```rust
-#[derive(Transaction, Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AluCommand { pub a: u8, pub b: u8, pub op: Ops }
 
-#[derive(Transaction, Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AluResult { pub result: u16 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]  // port of Ops(IntEnum) from
@@ -693,16 +694,18 @@ async fn random_ops(ctx: TestCtx) -> Result<(), TestError>;
 
 #[rustvm::test]
 async fn max_ops(ctx: TestCtx) -> Result<(), TestError>;
-// body shape: build env via factory → run phases → sequence on sequencer,
-// with a factory override turning random_ops into max_ops, per the book's
-// factory-override teaching (book: "UVM factory testbench: 5.0").
+// body shape: build config (sequence + maker choices) → construct env →
+// start lifecycle → await sequence. max_ops differs from random_ops only
+// in the config it builds — the variation-point pattern replacing the
+// factory override (review-memo R5; book: "UVM factory testbench: 5.0"
+// teaches the problem this solves).
 ```
 
 ### 7.3 Conventions (the "testing style guide" the book will teach)
 
 1. **Failure taxonomy.** `Result::Err` for *checks* ("result mismatch"); `panic!`/`assert!` for *testbench bugs* ("driver called item_done twice"). Both fail the test; the report distinguishes them, following cocotb's exception-vs-SimFailure separation (cocotb: `regression.py`, `_score_test` error paths).
-2. **Every `run_phase` that must hold the test open takes an objection guard** in its first statement — the book's rule, RAII-enforced (book: uvm_test chapters; pyuvm: `ObjectionHandler` warning path).
-3. **Scoreboards check in `check_phase`, report in `report_phase`** — matching pyuvm traversal order guarantees (pyuvm: `_s09`, both are topdown, post-run).
+2. **Every `start`-spawned task that must hold the test open takes an objection guard** in its first statement — the book's rule, RAII-enforced (book: uvm_test chapters; pyuvm: `ObjectionHandler` warning path).
+3. **Scoreboards check in `check`, report in `report`** — matching pyuvm traversal order guarantees (pyuvm: `_s09`, both are topdown, post-run).
 4. **No sleeps for synchronization.** `Event`/queues, never `Timer`-and-hope — porting the book's NullTrigger lesson (book: Coroutines chapter; cocotb: `NullTrigger` docstring).
 5. **Unit tests without a simulator.** Pure-Rust components (scoreboard predictors, transaction ops) get ordinary `#[test]` cargo tests — a genuinely new capability vs. the Python stack, worth a book chapter.
 

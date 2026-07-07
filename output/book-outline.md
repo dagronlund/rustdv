@@ -12,7 +12,7 @@
 
 ## Premise and structure
 
-*Python for RTL Verification* had a two-audience promise: verification engineers who wanted Python, and Python programmers who wanted the UVM. This book has a sharper premise: **the reader has read the Python book** (or knows cocotb and pyuvm cold) **and knows no Rust.** Every concept lands on ground the Python book prepared. Rather than teach Rust in the abstract and verification afterward, the book is sequenced as a Rust-learning path where each language concept arrives exactly when the testbench needs it: ownership before the component hierarchy, traits before components, async before triggers, macros before the factory.
+*Python for RTL Verification* had a two-audience promise: verification engineers who wanted Python, and Python programmers who wanted the UVM. This book has a sharper premise: **the reader has read the Python book** (or knows cocotb and pyuvm cold) **and knows no Rust.** Every concept lands on ground the Python book prepared. Rather than teach Rust in the abstract and verification afterward, the book is sequenced as a Rust-learning path where each language concept arrives exactly when the testbench needs it: ownership before the component hierarchy, traits before components, async before triggers, closures before variation points.
 
 The book keeps the Python book's conventions exactly: the TinyALU as the single running example; testbench versions 1.0 through 8.0 with the same version numbers meaning the same architectural steps; numbered figures per chapter in the `# Figure N:` style with `--` separating code from output; Jupyter-style standalone examples early (here: `cargo` playground projects), simulation directories later; wry footnotes permitted.¹
 
@@ -60,10 +60,10 @@ Interfaces without inheritance; default methods; deriving; operator traits (`Par
 Type parameters and bounds; monomorphization (why generic code costs nothing at runtime); `Driver<REQ, RSP>` previewed as the destination. Mirrors: the duck-typing discussions throughout the Python book's class chapters.
 
 **Chapter 12: Closures and iterators**
-`|x| x + 1`; capture modes through the ownership lens; iterator adapters replacing comprehensions; `impl Iterator` returns replacing generators. Mirrors: "Generators" + comprehension material.
+`|x| x + 1`; capture modes through the ownership lens; iterator adapters replacing comprehensions; `impl Iterator` returns replacing generators. Closures as *values* you can store in structs and pass to constructors — planted here as the seed of Chapter 29's variation points. Mirrors: "Generators" + comprehension material.
 
 **Chapter 13: Smart pointers: `Box`, `Rc`, `RefCell`**
-The escape hatches, taught honestly: when shared mutability is the right design and what it costs; `Rc<RefCell<T>>` as "a Python reference, made visible." Placed here because Part IV's hierarchy discussion needs the vocabulary — including to explain why rustvm's arena design mostly *avoids* these. Mirrors: "Protecting attributes" (both are chapters about controlled access).
+The escape hatches, taught honestly: when shared mutability is the right design and what it costs; `Rc<RefCell<T>>` as "a Python reference, made visible." Placed here because Part IV needs the vocabulary — `Rc<TinyAluBfm>` shared through config structs, and the explanation of why the ownership-tree hierarchy avoids `Rc<RefCell>` cycles entirely. Mirrors: "Protecting attributes" (both are chapters about controlled access).
 
 **Chapter 14: Modules, crates, and cargo**
 `mod`/`use`/visibility; workspace layout; `Cargo.toml`; adding dependencies; `cargo test` — the reader runs real unit tests before ever touching a simulator, a genuinely new capability worth savoring. Mirrors: "Modules".
@@ -91,7 +91,7 @@ Testbench 2.0: driver/monitor/scoreboard as structs with methods, wired manually
 ### Part III — Macros (new material, positioned deliberately)
 
 **Chapter 21: Macros: code that writes code**
-Declarative macros briefly; then attribute and derive macros as *the* replacement for decorators and metaclasses, with `@cocotb.test()` → `#[rustvm::test]` as the worked example — including what each actually does, side by side, at import time vs. compile time. Explains link-time registration (how tests and factory entries get collected with no import step). Placed immediately before the UVM part because every UVM chapter after this uses `#[derive(...)]`. Mirrors: the decorator material in "Functions"/"Design patterns", elevated to a full chapter because Rust makes the machinery visible.
+Declarative macros briefly; then attribute and derive macros as *the* replacement for decorators and metaclasses, with `@cocotb.test()` → `#[rustvm::test]` as the worked example — including what each actually does, side by side, at import time vs. compile time. Explains link-time registration (how tests get collected with no import step — and why components, unlike tests, need no registry at all). Placed immediately before the UVM part because Part IV leans on `#[derive(Component)]` and the std derives. Mirrors: the decorator material in "Functions"/"Design patterns", elevated to a full chapter because Rust makes the machinery visible.
 
 ### Part IV — The UVM in Rust (mirrors "Why UVM?" → "Virtual sequence testbench: 8.0", one-for-one)
 
@@ -99,31 +99,31 @@ Declarative macros briefly; then attribute and derive macros as *the* replacemen
 The Python book's argument restated for a new language — plus the new question this book must answer: *does a statically-typed language change what the UVM is for?* (Answer: no — reuse and methodology arguments survive intact; some of the UVM's runtime machinery becomes compile-time machinery, and that's a feature.) Mirrors: "Why UVM?".
 
 **Chapter 23: uvm_test testbench: 3.0**
-Testbench 3.0: the first `rustvm` (UVM-analog) test. `Test` trait, `run_test()`, phases arrive in minimal form, objection guards (RAII vs. raise/drop — the guard pattern taught here and used everywhere after). Mirrors: "uvm_test testbench: 3.0".
+Testbench 3.0: the first `rustvm` (UVM-analog) test. The `#[rustvm::test]` function *is* the test — it constructs and owns the env (no `uvm_root`, no `run_test()` string dispatch); the lifecycle arrives in minimal form (`start`, `check`, `report`); objection guards (RAII vs. raise/drop — the guard pattern taught here and used everywhere after). Mirrors: "uvm_test testbench: 3.0".
 
-**Chapter 24: Components and the hierarchy**
-`Component` trait, `ComponentId`, creating children, `full_name`, `lookup`/`find_all` with UVM glob matching. The honest chapter about ownership vs. the component tree: why parent↔child references don't fly in Rust, the arena design, and what `self.parent.thing` becomes. The predefined component taxonomy (env/agent/driver/monitor/scoreboard/subscriber) introduced. Mirrors: "uvm_component".
+**Chapter 24: Components: the hierarchy problem, solved by ownership**
+The problem `uvm_component` solves — structured, reusable testbench composition — and its Rust dissolution: the ownership tree *is* the component tree. Children as struct fields, `#[derive(Component)]` traversal, hierarchical names from field names, and what `self.parent.thing` becomes (field access, it turns out). The predefined component taxonomy (env/agent/driver/monitor/scoreboard/subscriber) introduced. Mirrors: "uvm_component".
 
 **Chapter 25: uvm_env testbench: 4.0**
-Testbench 4.0: structure via `Env`; build/connect phase mechanics with traversal orders shown in log output, as the Python book did. Mirrors: "uvm_env testbench: 4.0".
+Testbench 4.0: structure via a plain env struct whose fields are its children; the build and connect *conventions* — constructors construct, constructor arguments wire — with lifecycle traversal orders shown in log output, as the Python book did. Mirrors: "uvm_env testbench: 4.0".
 
 **Chapter 26: Logging**
 `tracing` targets and levels mapped onto the component hierarchy; per-component log levels (`set_logging_level_hier` equivalent); the sim-time-stamped format matched to the Python book's output so figures stay comparable. Mirrors: "Logging".
 
-**Chapter 27: The ConfigDB**
-`set`/`get::<T>` with glob paths; precedence during build; storing shared resources (`Rc<TinyAluBfm>`); the new failure mode Python couldn't express — *found but wrong type* — and the error messages that catch it. Mirrors: "ConfigDB()".
+**Chapter 27: Configuration: the ConfigDB problem, solved by types**
+The problem the ConfigDB solves — tests parameterizing components buried deep in a hierarchy they didn't write — and its Rust dissolution: nested config structs mirroring the ownership tree, built by the test, checked by the compiler. Sharing resources (`Rc<TinyAluBfm>`) as plain fields. Every ConfigDB failure mode from the Python book, replayed as a compile error. Mirrors: "ConfigDB()".
 
-**Chapter 28: Debugging the ConfigDB**
-Tracing on `set`/`get`, printing the DB, the classic mistakes ported from the Python book's chapter (wrong path, wrong phase, shadowed precedence) plus Rust's new one (wrong type parameter). Mirrors: "Debugging the ConfigDB()".
+**Chapter 28: Configuration debugging: what the compiler now does for you**
+The Python book needed a chapter to debug the ConfigDB; this one walks the same classic mistakes — wrong path, wrong phase, shadowed precedence, wrong type — and shows where each went: runtime mysteries become compile errors or impossibilities. What debugging remains (wrong config *values* rather than wrong config *plumbing*) and how to read the compiler's messages when a config tree doesn't build. Mirrors: "Debugging the ConfigDB()".
 
-**Chapter 29: The factory**
-Create-by-type and create-by-name; type and instance overrides; override chains and loop detection; `#[derive(Component)]` as the registration mechanism (callback to Chapter 21); factory debug printing. Mirrors: "The UVM factory".
+**Chapter 29: The factory problem, solved by closures and generics**
+What the factory is *for* — tests changing testbench behavior without editing the env — and the Rust mechanism that delivers it: constructors as values, maker closures carried in config structs, explicit variation points instead of a global registry with override chains. Where a string registry rightly survives (test discovery — callback to Chapter 21) and the honest loss (instance-path-pattern overrides). Mirrors: "The UVM factory".
 
-**Chapter 30: Factory testbench: 5.0**
-Testbench 5.0: swapping behavior by override — the random-ops test becomes max-ops without touching the env. Mirrors: "UVM factory testbench: 5.0".
+**Chapter 30: Variation-point testbench: 5.0**
+Testbench 5.0: the random-ops test becomes max-ops without touching the env — by handing the env a different sequence and a different maker closure, three visible lines in the test. Same demonstration as the Python book's 5.0, new mechanism, same version number. Mirrors: "UVM factory testbench: 5.0".
 
 **Chapter 31: Component communications**
-TLM-1 in Rust: ports and exports as generic structs; blocking vs. nonblocking put/get/peek; `TlmFifo<T>`; connection mistakes as *compile errors* (figure: the actual compiler message where the Python book showed a runtime `UVMTLMConnectionError`). Mirrors: "Component communications".
+What TLM-1's thirty classes were *for*, and the two types that do the job in Rust: `Sender<T>`/`Receiver<T>` channels — blocking and nonblocking send/recv/peek as six methods; `TlmFifo<T>` for when the FIFO belongs in the hierarchy; wiring as constructor arguments. Connection mistakes as *compile errors* (figure: the actual compiler message where the Python book showed a runtime `UVMTLMConnectionError`). Mirrors: "Component communications".
 
 **Chapter 32: Analysis ports**
 1-to-many `write()`; `Subscriber<T>` trait; analysis FIFOs; building the monitor→scoreboard/coverage fan-out. Mirrors: "Analysis ports".
@@ -132,10 +132,10 @@ TLM-1 in Rust: ports and exports as generic structs; blocking vs. nonblocking pu
 Testbench 6.0, part one: Driver (typed `SeqItemPort` preview), Monitor(s), Scoreboard, Coverage as real components. Mirrors: "Components in testbench 6.0".
 
 **Chapter 34: Connections in testbench 6.0**
-Testbench 6.0, part two: `connect_phase` wiring, agent with active/passive from the ConfigDB. Mirrors: "Connections in testbench 6.0".
+Testbench 6.0, part two: wiring by constructor argument, end to end (the connect convention at full scale); the agent with active/passive from its config — `Option` children mean a passive agent simply has no driver to misuse. Mirrors: "Connections in testbench 6.0".
 
-**Chapter 35: Transactions and `#[derive(Transaction)]`**
-`UvmObject`/`ObjectOps`/`Transaction` traits; field-wise compare/copy/to-string from the derive; `#[uvm(skip)]` attributes; overriding `do_compare`. The dunder-method table from the Python book's chapter returns with a third column. Mirrors: "uvm_object in Python".
+**Chapter 35: Transactions: the uvm_object problem, solved by std derives**
+What `uvm_object` gave Python — field-wise copy, compare, and printing — and why Rust transactions need none of it: `#[derive(Clone, Debug, PartialEq)]` on a plain struct. The dunder-method table from the Python book's chapter returns with a third column that is mostly the word *derive*. Where comparison policy went (the scoreboard, as a comparator) and where transaction identity went (the `SeqItem` envelope, owned by the sequencer — setting up Chapter 38). Mirrors: "uvm_object in Python".
 
 **Chapter 36: Sequence testbench: 7.0**
 Testbench 7.0: the full sequence machinery — `Sequence` trait and `body`; `start_item`/`finish_item`; driver's `get_next_item`/`item_done`; the handshake walked through event-by-event with the same diagrams as the Python book. Mirrors: "Sequence testbench: 7.0".
@@ -144,7 +144,7 @@ Testbench 7.0: the full sequence machinery — `Sequence` trait and `body`; `sta
 Testbench 7.1: sequences with state feeding back; task lifetime and the drop-based-cancellation idiom in a real testbench. Mirrors: "Fibonacci testbench: 7.1".
 
 **Chapter 38: get_response testbench: 7.2**
-Testbench 7.2: `ResponseQueue`, transaction IDs, `set_context`, cherry-picking responses by id. Mirrors: "get_response() testbench: 7.2".
+Testbench 7.2: transaction IDs carried by the `SeqItem` envelope — where the Python book needed `set_context`, the infrastructure now tags responses itself — and cherry-picking responses by id. Mirrors: "get_response() testbench: 7.2".
 
 **Chapter 39: Virtual sequence testbench: 8.0**
 Testbench 8.0: coordinating sub-sequences; virtual sequences as the type-system version (no item channel — misuse doesn't compile, where pyuvm raised `UVMSequenceError`). Mirrors: "Virtual sequence testbench: 8.0".
@@ -251,7 +251,7 @@ Notice what happened between `cargo run` and the greeting: a compile. Nothing ab
 
 ## The plan
 
-Part I (Chapters 1–14) teaches the Rust you need, always against the Python you know: ownership where Python had garbage collection, traits where Python had inheritance, `Result` where Python had exceptions, `match` where Python had `if` chains and envy. Part II (Chapters 15–20) reaches the simulator: async/await — whose engine, you will be pleased to hear, works on the same principles as the cocotb scheduler you already understand — then triggers, signal handles, and testbenches 1.0 and 2.0. Part III (Chapter 21) is a single load-bearing chapter on macros, Rust's answer to decorators and metaclasses. Part IV (Chapters 22–39) rebuilds the UVM: components, phases, the ConfigDB, the factory, TLM, and sequences, ending at testbench 8.0 — the same summit as last time, by a steeper and more scenic route. Part V wraps the complete testbench into a reference template and looks ahead.
+Part I (Chapters 1–14) teaches the Rust you need, always against the Python you know: ownership where Python had garbage collection, traits where Python had inheritance, `Result` where Python had exceptions, `match` where Python had `if` chains and envy. Part II (Chapters 15–20) reaches the simulator: async/await — whose engine, you will be pleased to hear, works on the same principles as the cocotb scheduler you already understand — then triggers, signal handles, and testbenches 1.0 and 2.0. Part III (Chapter 21) is a single load-bearing chapter on macros, Rust's answer to decorators and metaclasses. Part IV (Chapters 22–39) rebuilds the UVM: components, the lifecycle, configuration, the factory's job (done, you may be surprised to learn, by closures), component communication, and sequences, ending at testbench 8.0 — the same summit as last time, by a steeper and more scenic route. Part V wraps the complete testbench into a reference template and looks ahead.
 
 The TinyALU is waiting. It has not gotten any bigger, and this time, neither will our tolerance for runtime errors.
 
