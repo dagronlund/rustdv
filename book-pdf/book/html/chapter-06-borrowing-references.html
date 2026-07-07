@@ -1,0 +1,382 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Borrowing References - Rust for RTL Verification</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="An introduction to Rust using pyuvm as a base">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="github-markdown-b4cf1fe7.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-2c622749.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-266d771a.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Rust for RTL Verification</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main class="markdown-body">
+                        <h1 id="chapter-6-borrowing-and-references"><a class="header" href="#chapter-6-borrowing-and-references">Chapter 6: Borrowing and References</a></h1>
+<blockquote>
+<p><strong>In Python we…</strong> got a warning instead of a rule. The Python book’s “Coroutines” chapter examined <code>NullTrigger</code> and the temptation it represents: two tasks — a monitor and a consumer — sharing a <code>transaction_data</code> variable, both waking on the same <code>RisingEdge</code>, with no guarantee about which runs first. The consumer awaited a <code>NullTrigger</code> to push itself “later,” and the book (echoing cocotb’s own documentation) told you flatly not to do this — the scheduling order “is not deterministic and should generally not be relied upon” — and to synchronize with an <code>Event</code> instead. Python could warn you. It could not stop you. This chapter is about the language feature that stops you. <em>(book: “Coroutines” chapter, NullTrigger discussion; cocotb: <code>_base_triggers.py</code>, <code>NullTrigger</code> docstring)</em></p>
+</blockquote>
+<p>Chapter 5 ended with a mental model we will now spend a whole chapter earning: <em>ownership is about responsibility, borrowing is about access.</em> Ownership answered the question Python’s garbage collector answered silently — who frees this transaction? — by declaring exactly one owner, and by making assignment a <em>move</em> of that responsibility. When the monitor handed a transaction to the scoreboard, the monitor was done with it, and the compiler enforced its being done with it.</p>
+<p>But that model, taken alone, is unlivable. A scoreboard that must <em>own</em> every transaction it merely wants to <em>look at</em> would be a scoreboard fed entirely by <code>clone()</code> calls. A coverage collector that steals the transaction from the scoreboard is not a testbench, it is a relay race. Most of the time a component does not need responsibility for a value. It needs access. Rust’s mechanism for access-without-responsibility is the <strong>reference</strong>, and the act of granting one is called <strong>borrowing</strong> — a word chosen carefully, because a borrow, unlike a Python reference, comes with an obligation to give the value back and rules about what you may do while you hold it.</p>
+<h2 id="shared-references-many-readers"><a class="header" href="#shared-references-many-readers">Shared references: many readers</a></h2>
+<p>A shared reference is written <code>&amp;T</code> — “a reference to a T” — and you create one with <code>&amp;</code>:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">Figure 1: Shared references — everyone may look, nobody may touch
+</span>
+struct Transaction {
+    data: u8,
+}
+
+fn report(t: &amp;Transaction) {
+    println!("Saw transaction with data {}", t.data);
+}
+
+fn main() {
+    let t = Transaction { data: 42 };
+
+    let monitor_view = &amp;t;    // a borrow
+    let coverage_view = &amp;t;   // another borrow -- readers may alias freely
+
+    report(monitor_view);
+    report(coverage_view);
+
+    println!("Still the owner: {}", t.data);   // t was never moved
+}</code></pre>
+<pre><code class="language-text">--
+Saw transaction with data 42
+Saw transaction with data 42
+Still the owner: 42
+</code></pre>
+<p>(I am reusing the <code>Transaction</code> struct from Chapter 5. Structs get their full treatment in Chapter 7; for now it is a labeled box holding a <code>data</code> field.)</p>
+<p>Three things to notice, each a quiet contrast with Chapter 5. First, <code>report</code> takes <code>&amp;Transaction</code>, not <code>Transaction</code> — so calling it does not move <code>t</code>. The function borrows the transaction, reads it, and the borrow ends when the function returns. Second, we made <em>two</em> references to <code>t</code> at the same time and the compiler did not object: shared references may alias freely, any number of them at once. Third, after all that lending, <code>t</code> is still ours to use in the final <code>println!</code>. Responsibility never changed hands; only access did.</p>
+<p>The price of this generosity is stamped into the type: through a <code>&amp;T</code> you may <em>read</em> and nothing else. Try <code>monitor_view.data = 7</code> and the compiler will refuse — not because <code>t</code> is immutable (though it is; we never said <code>let mut</code>), but because a shared reference never grants write access, period. Everyone may look. Nobody may touch.</p>
+<p>If you want a Python analogy, <code>&amp;T</code> is what every Python reference <em>pretended</em> to be in a well-disciplined codebase: a handle you pass around for reading, trusting that nobody mutates through it. Rust removes the trust and keeps the handle.</p>
+<h2 id="exclusive-references-one-writer"><a class="header" href="#exclusive-references-one-writer">Exclusive references: one writer</a></h2>
+<p>Sometimes touching is the point. A driver that receives a transaction may legitimately need to fill in a timestamp; a BFM may need to update a field before sending. For write access you need the second kind of reference, <code>&amp;mut T</code> — an <strong>exclusive reference</strong>:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: An exclusive reference grants write access
+</span>
+struct Transaction {
+    data: u8,
+}
+
+fn scramble(t: &amp;mut Transaction) {
+    t.data = 99;
+}
+
+fn main() {
+    let mut t = Transaction { data: 42 };   // mut: the owner permits mutation
+
+    scramble(&amp;mut t);   // lend write access, briefly
+
+    println!("After scramble: {}", t.data);
+}</code></pre>
+<pre><code class="language-text">--
+After scramble: 99
+</code></pre>
+<p>Two spellings of <code>mut</code> appear here and they are doing different jobs. <code>let mut t</code> is the owner declaring that this value may ever be mutated at all — Chapter 3’s immutable-by-default rule. <code>&amp;mut t</code> is the owner lending <em>exclusive, writable</em> access to somebody else. You cannot create a <code>&amp;mut</code> borrow of a variable that was not declared <code>mut</code>; permission flows downhill from the owner.</p>
+<p>“Exclusive” is the load-bearing word. While a <code>&amp;mut T</code> exists, it is the <em>only</em> live reference to that value — no other <code>&amp;mut</code>, no <code>&amp;</code>, and the owner itself may not so much as read the value until the exclusive borrow ends. The writer works alone, with the door locked.</p>
+<h2 id="the-rule-aliasing-xor-mutability"><a class="header" href="#the-rule-aliasing-xor-mutability">The rule: aliasing XOR mutability</a></h2>
+<p>We can now state the rule the whole chapter — arguably the whole language — hangs on. Memorize it in this form:</p>
+<blockquote>
+<p><strong>At any moment, a value may have many readers or one writer — never both.</strong></p>
+</blockquote>
+<p>Rust programmers call this <strong>aliasing XOR mutability</strong>: a value may be aliased (many <code>&amp;T</code>), or it may be mutable (one <code>&amp;mut T</code>), but never both at once.¹ Everything the borrow checker does is enforcement of this one sentence, plus bookkeeping about <em>when</em> each borrow ends.</p>
+<p>Why is this the rule worth building a language around? Because every data race you have ever debugged — and, per the sidebar, every data race the Python book warned you about — has the same anatomy: one piece of state, at least one writer, at least one other reader or writer, and no enforced ordering between them. Aliasing XOR mutability makes that anatomy unrepresentable. If there is a writer, there is nobody else; if there is anybody else, there is no writer. The race has no room to exist.</p>
+<p>That is a large claim, so let us go back to the scene of the crime.</p>
+<blockquote>
+<p>¹ The rule has the same shape as a conference-room whiteboard policy: any number of people may stand and read it, or exactly one person may hold the marker — but a reader standing at a whiteboard while someone else is erasing it learns nothing trustworthy, and everybody knows it.</p>
+</blockquote>
+<h2 id="the-nulltrigger-race-rejected-at-compile-time"><a class="header" href="#the-nulltrigger-race-rejected-at-compile-time">The NullTrigger race, rejected at compile time</a></h2>
+<p>Recall the pattern the Python book told you never to write: a shared <code>transaction_data</code> variable, a monitor task that writes it, a consumer task that reads it, both triggered by the same clock edge, with a <code>NullTrigger</code> deployed as a prayer that the reader runs second. In Python, that code runs. It even works, usually, on your simulator, until the scheduler’s ordering shifts and it silently doesn’t.</p>
+<p>We cannot yet write real concurrent tasks in Rust — the executor and <code>spawn</code> arrive in Part II — but we do not need them to expose the bug, because the bug was never really about tasks. It was about <em>two live accessors of one value, one of them a writer, with no enforced order</em>. We can write exactly that in six lines, giving the monitor its write access and the scoreboard its read access, just as the Python version did:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: Two tasks' worth of access to one value -- the borrow checker objects
+</span>
+fn main() {
+    let mut transaction_data: Option&lt;u8&gt; = None;
+
+    let monitor = &amp;mut transaction_data;   // the monitor's claim: write access
+    let scoreboard = &amp;transaction_data;    // the scoreboard's claim: read access
+
+    *monitor = Some(42);                   // the monitor sees a transaction...
+
+    match scoreboard {                     // ...and the scoreboard checks it
+        Some(data) =&gt; println!("Scoreboard checking {data}"),
+        None =&gt; println!("Nothing to check yet"),
+    }
+}</code></pre>
+<pre><code class="language-text">--
+error[E0502]: cannot borrow `transaction_data` as immutable because it is also borrowed as mutable
+ --&gt; src/main.rs:5:22
+  |
+4 |     let monitor = &amp;mut transaction_data;
+  |                   ---------------------- mutable borrow occurs here
+5 |     let scoreboard = &amp;transaction_data;
+  |                      ^^^^^^^^^^^^^^^^^ immutable borrow occurs here
+...
+7 |     *monitor = Some(42);
+  |     ------------------- mutable borrow later used here
+
+For more information about this error, try `rustc --explain E0502`.
+error: could not compile `borrow_race` (bin "borrow_race") due to 1 previous error
+</code></pre>
+<p>(<code>Option&lt;u8&gt;</code> is Rust’s typed replacement for the Python version’s <code>None</code>-or-value idiom — read <code>Some(42)</code> as “has a value” and <code>None</code> as “doesn’t.” Chapter 9 gives <code>Option</code> its full due; here it is set dressing.)</p>
+<p>Read the error the way Chapter 2 taught you to — as a collaborator’s comment, not a rejection slip. The compiler identifies all three actors in the crime: where the mutable borrow was created (line 4), where the immutable borrow was created while the writer still existed (line 5 — that is the actual error, marked with carets), and — this is the part no Python tool could ever tell you — where the writer is <em>used again afterward</em> (line 7), proving the two claims genuinely overlap in time. Writer alive, reader alive, same value, same moment: aliasing AND mutability. The program does not compile.</p>
+<p>Sit with what just happened. The Python book documented this bug, explained why it was nondeterministic, and taught you a discipline to avoid it. cocotb’s own docstring says <strong>Do not do this</strong> in bold. And still, nothing in the Python toolchain would stop a tired engineer from writing it on a Friday afternoon, and nothing would flag it until a scheduler reordering made a regression flicker, weeks later, in someone else’s test. Rust converts the whole affair into three seconds of compile time and an error message with line numbers. Chapter 1 promised that discipline is good but proof is better; Figure 3 is that promise kept.</p>
+<h2 id="the-fix-make-the-ordering-real"><a class="header" href="#the-fix-make-the-ordering-real">The fix: make the ordering real</a></h2>
+<p>The Python fix was an <code>Event</code>: the monitor writes, <em>then</em> sets the event; the consumer awaits the event, <em>then</em> reads. Notice what the <code>Event</code> actually contributed — it forced the write and the read into a definite order, so that the writer was finished before the reader began. The borrow checker demands precisely the same thing, and in straight-line code you provide it the same way: sequence the accesses so they do not overlap.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">Figure 4: The same actors, with the ordering made real
+</span>
+fn main() {
+    let mut transaction_data: Option&lt;u8&gt; = None;
+
+    let monitor = &amp;mut transaction_data;
+    *monitor = Some(42);                  // the monitor writes...
+                                          // ...and its borrow ends at its last use
+
+    let scoreboard = &amp;transaction_data;   // now the reader may claim access
+    match scoreboard {
+        Some(data) =&gt; println!("Scoreboard checking {data}"),
+        None =&gt; println!("Nothing to check yet"),
+    }
+}</code></pre>
+<pre><code class="language-text">--
+Scoreboard checking 42
+</code></pre>
+<p>The only change from Figure 3 is the order of the lines — the monitor finishes its writing <em>before</em> the scoreboard’s borrow begins — and that is the entire point. The fix for an unordered write/read conflict is an ordering, in Rust as in Python; the difference is that Rust would not let you skip it.</p>
+<p>One subtlety in Figure 4 deserves a sentence, because it will save you fights with the compiler later: <code>monitor</code>’s borrow ended at its <em>last use</em> (the write on the line above), not at the closing brace of its scope. The borrow checker tracks how long each borrow is actually needed, not merely where the variable was declared. If it worked scope-to-brace, Figure 4 would not compile either; because it works use-to-use, tidy sequential code like this passes without ceremony.</p>
+<p>And one honesty note, so you do not over-generalize: when the monitor and scoreboard become genuinely concurrent tasks in Part II, they cannot simply take turns borrowing a local variable — each task needs its own durable handle to shared state, which is exactly the situation <code>&amp;</code>/<code>&amp;mut</code> alone cannot express. Rust’s answers there are the channel (the two tasks never share the value at all — Chapter 16) and, when sharing truly is the design, the <code>Rc&lt;RefCell&lt;T&gt;&gt;</code> escape hatch, which moves this chapter’s rule from compile time to runtime checking (Chapter 13). Both of those tools are built on top of the rule you just learned, not exemptions from it. The rule is the constant; only the enforcement point moves.</p>
+<h2 id="lifetimes-recognize-the-syntax-decline-the-rabbit-hole"><a class="header" href="#lifetimes-recognize-the-syntax-decline-the-rabbit-hole">Lifetimes: recognize the syntax, decline the rabbit hole</a></h2>
+<p>There is one more piece of borrowing syntax you will meet in the wild, and I want you to be able to greet it without alarm. Sometimes a function signature carries a small tick-marked annotation:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn newer&lt;'a&gt;(x: &amp;'a Transaction, y: &amp;'a Transaction) -&gt; &amp;'a Transaction
+<span class="boring">}</span></code></pre>
+<p>That <code>'a</code> (pronounced “tick-a”) is a <strong>lifetime</strong> — a name for <em>how long a borrow lasts</em>. Every reference in every program has one; the compiler has been inferring them silently in every figure of this chapter. They surface in the syntax only when the compiler needs your help connecting inputs to outputs: <code>newer</code> returns a reference, and the compiler must know whether that returned borrow is tied to <code>x</code>, to <code>y</code>, or to something else, because whoever <em>receives</em> the returned reference is now borrowing from one of them, and the checker must know which value has to stay alive. Writing <code>'a</code> on all three says: the returned reference lives no longer than the shorter-lived of the two arguments. That is the whole idea — lifetimes are the paperwork that lets borrow checking work <em>across</em> function boundaries.</p>
+<p>Here is what you need at this point in the book, in full: recognize <code>'a</code> as “a named lifetime,” know that it connects the lifetime of an output reference to the lifetimes of input references, and know that when the compiler asks you for one, it is asking “if I hand this reference back to your caller, which argument is it borrowing from?” You will see lifetimes in error messages and in library documentation; you will write them rarely, because the compiler’s inference rules cover the overwhelming majority of testbench-shaped code, and rustvm’s public API is deliberately designed to keep user-facing lifetimes rare besides.</p>
+<p>And here I am going to make the same call the Python book made about metaclasses. That book taught you every Python feature a testbench needed and then, at the door of the metaclass, stopped — noting that pyuvm used them internally but that a testbench author never needed to write one. Lifetimes get the same treatment here, for the same reason. There is real depth behind that tick mark — variance, higher-ranked bounds, a small literature of compiler lore — and none of it, not one line, appears in the testbenches this book builds. When a lifetime annotation is forced on us later, I will explain that occurrence on the spot. Until then: recognize it, read past it, keep going.²</p>
+<blockquote>
+<p>² Rust folklore holds that you do not truly understand lifetimes until you have argued with the borrow checker about them for a weekend. This book’s position is that your weekends belong to your regressions.</p>
+</blockquote>
+<h2 id="what-borrowing-buys-the-testbench"><a class="header" href="#what-borrowing-buys-the-testbench">What borrowing buys the testbench</a></h2>
+<p>Step back and look at the shape of what you now know. Ownership (Chapter 5) decides who is responsible for every value — who frees the transaction, in a world with no garbage collector. Borrowing (this chapter) decides who may access it meanwhile, under a rule — many readers or one writer, never both — that makes the shared-state race from the Python book’s warning sidebar into a compile error with line numbers. Together they are the machinery behind Chapter 1’s boldest claim: that a whole class of 2 a.m. testbench bugs becomes a red squiggle at your desk before lunch.</p>
+<p>So far, though, our transactions have been a struct with one sad little <code>u8</code> in it, and our operations have been strings of field pokes. A real TinyALU transaction has two operands and an <em>operation</em> — and “an operation” is a value that is exactly one of ADD, AND, XOR, or MUL, which is a kind of type Python never quite had and Rust does beautifully. Structs, methods, and enums with payloads are Chapter 7, and they are where Rust starts being fun.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="chapter-05-ownership.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="chapter-07-structs-enums-methods.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="chapter-05-ownership.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="chapter-07-structs-enums-methods.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

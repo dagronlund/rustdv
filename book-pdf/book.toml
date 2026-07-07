@@ -1,0 +1,13 @@
+[book]
+title = "Rust for RTL Verification"
+authors = ["Fable 5 as Ray Salemi"]
+language = "en"
+description = "An introduction to Rust using pyuvm as a base"
+
+[output.html]
+additional-css = ["github-markdown.css"]
+
+
+[output.pdf]
+print-backgorund = true
+

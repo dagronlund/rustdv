@@ -1,0 +1,481 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Modules, Crates, and Cargo - Rust for RTL Verification</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="An introduction to Rust using pyuvm as a base">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="github-markdown-b4cf1fe7.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-2c622749.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-266d771a.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Rust for RTL Verification</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main class="markdown-body">
+                        <h1 id="chapter-14-modules-crates-and-cargo"><a class="header" href="#chapter-14-modules-crates-and-cargo">Chapter 14: Modules, Crates, and Cargo</a></h1>
+<p>We have spent thirteen chapters writing Rust in single files, the way the Python book spent its early chapters typing into Jupyter cells. Real testbenches do not live in single files. The Python book’s testbenches grew a <code>tinyalu_utils.py</code> holding the <code>Ops</code> enum, the prediction function, and the logger setup, and every testbench imported it. This chapter is about where code <em>lives</em> in Rust — modules within a project, crates between projects, and <code>cargo</code> orchestrating all of it — and it ends with a payoff I have been promising since Chapter 1: running real unit tests against testbench logic with no simulator anywhere in sight.</p>
+<blockquote>
+<p><strong>In Python we…</strong> imported types and values from external files called <em>modules</em>, and called a directory of modules a <em>package</em> — “cocotb, for example, is delivered as a package.” The <code>import</code> statement ran the module’s code and added the module’s name to our scope; <code>from pyuvm import FIFO_DEBUG</code> pulled a single name in; and <code>from pyuvm import *</code> pulled in everything, PEP-8 be damned, so that Python UVM code would look like SystemVerilog UVM code. Python found modules by searching the directories listed in <code>sys.path</code>, and when it couldn’t find <code>tinyalu_utils</code>, we helped it: <code>sys.path.insert(0, str(Path("..").resolve()))</code>.</p>
+</blockquote>
+<p>Hold on to that last line, because it is the one this chapter deletes. Rust has no <code>sys.path</code>, no import-time code execution, and no possibility of a testbench that works on your machine but not on the farm because of a path environment variable. What Rust has instead is more ceremonial — I will not pretend otherwise — and in exchange the compiler knows exactly where every name comes from and exactly who is allowed to use it.</p>
+<h2 id="modules-namespaces-inside-a-crate"><a class="header" href="#modules-namespaces-inside-a-crate">Modules: namespaces inside a crate</a></h2>
+<p>A <strong>module</strong> in Rust is a named scope you declare with the <code>mod</code> keyword. Unlike Python, where every file automatically <em>is</em> a module, a Rust module is something you declare explicitly — and you can declare one right in the middle of a file. Let’s start there, because it makes the concept visible before any files get involved.</p>
+<p>We will need a home for the TinyALU’s prediction logic — the pure function that computes what the DUT <em>should</em> produce. This was <code>tinyalu_utils.py</code>’s most important resident, and it will be our example for the rest of the chapter.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">Figure 1: A module declared inline, in the middle of main.rs
+</span>
+mod predictor {
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub enum Ops { Add = 1, And = 2, Xor = 3, Mul = 4 }
+
+    pub fn alu_prediction(a: u8, b: u8, op: Ops) -&gt; u16 {
+        match op {
+            Ops::Add =&gt; a as u16 + b as u16,
+            Ops::And =&gt; (a &amp; b) as u16,
+            Ops::Xor =&gt; (a ^ b) as u16,
+            Ops::Mul =&gt; a as u16 * b as u16,
+        }
+    }
+}
+
+fn main() {
+    let sum = predictor::alu_prediction(0xFF, 0x01, predictor::Ops::Add);
+    println!("0xFF + 0x01 = {sum:#06x}");
+}</code></pre>
+<pre><code class="language-text">--
+0xFF + 0x01 = 0x0100
+</code></pre>
+<p>Everything between the braces of <code>mod predictor</code> lives in the <code>predictor</code> namespace, and code outside reaches it with <code>::</code> — <code>predictor::alu_prediction</code> — exactly the job Python’s <code>.</code> did in <code>pyuvm.FIFO_DEBUG</code>. Note in passing that the prediction itself is honest about widths in a way the Python version never had to be: the TinyALU’s operands are <code>u8</code> and its result bus is sixteen bits wide, so <code>Add</code> and <code>Mul</code> cast up to <code>u16</code> <em>before</em> operating. <code>0xFF + 0x01</code> carries into bit eight instead of wrapping to zero. Chapter 3 planted that seed; here it flowers.</p>
+<h2 id="use-bringing-paths-into-scope"><a class="header" href="#use-bringing-paths-into-scope"><code>use</code>: bringing paths into scope</a></h2>
+<p>Writing <code>predictor::Ops::Add</code> at every call site gets old, and Rust’s answer is the <code>use</code> declaration — the direct descendant of Python’s <code>from ... import ...</code>.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: use brings names into scope, like Python's from-import
+</span>
+mod predictor {
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub enum Ops { Add = 1, And = 2, Xor = 3, Mul = 4 }
+
+    pub fn alu_prediction(a: u8, b: u8, op: Ops) -&gt; u16 {
+        match op {
+            Ops::Add =&gt; a as u16 + b as u16,
+            Ops::And =&gt; (a &amp; b) as u16,
+            Ops::Xor =&gt; (a ^ b) as u16,
+            Ops::Mul =&gt; a as u16 * b as u16,
+        }
+    }
+}
+
+use predictor::{alu_prediction, Ops};
+
+fn main() {
+    println!("AND: {:#06x}", alu_prediction(0xF0, 0x3C, Ops::And));
+    println!("XOR: {:#06x}", alu_prediction(0xF0, 0x3C, Ops::Xor));
+}</code></pre>
+<pre><code class="language-text">--
+AND: 0x0030
+XOR: 0x00cc
+</code></pre>
+<p>The mapping to Python is nearly one-to-one:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Python</th><th>Rust</th></tr>
+</thead>
+<tbody>
+<tr><td><code>import pyuvm</code></td><td><em>(nothing needed — see below)</em></td></tr>
+<tr><td><code>import pyuvm as p</code></td><td><code>use pyuvm as p;</code> (aliasing works the same way)</td></tr>
+<tr><td><code>from pyuvm import FIFO_DEBUG</code></td><td><code>use pyuvm::FIFO_DEBUG;</code></td></tr>
+<tr><td><code>from pyuvm import *</code></td><td><code>use pyuvm::*;</code> (a <em>glob import</em>)</td></tr>
+</tbody>
+</table>
+</div>
+<p>The first row deserves a word. In Python, <code>import</code> did two jobs: it <em>ran the module’s code</em> and it added a name to your scope. Rust’s <code>use</code> does only the second, because there is no first — modules do not “run” when you name them. All the code in every module of your program was compiled together before the program started; <code>use</code> is purely a naming convenience, with no import-time side effects, no circular-import deadlocks, and no module-level code sneaking configuration in behind your back.¹</p>
+<p>Rust’s style community shuns glob imports for the same reason PEP-8 did — nobody reading the file can tell where a name came from. And it carves out the same exception the Python book carved out for <code>from pyuvm import *</code>: crates may export a <strong>prelude</strong>, a curated module explicitly designed to be glob-imported. You have been using one all along — <code>std</code>’s prelude is why <code>String</code>, <code>Vec</code>, and <code>Option</code> never needed a <code>use</code>. When we reach Part II, <code>use rustvm::prelude::*;</code> will open every testbench, doing the job <code>from pyuvm import *</code> did in the last book — one line, sanctioned by convention, because a testbench that starts by importing its methodology library is a testbench you can read.</p>
+<blockquote>
+<p>¹ Readers who have debugged a cocotb testbench that behaved differently depending on <em>import order</em> may pause here for a private moment of celebration.</p>
+</blockquote>
+<h2 id="pub-privacy-the-compiler-enforces"><a class="header" href="#pub-privacy-the-compiler-enforces"><code>pub</code>: privacy the compiler enforces</a></h2>
+<p>You may have noticed the <code>pub</code> keywords sprinkled through figures 1 and 2. They are not decoration. In Rust, <strong>everything in a module is private by default</strong> — invisible to code outside the module — and <code>pub</code> is how an item opts into being part of the module’s public interface.</p>
+<p>Recall how the Python book handled this. Python has no private anything: every name in every module is importable by anyone, and the convention is that an underscore prefix (<code>_my_helper</code>) means <em>please don’t</em>. The book was frank that this is etiquette, not enforcement — pyuvm’s internals are full of underscored names that nothing actually stops you from reaching. Rust replaces the etiquette with a compile error. Let’s provoke one. Suppose the predictor grows a private helper that the outside world has no business calling:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: Private by default — the underscore convention, enforced
+</span>
+mod predictor {
+    pub enum Ops { Add = 1, And = 2, Xor = 3, Mul = 4 }
+
+    fn widen(x: u8) -&gt; u16 {     // no pub: private to this module
+        x as u16
+    }
+
+    pub fn alu_prediction(a: u8, b: u8, op: Ops) -&gt; u16 {
+        match op {
+            Ops::Add =&gt; widen(a) + widen(b),
+            Ops::And =&gt; widen(a &amp; b),
+            Ops::Xor =&gt; widen(a ^ b),
+            Ops::Mul =&gt; widen(a) * widen(b),
+        }
+    }
+}
+
+fn main() {
+    let w = predictor::widen(0xFF);  // reaching for a private helper
+    println!("{w}");
+}</code></pre>
+<pre><code class="language-text">--
+error[E0603]: function `widen` is private
+  --&gt; src/main.rs:20:24
+   |
+20 |     let w = predictor::widen(0xFF);  // reaching for a private helper
+   |                        ^^^^^ private function
+   |
+note: the function `widen` is defined here
+  --&gt; src/main.rs:5:5
+   |
+5  |     fn widen(x: u8) -&gt; u16 {     // no pub: private to this module
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+</code></pre>
+<p>Delete the offending line and the program compiles; <code>alu_prediction</code>, living <em>inside</em> the module, calls <code>widen</code> freely. This is encapsulation with teeth. When you mark a helper private, you are not requesting politeness — you are making a promise the compiler keeps for you: <em>nothing outside this module depends on this function, so I may rewrite it tomorrow without checking.</em> Refactoring the guts of a monitor stops requiring a grep across the testbench for who might have reached in. Note also that privacy applies to struct <em>fields</em> individually: a <code>pub struct</code> can keep its fields private, forcing outsiders through its methods — which is where the Python book’s “Protecting attributes” chapter went, and why Chapter 13’s discussion of controlled access kept using the word <em>visibility</em>.</p>
+<h2 id="modules-in-files-mod-foo-finds-foors"><a class="header" href="#modules-in-files-mod-foo-finds-foors">Modules in files: <code>mod foo;</code> finds <code>foo.rs</code></a></h2>
+<p>Inline modules taught the concept, but real code puts modules in files. Here Rust asks for one more line of ceremony than Python did — and the line matters, so let’s be precise about it.</p>
+<p>In Python, creating <code>tinyalu_utils.py</code> <em>was</em> creating a module; the filesystem was the module system. In Rust, a file does not become part of your program until some module declares it. Writing <code>mod predictor;</code> — with a semicolon, no braces — tells the compiler: <em>there is a module named <code>predictor</code>, and its body lives in the file <code>predictor.rs</code> next to me.</em> Our playground project, reorganized:</p>
+<pre><code class="language-text"># Figure 4: The file-to-module mapping
+
+alu_playground/
+├── Cargo.toml
+└── src/
+    ├── main.rs          &lt;-- contains the line: mod predictor;
+    └── predictor.rs     &lt;-- the body of the module: Ops, alu_prediction
+--
+% cargo run
+   Compiling alu_playground v0.1.0
+    Finished `dev` profile
+     Running `target/debug/alu_playground`
+AND: 0x0030
+XOR: 0x00cc
+</code></pre>
+<p>Everything that was inside <code>mod predictor { ... }</code> moves into <code>src/predictor.rs</code> (dropping the wrapper braces and one level of indentation), <code>main.rs</code> declares <code>mod predictor;</code>, and nothing else changes — the <code>use</code> lines, the calls, the visibility rules are exactly as before. If <code>predictor</code> later needs child modules of its own, it graduates to a directory: <code>src/predictor.rs</code> alongside <code>src/predictor/history.rs</code>, with <code>mod history;</code> declared inside <code>predictor.rs</code>. (You will also meet an older layout, <code>predictor/mod.rs</code>, in existing code; the two styles are equivalent, and the older one’s chief legacy is an editor tab bar reading <code>mod.rs</code>, <code>mod.rs</code>, <code>mod.rs</code>.²)</p>
+<p>Why the extra declaration? Because in Rust the <em>module tree is part of the program</em>, not an emergent property of whatever files happen to be on a search path. There is no <code>sys.path</code> to populate, no <code>PYTHONPATH</code> to export on every farm machine, no “works in this directory, fails in that one.” The compiler starts at the crate root — <code>main.rs</code> for a program, <code>lib.rs</code> for a library — follows the <code>mod</code> declarations outward, and compiles precisely those files. A file nobody declares is not compiled at all. It is more ceremony than Python’s file-is-a-module simplicity, one honest line more per module, and what the line buys is that your program’s structure is written down in the program.</p>
+<blockquote>
+<p>² A directory full of files all named <code>mod.rs</code> is nobody’s favorite piece of Rust history. Use the <code>predictor.rs</code>-plus-directory style in new code.</p>
+</blockquote>
+<h2 id="crates-the-unit-of-compilation-and-sharing"><a class="header" href="#crates-the-unit-of-compilation-and-sharing">Crates: the unit of compilation and sharing</a></h2>
+<p>One level up from modules sits the <strong>crate</strong> — the thing <code>cargo new</code> has been making for us all along. A crate is Rust’s unit of compilation and distribution: the compiler compiles a crate at a time, and crates are what you publish, version, and depend on. Where Python drew a fuzzy line between “module,” “package,” and “distribution” (three concepts, two of which share the name <em>package</em>), Rust draws one line: a crate is a tree of modules with a single root, and it compiles to a single artifact.</p>
+<p>Crates come in two flavors you already half-know. A <strong>binary crate</strong> has a <code>main.rs</code> with a <code>fn main()</code> and compiles to a program — every playground so far. A <strong>library crate</strong> has a <code>lib.rs</code> and no <code>main</code>; it compiles to a library for other crates to use. cocotb and pyuvm are the Python analogs of library crates; your testbench was the analog of a binary crate importing them.</p>
+<p>When a project outgrows one crate, cargo scales up with a <strong>workspace</strong>: several crates developed side by side in one repository, sharing a build directory and a single lock file. This is not a distant abstraction — it is the shape of the very tools this book builds toward. <code>rustvm-sim</code> (the cocotb analog) and <code>rustvm</code> (the pyuvm analog) live as separate crates in one workspace, for the same reason cocotb and pyuvm are separate packages: you can write a Part II-style testbench against <code>rustvm-sim</code> alone, no UVM machinery in sight, and the dependency arrow only points one way. Your own testbenches, though, stay simple — one crate, depending on published ones. Which raises the question: <em>how</em> does a crate depend on another? That is <code>Cargo.toml</code>’s job.</p>
+<h2 id="cargotoml-the-manifest"><a class="header" href="#cargotoml-the-manifest">Cargo.toml: the manifest</a></h2>
+<p>Every <code>cargo new</code> wrote a <code>Cargo.toml</code> we have been politely ignoring for thirteen chapters. It is the crate’s <strong>manifest</strong> — the one file that says what the crate is and what it needs. Time to look inside, and to add our first dependency while we’re there. Python’s <code>random</code> came in the standard library; Rust’s standard library is deliberately lean, and random numbers live in a crate called <code>rand</code> on <strong>crates.io</strong>, the community registry that plays the role of PyPI. Where Python needed <code>pip install</code> (into the right virtual environment, remember) plus a line in <code>requirements.txt</code>, cargo does both jobs with one command:</p>
+<pre><code class="language-text"># Figure 5: Adding a dependency with cargo add
+
+% cargo add rand
+    Updating crates.io index
+      Adding rand v0.9.1 to dependencies
+--
+# Cargo.toml, after:
+
+[package]
+name = "alu_playground"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rand = "0.9.1"
+</code></pre>
+<p>Two sections, both readable at sight. <code>[package]</code> names and versions the crate itself. <code>[dependencies]</code> lists what it needs — and this section <em>is</em> the requirements file, living in the project, checked into version control, impossible to forget on the farm machines. The next <code>cargo build</code> (or <code>run</code>, or <code>test</code>) downloads <code>rand</code>, compiles it, and links it; there is no separate install step, no environment to activate, and no way to run against a different version than the manifest declares. Alongside the manifest cargo maintains <code>Cargo.lock</code>, recording the <em>exact</em> versions resolved, so that every machine that builds this crate builds it with identical dependencies — the reproducibility that <code>pip freeze</code> approximated, produced automatically and kept current. With <code>rand</code> declared, using it is just a path — <code>rand::random::&lt;u8&gt;()</code> gives the random operands our tests are about to want. No import dance; the dependency’s name is the root of its module tree, available everywhere in your crate.</p>
+<h2 id="the-payoff-cargo-test"><a class="header" href="#the-payoff-cargo-test">The payoff: <code>cargo test</code></a></h2>
+<p>Now the capability I flagged in Chapter 1 as worth the price of admission. It has been sitting quietly inside cargo the whole time, waiting for us to have code worth testing. We do: <code>alu_prediction</code> is a pure function — values in, value out, no DUT, no signals, no simulator. In the Python testbench, logic like this could only be exercised by running the whole cocotb stack against the simulator, or by setting up pytest scaffolding alongside it, which the book’s flow never did. In Rust, testing it is built into the language and the tool. You write functions marked <code>#[test]</code>, and <code>cargo test</code> finds and runs them. The convention is a <code>tests</code> submodule at the bottom of the file whose code it tests:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span><span class="boring">Figure 6: Unit tests live beside the code they test
+</span>
+// src/predictor.rs
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Ops { Add = 1, And = 2, Xor = 3, Mul = 4 }
+
+pub fn alu_prediction(a: u8, b: u8, op: Ops) -&gt; u16 {
+    match op {
+        Ops::Add =&gt; a as u16 + b as u16,
+        Ops::And =&gt; (a &amp; b) as u16,
+        Ops::Xor =&gt; (a ^ b) as u16,
+        Ops::Mul =&gt; a as u16 * b as u16,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn add_carries_into_bit_eight() {
+        assert_eq!(alu_prediction(0xFF, 0xFF, Ops::Add), 0x01FE);
+    }
+
+    #[test]
+    fn and_masks_operands() {
+        assert_eq!(alu_prediction(0xF0, 0x3C, Ops::And), 0x0030);
+    }
+
+    #[test]
+    fn xor_finds_differing_bits() {
+        assert_eq!(alu_prediction(0xF0, 0x3C, Ops::Xor), 0x00CC);
+    }
+
+    #[test]
+    fn mul_needs_the_full_result_bus() {
+        assert_eq!(alu_prediction(0xFF, 0xFF, Ops::Mul), 0xFE01);
+    }
+}
+<span class="boring">}</span></code></pre>
+<p>Every piece of this figure is machinery you already own. <code>mod tests</code> is an inline module, straight from figure 1. <code>use super::*;</code> is a glob import whose path <code>super</code> means “my parent module” — it pulls <code>Ops</code> and <code>alu_prediction</code> into the tests’ scope, and it is the second sanctioned use of a glob import, because a test module importing everything it tests is exactly as readable as a testbench importing its methodology library. <code>#[cfg(test)]</code> tells the compiler to build this module only when compiling tests, so the shipping artifact carries no test code. And <code>assert_eq!</code> you met in Chapter 9, along with the taxonomy that governs it: assertion failures are for <em>bugs</em>, and a failed test is a bug by definition.</p>
+<pre><code class="language-text"># Figure 7: Running the unit tests
+
+% cargo test
+   Compiling alu_playground v0.1.0
+    Finished `test` profile [unoptimized + debuginfo]
+     Running unittests src/main.rs
+--
+running 4 tests
+test predictor::tests::add_carries_into_bit_eight ... ok
+test predictor::tests::and_masks_operands ... ok
+test predictor::tests::mul_needs_the_full_result_bus ... ok
+test predictor::tests::xor_finds_differing_bits ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+</code></pre>
+<p>Read that last line the way it deserves to be read: <em>finished in 0.00s</em>. Four checks of the TinyALU’s prediction logic, on a laptop, in less time than a simulator takes to print its banner. No license checked out, no design elaborated, no waveform dumped — because nothing here needed one. And when a test fails, the report is a diagnosis, not a stack trace. Suppose a future refactor forgets the width lesson and writes the addition as <code>(a + b) as u16</code>, wrapping at eight bits:</p>
+<pre><code class="language-text"># Figure 8: A failing test names the culprit
+
+% cargo test
+--
+running 4 tests
+test predictor::tests::add_carries_into_bit_eight ... FAILED
+test predictor::tests::and_masks_operands ... ok
+test predictor::tests::mul_needs_the_full_result_bus ... ok
+test predictor::tests::xor_finds_differing_bits ... ok
+
+failures:
+
+---- predictor::tests::add_carries_into_bit_eight stdout ----
+assertion `left == right` failed
+  left: 254
+ right: 510
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured
+</code></pre>
+<p><code>254</code> is <code>0xFF + 0xFF</code> wrapped to eight bits; <code>510</code> is the truth. The bug that would have surfaced as a scoreboard miscompare forty minutes into a regression — with the <em>DUT</em> as the initial suspect — instead surfaced in milliseconds, correctly attributed to the predictor, before any simulator ran.</p>
+<p>Savor what just changed, because it is a genuinely new capability, not a nicer version of an old one. Your testbench’s pure logic — predictors, transaction arithmetic, coverage binning, anything that computes without touching a signal — now has its own test suite that runs on every build, for free. The Python stack kept all testbench verification inside the simulation; the testbench was only ever as tested as your last regression. From here on, this book runs <code>cargo test</code> habitually: when Part IV builds scoreboards and coverage collectors, their logic arrives with unit tests beside it, and the simulator’s time is spent on the only thing that actually needs a simulator — the DUT.</p>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<p>In this chapter we gave Rust code a place to live. <code>mod</code> declares modules — inline for small things, <code>mod foo;</code> pointing at <code>foo.rs</code> for real ones — and the module tree is written in the program rather than discovered on a search path. <code>use</code> brings paths into scope the way <code>from ... import</code> did, glob imports and all, with preludes as the sanctioned exception. Everything is private until <code>pub</code> says otherwise, turning Python’s underscore etiquette into a compiler-kept promise. Crates are the unit of compilation and distribution — Python’s module/package/distribution muddle, resolved into one concept — with workspaces gathering related crates, as rustvm’s own crates will be gathered. <code>Cargo.toml</code> declares dependencies, <code>cargo add</code> fetches them from crates.io, and <code>Cargo.lock</code> makes every build reproducible. And <code>cargo test</code> runs unit tests against pure testbench logic in milliseconds, no simulator required — a capability we will never stop using.</p>
+<p>This chapter also closes Part I, so take a step back and look at what you now own. You came in knowing no Rust. You now hold the whole toolkit this book’s testbenches are built from: ownership and borrowing, the responsibility-and-access model that replaces the garbage collector and turns data races into compile errors; structs, enums, and <code>match</code>, which gave <code>Ops</code> and four-state logic honest types; <code>Result</code> and <code>Option</code>, where exceptions used to be; traits, doing the work of inheritance and the dunder methods; generics, closures, and iterators, which will carry typed drivers and the factory’s job; the smart pointers that make sharing explicit; and now modules, crates, and cargo to organize and test all of it. Every one of these landed on ground the Python book prepared, and every one was chosen because a coming chapter needs it. What you cannot yet do is <em>wait</em> — no Timer, no RisingEdge, no way to say “pause this task until the clock rises.” That is Part II’s business. Chapter 15 picks up exactly where the Python book’s “Coroutines” chapter left off — same Rogue game, same event loop — and shows how <code>async</code>/<code>await</code> works when the language gives you the syntax but hands <em>you</em> the engine. The simulator is finally in sight.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="chapter-13-smart-pointers.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="chapter-13-smart-pointers.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

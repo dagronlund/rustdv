@@ -1,0 +1,408 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Generics - Rust for RTL Verification</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="An introduction to Rust using pyuvm as a base">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="github-markdown-b4cf1fe7.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-2c622749.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-266d771a.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Rust for RTL Verification</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main class="markdown-body">
+                        <h1 id="chapter-11-generics"><a class="header" href="#chapter-11-generics">Chapter 11: Generics</a></h1>
+<p>Chapter 10 ended with a promissory note. We wrote <code>fn check_in&lt;T: Animal&gt;(animal: &amp;T)</code>, waved at the angle brackets, and promised that generics — code with type parameters, resolved at compile time — would get their own chapter. This is that chapter. By the end of it you will know what the compiler actually does with <code>&lt;T: Animal&gt;</code>, why the result runs exactly as fast as code without it, and why <code>Driver&lt;REQ, RSP&gt;</code> is, as promised, the most honest thing a driver has ever said about itself.</p>
+<p>Here is the small confession first: you have been using generics since Chapter 8. <code>Vec&lt;T&gt;</code> is a generic struct. So are <code>Option&lt;T&gt;</code> and <code>Result&lt;T, E&gt;</code> — every time you wrote <code>Vec&lt;AluCommand&gt;</code> or <code>Result&lt;u16, AluError&gt;</code>, you were filling in someone else’s type parameters. This chapter teaches you to write your own.</p>
+<blockquote>
+<p><strong>In Python we…</strong> never told a function what types it accepted, because Python functions accept everything. The Python book built its classes in that spirit — “you create the object and start adding data attributes to it” — and its testbench code ran on the same faith: a scoreboard’s <code>write()</code> method took whatever the analysis port delivered, an <code>__eq__</code> compared whatever showed up, and if the object had the right attributes, everything worked. This philosophy has a name, <em>duck typing</em>: if it walks like a duck and quacks like a duck, treat it as a duck. Nobody checks for feathers until the moment of the quack.</p>
+</blockquote>
+<p>Duck typing is genuinely pleasant to write. Its cost is <em>when</em> the feather-check happens: at every call, at runtime, and only on the paths your test actually exercised. Rust keeps the pleasant part — one function, many types — and moves the check. If it implements the trait bound, it’s a duck, and you find out at compile time, for every path, including the ones your test forgot.</p>
+<h2 id="a-function-for-any-type"><a class="header" href="#a-function-for-any-type">A function for any type</a></h2>
+<p>Suppose we want the largest value in a slice. For the TinyALU’s <code>u8</code> operands we could write it directly, but the moment we also want the largest <code>u16</code> result, or the alphabetically last test name, we are copying the function and changing one type annotation — exactly the copy-and-modify busywork the Python book invoked inheritance to avoid. Rust’s answer is a <strong>type parameter</strong>: a placeholder type, declared in angle brackets, that the caller fills in.</p>
+<p>Let’s write it the way you would naively write it, because the failure is the lesson.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span><span class="boring">Figure 1: A generic function, first attempt — the compiler wants proof
+</span>
+fn largest&lt;T&gt;(list: &amp;[T]) -&gt; &amp;T {
+    let mut largest = &amp;list[0];
+    for item in list {
+        if item &gt; largest {
+            largest = item;
+        }
+    }
+    largest
+}
+<span class="boring">}</span></code></pre>
+<pre><code class="language-text">--
+error[E0369]: binary operation `&gt;` cannot be applied to type `&amp;T`
+ --&gt; src/main.rs:4:17
+  |
+4 |         if item &gt; largest {
+  |            ---- ^ ------- &amp;T
+  |            |
+  |            &amp;T
+  |
+help: consider restricting type parameter `T`
+  |
+1 | fn largest&lt;T: std::cmp::PartialOrd&gt;(list: &amp;[T]) -&gt; &amp;T {
+  |             ++++++++++++++++++++++
+</code></pre>
+<p>Read the declaration first: <code>fn largest&lt;T&gt;</code> says “this function is defined for some type T, to be named later,” and then <code>&amp;[T]</code> and <code>&amp;T</code> use the placeholder as if it were a real type. Python would have shrugged and run this. Rust refuses, and its objection is philosophically the whole chapter: <em>you said T could be any type, and then you compared two of them with <code>&gt;</code>. Not every type can do that.</em> What do we know about a type we know nothing about? Nothing — so we may call nothing on it.</p>
+<p>The fix is in the compiler’s own <code>help</code> text, and it is Chapter 10’s vocabulary: a <strong>trait bound</strong>. <code>T: PartialOrd</code> narrows “any type” to “any type that implements <code>PartialOrd</code>” — the ordering trait from Chapter 10’s dunder table, the one behind <code>&lt;</code> and <code>&gt;</code>.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: The bound is the fix — and the documentation
+</span>
+fn largest&lt;T: PartialOrd&gt;(list: &amp;[T]) -&gt; &amp;T {
+    let mut largest = &amp;list[0];
+    for item in list {
+        if item &gt; largest {
+            largest = item;
+        }
+    }
+    largest
+}
+
+fn main() {
+    let operands: Vec&lt;u8&gt; = vec![0x22, 0xAA, 0x07];
+    let results: Vec&lt;u16&gt; = vec![0x0154, 0x7100, 0x00FF];
+    let tests = vec!["alu_add_test", "alu_xor_test", "alu_mul_test"];
+
+    println!("largest operand: 0x{:02x}", largest(&amp;operands));
+    println!("largest result:  0x{:04x}", largest(&amp;results));
+    println!("last test name:  {}", largest(&amp;tests));
+}</code></pre>
+<pre><code class="language-text">--
+largest operand: 0xaa
+largest result:  0x7100
+last test name:  alu_xor_test
+</code></pre>
+<p>One function body, three element types, and no type mentioned at any call site — the compiler infers <code>T</code> from the argument, the same way it has been inferring types for you since Chapter 3.¹ Notice too that we return <code>&amp;T</code>, a reference, not <code>T</code>: Chapter 5 taught us that returning the value itself would mean moving it out of the caller’s slice, and the borrow is both cheaper and honest about who still owns the data.</p>
+<p>The bound does double duty, and this is worth slowing down for. To the <em>compiler</em> it is a permission slip: inside <code>largest</code>, exactly the methods of <code>PartialOrd</code> may be called on <code>T</code>, no more. To the <em>reader</em> it is documentation you can trust: the signature <code>fn largest&lt;T: PartialOrd&gt;(list: &amp;[T]) -&gt; &amp;T</code> tells you everything this function will ever demand of your type. Python’s equivalent contract lived in the docstring, the tribal knowledge, or the stack trace.</p>
+<h2 id="more-than-one-requirement"><a class="header" href="#more-than-one-requirement">More than one requirement</a></h2>
+<p>A bound can require several traits at once, joined with <code>+</code>. Here is a function a scoreboard might want — compare an expected transaction against an actual one, and complain legibly on a mismatch. Comparing needs <code>PartialEq</code>; complaining legibly needs <code>Debug</code>. Both go in the contract:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: Multiple bounds with a where clause
+</span>
+use std::fmt::Debug;
+
+fn check_match&lt;T&gt;(expected: &amp;T, actual: &amp;T) -&gt; bool
+where
+    T: PartialEq + Debug,
+{
+    if expected == actual {
+        true
+    } else {
+        println!("MISMATCH: expected {:?}, actual {:?}", expected, actual);
+        false
+    }
+}
+
+fn main() {
+    check_match(&amp;0x54u16, &amp;0x54u16);
+    check_match(&amp;0x54u16, &amp;0x55u16);
+}</code></pre>
+<pre><code class="language-text">--
+MISMATCH: expected 84, actual 85
+</code></pre>
+<p>We could have written <code>fn check_match&lt;T: PartialEq + Debug&gt;(...)</code> and it would mean the same thing; the <code>where</code> clause is the same information moved out of the angle brackets so the signature stays readable. Convention, and this book, use the inline form for one short bound and <code>where</code> for anything longer. Either way, look at what this function is: the Python book’s duck-typed checker — “anything with an <code>__eq__</code> and a <code>__repr__</code>” — with the duck requirements written down and enforced. A transaction type that forgot to derive <code>PartialEq</code> doesn’t fail in hour three of a regression; it fails to compile, with an error pointing at the missing derive.</p>
+<h2 id="generic-structs"><a class="header" href="#generic-structs">Generic structs</a></h2>
+<p>Type parameters work on structs the same way, and you already know the syntax from the consumer side — <code>Vec&lt;T&gt;</code> — so producing one holds no surprises. Here is a register model wide enough for any leg of the TinyALU:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">Figure 4: A generic struct — one definition, many widths
+</span>
+struct Register&lt;T&gt; {
+    value: T,
+}
+
+impl&lt;T: Copy&gt; Register&lt;T&gt; {
+    fn new(value: T) -&gt; Self {
+        Register { value }
+    }
+    fn read(&amp;self) -&gt; T {
+        self.value
+    }
+    fn write(&amp;mut self, value: T) {
+        self.value = value;
+    }
+}
+
+fn main() {
+    let mut a_reg: Register&lt;u8&gt; = Register::new(0x00);   // the A leg is 8 bits
+    let mut result: Register&lt;u16&gt; = Register::new(0x0000); // the result is 16
+
+    a_reg.write(0xAA);
+    result.write(0x7100);
+    println!("A: 0x{:02x}  result: 0x{:04x}", a_reg.read(), result.read());
+}</code></pre>
+<pre><code class="language-text">--
+A: 0xaa  result: 0x7100
+</code></pre>
+<p>Two spellings deserve a comment. <code>struct Register&lt;T&gt;</code> declares the parameter; <code>impl&lt;T: Copy&gt; Register&lt;T&gt;</code> declares it <em>again</em> for the methods, and that is where the bound lives — <code>read()</code> hands back a copy of the value, so the methods require <code>T: Copy</code>, which every integer satisfies. Keeping the struct definition unbounded and putting requirements on the <code>impl</code> is idiomatic: the data doesn’t care what <code>T</code> can do; the <em>operations</em> do.</p>
+<p>And note what the type system now knows that Python’s never did: <code>Register&lt;u8&gt;</code> and <code>Register&lt;u16&gt;</code> are <strong>different types</strong>. Try to write a <code>u16</code> result into the 8-bit A register and the program does not compile. The Python book’s testbenches kept the TinyALU’s operand widths straight by discipline and masking; here the widths are in the types, and the compiler is the one doing the masking-related worrying. This — a struct parameterized by the type it carries — is precisely what <code>Vec&lt;T&gt;</code> has been all along, and it is the shape rustvm’s plumbing takes: when Part IV connects components with typed channels, a FIFO of ALU commands is a <code>TlmFifo&lt;AluCommand&gt;</code>, and connecting it to a component expecting results is a compile error, not a 3 a.m. discovery.</p>
+<h2 id="monomorphization-or-where-did-the-ducks-go"><a class="header" href="#monomorphization-or-where-did-the-ducks-go">Monomorphization, or: where did the ducks go?</a></h2>
+<p>Now the question a performance-minded verification engineer should be asking. Python’s duck typing has a runtime cost, and it is not small: <em>every</em> method call, every attribute access — <code>item.compare(other)</code>, <code>self.scoreboard.write(txn)</code> — is a lookup by name, at runtime, every single time, because until the moment of the call Python genuinely does not know what the object is. Twenty million transactions means twenty million rounds of “does this object have a <code>write</code>?” That is the interpreter overhead Chapter 1 put on the ledger.</p>
+<p>So what does <code>largest</code> cost? It is one function that works on three types — surely <em>something</em>, somewhere, is checking which type showed up?</p>
+<p>Nothing is, and the reason is the best idea in this chapter. At compile time, the compiler finds every concrete type your program actually uses with <code>largest</code>, and generates a separate, specialized copy of the function for each one — a process called <strong>monomorphization</strong>, “making single-formed.” Your generic source code is a stencil; the compiler stamps it out once per type. Conceptually, figure 2 compiles as if you had written:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span><span class="boring">Figure 5: What the compiler generates from figure 2 (conceptually — you never see this)
+</span>
+fn largest_u8(list: &amp;[u8]) -&gt; &amp;u8 {
+    // ... same body, with T = u8 throughout
+}
+
+fn largest_u16(list: &amp;[u16]) -&gt; &amp;u16 {
+    // ... same body, with T = u16 throughout
+}
+
+fn largest_str(list: &amp;[&amp;str]) -&gt; &amp;&amp;str {
+    // ... same body, with T = &amp;str throughout
+}
+<span class="boring">}</span></code></pre>
+<p>Each call site in <code>main</code> is wired directly to its own stamped-out copy. When <code>largest(&amp;operands)</code> runs, there is no lookup, no vtable, no “which type is this?” — the <code>u8</code> version was chosen before the program existed as a binary, and the call is exactly as fast as the hand-written <code>u8</code>-only function you refused to copy-paste three times. The same happens to structs: <code>Register&lt;u8&gt;</code> and <code>Register&lt;u16&gt;</code> compile to two independent struct definitions, each with its own specialized methods. This is what the design of rustvm means by <em>generic code costs nothing at runtime</em>: you write the abstraction once and pay for it never.²</p>
+<p>Set the two models side by side, because this is the chapter’s picture. Python answers “which <code>write()</code> do I call?” by looking it up when the call happens — maximally flexible, paid for on every transaction of every test of every regression. Rust answers the same question once, at compile time, by generating the exact code each caller needs — and the flexibility you give up is precisely the flexibility of being wrong. Chapter 10’s trait objects (<code>Box&lt;dyn Animal&gt;</code>, the vtable, the runtime dispatch) remain available for the cases that genuinely need runtime choice; monomorphized generics are what you get everywhere else, which in a testbench is almost everywhere.</p>
+<p>Honesty requires the other side of the ledger, and it is real but modest: stamping out copies takes compile time and makes the binary larger. A generic function used with thirty types is compiled thirty times. For testbench code — a handful of transaction types, not thirty — you will notice this approximately never, but now you know why heavily generic Rust code compiles slower than it runs.</p>
+<h2 id="the-destination-driverreq-rsp"><a class="header" href="#the-destination-driverreq-rsp">The destination: Driver&lt;REQ, RSP&gt;</a></h2>
+<p>Part I keeps promising that these language chapters are load-bearing, so let me show you the load. In pyuvm, <code>uvm_driver</code> had a <code>seq_item_port</code>, and what came out of <code>get_next_item()</code> was — whatever the sequencer sent. If a misconfigured test wired a memory sequence to the ALU agent, the driver discovered it at runtime, usually as an <code>AttributeError</code> deep in <code>run_phase()</code>, and the Python book taught you the discipline to avoid it.</p>
+<p>rustvm’s driver states its requirements in its name. Signatures only — Part IV builds this for real:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span><span class="boring">Figure 6: The shape of rustvm's driver (preview — signatures only)
+</span>
+pub struct Driver&lt;REQ, RSP = REQ&gt; {
+    pub seq_item_port: SeqItemPort&lt;REQ, RSP&gt;,
+    // ...
+}
+<span class="boring">}</span></code></pre>
+<p>Everything in this chapter is in that one line. Two type parameters, because a driver’s conversation has two directions: <code>REQ</code> is the request transaction it pulls from the sequencer, <code>RSP</code> the response it may send back. Type parameters can have <em>defaults</em> — <code>RSP = REQ</code> says “if you don’t name a response type, it’s the same as the request,” so the common no-response driver is just <code>Driver&lt;AluCommand&gt;</code>. And the port inside is a generic struct over the same two parameters, so the driver, its port, and the sequencer on the far end must all agree on the transaction types <em>or the testbench does not compile</em>. The wrong-sequence-on-the-wrong-agent bug does not become an error message. It becomes unwritable.</p>
+<p>That is the trade this book keeps making, in its purest form yet: the duck-typed flexibility of pyuvm’s driver — any port, any transaction, sort it out at runtime — exchanged for a signature that is documentation, contract, and proof all at once. And thanks to monomorphization, <code>Driver&lt;AluCommand&gt;</code> compiles to code as direct as a driver hand-written for ALU commands alone, because that is literally what the compiler makes of it.</p>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<p>Generics let one definition serve many types: type parameters in angle brackets stand for a type named later, on functions (<code>fn largest&lt;T: PartialOrd&gt;(list: &amp;[T]) -&gt; &amp;T</code>) and on structs (<code>Register&lt;T&gt;</code>, and the <code>Vec&lt;T&gt;</code>, <code>Option&lt;T&gt;</code>, and <code>Result&lt;T, E&gt;</code> you have used since Chapter 8). Trait bounds are the contract — <code>T: PartialOrd</code>, or several requirements joined with <code>+</code>, or a <code>where</code> clause when the list grows — and they replace Python’s duck typing with the same idea checked at compile time: if it implements the bound, it’s a duck, and the compiler verifies the feathers before the program runs. Monomorphization is why none of this costs anything at runtime: the compiler stamps out a specialized copy of the generic code for each concrete type used, so every call dispatches directly, in exchange for some compile time and binary size. And <code>Driver&lt;REQ, RSP = REQ&gt;</code> is where the book is taking all of it — a driver whose transaction types are part of its type, so mismatched testbench plumbing fails at compile time instead of mid-regression.</p>
+<p>We now have types that carry proofs. What we do not yet have is Rust’s way of passing <em>behavior</em> around — the thing Python did every time it handed a function to <code>sorted(key=...)</code> or stored a coroutine to run later, and the thing rustvm’s factory will do for a living. Chapter 12 takes up closures and iterators, and if you enjoyed watching the compiler specialize your generics for free, you are going to like what it does to a <code>for</code> loop.</p>
+<blockquote>
+<p>¹ When inference can’t decide — or you want to be explicit — you can name the type at the call site with <code>largest::&lt;u8&gt;(&amp;operands)</code>. The <code>::&lt;&gt;</code> operator is universally called the <em>turbofish</em>, it is official Rust culture, and no, nobody has come up with a better name. Swim on.</p>
+</blockquote>
+<blockquote>
+<p>² C++ programmers will recognize this as what templates do, with one upgrade worth appreciating: a Rust generic function is type-checked once, against its bounds, when it is <em>defined</em> — not re-checked per instantiation with errors erupting from the template’s guts. The compiler in figure 1 complained about our signature, in our terms, before any caller existed.</p>
+</blockquote>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="chapter-10-traits.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="chapter-12-closures-iterators.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="chapter-10-traits.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="chapter-12-closures-iterators.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>
