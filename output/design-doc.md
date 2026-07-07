@@ -370,266 +370,204 @@ Consequences the design embraces:
 
 ## 5. Testbench/UVM-Analog API
 
-This section ports pyuvm's architecture, subsystem by subsystem, in pyuvm's own file order. The guiding principle throughout: **pyuvm simplified SystemVerilog UVM by using Python's dynamism; rustvm re-simplifies pyuvm by using Rust's type system.** Where pyuvm checks types at runtime (`assert issubclass(type(item), uvm_sequence_item)` — pyuvm: `_s14_15_python_sequences.py`, `uvm_seq_item_port.put_response`), rustvm makes the check a generic bound and deletes the runtime code.
+> **Revision note.** §5 was rewritten after adopting recommendations R1–R6 of `review-memo.md` (in this directory), which classified each pyuvm concept as *methodology* (the problem it solves — kept) or *mechanism* (the Python/OO machinery it solves it with — not ported). The memo is the rationale record for every deletion below; this section states the resulting design.
 
-### 5.1 `UvmObject` and transactions
+This section addresses pyuvm's architecture, subsystem by subsystem, in pyuvm's own file order. The guiding principle, sharpened by the memo: **pyuvm simplified SystemVerilog UVM by using Python's dynamism; rustvm solves the same methodology problems with Rust's type system — and where a pyuvm mechanism existed only to serve another mechanism, both are deleted rather than ported.** Where pyuvm checks types at runtime (`assert issubclass(type(item), uvm_sequence_item)` — pyuvm: `_s14_15_python_sequences.py`, `uvm_seq_item_port.put_response`), rustvm makes the check a generic bound; where pyuvm maintained runtime registries and string paths, rustvm uses ownership and constructors.
 
-pyuvm's `uvm_object` (pyuvm: `_s05_base_classes.py`) provides: name management, instance id, type name, `create`/`clone`, `copy`/`do_copy`, `compare`/`do_compare`, `convert2string`, and (unimplemented) pack/record/policy stubs. `uvm_transaction` adds transaction ids and (mostly unimplemented) timing/recording hooks.
+### 5.1 Transactions: plain data plus the `SeqItem` envelope
 
-**D5.1 — split into a small required trait plus a derive.**
+*(Adopts review-memo R1. Replaces the earlier `UvmObject`/`ObjectOps`/`Transaction` trait-and-derive design.)*
+
+pyuvm's `uvm_object` ecosystem (pyuvm: `_s05_base_classes.py`) exists to give Python objects capabilities the language couldn't derive: field-wise copy (`do_copy`), field-wise comparison (`do_compare`), printable form (`convert2string`), and identity. Rust derives all of these from the struct definition. A rustvm transaction is therefore a plain struct:
 
 ```rust
-/// The required surface. Port of uvm_object naming/id (pyuvm: _s05, 5.3.3–5.3.4).
-pub trait UvmObject {
-    fn name(&self) -> &str;
-    fn set_name(&mut self, name: &str);
-    fn inst_id(&self) -> InstId;
-    fn type_name(&self) -> &'static str;
-}
+#[derive(Clone, Debug, PartialEq)]
+pub struct AluCommand { pub a: u8, pub b: u8, pub op: Ops }
+```
 
-/// Field-wise operations. In pyuvm these walk __dict__ at runtime;
-/// in Rust the derive macro generates them at compile time (§6.3).
-pub trait ObjectOps: UvmObject {
-    fn do_copy(&mut self, rhs: &dyn Any) -> Result<(), CopyError>;
-    fn do_compare(&self, rhs: &dyn Any) -> bool;
-    fn convert_to_string(&self) -> String;
-}
+No rustvm base trait. `Clone` is `do_copy`; `PartialEq` is `do_compare`; `Debug` is `convert2string`; `std::any::type_name` is `get_type_name`. What pyuvm hand-rolled by walking `__dict__` at runtime (pyuvm: `_s05`), the std derives generate at compile time — the same field-enumeration job SV-UVM's field macros did, done by the language itself.
 
-/// Transactions add identity for req/rsp correlation.
-/// (pyuvm: _s05 uvm_transaction + _s14_15 uvm_sequence_item id plumbing)
-pub trait Transaction: ObjectOps {
-    fn transaction_id(&self) -> TxnId;
-    fn set_context(&mut self, req: &dyn Transaction);   // rsp.set_context(req)
+The one genuine methodology item in the sequence-item lineage is identity for request/response correlation. That identity belongs to the *infrastructure*, not the user's data type — pyuvm itself signals the mechanism leak by storing scheduler events on the transaction (pyuvm: `_s14_15_python_sequences.py`, `uvm_sequence_item.__init__` creates `start_condition`/`finish_condition`/`item_ready` on the item). rustvm moves both the events *and* the identity into an envelope owned by the sequencer channel:
+
+```rust
+/// What the driver receives from get_next_item(). The infrastructure owns
+/// the id; the payload is the user's plain struct.
+pub struct SeqItem<REQ> { /* txn id + payload — elided */ }
+impl<REQ> SeqItem<REQ> {
+    pub fn txn_id(&self) -> TxnId;
+    pub fn payload(&self) -> &REQ;
+    pub fn payload_mut(&mut self) -> &mut REQ;
 }
 ```
 
-Users write `#[derive(Transaction)]` on a plain struct of fields and get all three traits with field-wise compare/copy/to-string — replacing the inheritance chain `uvm_object → uvm_transaction → uvm_sequence_item` with one line. Overriding `do_compare` for a custom notion of equality remains possible by implementing the method manually (the derive skips what you define). *(Decision informed by the book's uvm_object chapter, which teaches exactly `do_copy`/`do_compare`/`convert2string` as the customization points; book: "uvm_object in Python".)*
+`item_done(Some(rsp))` tags the response with the envelope's id internally; pyuvm's `set_context` (pyuvm: `_s05` `uvm_transaction.set_id_info`, `_s14_15` `uvm_sequence_item.set_context`) has no user-visible equivalent because the user can no longer forget to call it.
 
-What is **deliberately dropped**: pack/unpack, recording hooks, policies — pyuvm itself raises `UVMNotImplemented` or provides stubs for most of these (pyuvm: `_s05_base_classes.py`, `uvm_policy.__new__` raises). Porting stubs would be cargo-culting. Listed in §8 as known gaps, not open questions.
+**Comparison policy moves to the scoreboard.** pyuvm bakes one notion of equality into the data type (`do_compare` overrides, field exclusions). rustvm scoreboards take a comparator — `PartialEq` by default, a closure or projection where the check differs from structural equality. Comparison is checker policy, not data-type property; the earlier `#[uvm(skip)]` field-attribute design is deleted along with the derive that carried it.
 
-### 5.2 Components and hierarchy
+What is **deliberately dropped**, unchanged from the previous revision: pack/unpack, recording hooks, policies — pyuvm itself raises `UVMNotImplemented` or provides stubs for most of these (pyuvm: `_s05_base_classes.py`, `uvm_policy.__new__` raises). Listed in §8 as known gaps, not open questions.
 
-The heart of the problem. pyuvm's hierarchy is mutually-referential: child holds `_parent`, parent holds `_children[name]`, and a class-level `component_dict` maps full names to components globally (pyuvm: `_s13_uvm_component.py`, `uvm_component.__init__`). In Rust, `Rc<RefCell<...>>` cycles leak (Rc cannot collect cycles) and make every access a runtime borrow gamble.
+### 5.2 Components and hierarchy: the ownership tree
 
-**D5.2 — the hierarchy is an arena owned by `UvmRoot`.** Components live in a slab/arena keyed by `ComponentId` (a copyable integer newtype). Parent/child links are `ComponentId`s, not references. All traversal goes through the arena, which is owned by the root, which is owned by the runner.
+*(Adopts review-memo R2. Replaces the earlier arena/`ComponentId` design.)*
+
+pyuvm's runtime component graph — child holds `_parent`, parent holds `_children[name]`, and a global `component_dict` maps full names to instances (pyuvm: `_s13_uvm_component.py`, `uvm_component.__init__`) — exists because SV/Python build topology at runtime through the factory and address components by string path. Neither driver survives into this design: §5.5 removes the runtime factory, and string addressing served the ConfigDB, removed in §5.4. What remains is the methodology — structured composition — and Rust already has a structured-composition mechanism with compiler enforcement: **ownership**.
+
+**D5.2 (revised) — the component tree is the ownership tree.** A component is a plain struct; its children are its fields:
 
 ```rust
-pub struct ComponentId(/* opaque */);
-
-/// The component tree. Port of uvm_root + component_dict
-/// (pyuvm: _s13_uvm_component.py) as one owned structure, no globals.
-pub struct Hierarchy { /* arena, name index — elided */ }
-
-impl Hierarchy {
-    pub fn parent(&self, id: ComponentId) -> Option<ComponentId>;
-    pub fn children(&self, id: ComponentId) -> impl Iterator<Item = ComponentId> + '_;
-    pub fn full_name(&self, id: ComponentId) -> String;      // 13.1.3.2
-    pub fn get_child(&self, id: ComponentId, name: &str) -> Option<ComponentId>;
-    pub fn lookup(&self, from: ComponentId, path: &str) -> Option<ComponentId>; // 13.1.3.7
-    /// Glob search, porting uvm_is_match + find_all
-    /// (pyuvm: _utility_classes.py uvm_is_match; _s13 uvm_root.find_all)
-    pub fn find_all(&self, pattern: &str) -> Vec<ComponentId>;
-    pub fn find(&self, pattern: &str) -> Option<ComponentId>;
+pub struct AluEnv {
+    agent: AluAgent,        // children are fields — the hierarchy is the struct tree
+    scoreboard: Scoreboard,
+    coverage: Coverage,
 }
 ```
 
-Rationale: (a) no reference cycles, so no leaks and no `RefCell` panics; (b) `ComponentId` is `Copy`, so "hold a handle to the scoreboard" is trivial for any component; (c) mirrors how pyuvm *actually* resolves cross-hierarchy access anyway — through the global `component_dict` by full name (pyuvm: `uvm_component.lookup`). The arena is that dict, made explicit and owned. ⚠ The ergonomic cost — user methods receive `&mut Hierarchy` access through a context parameter rather than `self.parent.thing` — is real, and the exact context-passing API needs prototyping pressure-testing. OQ-14.
+`#[derive(Component)]` (§6.3, revised) generates the structural plumbing as an implementation of the internal `ComponentNode` traversal trait: visiting fields marked `#[component(child)]` — including `Option<T>` (conditional children, e.g. passive agents) and `Vec<T>` (configured counts) — synthesizing hierarchical names from field names at compile time, and emitting a `visit_children(&mut dyn FnMut(&dyn ComponentInfo))` walker for debug printing. There is no arena, no `ComponentId`, no `Hierarchy` object, and no `uvm_root`: the `#[rustvm::test]` function constructs the env, owns it, and drives its lifecycle. (Test-by-name selection, `uvm_root.run_test`'s remaining job, already belongs to the runner registry — §4.5.)
 
-**The `Component` trait and construction.**
+Consequences:
 
-```rust
-/// What every component implements, usually via #[derive(Component)] + impl Phased.
-pub trait Component: UvmObject + Phased + Any {
-    /// Called by the factory/hierarchy with identity already assigned.
-    /// Port of uvm_component.__init__(name, parent) (pyuvm: _s13, 13.1.2.1),
-    /// split so construction can't forget hierarchy registration.
-    fn init(ctx: ComponentCtx) -> Self where Self: Sized;
-}
-```
+- **Child access is field access** — `self.agent.monitor` — strictly better ergonomics than both the arena's context-parameter plumbing and pyuvm's string `lookup`. This retires OQ-14 as stated; the *risk* did not vanish but moved into the derive macro (now OQ-15, §8).
+- **Cross-component references** (monitor→scoreboard) go through channels (§5.6) — which is the UVM's own prescription (TLM). The arena existed largely to serve lookups the retyped design no longer performs.
+- **`lookup`/`find_all` glob search** (pyuvm: `uvm_root.find_all`; `_utility_classes.py`, `uvm_is_match`) is not ported: its consumers were string-keyed config and factory paths (both deleted) and debug printing (served by `visit_children`).
 
-In pyuvm, `Comp("name", parent)` registers itself via `__init__` side effects. In Rust, components are *always* created through the hierarchy (`hierarchy.create::<MyDriver>("drv", parent_id)` or the factory), which allocates the id, registers name/parent, then calls `init`. Direct struct construction bypassing registration doesn't compile against the API. This closes a pyuvm footgun (constructing a component with a wrong/absent parent silently reparents to root; pyuvm: `uvm_component.__init__`).
-
-**Predefined components** (pyuvm: `_s13_predefined_component_classes.py`) port as follows:
+**Predefined components** (pyuvm: `_s13_predefined_component_classes.py`), reclassified per the memo:
 
 | pyuvm class | rustvm form | Notes |
 |---|---|---|
-| `uvm_test` | `Test` marker trait | run_test entry constraint |
-| `uvm_env` | `Env` marker trait | structural container |
-| `uvm_agent` | `Agent` base struct (generic over its driver/monitor/sequencer types) | reads `is_active` from ConfigDB in `build_phase`, defaults to active, warns and resets to active on illegal values — exact pyuvm behavior (pyuvm: `uvm_agent.build_phase`) |
-| `uvm_driver` | `Driver<REQ: Transaction, RSP: Transaction = REQ>` with `seq_item_port: SeqItemPort<REQ, RSP>` | typed at last |
-| `uvm_monitor` | `Monitor` marker trait | convention carrier |
-| `uvm_scoreboard` | `Scoreboard` marker trait | checks in `check_phase` per book convention (book: scoreboard chapters) |
-| `uvm_subscriber` | `trait Subscriber<T>: Component { fn write(&mut self, item: &T); }` | pyuvm enforces the abstract `write` by raising `UVMFatalError` when the un-overridden method is called (pyuvm: `uvm_subscriber.write`); Rust enforces it by the trait not compiling without it |
+| `uvm_test` | the `#[rustvm::test]` function itself | constructs and owns the env; no test component class |
+| `uvm_env` | plain struct of children | structural container; the role is conventional |
+| `uvm_agent` | struct with `Option<Driver>`/`Option<Sequencer>` fields | active/passive is a config enum (§5.4); a passive agent simply doesn't construct them — pyuvm's illegal-value warning path (pyuvm: `uvm_agent.build_phase`) becomes an unrepresentable state |
+| `uvm_driver` | `Driver<REQ, RSP = REQ>` with `seq_item_port: SeqItemPort<REQ, RSP>` | unchanged; REQ/RSP are plain data types (§5.1) |
+| `uvm_monitor`, `uvm_scoreboard` | conventions, not marker traits | a methodless marker trait is ceremony in Rust; the book teaches the roles, the code doesn't need the tag |
+| `uvm_subscriber` | `trait Subscriber<T> { fn write(&mut self, item: &T); }` | kept as a real trait — `AnalysisPort` dispatches through it; pyuvm enforces the abstract `write` by raising `UVMFatalError` when the un-overridden method is called (pyuvm: `uvm_subscriber.write`); Rust enforces it at compile time |
 
-### 5.3 Phasing and objections
+### 5.3 Lifecycle and objections
 
-pyuvm deliberately ignores IEEE 1800.2 generalized phasing and runs the nine common phases by simple tree traversal — topdown or bottomup per phase — dispatching by *method name string* (pyuvm: `_s09_phasing.py`, header comment and `uvm_phase.execute`; `run_phase` is spawned as a cocotb task per component via `uvm_threaded_execute_phase`). `uvm_root.run_test` drives the sequence and awaits objection drain after `run_phase` (pyuvm: `_s13_uvm_component.py`, `uvm_root.run_test`).
+*(Adopts review-memo R3: build/connect collapse into constructors; five runtime phases remain; objections unchanged. Per the memo's §4 recommendation — accepted — `build`/`connect` survive as **documented conventions**, not trait methods.)*
 
-**D5.3 — same nine phases, same traversal orders, trait dispatch instead of `getattr`.**
+pyuvm runs nine common phases by tree traversal, dispatching by method-name string (pyuvm: `_s09_phasing.py`, `uvm_phase.execute`; `run_phase` spawned per component via `uvm_threaded_execute_phase`). Reclassified: `build_phase` and `connect_phase` exist because factory-driven construction is two-stage — components are instantiated before their children or connections can exist. Rust constructors compose bottom-up in one pass, and channel endpoints are created by parents and passed down. Building and connecting are what constructors *do*:
+
+- **build convention** — a component's `new(config, ...)` constructs its children: the body of what would have been `build_phase`.
+- **connect convention** — channel endpoints are constructor arguments; wiring happens where construction happens. A missing connection is a missing argument — a compile error — where pyuvm delivers a runtime `UVMTLMConnectionError` or an unconnected-export failure (pyuvm: `_s12` `uvm_port_base.connect` checks; `_s14_15` `get_next_item` assert on `export is not None`).
+
+The book keeps its build/connect chapter structure; rustvm example code marks the corresponding constructor regions with `// build:` and `// connect:` comment conventions. This is an explicit teachability concession (review-memo §4), recorded as such.
+
+What remains at runtime is the lifecycle trait:
 
 ```rust
-pub trait Phased {
-    // topdown (pyuvm: _s09, 9.8.1)
-    fn build_phase(&mut self, ctx: &mut PhaseCtx) {}
-    fn end_of_elaboration_phase(&mut self, ctx: &mut PhaseCtx) {}
-    fn start_of_simulation_phase(&mut self, ctx: &mut PhaseCtx) {}
-    fn extract_phase(&mut self, ctx: &mut PhaseCtx) {}
-    fn check_phase(&mut self, ctx: &mut PhaseCtx) {}
-    fn report_phase(&mut self, ctx: &mut PhaseCtx) {}
-    fn final_phase(&mut self, ctx: &mut PhaseCtx) {}
-    // bottomup (pyuvm: _s09, uvm_connect_phase)
-    fn connect_phase(&mut self, ctx: &mut PhaseCtx) {}
-    // spawned as a task per component, bottomup order
-    // (pyuvm: _s09, uvm_run_phase(uvm_threaded_execute_phase, uvm_bottomup_phase))
-    fn run_phase(&mut self, ctx: PhaseCtx) -> Option<BoxFuture<'static, ()>> { None }
+pub trait Component {
+    /// Spawn free-running behavior (drivers, monitors, sequencer service);
+    /// the runner manages returned tasks. Port of run_phase spawning
+    /// (pyuvm: _s09, uvm_threaded_execute_phase; bottomup order preserved).
+    fn start(&mut self, ctx: &mut RunCtx);
+    fn extract(&mut self) {}                          // topdown, post-run (pyuvm: _s09)
+    fn check(&mut self, errors: &mut CheckSink) {}    // topdown
+    fn report(&self) {}                               // topdown
+    fn final_phase(&self) {}
 }
 ```
 
-Default empty bodies replicate pyuvm's no-op base methods, so components override only what they use — the book's teaching pattern (book: uvm_component chapter). ⚠ `run_phase` returning an optional boxed future (rather than being an `async fn`) sidesteps async-fn-in-trait dyn-compatibility; whether this is the least-bad signature is OQ-3, shared with TLM.
+Default empty bodies replicate pyuvm's no-op base methods — components override only what they use, the book's teaching pattern (book: uvm_component chapter). Dispatch is static through the derive-generated traversal (§5.2), so the previous revision's `BoxFuture` compromise for `run_phase` is no longer needed here (OQ-3 residual moves to `Sequence::body`, §5.6). `end_of_elaboration`/`start_of_simulation` fold into the test body between construction and `start` — they were empty in every book example. Custom phases: the runner's phase list remains a `Vec<PhaseDescriptor>` for the rare team that needs one; no schedules, no domains — same scope cut as pyuvm, same rationale (pyuvm: `_s09` header comment).
 
-Custom phases: pyuvm documents "add a method and insert into the phase list" as the extension path (pyuvm: `_s09` comment block). rustvm ports the same austerity: the phase list is a `Vec<PhaseDescriptor>` the runner iterates; inserting a custom phase means registering a descriptor with a traversal order and a dispatch closure. No schedules, no domains — same scope cut as pyuvm, same rationale.
-
-**Objections.** pyuvm's `ObjectionHandler` is a singleton counting raised/dropped objections per component, with an `Event` signaled when the count hits zero, plus a warning if `run_phase` completes with nothing ever raised (pyuvm: `_utility_classes.py`, `ObjectionHandler.run_phase_complete`). Its diagnostics (raiser name, description, source line — the `Objection` dataclass) are worth keeping.
-
-**D5.4 — objections become RAII guards.**
+**Objections: unchanged.** The RAII design survives the reclassification untouched — distributed end-of-test consensus is methodology, and the guard was already the idiomatic mechanism. pyuvm's `ObjectionHandler` counts raised/dropped objections with an `Event` signaled at zero, plus a warning if `run_phase` completes with nothing ever raised (pyuvm: `_utility_classes.py`, `ObjectionHandler.run_phase_complete`); its diagnostics (raiser, description, source line — the `Objection` dataclass) are ported in full.
 
 ```rust
-impl PhaseCtx {
+impl RunCtx {
     /// Port of raise_objection, returning a guard whose Drop is drop_objection.
     /// (pyuvm: _s13 uvm_component.raise_objection/drop_objection/objection())
     pub fn raise_objection(&self, description: &str) -> ObjectionGuard;
 }
 ```
 
-pyuvm already gestures at this with its `objection()` context manager (pyuvm: `_s13_uvm_component.py`, `uvm_component.objection`). Rust's version is strictly better: forgetting to drop is impossible (guard drops when it leaves scope), and the raiser/source-line diagnostics are captured in the guard constructor. The "you never objected" warning and the objection-report-on-timeout are ported as-is.
+pyuvm already gestures at this with its `objection()` context manager (pyuvm: `_s13_uvm_component.py`, `uvm_component.objection`). Rust's version is strictly better: forgetting to drop is impossible, and the raiser/source-line diagnostics are captured in the guard constructor. The "you never objected" warning and the objection-report-on-timeout are ported as-is.
 
-### 5.4 ConfigDB
+### 5.4 Configuration: typed config trees
 
-pyuvm's `ConfigDB` is a two-level dict: glob-capable instance-path keys → field name → {precedence → value}, with precedence favoring shallower components during `build_phase` (depth-based), glob matching on *stored* paths only (wildcards illegal in `get` paths), most-specific-path-wins retrieval ordering, `wait_modified`, and tracing (pyuvm: `_s13_uvm_component.py`, `ConfigDB.set/get`, lines 663–805).
+*(Adopts review-memo R4. Replaces the earlier `ConfigDb` runtime-store design.)*
 
-**D5.5 — port the semantics exactly; change only the typing and error story.**
+The methodology: tests parameterize components buried N levels deep, including sharing resources like a BFM. pyuvm's mechanism — a two-level dict of glob-capable path keys → field name → {precedence → value}, with build-phase depth precedence, path-specificity retrieval ordering, and tracing (pyuvm: `_s13_uvm_component.py`, `ConfigDB.set/get`, lines 663–805) — is Python compensating for having no typed contract between test and component. Rust has one: the config struct, nested to mirror the ownership tree:
 
 ```rust
-pub struct ConfigDb { /* path dict, events, trace flag — elided */ }
-
-impl ConfigDb {
-    /// Port of ConfigDB.set incl. build-phase depth precedence
-    /// (pyuvm: _s13, ConfigDB.set). Key rules identical: globs allowed
-    /// in inst_path, not in field names.
-    pub fn set<T: Any>(&mut self, ctx: Option<ComponentId>, inst_path: &str,
-                       field: &str, value: T) -> Result<(), ConfigError>;
-
-    /// Port of ConfigDB.get: same path-specificity ordering; returns
-    /// typed value or a structured error instead of UVMConfigItemNotFound.
-    pub fn get<T: Any + Clone>(&self, ctx: Option<ComponentId>, inst_path: &str,
-                               field: &str) -> Result<T, ConfigError>;
-
-    pub fn exists(&self, ctx: Option<ComponentId>, inst_path: &str, field: &str) -> bool;
-
-    /// Port of ConfigDB.wait_modified (pyuvm: _s13, async wait on set()).
-    pub async fn wait_modified(&self, ctx: Option<ComponentId>,
-                               inst_path: &str, field: &str);
+pub struct AluEnvConfig {
+    pub agent: AluAgentConfig,       // nesting mirrors the hierarchy
+    pub enable_coverage: bool,
+}
+pub struct AluAgentConfig {
+    pub is_active: Active,           // enum — not a string-keyed int
+    pub bfm: Rc<TinyAluBfm>,         // shared resource: an Rc field
 }
 ```
 
-The `ConfigError` enum distinguishes *not found* from *found-but-wrong-type* — the latter is a bug class pyuvm can't even express (whatever you stored comes back; a type mismatch explodes later at the point of use). `cdb_set`/`cdb_get` convenience methods on `PhaseCtx` port the component-scoped sugar (pyuvm: `_s13`, `uvm_component.cdb_set/cdb_get`).
+The test builds the tree top-down and passes it to `AluEnv::new(config)`. pyuvm's failure modes map to compile errors: wrong type (was: explosion at the point of use — a bug class the `Any`-valued store couldn't even detect at `get`); missing key (was: `UVMConfigItemNotFound` — pyuvm: `ConfigDB._not_found`); shadowed precedence (was: a whole debugging chapter — now there is exactly one value, constructed in test code you can read). Glob patterns ("configure every driver") become a loop or a shared `Rc` in the test, visible where they act. `wait_modified` (pyuvm: `_s13`, `ConfigDB.wait_modified`) has no direct port — a `sim::Event` field in a config struct covers the pattern where it arises. ⚠ I found no `wait_modified` use in the book's chapters; confidence that nothing of pedagogical value is lost is high but not total.
 
-⚠ Values are stored as `Box<dyn Any>`; `get<T>` clones out. For non-`Clone` resources (a BFM), the stored type is `Rc<T>` and you get a cheap handle clone — matching how the book actually uses the ConfigDB (storing one shared BFM; book: ConfigDB chapters). Whether this convention is ergonomic enough, or typed keys (`ConfigKey<T>`) should replace stringly-typed fields entirely, is OQ-9. The stringly-typed design wins for now because the book's pedagogy depends on path/field strings and their debugging story ("Debugging the ConfigDB()" is a whole chapter).
+There is no runtime store, no path strings, no `Box<dyn Any>`, and no precedence algorithm. OQ-9 is retired accordingly (§8).
 
-### 5.5 Factory
+### 5.5 Variation points: constructor injection replaces the factory
 
-What the factory does in pyuvm: every `uvm_void` subclass self-registers by name at class-creation time via metaclass (pyuvm: `_utility_classes.py`, `FactoryMeta.__init__`); overrides are stored per-original-type as a type override plus ordered instance overrides with glob paths (`Override` class); `find_override` chases override chains recursively with loop detection; `create_component_by_name/by_type` instantiate through the override resolution (pyuvm: `_s08_factory_classes.py`). The book teaches this as the mechanism enabling test-by-test behavior swapping (book: "The UVM factory" chapter).
+*(Adopts review-memo R5. Replaces the earlier `Factory` registry design.)*
 
-**D5.6 — registration moves to the `#[derive(Component)]` macro; resolution algorithm ports unchanged.**
+The factory's methodology — a test changes what the testbench does without editing the env (book: "The UVM factory" chapter) — is kept in full. Its mechanism — metaclass self-registration (pyuvm: `_utility_classes.py`, `FactoryMeta.__init__`), override tables with glob paths and recursive chain resolution with loop detection (pyuvm: `FactoryData.find_override`, lines 114–181), `create_component_by_name/by_type` (pyuvm: `_s08_factory_classes.py`) — compensated for SV/Python's inability to pass constructors as values. Rust passes constructors as values natively. In increasing power:
+
+1. **Sequence selection** — the dominant per-test variation in the book — needs no machinery at all: the test starts a different sequence.
+2. **Component substitution at a designed variation point** — the config struct (§5.4) carries a maker:
 
 ```rust
-pub struct Factory { /* name → CreatorFn registry, overrides — elided */ }
-
-/// What the derive macro registers, at link time.
-pub struct ComponentRegistration {
-    pub type_name: &'static str,
-    pub type_id: TypeId,
-    pub create: fn(ComponentCtx) -> Box<dyn Component>,
-}
-
-impl Factory {
-    // Port of _s08 8.3.1.3 override setters, same glob path semantics
-    pub fn set_type_override<Orig: Component, Over: Component>(&mut self, replace: bool);
-    pub fn set_inst_override<Orig: Component, Over: Component>(&mut self, inst_path: &str);
-    pub fn set_type_override_by_name(&mut self, orig: &str, over: &str, replace: bool)
-        -> Result<(), FactoryError>;
-    pub fn set_inst_override_by_name(&mut self, orig: &str, over: &str, inst_path: &str)
-        -> Result<(), FactoryError>;
-
-    /// Port of FactoryData.find_override: recursive chain-following with
-    /// loop detection, instance overrides before type overrides
-    /// (pyuvm: _utility_classes.py lines 114–181).
-    pub fn resolve(&self, requested: TypeId, inst_path: Option<&str>) -> TypeId;
-
-    pub fn create_component_by_name(&self, type_name: &str, parent_inst_path: &str,
-        name: &str, hierarchy: &mut Hierarchy, parent: Option<ComponentId>)
-        -> Result<ComponentId, FactoryError>;
-
-    /// Debug printing at levels 0/1/2, port of uvm_factory.print
-    /// (pyuvm: _s08, debug_level semantics).
-    pub fn print(&self, debug_level: u8) -> String;
+pub struct AluAgentConfig {
+    /// The variation point, explicit in the type. A default is supplied;
+    /// a test overrides the driver by assigning a different closure.
+    pub make_driver: Box<dyn FnOnce(DriverCtx) -> Box<dyn DriverLike>>,
+    // ...
 }
 ```
 
-The mechanism replacing the metaclass: `#[derive(Component)]` emits a static `ComponentRegistration` into a linker-collected slice (the `inventory`/`linkme` technique previewed in §0.5). Before the runner starts, it folds all registrations into the `Factory`'s name map — the moral equivalent of pyuvm's `FactoryData().classes`, built at link time instead of import time. ⚠ Link-section collection is well-trodden but has known platform edges (LTO, some linkers, wasm); a fallback explicit-registration API (`factory.register::<MyComp>()`) is part of the design regardless. OQ-4.
+Three visible lines in test code — no strings, no registry, checked end-to-end. Override *chaining* and loop detection have no equivalent because there is nothing to chase: assignment to a struct field is visible and final, where pyuvm's `xyz → foo → bar` chains required a recursive resolver with a loop-error path (pyuvm: `FactoryData.find_override`, `check_override`).
 
-Loop detection in `resolve` logs and returns the loop-forming type, exactly as pyuvm's error path does (pyuvm: `FactoryData.find_override`, `check_override`). Aliases (`set_type_alias`/`set_inst_alias`) are unimplemented in pyuvm — both raise `UVMNotImplemented`, noting the SystemVerilog UVM doesn't implement them either (pyuvm: `_s08_factory_classes.py`, lines 322–350) — so rustvm omits them knowingly (listed under [gap] in §8).
+3. **Instance-path-pattern overrides** ("every driver under `*.agent2`") are the honest loss: with no ambient registry there is nothing to pattern-match against. In exchange, an env's possible behaviors are exactly what its config type declares — no action at a distance. The consequence for source-unavailable env reuse is recorded as a new [gap] in §8.
 
-### 5.6 TLM and sequences
+The string-keyed registry survives in exactly one place: **test discovery**. `#[rustvm::test]` link-time registration (§6.1) remains, because command-line test selection is genuinely stringly and cocotb's model is correct there (cocotb: `regression.py`, `discover_tests`). Everything else — `create_component_by_name`, factory debug printing, override setters — is deleted along with the registry. Factory aliases were unimplemented in pyuvm anyway — both raise `UVMNotImplemented`, noting the SystemVerilog UVM doesn't implement them either (pyuvm: `_s08_factory_classes.py`, lines 322–350).
 
-**TLM-1 ports/exports.** pyuvm ports the full IEEE taxonomy: blocking/nonblocking × put/get/peek/transport, master/slave composites, analysis ports, all as classes checking `connect()` compatibility at runtime by verifying the export implements the port's method set (pyuvm: `_s12_uvm_tlm_interfaces.py`, `uvm_port_base.check_export` mechanism, lines 60–160).
+### 5.6 Communication: channels, analysis broadcast, and the sequencer handshake
 
-**D5.7 — ports are generic structs; compatibility is checked by the type system at `connect`.**
+*(Adopts review-memo R6. Channels become the primary transport; the sequence machinery is unchanged apart from §5.1's envelope.)*
+
+**Channels replace the TLM-1 taxonomy.** pyuvm implements the ~30-class port/export matrix — blocking/nonblocking × put/get/peek/transport, master/slave composites, runtime `connect()` compatibility checking — as a facade over cocotb queues (pyuvm: `_s12_uvm_tlm_interfaces.py`, `uvm_port_base` lines 60–160; `uvm_tlm_fifo_base` wrapping `UVMQueue`). rustvm ports the queue and deletes the facade:
 
 ```rust
-/// Blocking put. Port of uvm_blocking_put_port (pyuvm: _s12, 12.2.5).
-pub struct BlockingPutPort<T>(/* connection slot — elided */);
-impl<T> BlockingPutPort<T> {
-    pub fn connect(&mut self, export: BlockingPutExport<T>);
-    pub async fn put(&self, item: T) -> Result<(), TlmError>;
+pub fn channel<T>(capacity: usize) -> (Sender<T>, Receiver<T>);
+
+impl<T> Sender<T> {           // the put family (pyuvm: _s12, 12.2.5)
+    pub async fn send(&self, item: T) -> Result<(), TlmError>;
+    pub fn try_send(&self, item: T) -> Result<(), TlmFull<T>>;   // returns item on full
+    pub fn can_send(&self) -> bool;
 }
-
-/// Nonblocking put. try_put/can_put (pyuvm: _s12, 12.2.5.2).
-pub struct NonBlockingPutPort<T>(/* elided */);
-impl<T> NonBlockingPutPort<T> {
-    pub fn try_put(&self, item: T) -> Result<(), TlmFull<T>>;  // returns item on full
-    pub fn can_put(&self) -> bool;
-}
-
-// get/peek/transport families follow the same pattern; composite ports
-// (put_port = blocking + nonblocking) are structs exposing both method sets.
-
-/// Analysis port: 1-to-many, never blocks, port of uvm_analysis_port.write
-/// (pyuvm: _s12, 12.2.8). Subscribers receive &T; fan-out clones only
-/// when a subscriber needs ownership.
-pub struct AnalysisPort<T>(/* subscriber list — elided */);
-impl<T> AnalysisPort<T> {
-    pub fn connect_subscriber(&mut self, sub: ComponentId /* impl Subscriber<T> */);
-    pub fn connect_fifo(&mut self, fifo: &AnalysisFifo<T>);
-    pub fn write(&self, item: &T);
+impl<T> Receiver<T> {         // the get/peek families (pyuvm: _s12, 12.2.5)
+    pub async fn recv(&self) -> Result<T, TlmError>;
+    pub fn try_recv(&self) -> Result<T, TlmEmpty>;
+    pub async fn peek(&self) -> Result<T, TlmError> where T: Clone;
+    pub fn try_peek(&self) -> Result<T, TlmEmpty> where T: Clone;
 }
 ```
 
-A `connect` type mismatch (put port → get export) is now a compile error, deleting pyuvm's runtime `check_export` and its `UVMTLMConnectionError`. `TlmFifo<T>` ports `uvm_tlm_fifo` (size-1 default, `size/used/is_empty/is_full/flush` — pyuvm: `_s12`, lines 849–908); `AnalysisFifo<T>` ports the unbounded analysis variant; `ReqRspChannel<REQ, RSP>` and the transport channel port the composite channels (pyuvm: `_s12`, lines 933–1040).
+Blocking/nonblocking × put/get/peek — twelve pyuvm port classes — become six methods on two types. Port/export duality was directionality bureaucracy; `Sender`/`Receiver` state the direction in the type name. `connect_phase` wiring dissolves because endpoints are constructor arguments (§5.3), and a direction mismatch is not a runtime `UVMTLMConnectionError` but a type error. The transport/master/slave composites are dropped: the book never teaches them, and pyuvm's own sources describe the SV machinery they mimic as complexity to escape (pyuvm: `_s14_15`, header comment).
 
-⚠ Blocking TLM methods are `async fn` on generic structs — fine as designed. If a *heterogeneous* collection of ports is ever needed (`Vec<Box<dyn AnyPort>>`), async-fn-in-trait dyn-compatibility bites. The design avoids needing it (ports are fields, not collection members), but this constraint must be validated against real testbench topologies. OQ-3.
+Two abstractions remain as named types because they are semantically distinct, not renamed channels:
 
-**Sequences.** The pyuvm handshake, which the port preserves *event-for-event* because the book teaches its observable ordering (book: "Sequence testbench: 7.0"; pyuvm: `_s14_15_python_sequences.py`, header comment block — the file's own narrative of the protocol):
+- **`AnalysisPort<T>`** — 1-to-many, never blocks, zero-or-more subscribers: a broadcast, not a queue (pyuvm: `_s12`, `uvm_analysis_port.write`, 12.2.8). Subscribers implement `Subscriber<T>` (§5.2) or attach an `AnalysisFifo<T>`; `write(&T)` clones only for subscribers needing ownership.
+- **`TlmFifo<T>`** — a *component* wrapping a channel, for when the FIFO should be visible in the hierarchy with `size/used/is_empty/is_full/flush` (pyuvm: `_s12`, lines 849–908). `AnalysisFifo<T>` is its unbounded analysis variant; `ReqRspChannel<REQ, RSP>` ports the composite channel (pyuvm: `_s12`, lines 933–1040).
 
-1. Sequence: `start_item(req)` → enqueue on sequencer's request path; block until this item's *start condition* fires (its turn arrives).
-2. Driver: `get_next_item()` → dequeue; fire start condition; block on *item ready*.
-3. Sequence: fills request fields; `finish_item(req)` → fire item-ready; block on *finish condition*.
-4. Driver: processes the transaction against the DUT; `item_done(Some(rsp))` → fire finish condition; response (if any) into response queue.
-5. Sequence (optionally): `get_response(txn_id)` → FIFO-or-by-id retrieval from `ResponseQueue` (pyuvm: `ResponseQueue.get_response`).
+**The sequencer handshake is unchanged** — it survived the memo's reclassification as methodology: late stimulus generation at the moment of grant is protocol semantics with observable ordering the book teaches (review-memo §4; book: "Sequence testbench: 7.0"). The protocol, preserved event-for-event (pyuvm: `_s14_15_python_sequences.py`, header comment block — the file's own narrative):
+
+1. Sequence: `start_item(req)` → enqueue on the sequencer's request path; block until this item's turn arrives (pyuvm: the item's *start condition*).
+2. Driver: `get_next_item()` → dequeue; grant; block until the item is ready.
+3. Sequence: fills request fields; `finish_item(req)` → hand off; block until done.
+4. Driver: processes the transaction against the DUT; `item_done(Some(rsp))` → release the sequence; response (if any) into the response path, tagged with the envelope's txn id.
+5. Sequence (optionally): `get_response(txn_id)` → FIFO-or-by-id retrieval (pyuvm: `ResponseQueue.get_response`).
+
+The signatures differ from the previous revision only in R1's envelope and the removal of the `Transaction` bound — REQ/RSP are plain data types:
 
 ```rust
 /// User-implemented sequence. Port of uvm_sequence (pyuvm: _s14_15).
-pub trait Sequence<REQ: Transaction, RSP: Transaction = REQ> {
+pub trait Sequence<REQ, RSP = REQ> {
     fn body(&mut self, ctx: SeqCtx<REQ, RSP>) -> BoxFuture<'_, Result<(), SeqError>>;
     // pre_body/post_body default hooks, gated by start(call_pre_post) as in pyuvm
 }
@@ -637,28 +575,29 @@ pub trait Sequence<REQ: Transaction, RSP: Transaction = REQ> {
 /// Handed to a running sequence; knows its sequencer. Port of the
 /// sequence-side API (pyuvm: _s14_15 uvm_sequence.start_item/finish_item).
 pub struct SeqCtx<REQ, RSP> { /* sequencer handle, running item id — elided */ }
-impl<REQ: Transaction, RSP: Transaction> SeqCtx<REQ, RSP> {
+impl<REQ, RSP> SeqCtx<REQ, RSP> {
     pub async fn start_item(&mut self, item: &mut REQ);
     pub async fn finish_item(&mut self, item: REQ);
     pub async fn get_response(&mut self, txn_id: Option<TxnId>) -> RSP;
 }
 
 /// Driver-side port. Port of uvm_seq_item_port (pyuvm: _s14_15).
-pub struct SeqItemPort<REQ, RSP> { /* export link — elided */ }
-impl<REQ: Transaction, RSP: Transaction> SeqItemPort<REQ, RSP> {
+pub struct SeqItemPort<REQ, RSP> { /* channel endpoints — elided */ }
+impl<REQ, RSP> SeqItemPort<REQ, RSP> {
     /// Errors if called twice without item_done — same rule as pyuvm
     /// (pyuvm: uvm_seq_item_export.get_next_item raises UVMSequenceError).
     pub async fn get_next_item(&mut self) -> SeqItem<REQ>;
+    /// Tags rsp with the current envelope's txn id (replaces set_context).
     pub fn item_done(&mut self, rsp: Option<RSP>);
     pub async fn get_response(&mut self, txn_id: Option<TxnId>) -> RSP;
 }
 
 /// The sequencer component. Port of uvm_sequencer (pyuvm: _s14_15):
-/// a queue of sequences feeding one seq_item_export.
-pub struct Sequencer<REQ, RSP = REQ> { /* seq queue, export — elided */ }
+/// a queue of sequences feeding one item channel.
+pub struct Sequencer<REQ, RSP = REQ> { /* seq queue, channel — elided */ }
 ```
 
-Notable typing win: pyuvm's start/finish conditions live *on the sequence item* as cocotb `Event`s (pyuvm: `uvm_sequence_item.__init__`), meaning any code holding the item can fire them. rustvm moves the handshake state into the sequencer's channel internals; items are plain data. Virtual sequences (no sequencer; coordinate sub-sequences) port as sequences whose `SeqCtx` has no item channel — calling `start_item` on a virtual context is a compile-time impossibility rather than pyuvm's runtime `UVMSequenceError` (pyuvm: `uvm_sequence.start_item` raise). The Fibonacci and `get_response` patterns from the book (book: testbenches 7.1, 7.2) were checked against these signatures on paper; both express directly. ⚠ Sequence arbitration beyond FIFO (grab/lock/priority) is absent in pyuvm and stays absent here — known gap, not open question.
+Handshake state lives in the sequencer's channel internals; items are plain data (contrast pyuvm, where any code holding the item can fire its conditions — pyuvm: `uvm_sequence_item.__init__`). Virtual sequences port as sequences whose `SeqCtx` has no item channel — calling `start_item` on a virtual context is a compile-time impossibility rather than pyuvm's runtime `UVMSequenceError` (pyuvm: `uvm_sequence.start_item` raise). The Fibonacci and `get_response` patterns from the book (book: testbenches 7.1, 7.2) were checked against these signatures on paper; both express directly. ⚠ `Sequence::body` returns `BoxFuture` because sequencers store sequences heterogeneously — this is now the *only* residual of OQ-3 (§8). Sequence arbitration beyond FIFO (grab/lock/priority) is absent in pyuvm and stays absent here — known gap, not open question.
 
 ---
 
@@ -775,25 +714,27 @@ async fn max_ops(ctx: TestCtx) -> Result<(), TestError>;
 
 ## 8. Open Questions / Known Gaps
 
-Every ⚠ from the body, consolidated. Items marked **[gap]** are consciously descoped, not unresolved.
+Every ⚠ from the body, consolidated. Items marked **[gap]** are consciously descoped, not unresolved. Rows marked **Retired** record questions resolved by adopting review-memo R1–R6; they are kept for the decision history.
 
 | # | Question | Where raised | Current lean / needed to resolve |
 |---|---|---|---|
 | OQ-1 | Reuse cocotb's C++ GPI vs. eventual pure-Rust VPI/VHPI layer | §3.1 | Reuse now (D3.1). Revisit only after rustvm is functional on 2+ simulators. |
 | OQ-2 | Embedding/bootstrap: exact entry symbols, init ordering, per-simulator loading; and the `rustvm run` build flow | §3.2, §2, §7.4 | Shape is clear; needs a spike against Icarus + Verilator + one commercial sim before freezing. Highest-risk item in the design. |
-| OQ-3 | Async-fn-in-trait dyn-compatibility for `run_phase` and any heterogeneous port collections | §5.3, §5.6 | Lean: `BoxFuture` returns at the two trait boundaries; measure allocation cost under a busy sequencer before accepting. |
-| OQ-4 | Link-time registration (inventory/linkme technique) reliability across platforms/linkers/LTO | §0.5, §5.5, §6.1 | Lean: use it, but ship the explicit `factory.register::<T>()` fallback API from day one. |
+| OQ-3 | Async-fn-in-trait dyn-compatibility | §5.6 | **Downgraded (R2/R6):** static hierarchy means static lifecycle dispatch, and channels are concrete generic types. Sole residual: `Sequence::body`'s `BoxFuture` (sequencers store sequences heterogeneously). Measure allocation cost under a busy sequencer. |
+| OQ-4 | Link-time registration (inventory/linkme technique) reliability across platforms/linkers/LTO | §0.5, §6.1 | **Downgraded (R5):** registration now backs test discovery only; the component factory it was load-bearing for no longer exists. Explicit-registration fallback API still ships. |
 | OQ-5 | Drop-based cancellation loses "awaiting cleanup on kill" | §4.6, mapping row 6 | Lean: document the shutdown-message-then-join idiom as the convention; verify against the book's kill-using examples (e.g., Fibonacci 7.1 stopping patterns). |
 | OQ-6 | DUT access: purely dynamic `dut.child("x")?` vs. build-time codegen of a typed DUT struct from HDL introspection | mapping row 19, §6 | Lean: dynamic first (teachable, no build magic); codegen as later ergonomics layer. Needs decision before Chapter-level API examples freeze. If a compile-time typed DUT layer is added later, it must be additive to the dynamic `dut.child()` API, not a breaking replacement — existing testbenches written against the dynamic API must continue to work unchanged. |
 | OQ-7 | Blocking-world bridge (`bridge`/`resume`/`run_in_executor` equivalents) for file/network/co-simulation I/O | §3.4, mapping row 25 | Undesigned beyond "channel + dedicated OS thread." cocotb's `_bridge.py` state machine is the reference. Defer until a concrete use case (book doesn't teach it). |
 | OQ-8 | Logging backend: `tracing` vs. `log`, and mapping onto `gpi_set_log_handler` + sim-time-stamped formatting | §3.1, mapping row 11 | Lean `tracing` (hierarchical targets match `cocotb.task.X` logger naming and pyuvm's per-component loggers). Must reproduce the book's `2.00ns INFO ...` output format. |
-| OQ-9 | ConfigDB: `Box<dyn Any>` + `Rc` convention vs. typed keys | §5.4 | Lean stringly-typed for book compatibility; revisit if type-mismatch errors dominate early user feedback. |
+| OQ-9 | ConfigDB: `Box<dyn Any>` + `Rc` convention vs. typed keys | §5.4 | **Retired — resolved by redesign (R4):** typed config trees; there is no runtime store, so the question no longer exists. |
 | OQ-10 | Parametrized tests: compile-time expansion can't consume runtime parameter sets | §6.2, mapping row 26 | Accept the limit; document data-driven-loop idiom for runtime cases. |
 | OQ-11 | Write-scheduling parity: cocotb's inertial-write buffering has per-simulator behavioral nuance | §4.1(4), mapping row 22 | Port the mechanism verbatim; needs cross-simulator regression tests to claim parity. |
-| OQ-12 | `UvmRoot`/singleton elimination: runner-owned world vs. thread-local access for deep helper code | mapping row 30, §5.2 | Lean runner-owned + context parameters; prototype must confirm this doesn't make user code miserable (see OQ-14). |
+| OQ-12 | `UvmRoot`/singleton elimination: runner-owned world vs. thread-local access for deep helper code | mapping row 30, §5.2 | **Retired — resolved by redesign (R2):** the test function owns the env by ordinary ownership; no root object exists to eliminate. |
 | OQ-13 | Are any GPI calls actually thread-safe on specific simulators? | §3.4 | Assume none. Only relevant if OQ-7 wants shortcuts; don't take them. |
-| OQ-14 | Ergonomics of arena/ID hierarchy: context-parameter plumbing vs. Python's `self.parent.thing` | §5.2 | The design's biggest *usability* risk. Resolve by writing the full TinyALU example against the draft API (paper-prototyped here; needs real code in implementation phase). |
+| OQ-14 | Ergonomics of arena/ID hierarchy: context-parameter plumbing vs. Python's `self.parent.thing` | §5.2 | **Retired (R2):** the arena is gone; child access is field access. The usability risk did not vanish — it transferred into the traversal derive macro. See OQ-15. |
+| OQ-15 | `#[derive(Component)]` traversal macro: child discovery over `T`/`Option<T>`/`Vec<T>` fields, hierarchical-name synthesis, logging-span wiring — the design's new load-bearing magic, with macro-grade error messages when it misbehaves | §5.2, §6.3 (review-memo §5, item 1) | Risk is concentrated (one macro, testable by us) rather than distributed (every user's code) — an improvement, but real macro engineering. Prototype as early as OQ-2; ship the `ComponentNode` trait as hand-implementable so the derive is convenience, not requirement. |
 | **[gap]** | pack/unpack, recording, policies, run-time phases/domains, sequence arbitration (grab/lock/priority), `uvm_resource_db` | §5.1, §5.3, §5.6 | Same cuts pyuvm made (pyuvm: `_s05` stubs, `_s09` header comment, `_s13` ConfigDB comment). Not planned. |
+| **[gap]** | Vertical reuse without source access: overriding components inside an env you cannot edit (UVM instance-path overrides). An env without designed variation points can only be forked | §5.5 (review-memo §5, item 2) | Accepted consequence of R5. Mitigation is a design convention, stated in the book: envs intended for reuse expose maker fields in their config structs. rustvm is honestly weaker than SV-UVM here. |
 | **[gap]** | Register abstraction layer (pyuvm `_reg/`) | — | Out of scope for this design doc entirely; pyuvm's RAL port would be its own document. |
 
 ---
