@@ -1,7 +1,7 @@
 // Smoke testbench for the TinyALU DUT.
 //
 // Purpose: prove the simulator toolchain works — compile, elaborate, run,
-// self-check. This is NOT the book's testbench; rustvm will drive the DUT
+// self-check. This is NOT the book's testbench; rustdv will drive the DUT
 // from Rust. Keep this minimal and portable across simulators.
 //
 // The harness greps stdout for "SMOKE: PASS" — do not remove that print.

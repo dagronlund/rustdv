@@ -4,8 +4,8 @@
 # Used by the Codespaces devcontainer (.devcontainer/devcontainer.json)
 # and for local work:
 #
-#   docker build -t rustuvm docker/
-#   docker run -it --rm -v "$PWD":/work -w /work rustuvm bash
+#   docker build -t rustdv docker/
+#   docker run -it --rm -v "$PWD":/work -w /work rustdv bash
 #   python3 output/regression/regress.py
 #
 # CI installs the same tools via apt directly (see .github/workflows/ci.yml)

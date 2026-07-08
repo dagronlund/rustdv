@@ -1,5 +1,5 @@
 // Rust for RTL Verification — Chapter 10, Figure 4
-// "The shape of rustvm's Component trait (preview — signatures only)"
+// "The shape of rustdv's Component trait (preview — signatures only)"
 
 
 pub trait Component {

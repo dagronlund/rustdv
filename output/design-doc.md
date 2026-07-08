@@ -1,4 +1,4 @@
-# rustvm: Design Document
+# rustdv: Design Document
 
 **A Rust port of cocotb plus a UVM-equivalent verification library**
 
@@ -29,7 +29,7 @@
 
 ## 0. Rust Concepts You'll Need
 
-This section is written for someone fluent in Python — specifically, someone who wrote the Python patterns that cocotb and pyuvm use — and new to Rust. Each concept is introduced by contrast with the Python you already know, and each ends with *why rustvm needs it*.
+This section is written for someone fluent in Python — specifically, someone who wrote the Python patterns that cocotb and pyuvm use — and new to Rust. Each concept is introduced by contrast with the Python you already know, and each ends with *why rustdv needs it*.
 
 ### 0.1 Ownership: the concept Python never made you think about
 
@@ -42,7 +42,7 @@ Rust has no garbage collector. Instead, every value has exactly one **owner** �
 
 This sounds restrictive because it is. The payoff is that an entire category of testbench bug — the monitor that holds a stale handle to a re-built component, the two tasks that mutate one transaction concurrently — becomes a compile error instead of a 2 a.m. debug session.
 
-**Why rustvm cares:** the UVM component tree, as pyuvm builds it, is a graph with parent↔child cycles — the single worst-case data structure for an ownership system. §5.2 spends most of its length on this. The design's answer is to make the ownership tree itself the component tree: children are struct fields, and the cycles never exist.
+**Why rustdv cares:** the UVM component tree, as pyuvm builds it, is a graph with parent↔child cycles — the single worst-case data structure for an ownership system. §5.2 spends most of its length on this. The design's answer is to make the ownership tree itself the component tree: children are struct fields, and the cycles never exist.
 
 ### 0.2 Borrowing: references with rules
 
@@ -52,7 +52,7 @@ You can lend access to a value without giving up ownership, using references: `&
 
 Python has no such rule — every reference is a `&mut` and races are your problem (the book's NullTrigger discussion shows exactly this class of bug: two tasks racing to observe `transaction_data`; cocotb: `_base_triggers.py`, `NullTrigger` docstring). In Rust, the pattern the book warns against would not compile.
 
-When you genuinely need Python-like shared mutability — several components holding one scoreboard — Rust provides opt-in escape hatches with the checks moved to runtime: `Rc<T>` (shared ownership via reference counting, like CPython's refcounts made explicit) and `RefCell<T>` (borrow checking at runtime — a `panic!` replaces the compile error). `Rc<RefCell<T>>` is, roughly, "a Python object reference." rustvm uses this combination sparingly and deliberately; every use is called out in §5.
+When you genuinely need Python-like shared mutability — several components holding one scoreboard — Rust provides opt-in escape hatches with the checks moved to runtime: `Rc<T>` (shared ownership via reference counting, like CPython's refcounts made explicit) and `RefCell<T>` (borrow checking at runtime — a `panic!` replaces the compile error). `Rc<RefCell<T>>` is, roughly, "a Python object reference." rustdv uses this combination sparingly and deliberately; every use is called out in §5.
 
 ### 0.3 Traits: interfaces without inheritance
 
@@ -70,7 +70,7 @@ Key contrasts:
 
 - **No inheritance.** `uvm_driver(uvm_component)` in pyuvm becomes a `Driver` struct that *contains* its state and *implements* the `Component` lifecycle trait. Composition plus traits, never subclassing.
 - **Default methods** replace the base-class no-op pattern. pyuvm's `uvm_component` defines empty `build_phase()` etc. (pyuvm: `_s13_uvm_component.py` lines 403–419); a Rust trait provides those as default method bodies you override selectively.
-- **Two dispatch styles.** Generics (`fn drive<T: Transaction>(t: T)`) are resolved at compile time — zero cost, like C++ templates but type-checked. Trait objects (`Box<dyn Component>`) are resolved at runtime through a vtable — this is what lets rustvm store heterogeneous components in one hierarchy, the way Python lists hold anything.
+- **Two dispatch styles.** Generics (`fn drive<T: Transaction>(t: T)`) are resolved at compile time — zero cost, like C++ templates but type-checked. Trait objects (`Box<dyn Component>`) are resolved at runtime through a vtable — this is what lets rustdv store heterogeneous components in one hierarchy, the way Python lists hold anything.
 - **Duck typing becomes bounds.** "This function needs anything with a `write()` method" becomes `T: Subscriber` — checked at compile time, documented in the signature.
 
 ### 0.4 `async`/`await`: the same idea you already know, with the engine exposed
@@ -85,11 +85,11 @@ Rust's `async fn` compiles to a **state machine** implementing the `Future` trai
 fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
 ```
 
-Where Python's coroutine *pushes* a Trigger out to the scheduler, a Rust future is *polled* and answers either `Poll::Ready(value)` or `Poll::Pending`. Before returning `Pending`, the future stashes a **`Waker`** — a cheap handle meaning "poll me again" — with whatever will eventually fire (in rustvm: a trigger's callback list). The Waker plays exactly the role of cocotb's `TriggerCallback` (cocotb: `_base_triggers.py`, `TriggerCallback`).
+Where Python's coroutine *pushes* a Trigger out to the scheduler, a Rust future is *polled* and answers either `Poll::Ready(value)` or `Poll::Pending`. Before returning `Pending`, the future stashes a **`Waker`** — a cheap handle meaning "poll me again" — with whatever will eventually fire (in rustdv: a trigger's callback list). The Waker plays exactly the role of cocotb's `TriggerCallback` (cocotb: `_base_triggers.py`, `TriggerCallback`).
 
-Two consequences matter enormously for rustvm:
+Two consequences matter enormously for rustdv:
 
-1. **Rust ships no event loop.** `async`/`await` is pure language; the executor is a library you choose — or write. cocotb *already* had to write its own executor because asyncio can't block on simulator time. rustvm is in the same position, and a simulator-driven executor is small (cocotb's is 82 lines). We write our own; we do **not** pull in tokio (§4, rationale there).
+1. **Rust ships no event loop.** `async`/`await` is pure language; the executor is a library you choose — or write. cocotb *already* had to write its own executor because asyncio can't block on simulator time. rustdv is in the same position, and a simulator-driven executor is small (cocotb's is 82 lines). We write our own; we do **not** pull in tokio (§4, rationale there).
 2. **Cancellation is dropping.** cocotb cancels a task by throwing `CancelledError` into it, and the coroutine's `try/finally` blocks run (cocotb: `task.py`, `Task.cancel`). Rust cancels a task by *dropping the future* — the state machine is destroyed, and cleanup happens in `Drop` implementations (destructors). There is no exception to catch. §4.6 treats this asymmetry as a first-class design topic, because every driver/monitor "kill the task at end of test" pattern from the book crosses it.
 
 ### 0.5 Proc macros vs. decorators: compile time vs. run time
@@ -98,11 +98,11 @@ Two consequences matter enormously for rustvm:
 
 Rust has no import time and no metaclasses. Its equivalent power tool is the **procedural macro**: a function that runs *inside the compiler*, receives your code as a token stream, and emits replacement code. Three kinds matter here:
 
-- **Attribute macros** — `#[rustvm::test]` sits where `@cocotb.test()` sat and rewrites the annotated `async fn` into a registered test entry.
-- **Derive macros** — these sit where pyuvm's reliance on `__dict__` introspection sat: since Rust can't discover struct fields at runtime, macros generate field-wise code at compile time. For transactions, the *standard* derives (`Clone`/`PartialEq`/`Debug`) already do the job (§5.1); rustvm adds one derive of its own, `#[derive(Component)]`, which generates hierarchy traversal from a struct's fields (§5.2, §6.3).
+- **Attribute macros** — `#[rustdv::test]` sits where `@cocotb.test()` sat and rewrites the annotated `async fn` into a registered test entry.
+- **Derive macros** — these sit where pyuvm's reliance on `__dict__` introspection sat: since Rust can't discover struct fields at runtime, macros generate field-wise code at compile time. For transactions, the *standard* derives (`Clone`/`PartialEq`/`Debug`) already do the job (§5.1); rustdv adds one derive of its own, `#[derive(Component)]`, which generates hierarchy traversal from a struct's fields (§5.2, §6.3).
 - **Declarative macros** (`macro_rules!`) — simple pattern-based rewriting, used sparingly.
 
-The catch: because macros run at compile time, *runtime registration must be replaced by link-time collection*. There is no moment when "all classes have been imported" — so rustvm uses distributed static registration (the technique behind the `inventory`/`linkme` crates) to build the test list before the runner starts. (Component creation needs no registry at all — constructor injection, §5.5.) ⚠ This mechanism has platform-specific subtleties (§8, OQ-4).
+The catch: because macros run at compile time, *runtime registration must be replaced by link-time collection*. There is no moment when "all classes have been imported" — so rustdv uses distributed static registration (the technique behind the `inventory`/`linkme` crates) to build the test list before the runner starts. (Component creation needs no registry at all — constructor injection, §5.5.) ⚠ This mechanism has platform-specific subtleties (§8, OQ-4).
 
 ### 0.6 `Result`/`Option` vs. exceptions
 
@@ -113,17 +113,17 @@ fn get_dut_signal(dut: &HierarchyHandle, name: &str) -> Result<LogicHandle, Hand
 // caller: let clk = get_dut_signal(&dut, "clk")?;
 ```
 
-Contrasts that matter for rustvm's API design:
+Contrasts that matter for rustdv's API design:
 
-- cocotb raises `AttributeError` when a DUT signal name doesn't resolve (cocotb: `handle.py`, `HierarchyObject.__getattr__`); rustvm's `dut.child("name")` returns a `Result` — the *signature* tells you it can fail. (pyuvm's `UVMConfigItemNotFound` disappears by a different route: configuration is compile-time-checked structs, §5.4.)
-- cocotb marks a test failed by letting any exception propagate out of the test coroutine (cocotb: `regression.py`, `_score_test`). rustvm tests return `Result<(), TestError>`; an `Err` fails the test.
-- Rust *does* have `panic!` — an abort-the-task mechanism for "this is a bug" situations, used by `assert!`/`assert_eq!`. Panics in a rustvm test are caught at the task boundary and scored as test failure, mirroring how cocotb catches `BaseException` per task (cocotb: `task.py`, `Task._resume`). Panics are for assertion failures; `Result` is for expected fallibility (missing signals, config lookups). This split is a designed convention, stated in §7.
+- cocotb raises `AttributeError` when a DUT signal name doesn't resolve (cocotb: `handle.py`, `HierarchyObject.__getattr__`); rustdv's `dut.child("name")` returns a `Result` — the *signature* tells you it can fail. (pyuvm's `UVMConfigItemNotFound` disappears by a different route: configuration is compile-time-checked structs, §5.4.)
+- cocotb marks a test failed by letting any exception propagate out of the test coroutine (cocotb: `regression.py`, `_score_test`). rustdv tests return `Result<(), TestError>`; an `Err` fails the test.
+- Rust *does* have `panic!` — an abort-the-task mechanism for "this is a bug" situations, used by `assert!`/`assert_eq!`. Panics in a rustdv test are caught at the task boundary and scored as test failure, mirroring how cocotb catches `BaseException` per task (cocotb: `task.py`, `Task._resume`). Panics are for assertion failures; `Result` is for expected fallibility (missing signals, config lookups). This split is a designed convention, stated in §7.
 
 ### 0.7 Odds and ends you'll hit immediately
 
-- **No GIL, but also no threads (here).** GPI is not thread-safe, and cocotb runs everything on the simulator's thread. rustvm does the same; the type system *enforces* it by making key types `!Send` (unable to leave the thread they were created on) — see §3.4. Rust's fearless-concurrency story is real but mostly unused in rustvm's core.
+- **No GIL, but also no threads (here).** GPI is not thread-safe, and cocotb runs everything on the simulator's thread. rustdv does the same; the type system *enforces* it by making key types `!Send` (unable to leave the thread they were created on) — see §3.4. Rust's fearless-concurrency story is real but mostly unused in rustdv's core.
 - **`String` vs. `&str`** — owned string vs. borrowed string slice; the practical rule is "store `String`, pass `&str`."
-- **Lifetimes** (`'a`) — annotations telling the compiler how long borrows live. rustvm's public API is designed to keep user-facing lifetimes rare; where signatures in this document show them, that is a deliberate, commented choice.
+- **Lifetimes** (`'a`) — annotations telling the compiler how long borrows live. rustdv's public API is designed to keep user-facing lifetimes rare; where signatures in this document show them, that is a deliberate, commented choice.
 - **`cargo`** — think `pip` + `venv` + `make` + `pytest` in one tool. The build/run story in §7 is cargo-native.
 
 ---
@@ -134,12 +134,12 @@ Legend: **[C]** = cocotb source, **[P]** = pyuvm source, **[B]** = *Python for R
 
 ### 1.1 Language & runtime layer
 
-| # | Python (as used today) | Rust (rustvm design) | Rationale | Source |
+| # | Python (as used today) | Rust (rustdv design) | Rationale | Source |
 |---|---|---|---|---|
 | 1 | `async def` coroutine, resumed via `coro.send(None)` | `async fn` → `impl Future`, resumed via `poll()` | Same user-facing model; engine differs (§0.4) | [C] `task.py` |
-| 2 | `@cocotb.test()` decorator | `#[rustvm::test]` attribute macro | Runtime wrapping → compile-time rewriting (§0.5, §6.1) | [C] `_decorators.py` |
+| 2 | `@cocotb.test()` decorator | `#[rustdv::test]` attribute macro | Runtime wrapping → compile-time rewriting (§0.5, §6.1) | [C] `_decorators.py` |
 | 3 | Exceptions for test failure | `Result<(), TestError>` return + caught panics for assertions | No exceptions in Rust; signatures document fallibility (§0.6) | [C] `regression.py` `_score_test` |
-| 4 | `cocotb.start_soon(coro)` | `rustvm::spawn(future) -> TaskHandle<T>` | Same semantics: queue task, run at next loop turn | [C] `_test_manager.py` `start_soon` |
+| 4 | `cocotb.start_soon(coro)` | `rustdv::spawn(future) -> TaskHandle<T>` | Same semantics: queue task, run at next loop turn | [C] `_test_manager.py` `start_soon` |
 | 5 | `Task` 7-state machine (UNSTARTED…CANCELLED) | `TaskState` enum, same seven states | Proven model; keep debugging story identical | [C] `task.py` `_TaskState` |
 | 6 | `task.kill()` / `task.cancel()` + `CancelledError` | `TaskHandle::cancel()` → future dropped; cleanup via `Drop` | Rust cancellation is drop-based — semantic shift ⚠ (§4.6, OQ-5) | [C] `task.py` `cancel` |
 | 7 | `TaskManager` / `async with` task groups | `TaskGroup` with RAII guard (`Drop` cancels children) | Context-manager → RAII is the idiomatic translation | [C] `_task_manager.py` |
@@ -150,7 +150,7 @@ Legend: **[C]** = cocotb source, **[P]** = pyuvm source, **[B]** = *Python for R
 
 ### 1.2 cocotb core layer
 
-| # | Python (cocotb) | Rust (rustvm design) | Rationale | Source |
+| # | Python (cocotb) | Rust (rustdv design) | Rationale | Source |
 |---|---|---|---|---|
 | 12 | `Trigger` with `_prime/_unprime/_react/_register` | `Trigger` trait: `subscribe/unsubscribe/prime/unprime` | Same lazy-prime lifecycle: prime on first subscriber, unprime on last | [C] `_base_triggers.py` |
 | 13 | `Timer(2, unit="ns")` | `Timer::ns(2).await` (constructors per unit; `SimDuration` type) | Unit-safe construction; rejects zero/negative at compile time where possible | [C] `_gpi_triggers.py` `Timer` |
@@ -166,16 +166,16 @@ Legend: **[C]** = cocotb source, **[P]** = pyuvm source, **[B]** = *Python for R
 | 23 | `LogicArray`, `Logic`, `Range`, `Array` types | `Logic` (4-state enum), `LogicArray`, `Range` structs with `From`/`TryFrom` conversions | Typed value layer; conversion failures are `Result`s not exceptions | [C] `types/` |
 | 24 | `Clock(dut.clk, 10, unit="ns").start()` | `Clock::new(&clk, Duration::ns(10)).start() -> TaskHandle` | Keep optional fast-path in compiled code (cocotb has C++ `cpp_clock`) | [C] `clock.py`, `simulator.pyi` `cpp_clock` |
 | 25 | `bridge`/`resume` (blocking ↔ async thread hop) | `sim::block_on_external` / channel bridge ⚠ | Needed for file/network I/O in testbenches; design deferred (OQ-7) | [C] `_bridge.py` |
-| 26 | `TestFactory` / `@parametrize` runtime generation | `#[rustvm::parametrize(...)]` compile-time expansion ⚠ | No runtime class creation; macro generates N registered tests (OQ-10) | [C] `_test_factory.py`, `_decorators.py` |
+| 26 | `TestFactory` / `@parametrize` runtime generation | `#[rustdv::parametrize(...)]` compile-time expansion ⚠ | No runtime class creation; macro generates N registered tests (OQ-10) | [C] `_test_factory.py`, `_decorators.py` |
 
 ### 1.3 pyuvm/UVM layer
 
-| # | Python (pyuvm) | Rust (rustvm design) | Rationale | Source |
+| # | Python (pyuvm) | Rust (rustdv design) | Rationale | Source |
 |---|---|---|---|---|
 | 27 | `uvm_object` base class | Plain structs; `Debug` + `std::any::type_name` cover the surface — no base trait (review-memo R1) | Rust derives what Python had to hand-roll | [P] `_s05_base_classes.py` |
 | 28 | `clone/copy/compare` via `do_copy/do_compare` hooks | std derives (`Clone`/`PartialEq`/`Debug`); comparison policy lives in the scoreboard (review-memo R1) | Field enumeration at compile time is the language's job | [P] `_s05_base_classes.py` |
 | 29 | `uvm_component(name, parent)` tree of references | Ownership tree: children are struct fields; `#[derive(Component)]` traversal (review-memo R2) | The ownership tree *is* the component tree (§5.2) | [P] `_s13_uvm_component.py` |
-| 30 | `uvm_root()` singleton | Deleted — the `#[rustvm::test]` fn constructs and owns the env (review-memo R2) | No global state; test-by-name lives in the runner registry | [P] `UVM_ROOT_Singleton` |
+| 30 | `uvm_root()` singleton | Deleted — the `#[rustdv::test]` fn constructs and owns the env (review-memo R2) | No global state; test-by-name lives in the runner registry | [P] `UVM_ROOT_Singleton` |
 | 31 | 9 common phases, topdown/bottomup traversal | build/connect become constructor conventions; `start`/`extract`/`check`/`report`/`final` on the `Component` trait, same traversal orders (review-memo R3) | Two-stage construction was a factory artifact; the rest is methodology | [P] `_s09_phasing.py` |
 | 32 | `raise_objection`/`drop_objection` + handler singleton | `ObjectionGuard` RAII handle from `ctx.raise_objection(desc)` | Drop-based release is strictly safer than manual drop | [P] `ObjectionHandler`; `uvm_component.objection()` |
 | 33 | `ConfigDB().set/get` glob paths, `Any` values | Typed, nested config structs passed to constructors (review-memo R4) | Compile-time contract replaces runtime store; its failure modes become compile errors | [P] `ConfigDB` |
@@ -193,36 +193,36 @@ Legend: **[C]** = cocotb source, **[P]** = pyuvm source, **[B]** = *Python for R
 
 ## 2. Crate/Module Structure
 
-cocotb splits into a Python package (`src/cocotb`), a C++ simulator-interface library (`src/cocotb/share/lib/gpi`), an embedding shim (`share/lib/pygpi`), and a tools package (`src/cocotb_tools`) *(cocotb: source layout)*. rustvm mirrors that separation as a cargo **workspace** — the boundaries earned their keep in cocotb and the FFI boundary *must* be its own crate in Rust anyway (`-sys` convention).
+cocotb splits into a Python package (`src/cocotb`), a C++ simulator-interface library (`src/cocotb/share/lib/gpi`), an embedding shim (`share/lib/pygpi`), and a tools package (`src/cocotb_tools`) *(cocotb: source layout)*. rustdv mirrors that separation as a cargo **workspace** — the boundaries earned their keep in cocotb and the FFI boundary *must* be its own crate in Rust anyway (`-sys` convention).
 
 ```
-rustvm/                          # cargo workspace root
-├── rustvm-gpi-sys/              # raw FFI bindings to gpi.h (bindgen), no logic
-├── rustvm-gpi/                  # safe wrapper: handles, callbacks, values
-├── rustvm-sim/                  # executor, tasks, triggers, time, clock, queues
+rustdv/                          # cargo workspace root
+├── rustdv-gpi-sys/              # raw FFI bindings to gpi.h (bindgen), no logic
+├── rustdv-gpi/                  # safe wrapper: handles, callbacks, values
+├── rustdv-sim/                  # executor, tasks, triggers, time, clock, queues
 │   └── (modules) executor, task, trigger, handle, types, clock, simtime, queue
-├── rustvm-uvm/                  # the UVM analog
+├── rustdv-uvm/                  # the UVM analog
 │   └── (modules) component, lifecycle, objection, config,
 │       channel, analysis, fifo, sequence, predefined
-├── rustvm-macros/               # proc macros: #[test], #[parametrize], derives
-├── rustvm-runner/               # regression manager, test registry, entry point,
+├── rustdv-macros/               # proc macros: #[test], #[parametrize], derives
+├── rustdv-runner/               # regression manager, test registry, entry point,
 │                                #   cdylib bootstrap, result reporting (xUnit)
-└── rustvm/                      # facade crate: re-exports the public API
+└── rustdv/                      # facade crate: re-exports the public API
 ```
 
 Design decisions and their sources:
 
-**D2.1 — `rustvm-gpi-sys` is bindings-only.** Machine-generated from `gpi.h` (cocotb: `share/include/gpi.h`), no hand-written logic, everything `unsafe extern "C"`. This is the standard Rust `-sys` crate discipline: one crate owns "what the C API is," another owns "how to use it safely." Keeping it generated means tracking upstream cocotb GPI changes is a re-run of bindgen, not a port.
+**D2.1 — `rustdv-gpi-sys` is bindings-only.** Machine-generated from `gpi.h` (cocotb: `share/include/gpi.h`), no hand-written logic, everything `unsafe extern "C"`. This is the standard Rust `-sys` crate discipline: one crate owns "what the C API is," another owns "how to use it safely." Keeping it generated means tracking upstream cocotb GPI changes is a re-run of bindgen, not a port.
 
-**D2.2 — `rustvm-sim` does not depend on `rustvm-uvm`.** pyuvm imports cocotb, never the reverse (pyuvm: `_utility_classes.py` imports `cocotb.queue`, `cocotb.triggers`). Same direction here: you can write book-style "testbench 1.0/2.0" (pre-UVM) programs against `rustvm-sim` alone, which the book's pedagogy requires — chapters 23–27 of the book use cocotb without pyuvm (book: "Basic testbench: 1.0" through "Class-based testbench: 2.0").
+**D2.2 — `rustdv-sim` does not depend on `rustdv-uvm`.** pyuvm imports cocotb, never the reverse (pyuvm: `_utility_classes.py` imports `cocotb.queue`, `cocotb.triggers`). Same direction here: you can write book-style "testbench 1.0/2.0" (pre-UVM) programs against `rustdv-sim` alone, which the book's pedagogy requires — chapters 23–27 of the book use cocotb without pyuvm (book: "Basic testbench: 1.0" through "Class-based testbench: 2.0").
 
-**D2.3 — `rustvm-macros` is a separate crate by necessity.** Rust requires proc macros to live in their own crate type. It depends on nothing at runtime; `rustvm-uvm` and `rustvm-runner` provide the symbols the generated code calls.
+**D2.3 — `rustdv-macros` is a separate crate by necessity.** Rust requires proc macros to live in their own crate type. It depends on nothing at runtime; `rustdv-uvm` and `rustdv-runner` provide the symbols the generated code calls.
 
-**D2.4 — `rustvm-runner` owns `main`-equivalent duties.** cocotb's `RegressionManager` discovers tests, runs them in order, times them, scores exceptions vs. expectations, and writes xUnit XML (cocotb: `regression.py`). The runner crate ports this: test registry (populated at link time by `#[rustvm::test]`), sequential test execution, `RANDOM_SEED` handling (cocotb: `_init.py`, `_setup_random_seed`), result table, and the simulator entry point (§3.2).
+**D2.4 — `rustdv-runner` owns `main`-equivalent duties.** cocotb's `RegressionManager` discovers tests, runs them in order, times them, scores exceptions vs. expectations, and writes xUnit XML (cocotb: `regression.py`). The runner crate ports this: test registry (populated at link time by `#[rustdv::test]`), sequential test execution, `RANDOM_SEED` handling (cocotb: `_init.py`, `_setup_random_seed`), result table, and the simulator entry point (§3.2).
 
-**D2.5 — the `rustvm` facade re-exports a curated prelude.** The book teaches `import cocotb` / `from pyuvm import *` (book: every example). The Rust equivalent of that ergonomics is `use rustvm::prelude::*;` — one line for users, while the workspace stays modular behind it.
+**D2.5 — the `rustdv` facade re-exports a curated prelude.** The book teaches `import cocotb` / `from pyuvm import *` (book: every example). The Rust equivalent of that ergonomics is `use rustdv::prelude::*;` — one line for users, while the workspace stays modular behind it.
 
-**Feature flags.** ⚠ Simulator selection (Icarus/Verilator/Questa/…) is a *runtime* concern in cocotb (GPI impl `.so` chosen by the makefiles; cocotb: `share/def/*.def`, `cocotb_tools/makefiles`). rustvm keeps that runtime model rather than cargo features where possible, but the build flow for linking testbench-as-cdylib against each simulator is OQ-2.
+**Feature flags.** ⚠ Simulator selection (Icarus/Verilator/Questa/…) is a *runtime* concern in cocotb (GPI impl `.so` chosen by the makefiles; cocotb: `share/def/*.def`, `cocotb_tools/makefiles`). rustdv keeps that runtime model rather than cargo features where possible, but the build flow for linking testbench-as-cdylib against each simulator is OQ-2.
 
 ---
 
@@ -230,15 +230,15 @@ Design decisions and their sources:
 
 ### 3.1 Decision: reuse cocotb's GPI, don't rewrite it
 
-**D3.1 — rustvm links against cocotb's existing GPI C++ library and binds to `gpi.h`.**
+**D3.1 — rustdv links against cocotb's existing GPI C++ library and binds to `gpi.h`.**
 
 The GPI layer is cocotb's crown jewel: one C API (`gpi.h`, 589 lines) abstracting VPI, VHPI, and FLI, with a decade of accumulated simulator-quirk fixes (cocotb: `share/lib/gpi/GpiCommon.cpp`, per-simulator `def` files, and the FLI sensitivity-list workaround documented in `gpi.h` lines 29–32). The header is deliberately C-compatible — opaque handle pointers, plain enums, function pointers — i.e., it is *already* an FFI boundary designed for exactly this kind of consumption.
 
 Rewriting VPI/VHPI/FLI handling in Rust would be years of re-learning quirks the GPI already encodes, for zero user-visible benefit. The port boundary is `gpi.h`, full stop. A pure-Rust GPI remains a possible *future* phase and is recorded as OQ-1.
 
-What this buys, concretely — the full `gpi.h` surface rustvm binds:
+What this buys, concretely — the full `gpi.h` surface rustdv binds:
 
-| `gpi.h` group | Functions (abridged) | rustvm safe wrapper |
+| `gpi.h` group | Functions (abridged) | rustdv safe wrapper |
 |---|---|---|
 | Sim control/query | `gpi_get_sim_time`, `gpi_get_sim_precision`, `gpi_get_simulator_product/version`, `gpi_finish` | `SimContext` methods; time as `SimTime` (u64 steps + precision) |
 | Object query | `gpi_get_root_handle`, `gpi_get_handle_by_name`, `gpi_get_handle_by_index` | `HierarchyHandle::child(name/index) -> Result<AnyHandle>` |
@@ -248,17 +248,17 @@ What this buys, concretely — the full `gpi.h` surface rustvm binds:
 | Callbacks | `gpi_register_{timed, value_change, readonly, nexttime, readwrite}_callback`, `gpi_remove_cb` | trigger primitives (§4) |
 | Logging | `gpi_set_log_handler`, log levels | bridge to Rust logging (⚠ OQ-8) |
 
-### 3.2 Embedding: how rustvm code gets into the simulator process
+### 3.2 Embedding: how rustdv code gets into the simulator process
 
 cocotb's chain today: simulator loads a GPI implementation library (VPI/VHPI/FLI `.so`) → GPI loads `libpygpi` (`embed.cpp`) → which starts an embedded CPython → which imports the user's test module (cocotb: `share/lib/pygpi/embed.cpp`, `src/pygpi/entry.py`, `_init.py`, `init_package_from_simulation`).
 
-**D3.2 — the rustvm testbench compiles to a `cdylib`** that exports the same entry-point symbols `libpygpi` exports today, so the existing GPI loader machinery (`dynload.cpp`, environment-variable-driven library discovery) can load a Rust testbench in place of the Python interpreter. The user's test crate links `rustvm`, and `rustvm-runner` provides the exported entry functions; from GPI's point of view nothing changed.
+**D3.2 — the rustdv testbench compiles to a `cdylib`** that exports the same entry-point symbols `libpygpi` exports today, so the existing GPI loader machinery (`dynload.cpp`, environment-variable-driven library discovery) can load a Rust testbench in place of the Python interpreter. The user's test crate links `rustdv`, and `rustdv-runner` provides the exported entry functions; from GPI's point of view nothing changed.
 
 ⚠ I am confident about the *shape* of this (the loader is explicitly designed around an env-var-named library with known entry points), but the exact symbol set, initialization ordering, and per-simulator loading quirks need a prototype before this section can be called settled. OQ-2.
 
 ### 3.3 The safe/unsafe split
 
-All `unsafe` lives in `rustvm-gpi`, upholding these invariants so that everything above it is safe Rust:
+All `unsafe` lives in `rustdv-gpi`, upholding these invariants so that everything above it is safe Rust:
 
 1. **Handles are opaque and non-null.** `gpi_sim_hdl` etc. are incomplete-type pointers (cocotb: `gpi.h` lines 45–83). Wrapper: `struct RawObjHandle(NonNull<c_void>)`. Fallible acquisition (`gpi_get_handle_by_name` returns NULL for not-found) becomes `Result`/`Option` at the boundary — never a nullable handle in user code.
 2. **Handle lifetime = simulation lifetime.** GPI object handles are valid until sim end (cocotb treats them so: `handle.py` caches them for the process lifetime). Wrappers are therefore freely cloneable ID types; no `Drop` frees a sim object. Callback handles differ: they invalidate on `gpi_remove_cb` or after firing — modeled as consuming methods (`fn deregister(self)`) so a stale callback handle is unrepresentable.
@@ -268,7 +268,7 @@ All `unsafe` lives in `rustvm-gpi`, upholding these invariants so that everythin
 
 ### 3.4 Thread affinity
 
-GPI has no thread-safety guarantees; cocotb only ever calls it from the simulator callback thread, and shunts real threads through the bridge (cocotb: `_bridge.py`). rustvm encodes this in the type system: `SimContext`, all handles' *methods*, and the executor are `!Send` — the compiler rejects any attempt to move them to another thread. External threads interact only through the bridge channel (⚠ OQ-7 for its design). This turns cocotb's documentation-level rule into a compile-time rule — one of the clearest wins of the port. ⚠ Whether *some* GPI calls are in fact safe off-thread on some simulators: unknown, assumed no. OQ-13.
+GPI has no thread-safety guarantees; cocotb only ever calls it from the simulator callback thread, and shunts real threads through the bridge (cocotb: `_bridge.py`). rustdv encodes this in the type system: `SimContext`, all handles' *methods*, and the executor are `!Send` — the compiler rejects any attempt to move them to another thread. External threads interact only through the bridge channel (⚠ OQ-7 for its design). This turns cocotb's documentation-level rule into a compile-time rule — one of the clearest wins of the port. ⚠ Whether *some* GPI calls are in fact safe off-thread on some simulators: unknown, assumed no. OQ-13.
 
 ---
 
@@ -276,7 +276,7 @@ GPI has no thread-safety guarantees; cocotb only ever calls it from the simulato
 
 ### 4.1 What cocotb actually does (the spec for our port)
 
-Distilled from source — this sequence is the contract rustvm must reproduce:
+Distilled from source — this sequence is the contract rustdv must reproduce:
 
 1. A GPI callback fires (timer, edge, phase). The trigger's `_react()` runs all callbacks registered on that trigger — each callback typically marks one task SCHEDULED and pushes its resume onto the event loop — and then **drains the event loop to exhaustion** before returning to the simulator (cocotb: `_gpi_triggers.py`, `GPITrigger._react`; `_event_loop.py`, `EventLoop.run`).
 2. Resuming a task means `coro.send(None)`; the task runs until it finishes, raises, or yields the next `Trigger` it awaits (cocotb: `task.py`, `Task._resume`).
@@ -286,7 +286,7 @@ Distilled from source — this sequence is the contract rustvm must reproduce:
 
 ### 4.2 Decision: a bespoke single-threaded executor (not tokio)
 
-**D4.1** — rustvm implements its own executor in `rustvm-sim`. Rationale:
+**D4.1** — rustdv implements its own executor in `rustdv-sim`. Rationale:
 
 - General-purpose runtimes (tokio, async-std) own their event loop and expect to block on OS I/O. Our event source is the *simulator*; control flow must return to the simulator after every drain, exactly as cocotb's `EventLoop.run()` returns after exhausting its deque. This inversion (executor as guest, not host) is disqualifying for tokio's architecture and is precisely why cocotb never used asyncio's loop either.
 - The executor cocotb needs is tiny — its Python one is 82 lines. A run queue (`VecDeque<TaskId>`), a task arena, and waker plumbing.
@@ -345,7 +345,7 @@ impl<T> TaskHandle<T> {
 
 Ports of the full cocotb set, same semantics, same names where possible:
 
-- **`Timer`** — one-shot timed callback; rejects non-positive durations (cocotb: `Timer.__init__` raises `ValueError`; rustvm makes the constructor return `Result` or use unit-typed constructors that can't express zero ⚠ minor).
+- **`Timer`** — one-shot timed callback; rejects non-positive durations (cocotb: `Timer.__init__` raises `ValueError`; rustdv makes the constructor return `Result` or use unit-typed constructors that can't express zero ⚠ minor).
 - **`RisingEdge` / `FallingEdge` / `ValueChange`** — via `gpi_register_value_change_callback` with `gpi_edge` selector; exposed as methods on typed handles (mapping row 14).
 - **`ReadOnly` / `ReadWrite` / `NextTimeStep`** — phase triggers, singletons per sim context; `ReadWrite` drains the write buffer before waking subscribers, and awaiting `ReadOnly`-from-`ReadOnly` or `ReadWrite`-from-`ReadOnly` is a runtime error, both exactly as cocotb (cocotb: `_gpi_triggers.py`, `ReadOnly.__await__`/`ReadWrite.__await__`).
 - **`sim::Event`** — manual-reset event; `wait()` completes immediately if already set (cocotb: `_base_triggers.py`, `_Event._prime`).
@@ -355,7 +355,7 @@ Ports of the full cocotb set, same semantics, same names where possible:
 
 ### 4.5 Test execution layer
 
-`#[rustvm::test]` registers a `TestCase` (name, module, source location, options: `timeout`, `expect_fail`, `expect_error`, `skip`, `stage` — the full option set of cocotb's `Test` class (cocotb: `_decorators.py`, `Test.__init__`)). The runner executes tests sequentially, one `TestManager`-equivalent per test that: spawns the test future, tracks all tasks spawned during the test, cancels survivors at test end, converts stray panics/errors in *any* task into test failure — porting the "child task exception fails the test" behavior (cocotb: `_test_manager.py`, `TestManager._task_done_callback`).
+`#[rustdv::test]` registers a `TestCase` (name, module, source location, options: `timeout`, `expect_fail`, `expect_error`, `skip`, `stage` — the full option set of cocotb's `Test` class (cocotb: `_decorators.py`, `Test.__init__`)). The runner executes tests sequentially, one `TestManager`-equivalent per test that: spawns the test future, tracks all tasks spawned during the test, cancels survivors at test end, converts stray panics/errors in *any* task into test failure — porting the "child task exception fails the test" behavior (cocotb: `_test_manager.py`, `TestManager._task_done_callback`).
 
 ### 4.6 Cancellation: the one big semantic divergence
 
@@ -372,22 +372,22 @@ Consequences the design embraces:
 
 > **Revision note.** §5 was rewritten after adopting recommendations R1–R6 of `review-memo.md` (in this directory), which classified each pyuvm concept as *methodology* (the problem it solves — kept) or *mechanism* (the Python/OO machinery it solves it with — not ported). The memo is the rationale record for every deletion below; this section states the resulting design.
 
-This section addresses pyuvm's architecture, subsystem by subsystem, in pyuvm's own file order. The guiding principle, sharpened by the memo: **pyuvm simplified SystemVerilog UVM by using Python's dynamism; rustvm solves the same methodology problems with Rust's type system — and where a pyuvm mechanism existed only to serve another mechanism, both are deleted rather than ported.** Where pyuvm checks types at runtime (`assert issubclass(type(item), uvm_sequence_item)` — pyuvm: `_s14_15_python_sequences.py`, `uvm_seq_item_port.put_response`), rustvm makes the check a generic bound; where pyuvm maintained runtime registries and string paths, rustvm uses ownership and constructors.
+This section addresses pyuvm's architecture, subsystem by subsystem, in pyuvm's own file order. The guiding principle, sharpened by the memo: **pyuvm simplified SystemVerilog UVM by using Python's dynamism; rustdv solves the same methodology problems with Rust's type system — and where a pyuvm mechanism existed only to serve another mechanism, both are deleted rather than ported.** Where pyuvm checks types at runtime (`assert issubclass(type(item), uvm_sequence_item)` — pyuvm: `_s14_15_python_sequences.py`, `uvm_seq_item_port.put_response`), rustdv makes the check a generic bound; where pyuvm maintained runtime registries and string paths, rustdv uses ownership and constructors.
 
 ### 5.1 Transactions: plain data plus the `SeqItem` envelope
 
 *(Adopts review-memo R1. Replaces the earlier `UvmObject`/`ObjectOps`/`Transaction` trait-and-derive design.)*
 
-pyuvm's `uvm_object` ecosystem (pyuvm: `_s05_base_classes.py`) exists to give Python objects capabilities the language couldn't derive: field-wise copy (`do_copy`), field-wise comparison (`do_compare`), printable form (`convert2string`), and identity. Rust derives all of these from the struct definition. A rustvm transaction is therefore a plain struct:
+pyuvm's `uvm_object` ecosystem (pyuvm: `_s05_base_classes.py`) exists to give Python objects capabilities the language couldn't derive: field-wise copy (`do_copy`), field-wise comparison (`do_compare`), printable form (`convert2string`), and identity. Rust derives all of these from the struct definition. A rustdv transaction is therefore a plain struct:
 
 ```rust
 #[derive(Clone, Debug, PartialEq)]
 pub struct AluCommand { pub a: u8, pub b: u8, pub op: Ops }
 ```
 
-No rustvm base trait. `Clone` is `do_copy`; `PartialEq` is `do_compare`; `Debug` is `convert2string`; `std::any::type_name` is `get_type_name`. What pyuvm hand-rolled by walking `__dict__` at runtime (pyuvm: `_s05`), the std derives generate at compile time — the same field-enumeration job SV-UVM's field macros did, done by the language itself.
+No rustdv base trait. `Clone` is `do_copy`; `PartialEq` is `do_compare`; `Debug` is `convert2string`; `std::any::type_name` is `get_type_name`. What pyuvm hand-rolled by walking `__dict__` at runtime (pyuvm: `_s05`), the std derives generate at compile time — the same field-enumeration job SV-UVM's field macros did, done by the language itself.
 
-The one genuine methodology item in the sequence-item lineage is identity for request/response correlation. That identity belongs to the *infrastructure*, not the user's data type — pyuvm itself signals the mechanism leak by storing scheduler events on the transaction (pyuvm: `_s14_15_python_sequences.py`, `uvm_sequence_item.__init__` creates `start_condition`/`finish_condition`/`item_ready` on the item). rustvm moves both the events *and* the identity into an envelope owned by the sequencer channel:
+The one genuine methodology item in the sequence-item lineage is identity for request/response correlation. That identity belongs to the *infrastructure*, not the user's data type — pyuvm itself signals the mechanism leak by storing scheduler events on the transaction (pyuvm: `_s14_15_python_sequences.py`, `uvm_sequence_item.__init__` creates `start_condition`/`finish_condition`/`item_ready` on the item). rustdv moves both the events *and* the identity into an envelope owned by the sequencer channel:
 
 ```rust
 /// What the driver receives from get_next_item(). The infrastructure owns
@@ -402,7 +402,7 @@ impl<REQ> SeqItem<REQ> {
 
 `item_done(Some(rsp))` tags the response with the envelope's id internally; pyuvm's `set_context` (pyuvm: `_s05` `uvm_transaction.set_id_info`, `_s14_15` `uvm_sequence_item.set_context`) has no user-visible equivalent because the user can no longer forget to call it.
 
-**Comparison policy moves to the scoreboard.** pyuvm bakes one notion of equality into the data type (`do_compare` overrides, field exclusions). rustvm scoreboards take a comparator — `PartialEq` by default, a closure or projection where the check differs from structural equality. Comparison is checker policy, not data-type property; the earlier `#[uvm(skip)]` field-attribute design is deleted along with the derive that carried it.
+**Comparison policy moves to the scoreboard.** pyuvm bakes one notion of equality into the data type (`do_compare` overrides, field exclusions). rustdv scoreboards take a comparator — `PartialEq` by default, a closure or projection where the check differs from structural equality. Comparison is checker policy, not data-type property; the earlier `#[uvm(skip)]` field-attribute design is deleted along with the derive that carried it.
 
 What is **deliberately dropped**, unchanged from the previous revision: pack/unpack, recording hooks, policies — pyuvm itself raises `UVMNotImplemented` or provides stubs for most of these (pyuvm: `_s05_base_classes.py`, `uvm_policy.__new__` raises). Listed in §8 as known gaps, not open questions.
 
@@ -422,7 +422,7 @@ pub struct AluEnv {
 }
 ```
 
-`#[derive(Component)]` (§6.3, revised) generates the structural plumbing as an implementation of the internal `ComponentNode` traversal trait: visiting fields marked `#[component(child)]` — including `Option<T>` (conditional children, e.g. passive agents) and `Vec<T>` (configured counts) — synthesizing hierarchical names from field names at compile time, and emitting a `visit_children(&mut dyn FnMut(&dyn ComponentInfo))` walker for debug printing. There is no arena, no `ComponentId`, no `Hierarchy` object, and no `uvm_root`: the `#[rustvm::test]` function constructs the env, owns it, and drives its lifecycle. (Test-by-name selection, `uvm_root.run_test`'s remaining job, already belongs to the runner registry — §4.5.)
+`#[derive(Component)]` (§6.3, revised) generates the structural plumbing as an implementation of the internal `ComponentNode` traversal trait: visiting fields marked `#[component(child)]` — including `Option<T>` (conditional children, e.g. passive agents) and `Vec<T>` (configured counts) — synthesizing hierarchical names from field names at compile time, and emitting a `visit_children(&mut dyn FnMut(&dyn ComponentInfo))` walker for debug printing. There is no arena, no `ComponentId`, no `Hierarchy` object, and no `uvm_root`: the `#[rustdv::test]` function constructs the env, owns it, and drives its lifecycle. (Test-by-name selection, `uvm_root.run_test`'s remaining job, already belongs to the runner registry — §4.5.)
 
 Consequences:
 
@@ -432,9 +432,9 @@ Consequences:
 
 **Predefined components** (pyuvm: `_s13_predefined_component_classes.py`), reclassified per the memo:
 
-| pyuvm class | rustvm form | Notes |
+| pyuvm class | rustdv form | Notes |
 |---|---|---|
-| `uvm_test` | the `#[rustvm::test]` function itself | constructs and owns the env; no test component class |
+| `uvm_test` | the `#[rustdv::test]` function itself | constructs and owns the env; no test component class |
 | `uvm_env` | plain struct of children | structural container; the role is conventional |
 | `uvm_agent` | struct with `Option<Driver>`/`Option<Sequencer>` fields | active/passive is a config enum (§5.4); a passive agent simply doesn't construct them — pyuvm's illegal-value warning path (pyuvm: `uvm_agent.build_phase`) becomes an unrepresentable state |
 | `uvm_driver` | `Driver<REQ, RSP = REQ>` with `seq_item_port: SeqItemPort<REQ, RSP>` | unchanged; REQ/RSP are plain data types (§5.1) |
@@ -450,7 +450,7 @@ pyuvm runs nine common phases by tree traversal, dispatching by method-name stri
 - **build convention** — a component's `new(config, ...)` constructs its children: the body of what would have been `build_phase`.
 - **connect convention** — channel endpoints are constructor arguments; wiring happens where construction happens. A missing connection is a missing argument — a compile error — where pyuvm delivers a runtime `UVMTLMConnectionError` or an unconnected-export failure (pyuvm: `_s12` `uvm_port_base.connect` checks; `_s14_15` `get_next_item` assert on `export is not None`).
 
-The book keeps its build/connect chapter structure; rustvm example code marks the corresponding constructor regions with `// build:` and `// connect:` comment conventions. This is an explicit teachability concession (review-memo §4), recorded as such.
+The book keeps its build/connect chapter structure; rustdv example code marks the corresponding constructor regions with `// build:` and `// connect:` comment conventions. This is an explicit teachability concession (review-memo §4), recorded as such.
 
 What remains at runtime is the lifecycle trait:
 
@@ -524,13 +524,13 @@ Three visible lines in test code — no strings, no registry, checked end-to-end
 
 3. **Instance-path-pattern overrides** ("every driver under `*.agent2`") are the honest loss: with no ambient registry there is nothing to pattern-match against. In exchange, an env's possible behaviors are exactly what its config type declares — no action at a distance. The consequence for source-unavailable env reuse is recorded as a new [gap] in §8.
 
-The string-keyed registry survives in exactly one place: **test discovery**. `#[rustvm::test]` link-time registration (§6.1) remains, because command-line test selection is genuinely stringly and cocotb's model is correct there (cocotb: `regression.py`, `discover_tests`). Everything else — `create_component_by_name`, factory debug printing, override setters — is deleted along with the registry. Factory aliases were unimplemented in pyuvm anyway — both raise `UVMNotImplemented`, noting the SystemVerilog UVM doesn't implement them either (pyuvm: `_s08_factory_classes.py`, lines 322–350).
+The string-keyed registry survives in exactly one place: **test discovery**. `#[rustdv::test]` link-time registration (§6.1) remains, because command-line test selection is genuinely stringly and cocotb's model is correct there (cocotb: `regression.py`, `discover_tests`). Everything else — `create_component_by_name`, factory debug printing, override setters — is deleted along with the registry. Factory aliases were unimplemented in pyuvm anyway — both raise `UVMNotImplemented`, noting the SystemVerilog UVM doesn't implement them either (pyuvm: `_s08_factory_classes.py`, lines 322–350).
 
 ### 5.6 Communication: channels, analysis broadcast, and the sequencer handshake
 
 *(Adopts review-memo R6. Channels become the primary transport; the sequence machinery is unchanged apart from §5.1's envelope.)*
 
-**Channels replace the TLM-1 taxonomy.** pyuvm implements the ~30-class port/export matrix — blocking/nonblocking × put/get/peek/transport, master/slave composites, runtime `connect()` compatibility checking — as a facade over cocotb queues (pyuvm: `_s12_uvm_tlm_interfaces.py`, `uvm_port_base` lines 60–160; `uvm_tlm_fifo_base` wrapping `UVMQueue`). rustvm ports the queue and deletes the facade:
+**Channels replace the TLM-1 taxonomy.** pyuvm implements the ~30-class port/export matrix — blocking/nonblocking × put/get/peek/transport, master/slave composites, runtime `connect()` compatibility checking — as a facade over cocotb queues (pyuvm: `_s12_uvm_tlm_interfaces.py`, `uvm_port_base` lines 60–160; `uvm_tlm_fifo_base` wrapping `UVMQueue`). rustdv ports the queue and deletes the facade:
 
 ```rust
 pub fn channel<T>(capacity: usize) -> (Sender<T>, Receiver<T>);
@@ -605,20 +605,20 @@ Handshake state lives in the sequencer's channel internals; items are plain data
 
 Governing principle: **a macro is justified only where pyuvm/cocotb used runtime dynamism that Rust lacks.** Everywhere else, plain traits and generics. The dynamism inventory, from source:
 
-| Python dynamism | Where used | rustvm macro answer |
+| Python dynamism | Where used | rustdv macro answer |
 |---|---|---|
-| Decorator wrapping + global registration | `@cocotb.test()` (cocotb: `_decorators.py`) | `#[rustvm::test]` attribute macro |
-| Runtime test generation | `TestFactory`, `@parametrize` (cocotb: `_test_factory.py`, `_decorators.py`) | `#[rustvm::parametrize]` compile-time expansion ⚠ OQ-10 |
-| Metaclass class registration | `FactoryMeta` (pyuvm: `_utility_classes.py`) | link-time inventory for `#[rustvm::test]` only; component creation is constructor injection (review-memo R5) |
-| `__dict__` field walking | `do_copy`/`do_compare` defaults (pyuvm: `_s05`) | std derives (`Clone`/`PartialEq`/`Debug`) — no rustvm macro needed (review-memo R1) |
+| Decorator wrapping + global registration | `@cocotb.test()` (cocotb: `_decorators.py`) | `#[rustdv::test]` attribute macro |
+| Runtime test generation | `TestFactory`, `@parametrize` (cocotb: `_test_factory.py`, `_decorators.py`) | `#[rustdv::parametrize]` compile-time expansion ⚠ OQ-10 |
+| Metaclass class registration | `FactoryMeta` (pyuvm: `_utility_classes.py`) | link-time inventory for `#[rustdv::test]` only; component creation is constructor injection (review-memo R5) |
+| `__dict__` field walking | `do_copy`/`do_compare` defaults (pyuvm: `_s05`) | std derives (`Clone`/`PartialEq`/`Debug`) — no rustdv macro needed (review-memo R1) |
 | `getattr` phase dispatch | `uvm_phase.execute` (pyuvm: `_s09`) | **no macro** — the `Component` lifecycle trait suffices |
 | `__getattr__` DUT discovery | `HierarchyObject` (cocotb: `handle.py`) | **no macro required** — dynamic `child()` API; optional codegen is OQ-6 |
 
-### 6.1 `#[rustvm::test]`
+### 6.1 `#[rustdv::test]`
 
 Accepts the cocotb `Test` option set as attribute arguments — `timeout_time`/`timeout_unit`, `expect_fail`, `expect_error`, `skip`, `stage`, `name` (cocotb: `_decorators.py`, `test()` signature) — and expands the annotated `async fn` into: the original function, plus a static `TestRegistration` (name, module path, `file!()`/`line!()` for the report table, options, and a monomorphized spawn shim). The runner's regression table then reproduces cocotb's per-test and summary output shape (cocotb: `regression.py`, `_log_test_summary`).
 
-### 6.2 `#[rustvm::parametrize]`
+### 6.2 `#[rustdv::parametrize]`
 
 cocotb's `@parametrize` produces one test per option combination with suffixed names (cocotb: `_decorators.py`, `parametrize`, `TestGenerator.generate_tests`). The macro form takes literal value lists and expands N registrations at compile time. ⚠ What is lost vs. Python: parameter sets computed at runtime (from env vars or files). Mitigation: runtime *filtering* stays (cocotb's `COCOTB_TEST_FILTER` equivalent; cocotb: `regression.py`, `add_filters`), and data-driven cases inside one test body remain ordinary Rust. OQ-10.
 
@@ -626,7 +626,7 @@ cocotb's `@parametrize` produces one test per option combination with suffixed n
 
 *(Revised per review-memo R1/R2: the `UvmObject` and `Transaction` derives are deleted along with the traits they served; `#[derive(Component)]` is redefined.)*
 
-- **Transactions need no rustvm derive.** `#[derive(Clone, Debug, PartialEq)]` covers copy/compare/print (§5.1). Comparison policy lives in the scoreboard, not on the data type, so the `#[uvm(skip)]` field-attribute machinery is gone with it.
+- **Transactions need no rustdv derive.** `#[derive(Clone, Debug, PartialEq)]` covers copy/compare/print (§5.1). Comparison policy lives in the scoreboard, not on the data type, so the `#[uvm(skip)]` field-attribute machinery is gone with it.
 - **`#[derive(Component)]`** — generates the structural plumbing of §5.2 as a `ComponentNode` impl: traversal of `#[component(child)]` fields (`T`, `Option<T>`, `Vec<T>`), hierarchical-name synthesis from field names, logging-span wiring, and the `visit_children` debug walker. It emits **no** factory registration — component creation is constructor injection (§5.5). This is now the design's single load-bearing macro; its complexity is tracked as OQ-15, and `ComponentNode` stays hand-implementable so the derive is convenience, not requirement.
 
 ### 6.4 What deliberately stays macro-free
@@ -637,27 +637,27 @@ The lifecycle, channel wiring, configuration, sequences — all plain code. Two 
 
 ## 7. Testing Conventions (Worked Example)
 
-The worked example is the book's TinyALU (book: "Basic testbench: 1.0" — A/B 8-bit operands, `op` bus, `start`/`done` single-cycle handshake, ADD/AND/XOR one cycle, MUL three cycles). This section shows the *shape* of the rustvm testbench in signatures and prose; the implementation phase fills in bodies.
+The worked example is the book's TinyALU (book: "Basic testbench: 1.0" — A/B 8-bit operands, `op` bus, `start`/`done` single-cycle handshake, ADD/AND/XOR one cycle, MUL three cycles). This section shows the *shape* of the rustdv testbench in signatures and prose; the implementation phase fills in bodies.
 
 ### 7.1 Project layout
 
 ```
 tinyalu_tb/
-├── Cargo.toml            # [lib] crate-type = ["cdylib"]; depends on rustvm
+├── Cargo.toml            # [lib] crate-type = ["cdylib"]; depends on rustdv
 ├── hdl/tinyalu.sv
 ├── src/
-│   ├── lib.rs            # test entry, #[rustvm::test] functions
+│   ├── lib.rs            # test entry, #[rustdv::test] functions
 │   ├── alu_item.rs       # AluCommand / AluResult transactions
 │   ├── alu_bfm.rs        # BFM: owns DUT handles, exposes async API
 │   ├── components.rs     # Driver, Monitors, Scoreboard, Coverage
 │   ├── env.rs            # AluEnv
 │   └── sequences.rs      # AluSeq, per-op sequences
-└── rustvm.toml           # simulator selection, sources, top module ⚠ OQ-2
+└── rustdv.toml           # simulator selection, sources, top module ⚠ OQ-2
 ```
 
 ### 7.2 The pieces, by signature
 
-**Transactions** — std derives replace the `uvm_sequence_item` subclass with manual `__eq__`/`__str__` (book: sequence chapters); no rustvm-specific derive (review-memo R1):
+**Transactions** — std derives replace the `uvm_sequence_item` subclass with manual `__eq__`/`__str__` (book: sequence chapters); no rustdv-specific derive (review-memo R1):
 
 ```rust
 #[derive(Clone, Debug, PartialEq)]
@@ -689,10 +689,10 @@ impl TinyAluBfm {
 **Test** — the top level reads like the book's tests:
 
 ```rust
-#[rustvm::test(timeout_time = 100, timeout_unit = "us")]
+#[rustdv::test(timeout_time = 100, timeout_unit = "us")]
 async fn random_ops(ctx: TestCtx) -> Result<(), TestError>;
 
-#[rustvm::test]
+#[rustdv::test]
 async fn max_ops(ctx: TestCtx) -> Result<(), TestError>;
 // body shape: build config (sequence + maker choices) → construct env →
 // start lifecycle → await sequence. max_ops differs from random_ops only
@@ -711,7 +711,7 @@ async fn max_ops(ctx: TestCtx) -> Result<(), TestError>;
 
 ### 7.4 Runner flow
 
-`cargo build` produces the cdylib → `rustvm run` (a small cargo subcommand in `rustvm-runner`) invokes the simulator with the GPI libs and env pointing at the testbench library, mirroring `cocotb_tools.runner`'s role (cocotb: `cocotb_tools/runner.py`). Test selection/filter env vars port from cocotb's (`COCOTB_TEST_FILTER` etc.; cocotb: `regression.py`). Results: console table + xUnit XML (cocotb: `_xunit_reporter.py`). ⚠ Full build-flow ergonomics (one command from zero to waveform) is OQ-2's second half.
+`cargo build` produces the cdylib → `rustdv run` (a small cargo subcommand in `rustdv-runner`) invokes the simulator with the GPI libs and env pointing at the testbench library, mirroring `cocotb_tools.runner`'s role (cocotb: `cocotb_tools/runner.py`). Test selection/filter env vars port from cocotb's (`COCOTB_TEST_FILTER` etc.; cocotb: `regression.py`). Results: console table + xUnit XML (cocotb: `_xunit_reporter.py`). ⚠ Full build-flow ergonomics (one command from zero to waveform) is OQ-2's second half.
 
 ---
 
@@ -721,8 +721,8 @@ Every ⚠ from the body, consolidated. Items marked **[gap]** are consciously de
 
 | # | Question | Where raised | Current lean / needed to resolve |
 |---|---|---|---|
-| OQ-1 | Reuse cocotb's C++ GPI vs. eventual pure-Rust VPI/VHPI layer | §3.1 | Reuse now (D3.1). Revisit only after rustvm is functional on 2+ simulators. |
-| OQ-2 | Embedding/bootstrap: exact entry symbols, init ordering, per-simulator loading; and the `rustvm run` build flow | §3.2, §2, §7.4 | Shape is clear; needs a spike against Icarus + Verilator + one commercial sim before freezing. Highest-risk item in the design. |
+| OQ-1 | Reuse cocotb's C++ GPI vs. eventual pure-Rust VPI/VHPI layer | §3.1 | Reuse now (D3.1). Revisit only after rustdv is functional on 2+ simulators. |
+| OQ-2 | Embedding/bootstrap: exact entry symbols, init ordering, per-simulator loading; and the `rustdv run` build flow | §3.2, §2, §7.4 | Shape is clear; needs a spike against Icarus + Verilator + one commercial sim before freezing. Highest-risk item in the design. |
 | OQ-3 | Async-fn-in-trait dyn-compatibility | §5.6 | **Downgraded (R2/R6):** static hierarchy means static lifecycle dispatch, and channels are concrete generic types. Sole residual: `Sequence::body`'s `BoxFuture` (sequencers store sequences heterogeneously). Measure allocation cost under a busy sequencer. |
 | OQ-4 | Link-time registration (inventory/linkme technique) reliability across platforms/linkers/LTO | §0.5, §6.1 | **Downgraded (R5):** registration now backs test discovery only; the component factory it was load-bearing for no longer exists. Explicit-registration fallback API still ships. |
 | OQ-5 | Drop-based cancellation loses "awaiting cleanup on kill" | §4.6, mapping row 6 | Lean: document the shutdown-message-then-join idiom as the convention; verify against the book's kill-using examples (e.g., Fibonacci 7.1 stopping patterns). |
@@ -737,7 +737,7 @@ Every ⚠ from the body, consolidated. Items marked **[gap]** are consciously de
 | OQ-14 | Ergonomics of arena/ID hierarchy: context-parameter plumbing vs. Python's `self.parent.thing` | §5.2 | **Retired (R2):** the arena is gone; child access is field access. The usability risk did not vanish — it transferred into the traversal derive macro. See OQ-15. |
 | OQ-15 | `#[derive(Component)]` traversal macro: child discovery over `T`/`Option<T>`/`Vec<T>` fields, hierarchical-name synthesis, logging-span wiring — the design's new load-bearing magic, with macro-grade error messages when it misbehaves | §5.2, §6.3 (review-memo §5, item 1) | Risk is concentrated (one macro, testable by us) rather than distributed (every user's code) — an improvement, but real macro engineering. Prototype as early as OQ-2; ship the `ComponentNode` trait as hand-implementable so the derive is convenience, not requirement. |
 | **[gap]** | pack/unpack, recording, policies, run-time phases/domains, sequence arbitration (grab/lock/priority), `uvm_resource_db` | §5.1, §5.3, §5.6 | Same cuts pyuvm made (pyuvm: `_s05` stubs, `_s09` header comment, `_s13` ConfigDB comment). Not planned. |
-| **[gap]** | Vertical reuse without source access: overriding components inside an env you cannot edit (UVM instance-path overrides). An env without designed variation points can only be forked | §5.5 (review-memo §5, item 2) | Accepted consequence of R5. Mitigation is a design convention, stated in the book: envs intended for reuse expose maker fields in their config structs. rustvm is honestly weaker than SV-UVM here. |
+| **[gap]** | Vertical reuse without source access: overriding components inside an env you cannot edit (UVM instance-path overrides). An env without designed variation points can only be forked | §5.5 (review-memo §5, item 2) | Accepted consequence of R5. Mitigation is a design convention, stated in the book: envs intended for reuse expose maker fields in their config structs. rustdv is honestly weaker than SV-UVM here. |
 | **[gap]** | Register abstraction layer (pyuvm `_reg/`) | — | Out of scope for this design doc entirely; pyuvm's RAL port would be its own document. |
 
 ---

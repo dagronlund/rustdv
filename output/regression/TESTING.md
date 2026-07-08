@@ -12,7 +12,7 @@ Exit 0 means nothing you care about has changed behavior. Three suites run:
 |---|---|---|
 | `book-sync` | Does every book figure still have a matching, verbatim example file? | no |
 | `examples` | Does every example still build, run, print, panic, or fail-to-compile exactly as blessed? | yes |
-| `custom` | Do your own drop-in tests (future rustvm crate, tools, scripts) still pass? | per test |
+| `custom` | Do your own drop-in tests (future rustdv crate, tools, scripts) still pass? | per test |
 
 ## One-time setup
 
@@ -59,7 +59,7 @@ diffs, exit-code changes, and changed compiler-error codes all surface as
 failures. Bless only what you intended to change — an unintended diff IS the
 regression.
 
-**Adding functionality (e.g. the rustvm crate)?** Two options:
+**Adding functionality (e.g. the rustdv crate)?** Two options:
 
 - Rust unit tests: put `#[test]` functions in the crate, then add the package
   name to `cargo_test_packages` in `regress.json`.

@@ -182,7 +182,7 @@ TinyALU
 
 `String::from("Tiny")` copies the literal's characters into a fresh, owned, heap-allocated `String` that we can grow with `push_str`. And `format!` is your f-string: `format!("Testing the {}", name)` builds a new `String` the way `f"Testing the {name}"` built a new `str` — same job, and like Python's strings, Rust's are immutable-by-default; growing one requires `mut`, and replacing text builds a new string rather than editing in place.²
 
-Now the question that actually bites: when you write a function that takes text, which type goes in the signature? The rule of thumb is worth memorizing, because it appears throughout rustvm's own API:
+Now the question that actually bites: when you write a function that takes text, which type goes in the signature? The rule of thumb is worth memorizing, because it appears throughout rustdv's own API:
 
 > **Store `String`, pass `&str`.** Struct fields that keep text own it as `String`; function parameters that read text borrow it as `&str`.
 
@@ -210,7 +210,7 @@ PASSED: random_ops
 still have random_ops
 ```
 
-If instead the function is going to *keep* the text — storing a component's name in a struct field, say — it should take a `String` and own it outright, and the move at the call site honestly documents the handoff. When rustvm asks for `&str` in a signature, it is promising to look and not keep; when it asks for `String`, it is telling you the name is moving in permanently.
+If instead the function is going to *keep* the text — storing a component's name in a struct field, say — it should take a `String` and own it outright, and the move at the call site honestly documents the handoff. When rustdv asks for `&str` in a signature, it is promising to look and not keep; when it asks for `String`, it is telling you the name is moving in permanently.
 
 One Python habit does not survive the crossing at all: indexing into a string. `line[45]` was everyday Python; in Rust, `s[0]` on a `String` does not compile. Rust strings are UTF-8 encoded, so a character can occupy anywhere from one to four bytes, and Rust refuses to guess whether you want the byte or the character.³ When you need the characters, say so — `for ch in s.chars()` iterates over them, mirroring the Python book's "string as an iterable" figure — and methods like `split`, `trim` (Python's `strip`), `replace`, and `contains` cover the daily string chores you already know by their Python names.
 

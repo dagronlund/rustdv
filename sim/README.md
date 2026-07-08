@@ -1,7 +1,7 @@
 # Simulator scaffold
 
 The TinyALU DUT and a smoke test proving the simulator toolchain works.
-This is groundwork for **rustvm** — the book's Rust testbench framework —
+This is groundwork for **rustdv** — the book's Rust testbench framework —
 which will drive this same DUT from Rust. Until then, the smoke test keeps
 the simulator path exercised in CI so it can't rot.
 
@@ -37,7 +37,7 @@ plain SystemVerilog and should run anywhere.
 ## Why no EDA Playground?
 
 EDA Playground runs SystemVerilog and Python/cocotb, but has no Rust
-toolchain, so rustvm testbenches can't execute there. The HDL side (this
+toolchain, so rustdv testbenches can't execute there. The HDL side (this
 DUT, this smoke test) pastes into EDA Playground fine. For the book's
 pure-Rust figures, use the per-figure Rust Playground links in the chapter
 READMEs, or open the repo in GitHub Codespaces for the full environment.

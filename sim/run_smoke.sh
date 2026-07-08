@@ -6,7 +6,7 @@
 #
 # Success criterion: prints "SMOKE: PASS" (Icarus & commercial sims run the
 # testbench; Verilator currently lints the DUT and prints "LINT: PASS" —
-# full Verilator simulation arrives with rustvm).
+# full Verilator simulation arrives with rustdv).
 set -euo pipefail
 cd "$(dirname "$0")"
 SIM="${1:-${SIM:-icarus}}"

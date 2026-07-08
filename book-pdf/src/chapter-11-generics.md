@@ -157,7 +157,7 @@ A: 0xaa  result: 0x7100
 
 Two spellings deserve a comment. `struct Register<T>` declares the parameter; `impl<T: Copy> Register<T>` declares it *again* for the methods, and that is where the bound lives — `read()` hands back a copy of the value, so the methods require `T: Copy`, which every integer satisfies. Keeping the struct definition unbounded and putting requirements on the `impl` is idiomatic: the data doesn't care what `T` can do; the *operations* do.
 
-And note what the type system now knows that Python's never did: `Register<u8>` and `Register<u16>` are **different types**. Try to write a `u16` result into the 8-bit A register and the program does not compile. The Python book's testbenches kept the TinyALU's operand widths straight by discipline and masking; here the widths are in the types, and the compiler is the one doing the masking-related worrying. This — a struct parameterized by the type it carries — is precisely what `Vec<T>` has been all along, and it is the shape rustvm's plumbing takes: when Part IV connects components with typed channels, a FIFO of ALU commands is a `TlmFifo<AluCommand>`, and connecting it to a component expecting results is a compile error, not a 3 a.m. discovery.
+And note what the type system now knows that Python's never did: `Register<u8>` and `Register<u16>` are **different types**. Try to write a `u16` result into the 8-bit A register and the program does not compile. The Python book's testbenches kept the TinyALU's operand widths straight by discipline and masking; here the widths are in the types, and the compiler is the one doing the masking-related worrying. This — a struct parameterized by the type it carries — is precisely what `Vec<T>` has been all along, and it is the shape rustdv's plumbing takes: when Part IV connects components with typed channels, a FIFO of ALU commands is a `TlmFifo<AluCommand>`, and connecting it to a component expecting results is a compile error, not a 3 a.m. discovery.
 
 ## Monomorphization, or: where did the ducks go?
 
@@ -183,7 +183,7 @@ fn largest_str(list: &[&str]) -> &&str {
 }
 ```
 
-Each call site in `main` is wired directly to its own stamped-out copy. When `largest(&operands)` runs, there is no lookup, no vtable, no "which type is this?" — the `u8` version was chosen before the program existed as a binary, and the call is exactly as fast as the hand-written `u8`-only function you refused to copy-paste three times. The same happens to structs: `Register<u8>` and `Register<u16>` compile to two independent struct definitions, each with its own specialized methods. This is what the design of rustvm means by *generic code costs nothing at runtime*: you write the abstraction once and pay for it never.²
+Each call site in `main` is wired directly to its own stamped-out copy. When `largest(&operands)` runs, there is no lookup, no vtable, no "which type is this?" — the `u8` version was chosen before the program existed as a binary, and the call is exactly as fast as the hand-written `u8`-only function you refused to copy-paste three times. The same happens to structs: `Register<u8>` and `Register<u16>` compile to two independent struct definitions, each with its own specialized methods. This is what the design of rustdv means by *generic code costs nothing at runtime*: you write the abstraction once and pay for it never.²
 
 Set the two models side by side, because this is the chapter's picture. Python answers "which `write()` do I call?" by looking it up when the call happens — maximally flexible, paid for on every transaction of every test of every regression. Rust answers the same question once, at compile time, by generating the exact code each caller needs — and the flexibility you give up is precisely the flexibility of being wrong. Chapter 10's trait objects (`Box<dyn Animal>`, the vtable, the runtime dispatch) remain available for the cases that genuinely need runtime choice; monomorphized generics are what you get everywhere else, which in a testbench is almost everywhere.
 
@@ -193,10 +193,10 @@ Honesty requires the other side of the ledger, and it is real but modest: stampi
 
 Part I keeps promising that these language chapters are load-bearing, so let me show you the load. In pyuvm, `uvm_driver` had a `seq_item_port`, and what came out of `get_next_item()` was — whatever the sequencer sent. If a misconfigured test wired a memory sequence to the ALU agent, the driver discovered it at runtime, usually as an `AttributeError` deep in `run_phase()`, and the Python book taught you the discipline to avoid it.
 
-rustvm's driver states its requirements in its name. Signatures only — Part IV builds this for real:
+rustdv's driver states its requirements in its name. Signatures only — Part IV builds this for real:
 
 ```rust
-# Figure 6: The shape of rustvm's driver (preview — signatures only)
+# Figure 6: The shape of rustdv's driver (preview — signatures only)
 
 pub struct Driver<REQ, RSP = REQ> {
     pub seq_item_port: SeqItemPort<REQ, RSP>,
@@ -212,7 +212,7 @@ That is the trade this book keeps making, in its purest form yet: the duck-typed
 
 Generics let one definition serve many types: type parameters in angle brackets stand for a type named later, on functions (`fn largest<T: PartialOrd>(list: &[T]) -> &T`) and on structs (`Register<T>`, and the `Vec<T>`, `Option<T>`, and `Result<T, E>` you have used since Chapter 8). Trait bounds are the contract — `T: PartialOrd`, or several requirements joined with `+`, or a `where` clause when the list grows — and they replace Python's duck typing with the same idea checked at compile time: if it implements the bound, it's a duck, and the compiler verifies the feathers before the program runs. Monomorphization is why none of this costs anything at runtime: the compiler stamps out a specialized copy of the generic code for each concrete type used, so every call dispatches directly, in exchange for some compile time and binary size. And `Driver<REQ, RSP = REQ>` is where the book is taking all of it — a driver whose transaction types are part of its type, so mismatched testbench plumbing fails at compile time instead of mid-regression.
 
-We now have types that carry proofs. What we do not yet have is Rust's way of passing *behavior* around — the thing Python did every time it handed a function to `sorted(key=...)` or stored a coroutine to run later, and the thing rustvm's factory will do for a living. Chapter 12 takes up closures and iterators, and if you enjoyed watching the compiler specialize your generics for free, you are going to like what it does to a `for` loop.
+We now have types that carry proofs. What we do not yet have is Rust's way of passing *behavior* around — the thing Python did every time it handed a function to `sorted(key=...)` or stored a coroutine to run later, and the thing rustdv's factory will do for a living. Chapter 12 takes up closures and iterators, and if you enjoyed watching the compiler specialize your generics for free, you are going to like what it does to a `for` loop.
 
 > ¹ When inference can't decide — or you want to be explicit — you can name the type at the call site with `largest::<u8>(&operands)`. The `::<>` operator is universally called the *turbofish*, it is official Rust culture, and no, nobody has come up with a better name. Swim on.
 

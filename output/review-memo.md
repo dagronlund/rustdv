@@ -1,7 +1,7 @@
 # Review Memo: Methodology vs. Mechanism in §5
 
 **Re:** Stress-test of `design-doc.md` §5 (Testbench/UVM-Analog API) before lock
-**Test applied:** For each pyuvm concept — is rustvm porting the *problem UVM solves* (methodology) or the *Python/SV-OO machinery pyuvm solved it with* (mechanism)?
+**Test applied:** For each pyuvm concept — is rustdv porting the *problem UVM solves* (methodology) or the *Python/SV-OO machinery pyuvm solved it with* (mechanism)?
 **Verdict up front:** The challenge is substantially correct. Four of the six subsystems in §5 port mechanism where methodology would do, and OQ-4, OQ-9, OQ-12, and OQ-14 are all symptoms of it — three of the four dissolve entirely under the reclassification, and the fourth shrinks. Two subsystems survive the test as designed. One recommendation goes the other way: a place where the idiomatic-Rust redesign is *right* but I recommend keeping a familiar surface anyway, argued honestly in §6.
 
 ---
@@ -27,7 +27,7 @@
 | 5.6 | Typed, directional, blocking/nonblocking component communication; 1-to-many analysis broadcast | **METHODOLOGY** | The core of component reuse |
 | 5.6 | The port/export/imp object taxonomy (~30 classes) with `connect()` compatibility checking | **MECHANISM** | IEEE-shaped class bureaucracy around what Rust calls "a channel"; pyuvm itself implements it *on* cocotb queues (§2.6) |
 | 5.6 | `start_item`/`finish_item` two-phase handshake; `get_next_item`/`item_done` driver contract; response-by-id | **METHODOLOGY** | Late generation at the moment of grant, and req/rsp discipline — protocol semantics worth porting event-for-event (as §5.6 already does) |
-| 5.2/root | `uvm_root` singleton + `run_test(name)` | **MECHANISM** | String-selected test top duplicates what `#[rustvm::test]` + the runner registry already provide |
+| 5.2/root | `uvm_root` singleton + `run_test(name)` | **MECHANISM** | String-selected test top duplicates what `#[rustdv::test]` + the runner registry already provide |
 
 ---
 
@@ -44,7 +44,7 @@ Current §5.1 defines `UvmObject`/`ObjectOps`/`Transaction` traits with a derive
 pub struct AluCommand { pub a: u8, pub b: u8, pub op: Ops }
 ```
 
-No rustvm trait at all. The remaining methodology need — transaction identity for `get_response` correlation — moves into an envelope owned by the sequencer channel:
+No rustdv trait at all. The remaining methodology need — transaction identity for `get_response` correlation — moves into an envelope owned by the sequencer channel:
 
 ```rust
 /// What the driver receives. The infrastructure owns the id; the payload is
@@ -82,7 +82,7 @@ pub struct AluEnv {
 **What this buys, concretely:**
 
 - **OQ-14 dissolves.** The "context-parameter plumbing vs. `self.parent.thing`" ergonomics risk was created by the arena. With ownership composition, child access is `self.agent.monitor` — *better* than pyuvm, not worse.
-- **OQ-12 dissolves.** No `uvm_root`, no singleton, no thread-local: the `#[rustvm::test]` function constructs the env and owns it. `run_test("name")` string dispatch is already covered by the test registry.
+- **OQ-12 dissolves.** No `uvm_root`, no singleton, no thread-local: the `#[rustdv::test]` function constructs the env and owns it. `run_test("name")` string dispatch is already covered by the test registry.
 - **OQ-3 mostly dissolves.** With a statically-known tree, phase dispatch is static; `run_phase` no longer needs to be dyn-compatible, so the `BoxFuture` compromise in the `Phased` signature can likely revert to plain `async fn` in an inherent impl or generic context. ⚠ Needs prototype confirmation for the `Vec<dyn Component>`-style mixed collections, if any survive.
 
 **What it costs:** components are no longer inspectable by path string at runtime (`find_all("*.scoreboard")` is gone unless the derive also emits a visitor). Honest assessment: the book uses path strings for ConfigDB scoping and debug printing; with 2.4 below, the first consumer disappears, and the derive can emit a `visit_children(&mut dyn FnMut(&dyn ComponentInfo))` for the second. The deeper cost is at 2.5 (factory).
@@ -151,11 +151,11 @@ A test overrides the driver by supplying a different closure — three lines in 
 
 3. **Instance-path-pattern overrides ("every driver under `*.agent2`")**: the honest loss. With explicit variation points there is no ambient registry to pattern-match against. In exchange: no spooky action at a distance — reading an env tells you everything it can become.
 
-**OQ-4 shrinks but does not vanish:** link-time registration is still the right mechanism for *test* discovery (`#[rustvm::test]` — mechanism-for-mechanism with cocotb, and correctly so, since test-by-name selection from the command line is genuinely stringly). It stops being load-bearing for component creation entirely. The platform-risk surface drops from "the factory breaks" to "test listing breaks," and the explicit-registration fallback remains cheap.
+**OQ-4 shrinks but does not vanish:** link-time registration is still the right mechanism for *test* discovery (`#[rustdv::test]` — mechanism-for-mechanism with cocotb, and correctly so, since test-by-name selection from the command line is genuinely stringly). It stops being load-bearing for component creation entirely. The platform-risk surface drops from "the factory breaks" to "test listing breaks," and the explicit-registration fallback remains cheap.
 
 ### 2.6 TLM: channels, plus the two shapes that are genuinely distinct
 
-pyuvm implements the ~30-class TLM taxonomy as a facade over cocotb queues (pyuvm: `_s12`, `uvm_tlm_fifo_base` wrapping `UVMQueue`). rustvm's §5.6 already flattened this partway (generic structs, compile-checked connect). The full reclassification finishes the job: the primary API is **channels** —
+pyuvm implements the ~30-class TLM taxonomy as a facade over cocotb queues (pyuvm: `_s12`, `uvm_tlm_fifo_base` wrapping `UVMQueue`). rustdv's §5.6 already flattened this partway (generic structs, compile-checked connect). The full reclassification finishes the job: the primary API is **channels** —
 
 ```rust
 pub fn channel<T>(capacity: usize) -> (Sender<T>, Receiver<T>);
@@ -198,8 +198,8 @@ And one judgment call the other direction, stated honestly rather than buried: *
 ## 5. New risks created by the redesign (so the trade is priced honestly)
 
 1. **The `#[derive(Component)]` traversal macro becomes the new load-bearing magic.** Field-marked child discovery over `T`/`Option<T>`/`Vec<T>`, name synthesis, span wiring for logging — this is real macro engineering, and macro bugs produce the worst error messages in Rust. OQ-14's ergonomic risk doesn't vanish; it moves from every user's code (good) into one macro's implementation (concentrated, testable, but on us). Should be prototyped as early as OQ-2.
-2. **Vertical reuse without source access weakens.** UVM lets an SoC team override components inside a block-level env they cannot edit. In this design, an env without designed variation points can only be forked. Rust culture answers "expose extension points" — but IP-style env distribution is a real UVM workflow, and rustvm would be honestly worse at it. Goes in §8 as a new [gap] entry if adopted.
-3. **The book's Part IV mirror bends.** Chapters 27–28 (ConfigDB, Debugging the ConfigDB) and 29–30 (factory) no longer describe rustvm subsystems one-for-one; they become "the problem, and how Rust dissolves it" chapters. I'd argue that's a *stronger* companion-book thesis — the compiler is the methodology cop — but it changes the outline's promise of one-for-one mirroring, and that's your call, not mine.
+2. **Vertical reuse without source access weakens.** UVM lets an SoC team override components inside a block-level env they cannot edit. In this design, an env without designed variation points can only be forked. Rust culture answers "expose extension points" — but IP-style env distribution is a real UVM workflow, and rustdv would be honestly worse at it. Goes in §8 as a new [gap] entry if adopted.
+3. **The book's Part IV mirror bends.** Chapters 27–28 (ConfigDB, Debugging the ConfigDB) and 29–30 (factory) no longer describe rustdv subsystems one-for-one; they become "the problem, and how Rust dissolves it" chapters. I'd argue that's a *stronger* companion-book thesis — the compiler is the methodology cop — but it changes the outline's promise of one-for-one mirroring, and that's your call, not mine.
 4. **Runtime-configurable topology gets stiffer.** "N agents, N from a plusarg" still works (`Vec` + config), but topology shaped by *strings naming types* does not. Anyone porting a testbench that leans on `create_component_by_name` with computed names will hit a wall. Assessed as acceptable: the book never teaches that pattern.
 
 ---

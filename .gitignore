@@ -12,6 +12,9 @@ output/examples/build.log
 # simulator build products
 sim/build/
 
+# Python bytecode cache (regress.py)
+__pycache__/
+
 # macOS
 .DS_Store
 

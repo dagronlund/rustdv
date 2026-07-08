@@ -1,5 +1,5 @@
 // Rust for RTL Verification — Chapter 11, Figure 6
-// "The shape of rustvm's driver (preview — signatures only)"
+// "The shape of rustdv's driver (preview — signatures only)"
 
 
 pub struct Driver<REQ, RSP = REQ> {

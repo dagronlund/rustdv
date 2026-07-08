@@ -1,5 +1,5 @@
 {
-  "name": "rustuvm — Rust for RTL Verification",
+  "name": "rustdv — Rust for RTL Verification",
   "build": {
     "dockerfile": "../docker/Dockerfile",
     "context": ".."

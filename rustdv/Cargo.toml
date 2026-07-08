@@ -1,0 +1,9 @@
+[package]
+name = "rustdv"
+version = "0.0.1"
+edition = "2021"
+description = "Placeholder for rustdv, a hardware verification framework in Rust — testbench components, sequences, and simulator integration — by the author of pyuvm and 'Python for RTL Verification'. In active development."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/raysalemi/rustdv"
+keywords = ["verification", "testbench", "rtl", "hardware", "dv"]
+categories = ["development-tools::testing", "simulation"]

@@ -14,7 +14,7 @@
     }
   },
   "cargo_test_packages": {
-    "comment": "Packages whose unit tests run as part of the examples suite. Add future crates (e.g. rustvm) here or as custom tests.",
+    "comment": "Packages whose unit tests run as part of the examples suite. Add future crates (e.g. rustdv) here or as custom tests.",
     "packages": [
       "ch14_modules_crates_cargo"
     ]

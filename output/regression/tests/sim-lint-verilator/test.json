@@ -1,5 +1,5 @@
 {
-  "comment": "TinyALU lint on Verilator (full Verilator simulation arrives with rustvm). Skips on machines without verilator; runs in CI.",
+  "comment": "TinyALU lint on Verilator (full Verilator simulation arrives with rustdv). Skips on machines without verilator; runs in CI.",
   "cmd": ["bash", "sim/run_smoke.sh", "verilator"],
   "cwd": ".",
   "skip_if_missing": "verilator",

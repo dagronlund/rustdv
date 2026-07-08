@@ -1,14 +1,14 @@
-<!-- After creating the GitHub repo, replace OWNER below with your GitHub
+<!-- After creating the GitHub repo, replace raysalemi below with your GitHub
      username (badges and the Codespaces link need the real path). -->
 
 # Rust for RTL Verification
 
-[![CI](https://github.com/OWNER/rustuvm/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/rustuvm/actions/workflows/ci.yml)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/OWNER/rustuvm?quickstart=1)
+[![CI](https://github.com/raysalemi/rustdv/actions/workflows/ci.yml/badge.svg)](https://github.com/raysalemi/rustdv/actions/workflows/ci.yml)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/raysalemi/rustdv?quickstart=1)
 
 A book teaching Rust to RTL verification engineers who know Python — by the
 author of *Python for RTL Verification* — together with runnable code for
-every figure and the groundwork for **rustvm**, a Rust testbench framework
+every figure and the groundwork for **rustdv**, a Rust testbench framework
 driving the TinyALU DUT.
 
 ## What's here
@@ -42,7 +42,7 @@ cd ../.. && output/regression/regress.py     # the whole regression suite
 | | Status |
 |---|---|
 | Icarus Verilog | runs in CI (`sim/run_smoke.sh icarus`) |
-| Verilator | lints in CI; full simulation arrives with rustvm |
+| Verilator | lints in CI; full simulation arrives with rustdv |
 | VCS / Questa / Xcelium | same script (`sim/run_smoke.sh vcs\|questa\|xcelium`); licenses can't live in public CI, so license-holders run the identical regression locally |
 | EDA Playground | HDL side only — it has no Rust toolchain; see [sim/README.md](sim/README.md) |
 

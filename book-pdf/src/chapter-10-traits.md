@@ -140,10 +140,10 @@ A type can implement as many traits as it likes, and because traits carry no dat
 
 Here is where this chapter starts paying rent for Part IV. Think back to how pyuvm's phases worked: `uvm_component` defined `build_phase()`, `connect_phase()`, `run_phase()` and the rest as *empty methods*, and your components overrode only the phases they cared about. The base class's no-op bodies existed so the phase machinery could call every phase on every component without checking what each component had bothered to define.
 
-That pattern — "here is the full interface; override what you use" — is exactly what default methods are for, and it is how rustvm's `Component` lifecycle trait is designed. A preview, signatures only (Chapter 24 does this properly):
+That pattern — "here is the full interface; override what you use" — is exactly what default methods are for, and it is how rustdv's `Component` lifecycle trait is designed. A preview, signatures only (Chapter 24 does this properly):
 
 ```rust
-# Figure 4: The shape of rustvm's Component trait (preview — signatures only)
+# Figure 4: The shape of rustdv's Component trait (preview — signatures only)
 
 pub trait Component {
     fn start(&mut self, ctx: &mut RunCtx);            // required: every component runs
@@ -152,7 +152,7 @@ pub trait Component {
 }
 ```
 
-A scoreboard overrides `check()`; a driver doesn't, and inherits the empty default — the same division of labor the Python book taught in its `uvm_component` chapter, with one upgrade. In pyuvm, the empty methods lived in a base class you extended, so getting them required joining the inheritance hierarchy. In rustvm, they live in a trait you implement, so a component is just a plain struct — its fields are its children, per Chapter 24 — that opts into the lifecycle. Same methodology, no family tree.
+A scoreboard overrides `check()`; a driver doesn't, and inherits the empty default — the same division of labor the Python book taught in its `uvm_component` chapter, with one upgrade. In pyuvm, the empty methods lived in a base class you extended, so getting them required joining the inheritance hierarchy. In rustdv, they live in a trait you implement, so a component is just a plain struct — its fields are its children, per Chapter 24 — that opts into the lifecycle. Same methodology, no family tree.
 
 ## Deriving: the compiler writes the boring impls
 
@@ -234,7 +234,7 @@ Here is the full mapping, the table this chapter exists to give you. Left column
 
 Two rows deserve a comment. `PartialOrd` and `Ord` split Python's ordering dunders in half because some types have values that refuse to be ordered (floating-point `NaN` is the culprit — hence *partial*); for transaction structs of integers and enums, you derive both and move on. And the operator traits in `std::ops` mean Rust has real operator overloading — `cmd_a + cmd_b` can be made to work — but it is opt-in per trait, per type, with no `__radd__`-style reflection rules to memorize.
 
-If that table feels like it just dissolved most of a chapter of the Python book into an attribute line, hold the thought: Chapter 35 shows that it also dissolves most of `uvm_object`. The field-wise `do_copy` and `do_compare` machinery that pyuvm hand-rolled by walking `__dict__` at runtime is precisely what `derive` generates at compile time. A rustvm transaction is a plain struct with `#[derive(Clone, Debug, PartialEq)]` on top — no base class required.
+If that table feels like it just dissolved most of a chapter of the Python book into an attribute line, hold the thought: Chapter 35 shows that it also dissolves most of `uvm_object`. The field-wise `do_copy` and `do_compare` machinery that pyuvm hand-rolled by walking `__dict__` at runtime is precisely what `derive` generates at compile time. A rustdv transaction is a plain struct with `#[derive(Clone, Debug, PartialEq)]` on top — no base class required.
 
 > ³ The derived `Debug` prints `a: 170` rather than `a: 0xaa` because it renders a `u8` as decimal — another small argument for writing `Display` yourself when humans will read the result.
 
@@ -295,12 +295,12 @@ The dog says 'yap yap'
 
 The trade, in one breath: generics are faster and fully checked but require the concrete types to be knowable where the code is compiled; trait objects accept types chosen at runtime but pay a pointer, an allocation, and an indirect call. The rule of thumb this book follows: **reach for generics first, and reserve `dyn` for collections that genuinely must mix types.**
 
-You will see rustvm make both choices, each where it belongs. The driver is `Driver<REQ, RSP>` — generic over its transaction types, so handing the wrong transaction to a driver is a compile error rather than the runtime type explosion pyuvm checked for by hand. Subscribers are a bound, `T: Subscriber`, the "anything with a `write()` method" of the analysis chapters. And trait objects appear where heterogeneity is the point: a config struct's maker closure returns `Box<dyn DriverLike>` so a test can substitute driver implementations at runtime (Chapter 29), and a sequencer stores its queued sequences as trait objects because sequences of different types wait in one line (Chapter 36). Known types: generics. One slot, many possible occupants: `dyn`.
+You will see rustdv make both choices, each where it belongs. The driver is `Driver<REQ, RSP>` — generic over its transaction types, so handing the wrong transaction to a driver is a compile error rather than the runtime type explosion pyuvm checked for by hand. Subscribers are a bound, `T: Subscriber`, the "anything with a `write()` method" of the analysis chapters. And trait objects appear where heterogeneity is the point: a config struct's maker closure returns `Box<dyn DriverLike>` so a test can substitute driver implementations at runtime (Chapter 29), and a sequencer stores its queued sequences as trait objects because sequences of different types wait in one line (Chapter 36). Known types: generics. One slot, many possible occupants: `dyn`.
 
 ## Summary
 
-Rust replaces inheritance with traits: named, explicit interfaces that a type opts into with an `impl` block. Required methods state what the type must provide; default methods carry shared behavior, doing the job of base-class methods — including pyuvm's empty-phase-method pattern, which becomes default methods on rustvm's `Component` trait. Code reuse comes from composition and delegation, and the delegating call replaces `super()` with an ordinary, visible method call. Multiple roles come from implementing multiple traits, with no MRO and no diamond.
+Rust replaces inheritance with traits: named, explicit interfaces that a type opts into with an `impl` block. Required methods state what the type must provide; default methods carry shared behavior, doing the job of base-class methods — including pyuvm's empty-phase-method pattern, which becomes default methods on rustdv's `Component` trait. Code reuse comes from composition and delegation, and the delegating call replaces `super()` with an ordinary, visible method call. Multiple roles come from implementing multiple traits, with no MRO and no diamond.
 
-The dunder methods the Python book taught map one-for-one onto standard traits — `__eq__` to `PartialEq`, `__repr__` to `Debug`, `__str__` to `Display`, the ordering dunders to `PartialOrd`/`Ord` — and `#[derive(...)]` makes the compiler write most of them from your struct's fields, which is how a rustvm transaction gets by with no base class at all. Finally, "code that works on any implementor" comes in two flavors: generic functions with trait bounds, monomorphized and free at runtime, and trait objects behind `dyn`, dispatched through a vtable when one collection must hold many types.
+The dunder methods the Python book taught map one-for-one onto standard traits — `__eq__` to `PartialEq`, `__repr__` to `Debug`, `__str__` to `Display`, the ordering dunders to `PartialOrd`/`Ord` — and `#[derive(...)]` makes the compiler write most of them from your struct's fields, which is how a rustdv transaction gets by with no base class at all. Finally, "code that works on any implementor" comes in two flavors: generic functions with trait bounds, monomorphized and free at runtime, and trait objects behind `dyn`, dispatched through a vtable when one collection must hold many types.
 
 We have been leaning on that `<T: Animal>` notation while promising the details later. Later has arrived — Chapter 11 opens up generics: type parameters, bounds, and why `Driver<REQ, RSP>` is the most honest thing a driver has ever said about itself.

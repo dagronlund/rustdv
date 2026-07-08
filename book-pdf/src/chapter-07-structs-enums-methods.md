@@ -303,7 +303,7 @@ fn main() {
 The signal reads: x
 ```
 
-`Logic` is not a teaching toy: when we reach rustvm-sim in Chapter 17, reading a signal hands you exactly this type, ported from the same four-state value type cocotb defines. Notice what the enum buys us that an IntEnum encoding (say, `X = 2`) never could: there is no integer pretense to leak. Nothing can accidentally add `X` to a running sum, because `X` is not a number — it is one of four states a wire can be in, and any code that consumes a `Logic` must, thanks to exhaustive `match`, say what it does about `x` and `z`. The "forgot to handle the unknown state" bug is unrepresentable.
+`Logic` is not a teaching toy: when we reach rustdv-sim in Chapter 17, reading a signal hands you exactly this type, ported from the same four-state value type cocotb defines. Notice what the enum buys us that an IntEnum encoding (say, `X = 2`) never could: there is no integer pretense to leak. Nothing can accidentally add `X` to a running sum, because `X` is not a number — it is one of four states a wire can be in, and any code that consumes a `Logic` must, thanks to exhaustive `match`, say what it does about `x` and `z`. The "forgot to handle the unknown state" bug is unrepresentable.
 
 ## Variants that carry data
 

@@ -761,9 +761,9 @@
  {
   "chapter": 10,
   "figure": 4,
-  "title": "The shape of rustvm's Component trait (preview \u2014 signatures only)",
+  "title": "The shape of rustdv's Component trait (preview \u2014 signatures only)",
   "kind": "fragment",
-  "file": "ch10-traits/fragments/fig04_shape_rustvm_s_component.rs",
+  "file": "ch10-traits/fragments/fig04_shape_rustdv_s_component.rs",
   "error": null,
   "bin": null,
   "package": null,
@@ -871,9 +871,9 @@
  {
   "chapter": 11,
   "figure": 6,
-  "title": "The shape of rustvm's driver (preview \u2014 signatures only)",
+  "title": "The shape of rustdv's driver (preview \u2014 signatures only)",
   "kind": "fragment",
-  "file": "ch11-generics/fragments/fig06_shape_rustvm_s_driver.rs",
+  "file": "ch11-generics/fragments/fig06_shape_rustdv_s_driver.rs",
   "error": null,
   "bin": null,
   "package": null,

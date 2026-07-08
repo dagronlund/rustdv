@@ -203,7 +203,7 @@ The `?` after `nice_div(...)` means: *if this is `Ok(value)`, unwrap it and keep
 
 The Python book showed re-raising: catch an exception, print a snarky message, then `raise` to send it upward anyway. The Rust spelling of that pattern is a `match` (or an `inspect_err` call) that logs and then returns the `Err` — nothing new to learn, just values. And when the error types along the chain differ, `?` will convert between them automatically if you've told it how; that hook is a trait called `From`, and traits are the very next chapter, so we'll leave that thread hanging deliberately.
 
-One more nicety: `main` itself can return a `Result`. When it returns an `Err`, the program prints the error and exits with a failing status — the last boss in the chain has a sensible default. In Part II you'll see that rustvm tests work the same way: a test is an `async fn` returning `Result<(), TestError>`, and an `Err` fails the test *(design doc: §0.6)*. The `?` operators sprinkled through a testbench are little arrows pointing at everything that can end the test.
+One more nicety: `main` itself can return a `Result`. When it returns an `Err`, the program prints the error and exits with a failing status — the last boss in the chain has a sensible default. In Part II you'll see that rustdv tests work the same way: a test is an `async fn` returning `Result<(), TestError>`, and an `Err` fails the test *(design doc: §0.6)*. The `?` operators sprinkled through a testbench are little arrows pointing at everything that can end the test.
 
 ## Designing an error enum
 
@@ -267,7 +267,7 @@ Walk through what each piece buys:
 - **The payload on `InvalidOp(u8)`** carries the evidence to wherever the error is handled. Python attached this data to the exception object; we attach it to the variant. No fishing it back out of a message string.
 - **Callers select with `match`.** A caller who wants to retry on `Timeout` but fail hard on `InvalidOp` writes a two-arm match — the moral equivalent of two `except` blocks, checked for exhaustiveness by the compiler. Add a third variant to `AluError` next month, and every such `match` in the codebase becomes a compile error until it says what to do about the new case. Try getting *that* from an exception hierarchy.
 
-This pattern — an enum of failure modes, `Debug` derived, `Display` implemented, payloads where useful — is the whole craft of error design in application code, and it's the shape rustvm's own errors take (`HandleError` for signal lookups, `TestError` for test outcomes — you'll meet them in Chapter 17).
+This pattern — an enum of failure modes, `Debug` derived, `Display` implemented, payloads where useful — is the whole craft of error design in application code, and it's the shape rustdv's own errors take (`HandleError` for signal lookups, `TestError` for test outcomes — you'll meet them in Chapter 17).
 
 ## panic!: for bugs, not for failures
 
@@ -335,13 +335,13 @@ One Python comfort has no direct Rust twin: `finally`. Rust's guarantee of "this
 
 ## The taxonomy this book will live by
 
-Everything above compresses into one convention, and it is load-bearing: the rest of this book — and the design of rustvm itself — assumes it *(design doc: §7.3, testing conventions)*.
+Everything above compresses into one convention, and it is load-bearing: the rest of this book — and the design of rustdv itself — assumes it *(design doc: §7.3, testing conventions)*.
 
 > **The failure taxonomy.**
 > **`Result::Err` is for checks** — the DUT did something wrong. A scoreboard comparing predicted against actual and finding a mismatch produces an `Err`. The test fails, which is the test doing its job. This is *expected fallibility*: finding these is why we come to work.
 > **`panic!`/`assert!` are for testbench bugs** — *we* did something wrong. A driver calling `item_done` twice, a queue that is empty when the protocol guarantees it can't be, a state machine in a state the match arms say is impossible. The testbench is broken, and no result it reports can be trusted until it's fixed.
 
-Both fail the test — rustvm catches panics at the task boundary and scores them as failures, just as cocotb caught a stray exception in any task — but the report distinguishes them, because the reader of the report must react differently: an `Err` sends you to the waveform viewer; a panic sends you to your own source code. It is the difference between the lab reporting that the chip failed and the lab reporting that the thermometer is broken.
+Both fail the test — rustdv catches panics at the task boundary and scores them as failures, just as cocotb caught a stray exception in any task — but the report distinguishes them, because the reader of the report must react differently: an `Err` sends you to the waveform viewer; a panic sends you to your own source code. It is the difference between the lab reporting that the chip failed and the lab reporting that the thermometer is broken.
 
 Python's world blurred this line: an `AssertionError` from a scoreboard check and an `AttributeError` from a testbench typo were both just exceptions rising through the same machinery, distinguished only by convention and by reading the traceback. Rust gives the two categories different mechanisms, different types, and different syntax — so from Chapter 18 on, when you see a scoreboard whose check returns `Result` and a driver studded with `assert!`, you are seeing this chapter's taxonomy at work, not a stylistic accident.
 

@@ -1,6 +1,6 @@
 # Rust for RTL Verification
 
-**A complete course in Rust, rustvm-sim, and rustvm** — full chapter outline plus drafted Chapter 1
+**A complete course in Rust, rustdv-sim, and rustdv** — full chapter outline plus drafted Chapter 1
 
 | | |
 |---|---|
@@ -54,7 +54,7 @@ The Python sequences chapters compressed into one, because the concepts transfer
 `Option` for absence, `Result` for fallibility, `?` for propagation, `panic!` for bugs; designing error enums. Ports the Python book's exceptions chapter scenario-for-scenario, then establishes the testbench failure taxonomy the design doc fixed: `Err` for checks, panic for testbench bugs. Mirrors: "Exceptions".
 
 **Chapter 10: Traits**
-Interfaces without inheritance; default methods; deriving; operator traits (`PartialEq` replaces `__eq__`, `Display` replaces `__str__` — mapped explicitly to the dunder methods the Python book taught); trait objects vs. generics, and when each appears in rustvm. Mirrors: "Inheritance" + "The super() function" + protocols material.
+Interfaces without inheritance; default methods; deriving; operator traits (`PartialEq` replaces `__eq__`, `Display` replaces `__str__` — mapped explicitly to the dunder methods the Python book taught); trait objects vs. generics, and when each appears in rustdv. Mirrors: "Inheritance" + "The super() function" + protocols material.
 
 **Chapter 11: Generics**
 Type parameters and bounds; monomorphization (why generic code costs nothing at runtime); `Driver<REQ, RSP>` previewed as the destination. Mirrors: the duck-typing discussions throughout the Python book's class chapters.
@@ -71,12 +71,12 @@ The escape hatches, taught honestly: when shared mutability is the right design 
 ### Part II — Concurrency and simulation (mirrors "Coroutines" → "Class-based testbench: 2.0")
 
 **Chapter 15: `async`/`await` and the executor**
-The chapter that pays off the Python book's "Coroutines" chapter. Same Rogue-game event-loop framing, then: futures as state machines, `poll`, wakers, and *why Rust ships the syntax but not the loop*; cocotb wrote its own event loop and so does rustvm — the reader has seen this movie. Timer example ported verbatim (VHDL and SystemVerilog comparison figures retained). Mirrors: "Coroutines".
+The chapter that pays off the Python book's "Coroutines" chapter. Same Rogue-game event-loop framing, then: futures as state machines, `poll`, wakers, and *why Rust ships the syntax but not the loop*; cocotb wrote its own event loop and so does rustdv — the reader has seen this movie. Timer example ported verbatim (VHDL and SystemVerilog comparison figures retained). Mirrors: "Coroutines".
 
 **Chapter 16: Tasks, channels, and sim-aware queues**
 `spawn` and `TaskHandle` (mapping `start_soon`, the seven task states, awaiting a task); drop-based cancellation vs. `kill()` — the one place the mental model genuinely diverges, taught with care and the shutdown-message idiom; `sim::Queue`, `Event`, `Lock` with the fairness guarantee; producer/consumer example ported. Mirrors: "cocotb Queue" + task material in "Coroutines".
 
-**Chapter 17: Simulating with rustvm-sim**
+**Chapter 17: Simulating with rustdv-sim**
 First simulation. The GPI lineage (same C layer under both books — a nice continuity story); getting the DUT handle; `child()` lookups returning `Result` (vs. `dut.signal` magic — and why the magic couldn't come along); reading and writing signals; `Deposit` vs. `Force`; triggers: `Timer`, edges, `ReadOnly`/`ReadWrite`; the clock. Mirrors: "Simulating with cocotb".
 
 **Chapter 18: Basic testbench: 1.0**
@@ -91,7 +91,7 @@ Testbench 2.0: driver/monitor/scoreboard as structs with methods, wired manually
 ### Part III — Macros (new material, positioned deliberately)
 
 **Chapter 21: Macros: code that writes code**
-Declarative macros briefly; then attribute and derive macros as *the* replacement for decorators and metaclasses, with `@cocotb.test()` → `#[rustvm::test]` as the worked example — including what each actually does, side by side, at import time vs. compile time. Explains link-time registration (how tests get collected with no import step — and why components, unlike tests, need no registry at all). Placed immediately before the UVM part because Part IV leans on `#[derive(Component)]` and the std derives. Mirrors: the decorator material in "Functions"/"Design patterns", elevated to a full chapter because Rust makes the machinery visible.
+Declarative macros briefly; then attribute and derive macros as *the* replacement for decorators and metaclasses, with `@cocotb.test()` → `#[rustdv::test]` as the worked example — including what each actually does, side by side, at import time vs. compile time. Explains link-time registration (how tests get collected with no import step — and why components, unlike tests, need no registry at all). Placed immediately before the UVM part because Part IV leans on `#[derive(Component)]` and the std derives. Mirrors: the decorator material in "Functions"/"Design patterns", elevated to a full chapter because Rust makes the machinery visible.
 
 ### Part IV — The UVM in Rust (mirrors "Why UVM?" → "Virtual sequence testbench: 8.0", one-for-one)
 
@@ -99,7 +99,7 @@ Declarative macros briefly; then attribute and derive macros as *the* replacemen
 The Python book's argument restated for a new language — plus the new question this book must answer: *does a statically-typed language change what the UVM is for?* (Answer: no — reuse and methodology arguments survive intact; some of the UVM's runtime machinery becomes compile-time machinery, and that's a feature.) Mirrors: "Why UVM?".
 
 **Chapter 23: uvm_test testbench: 3.0**
-Testbench 3.0: the first `rustvm` (UVM-analog) test. The `#[rustvm::test]` function *is* the test — it constructs and owns the env (no `uvm_root`, no `run_test()` string dispatch); the lifecycle arrives in minimal form (`start`, `check`, `report`); objection guards (RAII vs. raise/drop — the guard pattern taught here and used everywhere after). Mirrors: "uvm_test testbench: 3.0".
+Testbench 3.0: the first `rustdv` (UVM-analog) test. The `#[rustdv::test]` function *is* the test — it constructs and owns the env (no `uvm_root`, no `run_test()` string dispatch); the lifecycle arrives in minimal form (`start`, `check`, `report`); objection guards (RAII vs. raise/drop — the guard pattern taught here and used everywhere after). Mirrors: "uvm_test testbench: 3.0".
 
 **Chapter 24: Components: the hierarchy problem, solved by ownership**
 The problem `uvm_component` solves — structured, reusable testbench composition — and its Rust dissolution: the ownership tree *is* the component tree. Children as struct fields, `#[derive(Component)]` traversal, hierarchical names from field names, and what `self.parent.thing` becomes (field access, it turns out). The predefined component taxonomy (env/agent/driver/monitor/scoreboard/subscriber) introduced. Mirrors: "uvm_component".
@@ -152,7 +152,7 @@ Testbench 8.0: coordinating sub-sequences; virtual sequences as the type-system 
 ### Part V — Capstone and closing
 
 **Chapter 40: The complete TinyALU testbench**
-The capstone the Python book never needed: the full 8.0-era testbench presented end-to-end in one chapter — project layout, every file, build and run with `rustvm run`, reading the regression report, plus cargo unit tests for the pure-Rust pieces. Serves readers who will use the book as a reference template.
+The capstone the Python book never needed: the full 8.0-era testbench presented end-to-end in one chapter — project layout, every file, build and run with `rustdv run`, reading the regression report, plus cargo unit tests for the pure-Rust pieces. Serves readers who will use the book as a reference template.
 
 **Chapter 41: The future of Rust in verification**
 Where this goes: pure-Rust GPI, multi-core potential beyond the single-threaded model, the register abstraction layer, growing an open-source ecosystem; a frank assessment mirroring the Python book's closing chapter. Mirrors: "The future of Python in verification".
@@ -166,7 +166,7 @@ Where this goes: pure-Rust GPI, multi-core potential beyond the single-threaded 
 
 Rust for RTL Verification is a book for verification engineers who have outgrown an interpreter and for Rust programmers who want to learn the Universal Verification Methodology (UVM). Mostly, though, it is a book for readers of *Python for RTL Verification* who are ready for a second language — one that trades a little of Python's ease for a lot of speed and an entirely new superpower: a compiler that finds testbench bugs before the simulator ever runs.
 
-This book teaches you Rust the way the last book taught you Python: just enough of the language, arriving just in time, to build testbenches with rustvm-sim (our cocotb equivalent) and rustvm (our pyuvm equivalent). By the final chapter you will have rebuilt the TinyALU testbench — the same TinyALU, the same testbench architecture, versions 1.0 through 8.0 — in a language that compiles to native code and races through regressions.
+This book teaches you Rust the way the last book taught you Python: just enough of the language, arriving just in time, to build testbenches with rustdv-sim (our cocotb equivalent) and rustdv (our pyuvm equivalent). By the final chapter you will have rebuilt the TinyALU testbench — the same TinyALU, the same testbench architecture, versions 1.0 through 8.0 — in a language that compiles to native code and races through regressions.
 
 ## The book assumes you know the Python story
 
@@ -192,7 +192,7 @@ It is fair to ask why a verification engineer with a working Python flow should 
 
 **Speed.** Python is an interpreted language, and for all of cocotb's cleverness, every signal read, every transaction compare, every scoreboard update runs through the interpreter. For the TinyALU it does not matter. For a regression farm running thousands of seeds against a large SoC, testbench overhead is real money and real schedule. Rust compiles to the same kind of native code as the simulator itself. When the testbench stops being the bottleneck, you buy back regression time without touching your license count.
 
-**Correctness before simulation.** This is the deeper reason, and the one this book keeps returning to. In Python, a typo'd signal name, a transaction handed to the wrong port, a scoreboard mutated by two tasks at once — all of these are discovered *at runtime*, which in our world means *after the simulator license is checked out, the design is elaborated, and forty minutes have passed*. Rust moves an astonishing fraction of these discoveries to the compile step, which takes seconds and costs nothing. A TLM connection mistake that pyuvm reports as a runtime `UVMTLMConnectionError` simply does not compile in rustvm. The Python book warned you about a race between two tasks sharing `transaction_data` and taught you to avoid it by discipline. The Rust compiler *rejects that code*. Discipline is good; proof is better.
+**Correctness before simulation.** This is the deeper reason, and the one this book keeps returning to. In Python, a typo'd signal name, a transaction handed to the wrong port, a scoreboard mutated by two tasks at once — all of these are discovered *at runtime*, which in our world means *after the simulator license is checked out, the design is elaborated, and forty minutes have passed*. Rust moves an astonishing fraction of these discoveries to the compile step, which takes seconds and costs nothing. A TLM connection mistake that pyuvm reports as a runtime `UVMTLMConnectionError` simply does not compile in rustdv. The Python book warned you about a race between two tasks sharing `transaction_data` and taught you to avoid it by discipline. The Rust compiler *rejects that code*. Discipline is good; proof is better.
 
 **Testbench refactoring without fear.** Verification code lives longer than we admit and gets modified by more hands than we would like. In Python, renaming a field means grepping and praying; the interpreter will tell you what you missed, one AttributeError at a time, over the following month. In Rust, the compiler produces the complete list of every place that must change, and the testbench does not build until you have addressed all of them. This changes how boldly you can improve old testbenches.
 
