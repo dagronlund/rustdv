@@ -161,7 +161,7 @@ use std::collections::HashMap;
 
 fn main() {
     let cubes: HashMap<u32, u32> = (0..4)
-        .map(|ii| (ii, ii.pow(3)))
+        .map(|ii: u32| (ii, ii.pow(3)))
         .collect();
 
     println!("cubes: {cubes:?}");
@@ -173,7 +173,7 @@ fn main() {
 cubes: {2: 8, 0: 0, 3: 27, 1: 1}
 ```
 
-Two things to notice. `collect()` is doing something quietly remarkable: the *same method* built a `Vec` in figure 5 and a `HashMap` here, steered entirely by the type annotation on the left — the generics machinery from Chapter 11 earning its keep. And look at that output order. Chapter 8 warned you that Rust's `HashMap`, unlike the Python dict you knew, promises nothing about iteration order, and here is the proof; your run will likely print a different scramble.
+Two things to notice. `collect()` is doing something quietly remarkable: the *same method* built a `Vec` in figure 5 and a `HashMap` here, steered by the type annotation on the left — the generics machinery from Chapter 11 earning its keep. (One wrinkle: the closure's parameter carries its own `: u32`, because a method call like `.pow` must know its receiver's concrete type on the spot — inference has not yet flowed backward from the annotation when the closure body is checked.) And look at that output order. Chapter 8 warned you that Rust's `HashMap`, unlike the Python dict you knew, promises nothing about iteration order, and here is the proof; your run will likely print a different scramble.
 
 One more adapter completes the everyday set. Where `map` transforms each element and `filter` drops some, **`fold`** boils the whole stream down to a single value: it takes a starting accumulator and a closure that combines the accumulator with each element in turn. Here is a scoreboard-flavored example — counting mismatches in a list of (expected, actual) pairs:
 

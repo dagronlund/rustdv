@@ -86,7 +86,7 @@ enum Result<T, E> {
 # Figure 2: You still can't divide by zero
 
 fn main() {
-    let divisor = 0;
+    let divisor: i32 = "0".parse().unwrap();
     println!("3/0 = {}", 3 / divisor);
 }
 ```
@@ -97,6 +97,8 @@ thread 'main' panicked at src/main.rs:3:26:
 attempt to divide by zero
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 ```
+
+A word about the `parse`: it is there because it has to be. Write `let divisor = 0;` and rustc, able to *see* the zero, refuses to compile the division at all. Only a divisor the compiler cannot predict — one arriving at runtime, as bus values do — gets the chance to panic.
 
 That is a **panic** — Rust's crash. We will come back to panics later in the chapter, because they have a specific job, and "report a divide by zero to the caller" is not it. When the possibility of failure is part of a function's honest contract, the function should return it. The standard library agrees: alongside the `/` operator, integers provide `checked_div`, which returns an `Option` — `None` instead of a crash.²
 

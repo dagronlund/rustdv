@@ -1,0 +1,16 @@
+# Cargo build artifacts — the examples workspace plus one target/ per
+# compile-fail mini-crate (21 in all). Regenerable with `cargo build`;
+# this is where .fingerprint, deps/, and incremental/ live.
+target/
+
+# mdbook build output — regenerate with `mdbook build book-pdf`
+book-pdf/book/
+
+# check.sh scratch output
+output/examples/build.log
+
+# macOS
+.DS_Store
+
+# scratch space (delete this line if you want tmp/ tracked)
+tmp/

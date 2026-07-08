@@ -1,0 +1,22 @@
+{
+  "comment": "Configuration for regress.py. Paths are relative to the repo root.",
+  "book_src": "book-pdf/src",
+  "examples": "output/examples",
+  "deviations": {
+    "comment": "Figures whose example intentionally differs from the book by a marked line. Currently none \u2014 the ERRATA.md issues were fixed in the manuscript on 2026-07-08. Book-sync only checks listed figures for a deviation marker.",
+    "figures": []
+  },
+  "compare_modes": {
+    "comment": "Binaries with nondeterministic output (HashMap iteration). 'unordered_lines' ignores line order (map iterated one entry per line). 'normalized_maps' sorts the entries inside {...} on each line (map printed inline via {:?}). Everything else compares exactly.",
+    "bins": {
+      "ch08_fig07_hashmap_ops_u32_op": "unordered_lines",
+      "ch12_fig06_dictionary_comprehension_collected_into": "normalized_maps"
+    }
+  },
+  "cargo_test_packages": {
+    "comment": "Packages whose unit tests run as part of the examples suite. Add future crates (e.g. rustvm) here or as custom tests.",
+    "packages": [
+      "ch14_modules_crates_cargo"
+    ]
+  }
+}

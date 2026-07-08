@@ -12,9 +12,10 @@
 - /output — write generated deliverables here only.
 
 ## Scope for this session
-- Design doc + book outline (and Ch. 1 draft) ONLY.
-- Do NOT write Rust implementation code. Code generation is a separate
-  phase with a different model.
+- Design doc + book outline (and Ch. 1 draft), plus runnable Rust example
+  code for the book's figures (scope expanded 2026-07-07 at Ray's request).
+- Examples live in /output/examples, organized and named to match book
+  figure numbers. Each example must compile and run.
 
 ## Standing rules
 - Always ask before overwriting an existing file in /output.

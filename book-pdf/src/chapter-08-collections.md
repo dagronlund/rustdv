@@ -40,7 +40,7 @@ fn main() {
 ```text
 --
 2 commands logged
-first: AluCommand { a: 5, b: 3, op: Ops::Add }
+first: AluCommand { a: 5, b: 3, op: Add }
 ```
 
 Familiar territory: `push` is `append`, `len()` is `len()`, `log[0]` is `log[0]`. Note that `log` must be `let mut` — Chapter 3's immutability-by-default applies to collections with no exceptions, which means a testbench data structure cannot be quietly modified by code you didn't expect to modify it. Also note `Vec::new()` gave us an empty vector; the `vec!` macro is the literal syntax, so `vec![1, 2, 3]` is Rust's `[1, 2, 3]`.
@@ -137,8 +137,8 @@ fn main() {
 
 ```text
 --
-AluCommand { a: 5, b: 3, op: Ops::Add }
-AluCommand { a: 2, b: 2, op: Ops::Mul }
+AluCommand { a: 5, b: 3, op: Add }
+AluCommand { a: 2, b: 2, op: Mul }
 2 commands still logged
 ```
 

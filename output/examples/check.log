@@ -1,0 +1,162 @@
+== 1/5 Building all runnable figures (cargo build --workspace) ==
+  FAIL workspace build failed — see build.log
+== 2/5 Running every figure binary ==
+  ok   ch01_fig02_classic_first_program
+  ok   ch02_fig02_corrected_program
+  ok   ch02_fig04_corrected_program
+  ok   ch02_fig06_clippy_teaching_idiom
+  ok   ch03_fig03_mutable_binding
+  ok   ch03_fig06_same_figure_conversions_made
+  ok   ch03_fig07_augmented_assignments_type_never
+  ok   ch03_fig08_creating_number_from_string
+  ok   ch03_fig09_format_strings_next_f
+  ok   ch03_fig10_if_expression
+  ok   ch03_fig11_block_expression_semicolon_switch
+  ok   ch03_fig12_tinyalu_prediction_function
+  ok   ch04_fig01_rust_if_statement
+  ok   ch04_fig03_else_if_switch_now
+  ok   ch04_fig04_conditional_assignment_no_ternary
+  ok   ch04_fig05_while_loop_action
+  ok   ch04_fig06_loop_intentional_infinite_loop
+  ok   ch04_fig07_looping_through_numbers_using
+  ok   ch04_fig08_stepping_through_range
+  ok   ch04_fig09_match_switch
+  ok   ch04_fig11_matching_ranges
+  ok   ch04_fig12_matching_destructuring_tuple
+  ok   ch05_fig03_values_die_closing_brace
+  ok   ch05_fig04_copy_types_don_t
+  ok   ch05_fig06_monitor_keeps_copy_explicitly
+  ok   ch06_fig01_shared_references_everyone_may
+  ok   ch06_fig02_exclusive_reference_grants_write
+  ok   ch06_fig04_same_actors_ordering_made
+  ok   ch07_fig01_defining_instantiating_struct
+  ok   ch07_fig03_method_impl_block
+  ok   ch07_fig04_method_that_mutates_takes
+  ok   ch07_fig05_new_associated_function
+  ok   ch07_fig06_associated_constants_functions_replace
+  ok   ch07_fig07_ops_enumeration_exhaustive_match
+  ok   ch07_fig09_four_state_logic_enum
+  ok   ch07_fig10_enum_whose_variants_carry
+  ok   ch08_fig01_vec_alucommand_transaction_history
+  FAIL ch08_fig04_borrowing_iteration_leaves_vec failed to run
+  ok   ch08_fig05_string_literals_are_borrowed
+  ok   ch08_fig06_take_str_accept_everything
+  ok   ch08_fig07_hashmap_ops_u32_op
+  ok   ch09_fig01_hashmap_lookup_returns_option
+  ok   ch09_fig02_still_can_t_divide panicked as the book promises
+  ok   ch09_fig03_nice_div_returns_result
+  FAIL ch09_fig05_operator_sends_error_up failed to run
+  FAIL ch09_fig06_custom_error_enum_tinyalu failed to run
+  ok   ch09_fig07_assert_guards_invariant panicked as the book promises
+  ok   ch10_fig01_shared_behavior_through_trait
+  FAIL ch10_fig02_smalldog_composition_delegation_replaces failed to run
+  ok   ch10_fig03_multiple_roles_multiple_trait
+  ok   ch10_fig05_derived_traits_tinyalu_command
+  FAIL ch10_fig06_implementing_display_hand_str failed to run
+  FAIL ch10_fig07_generic_function_dispatch_resolved failed to run
+  FAIL ch10_fig08_trait_objects_dispatch_resolved failed to run
+  ok   ch11_fig02_bound_fix_documentation
+  ok   ch11_fig03_multiple_bounds_where_clause
+  ok   ch11_fig04_generic_struct_one_definition
+  ok   ch12_fig01_closure_unnamed_function_variable
+  ok   ch12_fig02_closure_that_reads_captures
+  ok   ch12_fig03_closure_that_mutates_captures
+  ok   ch12_fig05_list_comprehension_iterator_chain
+  FAIL ch12_fig06_dictionary_comprehension_collected_into failed to run
+  ok   ch12_fig07_fold_reduces_stream_one
+  ok   ch12_fig08_fibonacci_generator_iterator_implementation
+  ok   ch12_fig09_tinyalu_operand_pair_stream
+  ok   ch12_fig10_struct_that_carries_behavior
+  ok   ch13_fig01_box_owns_value_heap
+  ok   ch13_fig03_rc_clone_increments_refcount
+  ok   ch13_fig05_interior_mutability_mutation_through
+  ok   ch13_fig06_borrow_checker_runtime_panic panicked as the book promises
+  ok   ch13_fig07_chapter_5_s_python
+  ok   ch14_fig01_module_declared_inline_middle
+  ok   ch14_fig02_use_brings_names_into
+== 3/5 Compile-fail figures must fail with the book's error ==
+  ok   ch02-rust-concepts/compile-fail/fig01_calling_undefined_method fails to compile as the book promises (error[E0599])
+  ok   ch02-rust-concepts/compile-fail/fig03_mistake_systemverilog_would_have fails to compile as the book promises (error[E0308])
+  ok   ch02-rust-concepts/compile-fail/fig05_compiler_proofreader fails to compile as the book promises (error[E0425])
+  ok   ch03-rust-basics/compile-fail/fig02_assigning_twice_immutable_binding fails to compile as the book promises (error[E0384])
+  ok   ch03-rust-basics/compile-fail/fig04_tinyalu_s_leg_really fails to compile as the book promises
+  ok   ch03-rust-basics/compile-fail/fig05_float_operations_means_compile fails to compile as the book promises (error[E0277])
+  ok   ch04-conditions-loops-match/compile-fail/fig02_rust_has_no_truthiness fails to compile as the book promises (error[E0308])
+  ok   ch04-conditions-loops-match/compile-fail/fig10_compiler_catches_missing_cases fails to compile as the book promises (error[E0004])
+  ok   ch05-ownership/compile-fail/fig02_assignment_moves_old_name fails to compile as the book promises (error[E0382])
+  ok   ch05-ownership/compile-fail/fig05_monitor_hands_off_transaction fails to compile as the book promises (error[E0382])
+  ok   ch06-borrowing-references/compile-fail/fig03_two_tasks_worth_access fails to compile as the book promises (error[E0502])
+  ok   ch07-structs-enums-methods/compile-fail/fig02_forgetting_field_now_compile fails to compile as the book promises (error[E0063])
+  FAIL ch07-structs-enums-methods/compile-fail/fig08_compiler_finds_every_match failed with a different error than error[E0004] (see EXPECTED.txt)
+  FAIL ch08-collections/compile-fail/fig02_pushing_move failed with a different error than error[E0382] (see EXPECTED.txt)
+  FAIL ch08-collections/compile-fail/fig03_loop_can_consume_collection failed with a different error than error[E0382] (see EXPECTED.txt)
+  FAIL ch09-result-option-exceptions/compile-fail/fig04_typeerror_scenario_ported_rust failed with a different error than error[E0308] (see EXPECTED.txt)
+  ok   ch11-generics/compile-fail/fig01_generic_function_first_attempt fails to compile as the book promises (error[E0369])
+  ok   ch12-closures-iterators/compile-fail/fig04_move_closure_takes_ownership fails to compile as the book promises (error[E0382])
+  ok   ch13-smart-pointers/compile-fail/fig04_shared_owners_are_readers fails to compile as the book promises (error[E0594])
+  ok   ch14-modules-crates-cargo/compile-fail/fig03_private_default_underscore_convention fails to compile as the book promises (error[E0603])
+== 4/5 Unit-test figure (Chapter 14, Figure 6) ==
+  ok   ch14 unit tests pass
+== 5/5 (informational) stdout vs. the output printed in the book ==
+  warn ch01 fig02: stdout differs from the book
+       book:   Hello, world. / -- / Hello, world.
+       actual: Hello, world.
+  warn ch04 fig05: stdout differs from the book
+       book:   0 1 2 3 4 5 6 7 8 9 10 11 12 13
+       actual: 0 1 2 3 4 5 6 7 8 9 10 11 12 13 
+  warn ch04 fig07: stdout differs from the book
+       book:   0 1 2 3
+       actual: 0 1 2 3 
+  warn ch04 fig08: stdout differs from the book
+       book:   1 3 5 7 9 11 13
+       actual: 1 3 5 7 9 11 13 
+  warn ch08 fig01: stdout differs from the book
+       book:   2 commands logged / first: AluCommand { a: 5, b: 3, op: Ops::Add }
+       actual: 2 commands logged / first: AluCommand { a: 5, b: 3, op: Add }
+  warn ch08 fig04: stdout differs from the book
+       book:   AluCommand { a: 5, b: 3, op: Ops::Add } / AluCommand { a: 2, b: 2, op: Ops::Mul } / 2 commands still logged
+       actual: 
+  warn ch09 fig05: stdout differs from the book
+       book:   percent failed: DivideByZero
+       actual: 
+  warn ch09 fig06: stdout differs from the book
+       book:   1 decodes to Add / 4 decodes to Mul / decode failed: invalid ALU op code: 0x07
+       actual: 
+  warn ch10 fig02: stdout differs from the book
+       book:   The dog says 'yap yap'
+       actual: 
+  warn ch10 fig06: stdout differs from the book
+       book:   cmd: a=0xaa b=0x55 op=Xor
+       actual: 
+  warn ch10 fig07: stdout differs from the book
+       book:   The dog says 'bow bow' / The cat says 'miāo'
+       actual: 
+  warn ch10 fig08: stdout differs from the book
+       book:   The dog says 'bow bow' / The cat says 'miāo' / The dog says 'yap yap'
+       actual: 
+  warn ch12 fig06: stdout differs from the book
+       book:   cubes: {2: 8, 0: 0, 3: 27, 1: 1}
+       actual: 
+  warn ch12 fig08: stdout differs from the book
+       book:   0 1 1 2 3 5 8 13
+       actual: 0 1 1 2 3 5 8 13 
+  warn ch12 fig09: stdout differs from the book
+       book:   (0,0) (0,1) (0,2) (1,0) (1,1) (1,2) (2,0) (2,1) (2,2)
+       actual: (0,0) (0,1) (0,2) (1,0) (1,1) (1,2) (2,0) (2,1) (2,2) 
+
+================================================
+PASS: 82   FAIL: 13   (warnings: 0)
+Failures:
+  - workspace build failed — see build.log
+  - ch08_fig04_borrowing_iteration_leaves_vec failed to run
+  - ch09_fig05_operator_sends_error_up failed to run
+  - ch09_fig06_custom_error_enum_tinyalu failed to run
+  - ch10_fig02_smalldog_composition_delegation_replaces failed to run
+  - ch10_fig06_implementing_display_hand_str failed to run
+  - ch10_fig07_generic_function_dispatch_resolved failed to run
+  - ch10_fig08_trait_objects_dispatch_resolved failed to run
+  - ch12_fig06_dictionary_comprehension_collected_into failed to run
+  - ch07-structs-enums-methods/compile-fail/fig08_compiler_finds_every_match failed with a different error than error[E0004] (see EXPECTED.txt)
+  - ch08-collections/compile-fail/fig02_pushing_move failed with a different error than error[E0382] (see EXPECTED.txt)
+  - ch08-collections/compile-fail/fig03_loop_can_consume_collection failed with a different error than error[E0382] (see EXPECTED.txt)
+  - ch09-result-option-exceptions/compile-fail/fig04_typeerror_scenario_ported_rust failed with a different error than error[E0308] (see EXPECTED.txt)
