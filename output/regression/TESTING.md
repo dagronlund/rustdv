@@ -66,7 +66,18 @@ regression.
 - Anything else: copy `tests/example-template/`, rename it, edit `test.json`
   (see the comment field for all options), remove `"disabled": true`. Each test
   declares a command plus expectations: exit code, required output substrings,
-  and/or a golden stdout file.
+  and/or a golden stdout file. A `skip_if_missing` field names a required
+  executable — the test skips (rather than fails) on machines without it.
+  The simulator smoke tests (`tests/sim-*`) use this: they run where
+  Icarus/Verilator are installed (including CI) and skip elsewhere.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs two jobs on every push and PR: the full
+regression suite (Rust toolchain, no simulators — sim tests skip), and the
+simulator smoke tests on Icarus + Verilator. Commercial simulators can't run
+in public CI; license-holders run `sim/run_smoke.sh <sim>` or the same
+regress command locally.
 
 The rule of thumb: **every new piece of functionality lands together with the
 test that would catch its removal.** The pre-push hook then makes it

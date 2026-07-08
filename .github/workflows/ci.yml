@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  # Book-sync + all 105 figure examples (build, run vs goldens, compile-fail,
+  # unit tests). Simulator tests auto-skip here (no iverilog installed).
+  regress:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: output/examples
+      - name: Run regression suite
+        run: python3 output/regression/regress.py
+
+  # TinyALU smoke test on the free simulators (Icarus runs it, Verilator
+  # lints it). Commercial simulators (VCS/Questa/Xcelium) cannot run in
+  # public CI — license holders run: sim/run_smoke.sh <sim> locally.
+  sim-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Icarus Verilog and Verilator
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends iverilog verilator
+      - name: Run simulator smoke tests
+        run: python3 output/regression/regress.py --suite custom --filter sim

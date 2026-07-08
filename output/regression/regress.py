@@ -22,6 +22,7 @@ import glob
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 
@@ -232,6 +233,10 @@ def suite_custom(args):
         spec = json.load(open(spec_path))
         if spec.get("disabled"):
             print(f"  {YELLOW}skip{OFF} {tid} (disabled)")
+            continue
+        need = spec.get("skip_if_missing")
+        if need and not shutil.which(need):
+            print(f"  {YELLOW}skip{OFF} {tid} ({need} not installed)")
             continue
         cwd = os.path.join(ROOT, spec["cwd"]) if "cwd" in spec else os.path.dirname(spec_path)
         try:

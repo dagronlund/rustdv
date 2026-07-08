@@ -1,0 +1,8 @@
+{
+  "comment": "TinyALU lint on Verilator (full Verilator simulation arrives with rustvm). Skips on machines without verilator; runs in CI.",
+  "cmd": ["bash", "sim/run_smoke.sh", "verilator"],
+  "cwd": ".",
+  "skip_if_missing": "verilator",
+  "expect_exit": 0,
+  "expect_in_output": ["LINT: PASS"]
+}

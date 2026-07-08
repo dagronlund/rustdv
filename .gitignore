@@ -9,6 +9,9 @@ book-pdf/book/
 # check.sh scratch output
 output/examples/build.log
 
+# simulator build products
+sim/build/
+
 # macOS
 .DS_Store
 
