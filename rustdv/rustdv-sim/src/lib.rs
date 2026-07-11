@@ -9,6 +9,11 @@
 //! tasks are woken → the run queue is drained to exhaustion
 //! ([`Executor::run_until_idle`]) → control returns to the simulator.
 
+// Test executables need vpi_* symbol definitions (the simulator provides
+// them for the real cdylib) — see rustdv-vpi-stubs.
+#[cfg(test)]
+use rustdv_vpi_stubs as _;
+
 pub mod clock;
 pub mod combinators;
 pub mod executor;

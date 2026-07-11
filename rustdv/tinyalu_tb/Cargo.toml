@@ -12,3 +12,6 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 rustdv = { path = ".." }
+
+[dev-dependencies]
+rustdv-vpi-stubs = { path = "../rustdv-vpi-stubs" }

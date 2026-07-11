@@ -1,0 +1,8 @@
+[package]
+name = "rustdv-vpi-stubs"
+version = "0.1.0"
+edition = "2021"
+description = "Panicking vpi_* symbol definitions for cargo-test executables. Dev-dependency only — never linked into the simulator-loaded cdylib, where the real symbols come from the simulator."
+license = "MIT OR Apache-2.0"
+
+[dependencies]

@@ -9,6 +9,11 @@ use std::rc::Rc;
 
 use rustdv::prelude::*;
 
+// Test executables need vpi_* symbol definitions (the simulator provides
+// them for the real cdylib) — see rustdv-vpi-stubs.
+#[cfg(test)]
+use rustdv_vpi_stubs as _;
+
 pub mod alu_bfm;
 pub mod alu_item;
 pub mod components;

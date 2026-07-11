@@ -60,8 +60,10 @@ where
 
 impl<A, B> Future for Join2<A, B> {
     type Output = (A, B);
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<(A, B)> {
-        let this = &mut *self;
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<(A, B)> {
+        // Sound: the inner futures are boxed (their pinning is their own),
+        // and ra/rb are plain values we intentionally move on completion.
+        let this = unsafe { self.get_unchecked_mut() };
         if this.ra.is_none() {
             if let Poll::Ready(v) = this.a.as_mut().poll(cx) {
                 this.ra = Some(v);

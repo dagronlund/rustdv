@@ -6,6 +6,7 @@ members = [
     "rustdv-sim",
     "rustdv-uvm",
     "rustdv-macros",
+    "rustdv-vpi-stubs",
     "rustdv-runner",
     "tinyalu_tb",
 ]

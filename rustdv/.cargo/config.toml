@@ -1,0 +1,2 @@
+# (intentionally empty — an earlier link-flag workaround lived here;
+#  test-binary linking is handled by the rustdv-vpi-stubs dev-dependency)

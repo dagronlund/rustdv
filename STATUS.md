@@ -1,9 +1,11 @@
 # STATUS — rustdv implementation sprint
 
-**Date:** 2026-07-11 (in progress)
+**Date:** 2026-07-11 — **COMPLETE: REGRESSION PASSES ON ICARUS**
 **Scope:** complete rustdv code base per `output/design-doc.md`, demonstrated
 against the TinyALU (`sim/hdl/tinyalu.sv`) on Icarus Verilog.
-**Environment:** Path B (offline toolchain drop into `toolchain-drop/`).
+**Environment:** Path B (offline toolchain drop into `toolchain-drop/`):
+rustc/cargo 1.97.0 aarch64-linux + oss-cad-suite 2026-07-11 (Icarus 14.0
+devel), both installed to the VM home directory.
 
 ## Build & run
 
@@ -12,10 +14,19 @@ cd sim && ./run_rustdv.sh          # expect "REGRESSION: PASS"
 cd rustdv && cargo test            # pure-Rust unit tests, no simulator
 ```
 
-- [ ] `cargo build` clean          ← pending toolchain drop
-- [ ] `cargo test` (unit tests, no simulator) passes
-- [ ] `sim/run_smoke.sh icarus` → SMOKE: PASS
-- [ ] `sim/run_rustdv.sh` → REGRESSION: PASS (random_ops, max_ops)
+- [x] `cargo build -p tinyalu_tb` (debug and release) — clean
+- [x] `cargo test --workspace` — 8/8 unit tests pass, no simulator needed
+- [x] `sim/run_smoke.sh icarus` → SMOKE: PASS
+- [x] `sim/run_rustdv.sh` → **REGRESSION: PASS**
+      - `random_ops`: 20 ops driven through the full sequencer handshake,
+        scoreboard 20 compared / 0 mismatches, coverage Add=5 And=5 Mul=5
+        Xor=5, 625 ns sim time
+      - `max_ops`: 4 compared / 0 mismatches, all ops covered, 185 ns
+      - xUnit XML written to `sim/build/results.xml`
+- [x] **Mutation check (verification of the verification):** with the DUT's
+      XOR sabotaged to OR, the scoreboard flags every affected transaction,
+      both tests report FAILED with per-transaction diagnostics, and the
+      run ends `REGRESSION: FAIL`. The checking is not vacuous.
 
 ## What was built
 
@@ -93,6 +104,34 @@ transport/master/slave composites, grab/lock/priority arbitration,
 pack/unpack/recording/policies** — not ported, matching the design doc's
 own [gap] list.
 
+**D9 — `rustdv-vpi-stubs` dev-dependency crate (build-flow addition).**
+Unit-test *executables* link the whole crate graph, and unlike the cdylib
+they cannot carry undefined `vpi_*` symbols. Crates with unit tests take
+`rustdv-vpi-stubs` as a dev-dependency (`#[cfg(test)] use ... as _;`): it
+defines panicking stubs so test binaries link. It is never linked into the
+`.vpi` module, where the real symbols come from the simulator process.
+(A first attempt via linker flags — `-z lazy` +
+`--unresolved-symbols=ignore-all` — corrupted aarch64 PLT relocations and
+was abandoned; `rustdv/.cargo/config.toml` is intentionally empty.)
+
+## Fix log (build/sim loop)
+
+1. `Join2::poll` needed `unsafe get_unchecked_mut` (output types may be
+   `!Unpin`; the inner futures are boxed, so this is sound).
+2. Test-binary linking → D9 above.
+3. Icarus rejects `vpiSuppressVal` on value-change callbacks ("value
+   format 10 not supported"); callback registration now passes a NULL
+   value pointer (closures read signals themselves).
+4. `Executor::cancel_after` off-by-one: watermark comparison must be `>=`
+   so a timed-out test's own task is killed (caught in self-review).
+
+That was the entire loop — four fixes from first compile to passing
+regression.
+
 ## Open items
 
-- (running log — updated as the build/sim loop proceeds)
+- Shared-subscriber trigger optimization (D2) and the runner-side
+  objection dump on timeout (D7) are the two nearest-term improvements.
+- Portability beyond Linux/ELF for the link-section test registry (OQ-4)
+  and beyond VPI/Icarus for the backend (D1/OQ-1/OQ-2) are the two
+  structural follow-ups before the book can claim multi-simulator support.

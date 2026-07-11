@@ -25,6 +25,11 @@ use std::rc::Rc;
 
 use rustdv_gpi_sys as sys;
 
+// Test executables need vpi_* symbol definitions (the simulator provides
+// them for the real cdylib) — see rustdv-vpi-stubs.
+#[cfg(test)]
+use rustdv_vpi_stubs as _;
+
 pub mod value;
 pub use value::{Logic, LogicArray};
 
@@ -496,16 +501,14 @@ fn register(
         low: 0,
         real: 0.0,
     });
-    let mut v = sys::t_vpi_value {
-        format: sys::vpiSuppressVal,
-        value: sys::u_vpi_value_union { integer: 0 },
-    };
+    // value: NULL — closures read signal values themselves; Icarus rejects
+    // vpiSuppressVal on value-change callbacks ("format 10 not supported").
     let mut cb = sys::t_cb_data {
         reason,
         cb_rtn: Some(trampoline),
         obj,
         time: &mut t,
-        value: &mut v,
+        value: std::ptr::null_mut(),
         index: 0,
         user_data: raw as *mut _,
     };
