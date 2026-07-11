@@ -1,0 +1,11 @@
+[package]
+name = "rustdv-runner"
+version = "0.1.0"
+edition = "2021"
+description = "Regression manager: link-time test registry, sequential test execution, seed handling, result table, VPI bootstrap entry (design-doc D2.4, §4.5)."
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+rustdv-gpi = { path = "../rustdv-gpi" }
+rustdv-sim = { path = "../rustdv-sim" }
+rustdv-uvm = { path = "../rustdv-uvm" }

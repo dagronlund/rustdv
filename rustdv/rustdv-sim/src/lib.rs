@@ -1,0 +1,42 @@
+//! # rustdv-sim
+//!
+//! The cocotb-analog core (design-doc §4): a bespoke single-threaded
+//! executor driven by simulator callbacks (D4.1 — not tokio), the task
+//! model, the trigger inventory, typed signal handles with buffered
+//! writes, `Clock`, and sim-aware `Event`/`Lock`/`Queue`.
+//!
+//! Control-flow contract (§4.1): a GPI/VPI callback fires → subscribed
+//! tasks are woken → the run queue is drained to exhaustion
+//! ([`Executor::run_until_idle`]) → control returns to the simulator.
+
+pub mod clock;
+pub mod combinators;
+pub mod executor;
+pub mod handle;
+pub mod log;
+pub mod phase;
+pub mod queue;
+pub mod rng;
+pub mod sync;
+pub mod time;
+pub mod triggers;
+
+pub use clock::Clock;
+pub use combinators::{first2, join2, with_timeout, Either, TimeoutError};
+pub use executor::{spawn, spawn_named, Executor, TaskError, TaskHandle, TaskId, TaskState};
+pub use handle::{AnyHandle, HierarchyHandle, LogicHandle};
+pub use phase::{read_only, read_write, next_time_step};
+pub use queue::Queue;
+pub use rng::Rng;
+pub use sync::{Event, Lock, LockGuard};
+pub use time::{sim_time_ns, sim_time_steps, SimDuration};
+pub use triggers::{NullTrigger, Timer};
+
+pub use rustdv_gpi::{HandleError, Logic, LogicArray, ValueError};
+
+/// Initialize the sim context: install a fresh executor and phase hub on
+/// this thread. Called once by the runner at start-of-simulation.
+pub fn init() -> Executor {
+    phase::init_hub();
+    executor::init()
+}

@@ -210,6 +210,8 @@ rustdv/                          # cargo workspace root
 └── rustdv/                      # facade crate: re-exports the public API
 ```
 
+**Naming.** The `rustdv` crate name is registered on crates.io; workspace crates publish under the `rustdv-*` prefix. (See `renaming-analysis.md` for the naming decision record.)
+
 Design decisions and their sources:
 
 **D2.1 — `rustdv-gpi-sys` is bindings-only.** Machine-generated from `gpi.h` (cocotb: `share/include/gpi.h`), no hand-written logic, everything `unsafe extern "C"`. This is the standard Rust `-sys` crate discipline: one crate owns "what the C API is," another owns "how to use it safely." Keeping it generated means tracking upstream cocotb GPI changes is a re-run of bindgen, not a port.

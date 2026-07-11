@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-2c622749.js";
+            window.path_to_searchindex_js = "searchindex-255f8fe6.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-266d771a.js"></script>
@@ -291,7 +291,7 @@ use std::collections::HashMap;
 
 fn main() {
     let cubes: HashMap&lt;u32, u32&gt; = (0..4)
-        .map(|ii| (ii, ii.pow(3)))
+        .map(|ii: u32| (ii, ii.pow(3)))
         .collect();
 
     println!("cubes: {cubes:?}");
@@ -299,7 +299,7 @@ fn main() {
 <pre><code class="language-text">--
 cubes: {2: 8, 0: 0, 3: 27, 1: 1}
 </code></pre>
-<p>Two things to notice. <code>collect()</code> is doing something quietly remarkable: the <em>same method</em> built a <code>Vec</code> in figure 5 and a <code>HashMap</code> here, steered entirely by the type annotation on the left — the generics machinery from Chapter 11 earning its keep. And look at that output order. Chapter 8 warned you that Rust’s <code>HashMap</code>, unlike the Python dict you knew, promises nothing about iteration order, and here is the proof; your run will likely print a different scramble.</p>
+<p>Two things to notice. <code>collect()</code> is doing something quietly remarkable: the <em>same method</em> built a <code>Vec</code> in figure 5 and a <code>HashMap</code> here, steered by the type annotation on the left — the generics machinery from Chapter 11 earning its keep. (One wrinkle: the closure’s parameter carries its own <code>: u32</code>, because a method call like <code>.pow</code> must know its receiver’s concrete type on the spot — inference has not yet flowed backward from the annotation when the closure body is checked.) And look at that output order. Chapter 8 warned you that Rust’s <code>HashMap</code>, unlike the Python dict you knew, promises nothing about iteration order, and here is the proof; your run will likely print a different scramble.</p>
 <p>One more adapter completes the everyday set. Where <code>map</code> transforms each element and <code>filter</code> drops some, <strong><code>fold</code></strong> boils the whole stream down to a single value: it takes a starting accumulator and a closure that combines the accumulator with each element in turn. Here is a scoreboard-flavored example — counting mismatches in a list of (expected, actual) pairs:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">Figure 7: fold reduces a stream to one value
 </span>
@@ -416,7 +416,7 @@ FAIL: (15, 53) expected 5, got 6
 </code></pre>
 <p>Two <code>Checker</code> values, one struct definition, two completely different behaviors — selected not by inheritance, not by overriding a virtual method, but by <em>which closure was placed in the field at construction time</em>. Sit with that for a moment, because it is the seed of something large. The UVM factory — the machinery the Python book spent a chapter on, with its registries and overrides, <code>create()</code> calls and override tables — exists to answer one question: <em>how does a test change what the testbench builds without editing the testbench?</em> Python and SystemVerilog needed a registry because they could not comfortably pass constructors around as values. Rust can. When Chapter 29 rebuilds the factory’s job, the answer will be a config struct carrying closure fields much like <code>predict</code> — a constructor in a box, replaced by the test in three visible lines, checked end to end by the compiler. You now hold the entire mechanism; Part IV supplies the methodology.</p>
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<p>Closures are unnamed functions in variables: <code>|x| x + 1</code>, with braces for multi-line bodies and types mostly inferred. They capture surrounding variables under the ordinary ownership rules — shared borrow to read, exclusive borrow to mutate, ownership when <code>move</code>d — and the traits <code>Fn</code>, <code>FnMut</code>, and <code>FnOnce</code> name those three calling contracts in signatures. Iterator adapter chains — <code>filter</code>, <code>map</code>, <code>flat_map</code>, <code>fold</code>, <code>collect</code> — replace Python’s list, set, and dictionary comprehensions part for part, and they are lazy by default, doing no work until consumed. Python’s generators map to the <code>Iterator</code> trait: implement <code>next()</code> on a struct for full control, or return <code>impl Iterator</code> built from adapters for the everyday case, with <code>move</code> closures carrying the captured state out of the function. Finally, closures are values: boxed as <code>Box&lt;dyn Fn(...)&gt;</code>, they can live in struct fields and be swapped at construction time — the mechanism Chapter 29 will grow into rustvm’s replacement for the UVM factory.</p>
+<p>Closures are unnamed functions in variables: <code>|x| x + 1</code>, with braces for multi-line bodies and types mostly inferred. They capture surrounding variables under the ordinary ownership rules — shared borrow to read, exclusive borrow to mutate, ownership when <code>move</code>d — and the traits <code>Fn</code>, <code>FnMut</code>, and <code>FnOnce</code> name those three calling contracts in signatures. Iterator adapter chains — <code>filter</code>, <code>map</code>, <code>flat_map</code>, <code>fold</code>, <code>collect</code> — replace Python’s list, set, and dictionary comprehensions part for part, and they are lazy by default, doing no work until consumed. Python’s generators map to the <code>Iterator</code> trait: implement <code>next()</code> on a struct for full control, or return <code>impl Iterator</code> built from adapters for the everyday case, with <code>move</code> closures carrying the captured state out of the function. Finally, closures are values: boxed as <code>Box&lt;dyn Fn(...)&gt;</code>, they can live in struct fields and be swapped at construction time — the mechanism Chapter 29 will grow into rustdv’s replacement for the UVM factory.</p>
 <p>That <code>Box</code> in figure 10 was the first time this book put a value on the heap on purpose, and I slipped it past you with one sentence of explanation. It deserves better — because <code>Box</code> has two siblings, <code>Rc</code> and <code>RefCell</code>, and among them they answer the question every pyuvm refugee eventually asks: <em>how do two components share one scoreboard?</em> Chapter 13 pays that debt.</p>
 
                     </main>

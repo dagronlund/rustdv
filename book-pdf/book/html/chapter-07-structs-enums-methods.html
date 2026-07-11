@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-2c622749.js";
+            window.path_to_searchindex_js = "searchindex-255f8fe6.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-266d771a.js"></script>
@@ -409,7 +409,7 @@ fn main() {
 <pre><code class="language-text">--
 The signal reads: x
 </code></pre>
-<p><code>Logic</code> is not a teaching toy: when we reach rustvm-sim in Chapter 17, reading a signal hands you exactly this type, ported from the same four-state value type cocotb defines. Notice what the enum buys us that an IntEnum encoding (say, <code>X = 2</code>) never could: there is no integer pretense to leak. Nothing can accidentally add <code>X</code> to a running sum, because <code>X</code> is not a number — it is one of four states a wire can be in, and any code that consumes a <code>Logic</code> must, thanks to exhaustive <code>match</code>, say what it does about <code>x</code> and <code>z</code>. The “forgot to handle the unknown state” bug is unrepresentable.</p>
+<p><code>Logic</code> is not a teaching toy: when we reach rustdv-sim in Chapter 17, reading a signal hands you exactly this type, ported from the same four-state value type cocotb defines. Notice what the enum buys us that an IntEnum encoding (say, <code>X = 2</code>) never could: there is no integer pretense to leak. Nothing can accidentally add <code>X</code> to a running sum, because <code>X</code> is not a number — it is one of four states a wire can be in, and any code that consumes a <code>Logic</code> must, thanks to exhaustive <code>match</code>, say what it does about <code>x</code> and <code>z</code>. The “forgot to handle the unknown state” bug is unrepresentable.</p>
 <h2 id="variants-that-carry-data"><a class="header" href="#variants-that-carry-data">Variants that carry data</a></h2>
 <p>Everything so far, an IntEnum could at least gesture at. This last capability it could not. Rust enum variants can <em>carry data</em> — different data per variant — which makes an enum a type that says “this value is exactly one of the following shapes.” Computer scientists call this a <em>sum type</em>; testbench authors will call it the right way to model outcomes:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">Figure 10: An enum whose variants carry payloads

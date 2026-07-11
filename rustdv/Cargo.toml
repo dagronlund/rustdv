@@ -1,9 +1,38 @@
+[workspace]
+resolver = "2"
+members = [
+    "rustdv-gpi-sys",
+    "rustdv-gpi",
+    "rustdv-sim",
+    "rustdv-uvm",
+    "rustdv-macros",
+    "rustdv-runner",
+    "tinyalu_tb",
+]
+
+# ---------------------------------------------------------------------------
+# The `rustdv` facade crate (design-doc D2.5): re-exports the public API so a
+# user writes `use rustdv::prelude::*;` and nothing else.
+# ---------------------------------------------------------------------------
 [package]
 name = "rustdv"
-version = "0.0.1"
+version = "0.1.0"
 edition = "2021"
-description = "Placeholder for rustdv, a hardware verification framework in Rust — testbench components, sequences, and simulator integration — by the author of pyuvm and 'Python for RTL Verification'. In active development."
+description = "A hardware verification framework in Rust: cocotb-style simulator coroutines plus a UVM-analog testbench library."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/raysalemi/rustdv"
 keywords = ["verification", "testbench", "rtl", "hardware", "dv"]
 categories = ["development-tools::testing", "simulation"]
+
+[dependencies]
+rustdv-gpi = { path = "rustdv-gpi" }
+rustdv-sim = { path = "rustdv-sim" }
+rustdv-uvm = { path = "rustdv-uvm" }
+rustdv-macros = { path = "rustdv-macros" }
+rustdv-runner = { path = "rustdv-runner" }
+
+[profile.release]
+panic = "unwind"   # panics must be catchable at the task boundary (§0.6)
+
+[profile.dev]
+panic = "unwind"

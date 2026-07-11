@@ -1,0 +1,98 @@
+# STATUS — rustdv implementation sprint
+
+**Date:** 2026-07-11 (in progress)
+**Scope:** complete rustdv code base per `output/design-doc.md`, demonstrated
+against the TinyALU (`sim/hdl/tinyalu.sv`) on Icarus Verilog.
+**Environment:** Path B (offline toolchain drop into `toolchain-drop/`).
+
+## Build & run
+
+```sh
+cd sim && ./run_rustdv.sh          # expect "REGRESSION: PASS"
+cd rustdv && cargo test            # pure-Rust unit tests, no simulator
+```
+
+- [ ] `cargo build` clean          ← pending toolchain drop
+- [ ] `cargo test` (unit tests, no simulator) passes
+- [ ] `sim/run_smoke.sh icarus` → SMOKE: PASS
+- [ ] `sim/run_rustdv.sh` → REGRESSION: PASS (random_ops, max_ops)
+
+## What was built
+
+Cargo workspace at `rustdv/` per design-doc §2, zero external dependencies:
+
+| Crate | Contents | Design-doc |
+|---|---|---|
+| `rustdv-gpi-sys` | hand-written VPI FFI subset | §2 D2.1 (deviated, D1 below) |
+| `rustdv-gpi` | safe handles/values/callbacks/time; all `unsafe` lives here; RAII `CallbackHandle` | §3.3 |
+| `rustdv-sim` | bespoke single-thread executor, 7-state tasks, drop-based cancel, Timer/edges/ReadOnly/ReadWrite/NextTimeStep, buffered writes drained at ReadWrite, Event, FIFO-fair Lock, Queue, first!/join!/with_timeout, Clock, SplitMix64 Rng, sim-time logger | §4 |
+| `rustdv-uvm` | Component lifecycle trait + ComponentNode traversal, RAII objections, channel/Sender/Receiver, AnalysisPort/Subscriber/AnalysisFifo, TlmFifo, full sequencer handshake (SeqItem envelope, SeqCtx, SeqItemPort, ResponseQueue) | §5 (R1–R6 revision) |
+| `rustdv-macros` | `#[rustdv::test]` (link-section registration), `#[derive(Component)]` (`T`/`Option<T>`/`Vec<T>` children) | §6 |
+| `rustdv-runner` | link-time test registry + sentinel, sequential regression, timeouts, expect_fail/skip, seed handling, summary table, xUnit XML, VPI bootstrap | D2.4, §4.5 |
+| `rustdv` (facade) | prelude + `vpi_bootstrap!()` | D2.5 |
+| `tinyalu_tb` | §7 worked example: transactions (std derives), TinyAluBfm, Driver, CmdMonitor, ResultMonitor, Scoreboard (predict + compare in check), Coverage (Subscriber), AluEnv (ownership tree, Option children), RandomSeq/MaxSeq (late generation at grant), tests `random_ops` + `max_ops` | §7 |
+
+Simulation flow: `sim/run_rustdv.sh` builds the testbench cdylib, copies it
+as a `.vpi` module, compiles the DUT with `sim/hdl/timescale.v` (1ns/1ns),
+and runs `vvp -M build -m tinyalu_tb`.
+
+## Deviations from the design doc
+
+**D1 — VPI backend instead of cocotb's GPI library (§3.1 D3.1, §3.2 D3.2).**
+The sandbox cannot build cocotb's C++ GPI (no cocotb build tooling) and the
+zero-dependency constraint rules out bindgen. `rustdv-gpi-sys` therefore
+binds the IEEE 1800 VPI C API directly (hand-written subset of
+`vpi_user.h`) — the same API cocotb's GPI wraps for Icarus. The safe layer
+(`rustdv-gpi`) keeps the GPI-shaped surface from §3.3 (opaque non-null
+handles, `Result` acquisition, copied strings, no unwinding across FFI,
+one-shot-vs-recurring callback ownership in the type), so swapping in real
+`gpi.h` bindings later is contained to the `-sys` crate. Bootstrap is a
+plain VPI module (`vlog_startup_routines` via `rustdv::vpi_bootstrap!()`)
+instead of the libpygpi entry-symbol scheme. Consequence: v0 runs on
+VPI simulators (Icarus); VHPI/FLI arrive with the real GPI reuse (OQ-1/OQ-2
+stand).
+
+**D2 — Trigger lifecycle simplified (§4.3/§4.4).** Instead of shared
+trigger objects with subscribe/unsubscribe lists and lazy prime/unprime,
+each awaited trigger future registers its own VPI callback on first poll
+and removes it via RAII on drop. User-facing API is per design
+(`sig.rising_edge().await`, `Timer::ns(2).await`); the shared-subscriber
+optimization (one VPI callback per signal) is future work. Phase triggers
+(ReadOnly/ReadWrite/NextTimeStep) *are* hub-managed singletons per design,
+including the write-buffer drain ordering and illegal-transition checks.
+
+**D3 — Proc macros without syn/quote (§6).** Zero-dependency constraint
+(Path B: no crates.io). `#[rustdv::test]` and `#[derive(Component)]` are
+hand-written token parsers with narrow supported grammar (plain async fns;
+non-generic structs with named fields). Link-time registration uses the
+ELF `__start_/__stop_` section technique directly (what linkme does),
+Linux-only for now — OQ-4's platform caveats apply; the explicit-
+registration fallback is the sentinel pattern in `rustdv-runner`.
+
+**D4 — Logging is a minimal built-in (`OQ-8`).** The `tracing` crate
+mapping is deferred (no external deps). A small sim-time-stamped logger
+reproduces the book's `  2.00ns INFO ...` format with level filtering.
+
+**D5 — `#[rustdv::parametrize]` not implemented (§6.2, OQ-10).** Neither
+TinyALU test needs it; the data-driven-loop idiom covers the demo. Planned
+follow-up.
+
+**D6 — TinyALU env has no agent layer (§5.4 example).** The testbench
+follows the book's 6.0 architecture (§7.2: driver/monitors/scoreboard/
+coverage directly in the env). `Active`/`Option<Driver>` and
+`enable_coverage`/`Option<Coverage>` still demonstrate the
+conditional-children pattern the agent chapter needs.
+
+**D7 — Timeout diagnostics.** On test timeout the runner reports the
+timeout and kills surviving tasks, but does not yet print the objection
+table (the per-test `RunCtx` lives inside the test body, invisible to the
+runner). pyuvm's richer report is future work.
+
+**D8 — `bridge`/blocking-world integration (OQ-7), `wait_modified`,
+transport/master/slave composites, grab/lock/priority arbitration,
+pack/unpack/recording/policies** — not ported, matching the design doc's
+own [gap] list.
+
+## Open items
+
+- (running log — updated as the build/sim loop proceeds)

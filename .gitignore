@@ -20,3 +20,6 @@ __pycache__/
 
 # scratch space (delete this line if you want tmp/ tracked)
 tmp/
+
+# Path B offline toolchain drop (large tarballs, never commit)
+toolchain-drop/

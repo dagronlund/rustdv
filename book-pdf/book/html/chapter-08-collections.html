@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-2c622749.js";
+            window.path_to_searchindex_js = "searchindex-255f8fe6.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-266d771a.js"></script>
@@ -208,7 +208,7 @@ fn main() {
 }</code></pre>
 <pre><code class="language-text">--
 2 commands logged
-first: AluCommand { a: 5, b: 3, op: Ops::Add }
+first: AluCommand { a: 5, b: 3, op: Add }
 </code></pre>
 <p>Familiar territory: <code>push</code> is <code>append</code>, <code>len()</code> is <code>len()</code>, <code>log[0]</code> is <code>log[0]</code>. Note that <code>log</code> must be <code>let mut</code> — Chapter 3’s immutability-by-default applies to collections with no exceptions, which means a testbench data structure cannot be quietly modified by code you didn’t expect to modify it. Also note <code>Vec::new()</code> gave us an empty vector; the <code>vec!</code> macro is the literal syntax, so <code>vec![1, 2, 3]</code> is Rust’s <code>[1, 2, 3]</code>.</p>
 <p>Now the part that is genuinely new. In Python, a list holds <em>references</em>. When you append a transaction to a list, the list gets one more name for an object that still has all its other names; the monitor keeps its handle, the scoreboard keeps its handle, and the GC sorts out the afterlife. A <code>Vec</code> holds <em>values</em>. When you push a transaction into a <code>Vec</code>, the transaction <strong>moves</strong> into the <code>Vec</code> — the vector becomes the owner, exactly as if you had assigned it to a new variable in Chapter 5. Figure 2 shows what happens when we forget.</p>
@@ -283,8 +283,8 @@ fn main() {
     println!("{} commands still logged", log.len());
 }</code></pre>
 <pre><code class="language-text">--
-AluCommand { a: 5, b: 3, op: Ops::Add }
-AluCommand { a: 2, b: 2, op: Ops::Mul }
+AluCommand { a: 5, b: 3, op: Add }
+AluCommand { a: 2, b: 2, op: Mul }
 2 commands still logged
 </code></pre>
 <p>With <code>for cmd in &amp;log</code>, each <code>cmd</code> is a <code>&amp;AluCommand</code> — a shared borrow, read-only, governed by Chapter 6’s rules. The third form, <code>for cmd in &amp;mut log</code>, borrows each element mutably so you can edit in place. The whole story is three spellings:</p>
@@ -317,7 +317,7 @@ TinyALU
 *** Testing the TinyALU ***
 </code></pre>
 <p><code>String::from("Tiny")</code> copies the literal’s characters into a fresh, owned, heap-allocated <code>String</code> that we can grow with <code>push_str</code>. And <code>format!</code> is your f-string: <code>format!("Testing the {}", name)</code> builds a new <code>String</code> the way <code>f"Testing the {name}"</code> built a new <code>str</code> — same job, and like Python’s strings, Rust’s are immutable-by-default; growing one requires <code>mut</code>, and replacing text builds a new string rather than editing in place.²</p>
-<p>Now the question that actually bites: when you write a function that takes text, which type goes in the signature? The rule of thumb is worth memorizing, because it appears throughout rustvm’s own API:</p>
+<p>Now the question that actually bites: when you write a function that takes text, which type goes in the signature? The rule of thumb is worth memorizing, because it appears throughout rustdv’s own API:</p>
 <blockquote>
 <p><strong>Store <code>String</code>, pass <code>&amp;str</code>.</strong> Struct fields that keep text own it as <code>String</code>; function parameters that read text borrow it as <code>&amp;str</code>.</p>
 </blockquote>
@@ -339,7 +339,7 @@ PASSED: smoke_test
 PASSED: random_ops
 still have random_ops
 </code></pre>
-<p>If instead the function is going to <em>keep</em> the text — storing a component’s name in a struct field, say — it should take a <code>String</code> and own it outright, and the move at the call site honestly documents the handoff. When rustvm asks for <code>&amp;str</code> in a signature, it is promising to look and not keep; when it asks for <code>String</code>, it is telling you the name is moving in permanently.</p>
+<p>If instead the function is going to <em>keep</em> the text — storing a component’s name in a struct field, say — it should take a <code>String</code> and own it outright, and the move at the call site honestly documents the handoff. When rustdv asks for <code>&amp;str</code> in a signature, it is promising to look and not keep; when it asks for <code>String</code>, it is telling you the name is moving in permanently.</p>
 <p>One Python habit does not survive the crossing at all: indexing into a string. <code>line[45]</code> was everyday Python; in Rust, <code>s[0]</code> on a <code>String</code> does not compile. Rust strings are UTF-8 encoded, so a character can occupy anywhere from one to four bytes, and Rust refuses to guess whether you want the byte or the character.³ When you need the characters, say so — <code>for ch in s.chars()</code> iterates over them, mirroring the Python book’s “string as an iterable” figure — and methods like <code>split</code>, <code>trim</code> (Python’s <code>strip</code>), <code>replace</code>, and <code>contains</code> cover the daily string chores you already know by their Python names.</p>
 <h2 id="hashmap-the-dictionary-minus-the-ordering-promise"><a class="header" href="#hashmap-the-dictionary-minus-the-ordering-promise">HashMap: the dictionary, minus the ordering promise</a></h2>
 <p><code>HashMap&lt;K, V&gt;</code> is the Python dict: store a value under a key, get it back later. It lives in the standard library’s collections module rather than the language itself, so it needs an import — your first <code>use</code> statement doing real work.</p>
