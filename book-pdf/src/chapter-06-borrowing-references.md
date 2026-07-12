@@ -11,7 +11,7 @@ But that model, taken alone, is unlivable. A scoreboard that must *own* every tr
 A shared reference is written `&T` — "a reference to a T" — and you create one with `&`:
 
 ```rust
-# Figure 1: Shared references — everyone may look, nobody may touch
+// Figure 1: Shared references — everyone may look, nobody may touch
 
 struct Transaction {
     data: u8,
@@ -54,7 +54,7 @@ If you want a Python analogy, `&T` is what every Python reference *pretended* to
 Sometimes touching is the point. A driver that receives a transaction may legitimately need to fill in a timestamp; a BFM may need to update a field before sending. For write access you need the second kind of reference, `&mut T` — an **exclusive reference**:
 
 ```rust
-# Figure 2: An exclusive reference grants write access
+// Figure 2: An exclusive reference grants write access
 
 struct Transaction {
     data: u8,
@@ -103,7 +103,7 @@ Recall the pattern the Python book told you never to write: a shared `transactio
 We cannot yet write real concurrent tasks in Rust — the executor and `spawn` arrive in Part II — but we do not need them to expose the bug, because the bug was never really about tasks. It was about *two live accessors of one value, one of them a writer, with no enforced order*. We can write exactly that in six lines, giving the monitor its write access and the scoreboard its read access, just as the Python version did:
 
 ```rust
-# Figure 3: Two tasks' worth of access to one value -- the borrow checker objects
+// Figure 3: Two tasks' worth of access to one value -- the borrow checker objects
 
 fn main() {
     let mut transaction_data: Option<u8> = None;
@@ -148,7 +148,7 @@ Sit with what just happened. The Python book documented this bug, explained why 
 The Python fix was an `Event`: the monitor writes, *then* sets the event; the consumer awaits the event, *then* reads. Notice what the `Event` actually contributed — it forced the write and the read into a definite order, so that the writer was finished before the reader began. The borrow checker demands precisely the same thing, and in straight-line code you provide it the same way: sequence the accesses so they do not overlap.
 
 ```rust
-# Figure 4: The same actors, with the ordering made real
+// Figure 4: The same actors, with the ordering made real
 
 fn main() {
     let mut transaction_data: Option<u8> = None;

@@ -11,7 +11,7 @@ Rust has the same two ideas, reorganized around one feature: the **iterator**. A
 A closure is a function without a name, written inline, that can use the variables around it. Python had these in two flavors: `lambda x: x + 1` for one-liners, and nested `def` for anything longer. Rust has one syntax for both. The parameters go between vertical bars, and the body follows.
 
 ```rust
-# Figure 1: A closure is an unnamed function in a variable
+// Figure 1: A closure is an unnamed function in a variable
 
 fn main() {
     let add_one = |x: u32| x + 1;
@@ -45,7 +45,7 @@ Rust closures also capture outer variables, but here is the difference: *capturi
 Watch the three modes in order. First, a closure that only reads.
 
 ```rust
-# Figure 2: A closure that reads captures by shared borrow
+// Figure 2: A closure that reads captures by shared borrow
 
 fn main() {
     let ops = vec!["ADD", "AND", "XOR", "MUL"];
@@ -68,7 +68,7 @@ still mine: 4 ops
 `show` borrowed `ops` the way any `&Vec` would, so we can call it repeatedly and still use `ops` afterward. Second, a closure that mutates.
 
 ```rust
-# Figure 3: A closure that mutates captures by exclusive borrow
+// Figure 3: A closure that mutates captures by exclusive borrow
 
 fn main() {
     let mut errors = Vec::new();
@@ -92,7 +92,7 @@ Two things changed. The closure itself must be declared `let mut`, because calli
 Third, a closure that takes ownership. Sometimes a closure must own its captures — most often because it will outlive the scope it was created in, which is precisely the situation when you store a closure in a struct or hand it to another task. The `move` keyword forces the transfer.
 
 ```rust
-# Figure 4: A move closure takes ownership of its captures
+// Figure 4: A move closure takes ownership of its captures
 
 fn main() {
     let test_name = String::from("alu_smoke_test");
@@ -133,7 +133,7 @@ even_squares = [nn**2 for nn in range(11) if nn % 2 == 0]
 A comprehension has four parts: an expression, a variable, an iterator, and a filter. Rust has no comprehension syntax. Instead it lets you take those same four parts and chain them left to right as method calls on the iterator — each method taking, naturally, a closure.
 
 ```rust
-# Figure 5: The list comprehension, as an iterator chain
+// Figure 5: The list comprehension, as an iterator chain
 
 fn main() {
     let even_squares: Vec<u32> = (0..=10)
@@ -155,7 +155,7 @@ Read the chain aloud and it is the comprehension in sentence order: take the ran
 The Python book's dictionary comprehension ports the same way. `{ii : ii**3 for ii in range(4)}` becomes a chain that maps each number to a `(key, value)` pair and collects into a `HashMap`:
 
 ```rust
-# Figure 6: The dictionary comprehension, collected into a HashMap
+// Figure 6: The dictionary comprehension, collected into a HashMap
 
 use std::collections::HashMap;
 
@@ -178,7 +178,7 @@ Two things to notice. `collect()` is doing something quietly remarkable: the *sa
 One more adapter completes the everyday set. Where `map` transforms each element and `filter` drops some, **`fold`** boils the whole stream down to a single value: it takes a starting accumulator and a closure that combines the accumulator with each element in turn. Here is a scoreboard-flavored example — counting mismatches in a list of (expected, actual) pairs:
 
 ```rust
-# Figure 7: fold reduces a stream to one value
+// Figure 7: fold reduces a stream to one value
 
 fn main() {
     let results = [(0x55u16, 0x55u16), (0x100, 0x100), (0x0FE, 0x0FF)];
@@ -213,7 +213,7 @@ Rust has no `yield` statement.² What it has instead is the `Iterator` trait —
 Any type that implements `Iterator` works in a `for` loop, chains with every adapter above, and collects into collections. The Python book's favorite generator was Fibonacci, so let us port it. Where Python kept `lastnumb` and `numb` alive between `yield`s inside a paused function, Rust keeps them as fields in a struct, and `next()` advances the state one step per call.
 
 ```rust
-# Figure 8: The Fibonacci generator, as an Iterator implementation
+// Figure 8: The Fibonacci generator, as an Iterator implementation
 
 struct Fibonacci {
     curr: u64,
@@ -261,7 +261,7 @@ def operand_pairs(n):
 And in Rust, as a function returning `impl Iterator`:
 
 ```rust
-# Figure 9: A TinyALU operand-pair stream, replacing a generator function
+// Figure 9: A TinyALU operand-pair stream, replacing a generator function
 
 fn operand_pairs(n: u8) -> impl Iterator<Item = (u8, u8)> {
     (0..n).flat_map(move |aa| (0..n).map(move |bb| (aa, bb)))
@@ -291,7 +291,7 @@ Everything so far has passed closures *downward* — into `map`, into `filter`, 
 Because every closure has its own unwritable type, storing one takes a trait object — Chapter 10's `dyn`, boxed up: `Box<dyn Fn(u8, u8) -> u16>` is "some heap-allocated callable, taking two `u8`s, returning a `u16`; I don't know or care which one." Here is a toy checker whose *prediction function is data*:
 
 ```rust
-# Figure 10: A struct that carries its behavior as a closure
+// Figure 10: A struct that carries its behavior as a closure
 
 struct Checker {
     predict: Box<dyn Fn(u8, u8) -> u16>,

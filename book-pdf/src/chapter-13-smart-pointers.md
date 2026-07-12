@@ -11,7 +11,7 @@ The answer is that the rules are absolute but the *enforcement point* is negotia
 The simplest smart pointer barely earns the name. `Box<T>` puts a value on the heap and owns it — one owner, moved and dropped exactly like everything in Chapter 5. The only thing that changed is *where the bytes live*.
 
 ```rust
-# Figure 1: A Box owns its value on the heap — everything else is Chapter 5
+// Figure 1: A Box owns its value on the heap — everything else is Chapter 5
 
 struct Transaction {
     a: u8,
@@ -61,7 +61,7 @@ print(sys.getrefcount(a))
 Rust's `Rc<T>` — *reference counted* — is exactly this mechanism, with two differences: you opt into it per value instead of paying for it everywhere, and the increments happen only where you can see them. `Rc::new` wraps a value and starts the count at one. `Rc::clone` does *not* copy the value — it copies the *handle* and increments the count, which is precisely what Python's `b = a` did behind your back. When each `Rc` handle is dropped, the count decrements; at zero, the value is dropped. It is CPython's memory management, offered à la carte.
 
 ```rust
-# Figure 3: Rc::clone increments a refcount — on purpose, where you can see it
+// Figure 3: Rc::clone increments a refcount — on purpose, where you can see it
 
 use std::rc::Rc;
 
@@ -97,7 +97,7 @@ Read figure 3 as a negotiation with Chapter 5. That chapter's rule — one value
 So can several components share a BFM this way? Almost. There is a catch, and it is the same catch Chapter 6 stamped into `&T`: sharing is a *reader's* privilege.
 
 ```rust
-# Figure 4: Shared owners are readers — Rc will not hand out write access
+// Figure 4: Shared owners are readers — Rc will not hand out write access
 
 use std::rc::Rc;
 
@@ -134,7 +134,7 @@ Everything the borrow checker has done so far, it has done at compile time, by p
 A `RefCell<T>` wraps a value and replaces `&`/`&mut` with two accessor methods: `borrow()` returns a read handle, `borrow_mut()` returns a write handle, and the cell *counts* its outstanding loans. Many readers, or one writer — enforced by a counter at the door instead of a proof in the compiler.
 
 ```rust
-# Figure 5: Interior mutability — mutation through an immutable binding
+// Figure 5: Interior mutability — mutation through an immutable binding
 
 use std::cell::RefCell;
 
@@ -161,7 +161,7 @@ Look hard at the first line of `main`: there is no `mut`. Since Chapter 3, that 
 And what happens when the rule is violated? At compile time, a violation was a program that never existed. At runtime, the program exists — it is halfway through a simulation — so the only honest response left is to stop:
 
 ```rust
-# Figure 6: The borrow checker at runtime — a panic replaces the compile error
+// Figure 6: The borrow checker at runtime — a panic replaces the compile error
 
 use std::cell::RefCell;
 
@@ -200,7 +200,7 @@ Now stack them. `Rc` gave us shared ownership with read-only access; `RefCell` g
 Chapter 5 opened with a Python figure that proved `b = a` gives two names for one mutable object, and then showed Rust refusing to compile the same experiment. We have been in debt to that figure for eight chapters. Time to pay it off:
 
 ```rust
-# Figure 7: Chapter 5's Python experiment, finally legal in Rust — with its costs itemized
+// Figure 7: Chapter 5's Python experiment, finally legal in Rust — with its costs itemized
 
 use std::cell::RefCell;
 use std::rc::Rc;

@@ -41,7 +41,7 @@ Here is the rule the rest of this book stands on:
 That last clause is the shock. Let's take the shock now, on purpose, with the compiler watching. Figure 2 is the two-names experiment from figure 1, translated into Rust.
 
 ```rust
-# Figure 2: Assignment moves — and the old name is gone
+// Figure 2: Assignment moves — and the old name is gone
 
 fn main() {
     let a = String::from("ADD 5 3");
@@ -81,7 +81,7 @@ Notice, too, the compiler's parting suggestion: `a.clone()`. It has read your mi
 If every value has exactly one owner, then "who frees this?" has a mechanical answer: the owner does, at the moment it goes out of scope. Rust calls this **dropping** the value, and it is as deterministic as the closing brace it happens at.
 
 ```rust
-# Figure 3: Values die at the closing brace — every time, on time
+// Figure 3: Values die at the closing brace — every time, on time
 
 fn main() {
     {
@@ -109,7 +109,7 @@ The output is unremarkable; the guarantee is not. That string's memory was retur
 A fair objection: you've been assigning integers back and forth since Chapter 3 without the compiler saying a word about moves. Figure 4 confirms it.
 
 ```rust
-# Figure 4: Copy types don't move — small values are simply copied
+// Figure 4: Copy types don't move — small values are simply copied
 
 fn main() {
     let a: u8 = 5;
@@ -134,7 +134,7 @@ Every mechanism in this chapter has been abstract enough to shrug at. So let's m
 We need a transaction type. Structs get their own chapter (Chapter 7); for today, read the first four lines of figure 5 as "a Python class with only data and no methods" — fields, types, no ceremony. The `op` field really wants to be a proper enum, and in Chapter 7 it becomes one; a `u8` stands in for now. And we need the two parties: a `scoreboard` function that takes a `Transaction` *by value*, and a `main` that plays the monitor. In pyuvm these would be components connected by an analysis port; here in our cargo playground, two functions are enough to expose the question that matters.
 
 ```rust
-# Figure 5: The monitor hands off a transaction — and learns what "hands off" means
+// Figure 5: The monitor hands off a transaction — and learns what "hands off" means
 
 struct Transaction {
     a: u8,
@@ -186,7 +186,7 @@ Here is what I want you to see: **the compiler is not reporting a syntax mistake
 The compiler suggested it twice, so let's take the hint. Adding `#[derive(Clone)]` above the struct asks the compiler to write a field-by-field copy routine for us (that one magic line gets a full explanation in Chapters 10 and 21; for now, "please generate the copying code" is the whole story). Then `.clone()` makes an independent duplicate wherever we ask.
 
 ```rust
-# Figure 6: The monitor keeps a copy — explicitly
+// Figure 6: The monitor keeps a copy — explicitly
 
 #[derive(Clone)]
 struct Transaction {

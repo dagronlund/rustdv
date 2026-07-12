@@ -19,7 +19,7 @@ A `Vec<T>` is Rust's growable array: the analog of the Python list, and every bi
 Let's build exactly that. Figure 1 creates a log of the `AluCommand` transactions we defined in Chapter 7 and pushes commands into it, the way a monitor might record everything it sees.¹
 
 ```rust
-# Figure 1: A Vec<AluCommand> as a transaction history log
+// Figure 1: A Vec<AluCommand> as a transaction history log
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Ops { Add = 1, And = 2, Xor = 3, Mul = 4 }
@@ -48,7 +48,7 @@ Familiar territory: `push` is `append`, `len()` is `len()`, `log[0]` is `log[0]`
 Now the part that is genuinely new. In Python, a list holds *references*. When you append a transaction to a list, the list gets one more name for an object that still has all its other names; the monitor keeps its handle, the scoreboard keeps its handle, and the GC sorts out the afterlife. A `Vec` holds *values*. When you push a transaction into a `Vec`, the transaction **moves** into the `Vec` — the vector becomes the owner, exactly as if you had assigned it to a new variable in Chapter 5. Figure 2 shows what happens when we forget.
 
 ```rust
-# Figure 2: Pushing is a move
+// Figure 2: Pushing is a move
 
 fn main() {
     let mut log: Vec<AluCommand> = Vec::new();
@@ -86,7 +86,7 @@ One more `Vec` note before we move on: indexing past the end panics, where Pytho
 The `for` loop over a `Vec` looks exactly like Python — and hides the chapter's second lesson in a single character. Figure 3 loops over the log the obvious way and then tries to use it afterward.
 
 ```rust
-# Figure 3: A for loop can consume the collection
+// Figure 3: A for loop can consume the collection
 
 fn main() {
     let log = vec![
@@ -121,7 +121,7 @@ help: consider borrowing to avoid moving into the for loop
 `for cmd in log` *consumes* the vector: ownership of the whole `Vec` moves into the loop, each element moves into `cmd` in turn, and when the loop ends there is nothing left. That is occasionally exactly what you want — a scoreboard draining its queue at end of test, say. But most of the time you want Python's behavior, looking at the elements while leaving the collection intact, and the compiler's `help` line hands you the idiom: borrow it.
 
 ```rust
-# Figure 4: Borrowing iteration leaves the Vec intact
+// Figure 4: Borrowing iteration leaves the Vec intact
 
 fn main() {
     let log = vec![
@@ -162,7 +162,7 @@ The two types are:
 The reason beginners meet the confusing one first: **every string literal is a `&str`.** When you write `"TinyALU"`, those seven bytes are baked into your compiled program itself, and the literal is a borrowed slice pointing into that program memory. It costs nothing, it lives forever, and it is read-only. Figure 5 shows both types and the traffic between them.
 
 ```rust
-# Figure 5: String literals are borrowed; String is owned
+// Figure 5: String literals are borrowed; String is owned
 
 fn main() {
     let dut: &str = "TinyALU";            // borrowed slice into program memory
@@ -189,7 +189,7 @@ Now the question that actually bites: when you write a function that takes text,
 The reasoning is pure Chapter 6. A function that only *reads* a name has no business demanding ownership of it — that would force every caller to give up (or clone) their string just so you could look at it. A parameter of type `&str` says "lend me a view," and it is maximally accepting: a `&String` coerces to a `&str` automatically, so callers can pass a literal, a slice, or a borrowed `String`, all with no copying. Figure 6 shows the shape.
 
 ```rust
-# Figure 6: Take &str; accept everything
+// Figure 6: Take &str; accept everything
 
 fn report_pass(test_name: &str) {
     println!("PASSED: {}", test_name);
@@ -221,7 +221,7 @@ One Python habit does not survive the crossing at all: indexing into a string. `
 The Python book's signature dictionary example counted the letters in `"Mississippi"`, using `KeyError` (and then `setdefault`) to handle the first time each letter appeared. Our version counts something a verification engineer actually tallies: how many times the testbench has exercised each ALU operation — the raw material of functional coverage. Rust's replacement for the whole `try`/`except KeyError`/`setdefault` dance is the *entry API*, and it is one line.
 
 ```rust
-# Figure 7: A HashMap<Ops, u32> op-frequency counter
+// Figure 7: A HashMap<Ops, u32> op-frequency counter
 
 use std::collections::HashMap;
 

@@ -14,3 +14,7 @@
 - [Smart Pointers](chapter-13-smart-pointers.md)
 - [Modules, Crates, and Cargo](chapter-14-modules-crates-cargo.md)
 
+---
+
+[Interlude: The Complete TinyALU Testbench](interlude-tinyalu-testbench.md)
+

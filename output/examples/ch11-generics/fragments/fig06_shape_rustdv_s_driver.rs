@@ -2,7 +2,9 @@
 // "The shape of rustdv's driver (preview — signatures only)"
 
 
-pub struct Driver<REQ, RSP = REQ> {
-    pub seq_item_port: SeqItemPort<REQ, RSP>,
+pub struct SeqItemPort<REQ, RSP = REQ> { /* channel endpoints — elided */ }
+
+pub struct AluDriver {                       // your driver: a plain struct...
+    seq_item_port: SeqItemPort<AluCommand>,  // ...that owns a typed port
     // ...
 }

@@ -15,7 +15,7 @@ Suppose we want the largest value in a slice. For the TinyALU's `u8` operands we
 Let's write it the way you would naively write it, because the failure is the lesson.
 
 ```rust
-# Figure 1: A generic function, first attempt — the compiler wants proof
+// Figure 1: A generic function, first attempt — the compiler wants proof
 
 fn largest<T>(list: &[T]) -> &T {
     let mut largest = &list[0];
@@ -49,7 +49,7 @@ Read the declaration first: `fn largest<T>` says "this function is defined for s
 The fix is in the compiler's own `help` text, and it is Chapter 10's vocabulary: a **trait bound**. `T: PartialOrd` narrows "any type" to "any type that implements `PartialOrd`" — the ordering trait from Chapter 10's dunder table, the one behind `<` and `>`.
 
 ```rust
-# Figure 2: The bound is the fix — and the documentation
+// Figure 2: The bound is the fix — and the documentation
 
 fn largest<T: PartialOrd>(list: &[T]) -> &T {
     let mut largest = &list[0];
@@ -88,7 +88,7 @@ The bound does double duty, and this is worth slowing down for. To the *compiler
 A bound can require several traits at once, joined with `+`. Here is a function a scoreboard might want — compare an expected transaction against an actual one, and complain legibly on a mismatch. Comparing needs `PartialEq`; complaining legibly needs `Debug`. Both go in the contract:
 
 ```rust
-# Figure 3: Multiple bounds with a where clause
+// Figure 3: Multiple bounds with a where clause
 
 use std::fmt::Debug;
 
@@ -122,7 +122,7 @@ We could have written `fn check_match<T: PartialEq + Debug>(...)` and it would m
 Type parameters work on structs the same way, and you already know the syntax from the consumer side — `Vec<T>` — so producing one holds no surprises. Here is a register model wide enough for any leg of the TinyALU:
 
 ```rust
-# Figure 4: A generic struct — one definition, many widths
+// Figure 4: A generic struct — one definition, many widths
 
 struct Register<T> {
     value: T,
@@ -168,7 +168,7 @@ So what does `largest` cost? It is one function that works on three types — su
 Nothing is, and the reason is the best idea in this chapter. At compile time, the compiler finds every concrete type your program actually uses with `largest`, and generates a separate, specialized copy of the function for each one — a process called **monomorphization**, "making single-formed." Your generic source code is a stencil; the compiler stamps it out once per type. Conceptually, figure 2 compiles as if you had written:
 
 ```rust
-# Figure 5: What the compiler generates from figure 2 (conceptually — you never see this)
+// Figure 5: What the compiler generates from figure 2 (conceptually — you never see this)
 
 fn largest_u8(list: &[u8]) -> &u8 {
     // ... same body, with T = u8 throughout
@@ -189,28 +189,30 @@ Set the two models side by side, because this is the chapter's picture. Python a
 
 Honesty requires the other side of the ledger, and it is real but modest: stamping out copies takes compile time and makes the binary larger. A generic function used with thirty types is compiled thirty times. For testbench code — a handful of transaction types, not thirty — you will notice this approximately never, but now you know why heavily generic Rust code compiles slower than it runs.
 
-## The destination: Driver<REQ, RSP>
+## The destination: SeqItemPort<REQ, RSP>
 
 Part I keeps promising that these language chapters are load-bearing, so let me show you the load. In pyuvm, `uvm_driver` had a `seq_item_port`, and what came out of `get_next_item()` was — whatever the sequencer sent. If a misconfigured test wired a memory sequence to the ALU agent, the driver discovered it at runtime, usually as an `AttributeError` deep in `run_phase()`, and the Python book taught you the discipline to avoid it.
 
-rustdv's driver states its requirements in its name. Signatures only — Part IV builds this for real:
+rustdv's driver states its requirements in its port's type. Signatures only — Part IV builds this for real:
 
 ```rust
-# Figure 6: The shape of rustdv's driver (preview — signatures only)
+// Figure 6: The shape of rustdv's driver (preview — signatures only)
 
-pub struct Driver<REQ, RSP = REQ> {
-    pub seq_item_port: SeqItemPort<REQ, RSP>,
+pub struct SeqItemPort<REQ, RSP = REQ> { /* channel endpoints — elided */ }
+
+pub struct AluDriver {                       // your driver: a plain struct...
+    seq_item_port: SeqItemPort<AluCommand>,  // ...that owns a typed port
     // ...
 }
 ```
 
-Everything in this chapter is in that one line. Two type parameters, because a driver's conversation has two directions: `REQ` is the request transaction it pulls from the sequencer, `RSP` the response it may send back. Type parameters can have *defaults* — `RSP = REQ` says "if you don't name a response type, it's the same as the request," so the common no-response driver is just `Driver<AluCommand>`. And the port inside is a generic struct over the same two parameters, so the driver, its port, and the sequencer on the far end must all agree on the transaction types *or the testbench does not compile*. The wrong-sequence-on-the-wrong-agent bug does not become an error message. It becomes unwritable.
+Everything in this chapter is in the first line. Two type parameters, because a driver's conversation has two directions: `REQ` is the request transaction it pulls from the sequencer, `RSP` the response it may send back. Type parameters can have *defaults* — `RSP = REQ` says "if you don't name a response type, it's the same as the request," so the common no-response port is just `SeqItemPort<AluCommand>`. There is no `uvm_driver` base class to extend — your driver is an ordinary struct that owns a port — but the port, the sequencer on its far end, and every transaction that crosses between them must agree on the types *or the testbench does not compile*. The wrong-sequence-on-the-wrong-agent bug does not become an error message. It becomes unwritable.
 
-That is the trade this book keeps making, in its purest form yet: the duck-typed flexibility of pyuvm's driver — any port, any transaction, sort it out at runtime — exchanged for a signature that is documentation, contract, and proof all at once. And thanks to monomorphization, `Driver<AluCommand>` compiles to code as direct as a driver hand-written for ALU commands alone, because that is literally what the compiler makes of it.
+That is the trade this book keeps making, in its purest form yet: the duck-typed flexibility of pyuvm's driver — any port, any transaction, sort it out at runtime — exchanged for a signature that is documentation, contract, and proof all at once. And thanks to monomorphization, `SeqItemPort<AluCommand>` compiles to code as direct as a port hand-written for ALU commands alone, because that is literally what the compiler makes of it.
 
 ## Summary
 
-Generics let one definition serve many types: type parameters in angle brackets stand for a type named later, on functions (`fn largest<T: PartialOrd>(list: &[T]) -> &T`) and on structs (`Register<T>`, and the `Vec<T>`, `Option<T>`, and `Result<T, E>` you have used since Chapter 8). Trait bounds are the contract — `T: PartialOrd`, or several requirements joined with `+`, or a `where` clause when the list grows — and they replace Python's duck typing with the same idea checked at compile time: if it implements the bound, it's a duck, and the compiler verifies the feathers before the program runs. Monomorphization is why none of this costs anything at runtime: the compiler stamps out a specialized copy of the generic code for each concrete type used, so every call dispatches directly, in exchange for some compile time and binary size. And `Driver<REQ, RSP = REQ>` is where the book is taking all of it — a driver whose transaction types are part of its type, so mismatched testbench plumbing fails at compile time instead of mid-regression.
+Generics let one definition serve many types: type parameters in angle brackets stand for a type named later, on functions (`fn largest<T: PartialOrd>(list: &[T]) -> &T`) and on structs (`Register<T>`, and the `Vec<T>`, `Option<T>`, and `Result<T, E>` you have used since Chapter 8). Trait bounds are the contract — `T: PartialOrd`, or several requirements joined with `+`, or a `where` clause when the list grows — and they replace Python's duck typing with the same idea checked at compile time: if it implements the bound, it's a duck, and the compiler verifies the feathers before the program runs. Monomorphization is why none of this costs anything at runtime: the compiler stamps out a specialized copy of the generic code for each concrete type used, so every call dispatches directly, in exchange for some compile time and binary size. And `SeqItemPort<REQ, RSP = REQ>` is where the book is taking all of it — a driver whose port carries its transaction types in its type, so mismatched testbench plumbing fails at compile time instead of mid-regression.
 
 We now have types that carry proofs. What we do not yet have is Rust's way of passing *behavior* around — the thing Python did every time it handed a function to `sorted(key=...)` or stored a coroutine to run later, and the thing rustdv's factory will do for a living. Chapter 12 takes up closures and iterators, and if you enjoyed watching the compiler specialize your generics for free, you are going to like what it does to a `for` loop.
 

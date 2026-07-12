@@ -13,7 +13,7 @@ This chapter rebuilds that material piece by piece: the Animal menagerie, the `s
 A trait is a named list of method signatures that a type can opt into. It declares *what* a type can do; a separate `impl` block declares that a particular type does it. Here is the Python book's Animal example, rebuilt.
 
 ```rust
-# Figure 1: Shared behavior through a trait, not a base class
+// Figure 1: Shared behavior through a trait, not a base class
 
 trait Animal {
     fn species(&self) -> &str;
@@ -62,7 +62,7 @@ The Python book's most instructive inheritance bug was `SmallDog`. It extended `
 Rust closes this bug at both ends. First: struct fields are declared in the struct, not created by whichever initializer happens to run. There is no execution order that leaves a `SmallDog` half-built, because a struct that is missing a field does not compile. Second: when a `SmallDog` wants to reuse `Dog`'s behavior, it does so by *containing* a `Dog` — composition — and delegating to it explicitly.¹
 
 ```rust
-# Figure 2: SmallDog by composition — delegation replaces super()
+// Figure 2: SmallDog by composition — delegation replaces super()
 
 struct SmallDog {
     dog: Dog,    // a SmallDog HAS the dog parts
@@ -95,7 +95,7 @@ The Python book used multiple inheritance for Pat, the firefighter with kids: `c
 In Rust, "Pat has two roles" is simply "Pat implements two traits." There is nothing to diagram.
 
 ```rust
-# Figure 3: Multiple roles as multiple trait implementations
+// Figure 3: Multiple roles as multiple trait implementations
 
 trait Parent {
     fn kiss(&self);
@@ -143,16 +143,16 @@ Here is where this chapter starts paying rent for Part IV. Think back to how pyu
 That pattern — "here is the full interface; override what you use" — is exactly what default methods are for, and it is how rustdv's `Component` lifecycle trait is designed. A preview, signatures only (Chapter 24 does this properly):
 
 ```rust
-# Figure 4: The shape of rustdv's Component trait (preview — signatures only)
+// Figure 4: The shape of rustdv's Component trait (preview — signatures only)
 
 pub trait Component {
-    fn start(&mut self, ctx: &mut RunCtx);            // required: every component runs
+    fn start(&mut self, ctx: &mut RunCtx) {}          // default: nothing to run
     fn check(&mut self, errors: &mut CheckSink) {}    // default: do nothing
     fn report(&self) {}                               // default: do nothing
 }
 ```
 
-A scoreboard overrides `check()`; a driver doesn't, and inherits the empty default — the same division of labor the Python book taught in its `uvm_component` chapter, with one upgrade. In pyuvm, the empty methods lived in a base class you extended, so getting them required joining the inheritance hierarchy. In rustdv, they live in a trait you implement, so a component is just a plain struct — its fields are its children, per Chapter 24 — that opts into the lifecycle. Same methodology, no family tree.
+A driver overrides `start()`; a scoreboard overrides `check()`; each inherits the empty default for every phase it ignores, and a purely structural component — an env that exists to hold its children — can implement the trait without overriding anything at all. The same division of labor the Python book taught in its `uvm_component` chapter, with one upgrade. In pyuvm, the empty methods lived in a base class you extended, so getting them required joining the inheritance hierarchy. In rustdv, they live in a trait you implement, so a component is just a plain struct — its fields are its children, per Chapter 24 — that opts into the lifecycle. Same methodology, no family tree.
 
 ## Deriving: the compiler writes the boring impls
 
@@ -161,7 +161,7 @@ The Python book taught you a set of magic methods — the dunders — because tr
 Let's put the TinyALU's transaction under the microscope.
 
 ```rust
-# Figure 5: Derived traits on the TinyALU command transaction
+// Figure 5: Derived traits on the TinyALU command transaction
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Ops {
@@ -197,7 +197,7 @@ One line above the struct bought us three implementations. `Clone` gives `cmd.cl
 That leaves `__str__` — the human-friendly rendering. Its Rust counterpart is the `Display` trait, and here the compiler makes you write it yourself, on purpose: Rust's position is that a machine can guess how to *dump* your type but not how to *present* it. Implementing `Display` is our first hand-written implementation of a standard-library trait, and it looks like every trait impl you've seen this chapter:
 
 ```rust
-# Figure 6: Implementing Display by hand — the __str__ of Rust
+// Figure 6: Implementing Display by hand — the __str__ of Rust
 
 use std::fmt;
 
@@ -247,7 +247,7 @@ Rust gives two answers, and choosing between them is a skill this book will exer
 **Answer one: generics.** Write a function with a type parameter, and *bound* the parameter by the trait:
 
 ```rust
-# Figure 7: Generic function — dispatch resolved at compile time
+// Figure 7: Generic function — dispatch resolved at compile time
 
 fn check_in<T: Animal>(animal: &T) {
     animal.make_sound();
@@ -270,7 +270,7 @@ The cat says 'miāo'
 **Answer two: trait objects.** Sometimes you need one collection holding a mixture of types — a Python list held anything, and a kennel holds whatever shows up. For that, Rust erases the concrete type behind a pointer:
 
 ```rust
-# Figure 8: Trait objects — dispatch resolved at runtime
+// Figure 8: Trait objects — dispatch resolved at runtime
 
 fn main() {
     let kennel: Vec<Box<dyn Animal>> = vec![

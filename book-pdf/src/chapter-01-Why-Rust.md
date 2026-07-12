@@ -52,7 +52,7 @@ If your testbenches are small, your regressions short, and your team fluent in P
 
 ## Code examples
 
-The conventions are the ones you know. Every example has a figure number; code is followed by `--` and then its output. Examples live in the `rust4uvm_examples` repository, in directories named after their chapters, with instructions in each `README.md`. Early chapters use standalone cargo projects the way the Python book used Jupyter notebooks; from Chapter 17 on, examples are simulation directories.
+The conventions are the ones you know. Every example has a figure number; code is followed by `--` and then its output. Examples live in the book's `rustdv-examples` repository, in directories named after their chapters, with instructions in each `README.md`. Early chapters use standalone cargo projects the way the Python book used Jupyter notebooks; from Chapter 17 on, examples are simulation directories.
 
 We should not break a two-book tradition. In figure 1, we create a program with `cargo new`, Rust's project generator — meet `cargo` now, because like `pip`, `venv`, `make`, and `pytest` fused into one tool, it will be everywhere.
 
@@ -66,7 +66,7 @@ We should not break a two-book tradition. In figure 1, we create a program with 
 `cargo new` writes a tiny project containing `src/main.rs`, which is where figure 2 lives. Where Python let us type `print("Hello, world.")` naked at a prompt, Rust asks for a function — `fn main()` is where every Rust program begins. The exclamation point on `println!` marks it as a *macro* rather than a function, a distinction that will matter a great deal in Chapter 21 and not at all before then.
 
 ```rust
-# Figure 2: The classic first program
+// Figure 2: The classic first program
 
 fn main() {
     println!("Hello, world.");

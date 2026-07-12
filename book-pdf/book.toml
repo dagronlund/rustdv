@@ -9,5 +9,5 @@ additional-css = ["github-markdown.css"]
 
 
 [output.pdf]
-print-backgorund = true
+print-background = true
 

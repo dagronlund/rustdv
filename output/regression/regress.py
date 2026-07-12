@@ -34,9 +34,13 @@ EXAMPLES = os.path.join(ROOT, CFG["examples"])
 GOLDENS = os.path.join(HERE, "goldens")
 TESTS = os.path.join(HERE, "tests")
 
+# Caption markers: `// Figure N:` in rust blocks (a real Rust comment —
+# mdBook hides `#`-prefixed lines in rust blocks as "boring" lines, which
+# made the captions invisible in the rendered book); `# Figure N:` in
+# text/python blocks, where # is visible and idiomatic.
 FIG_RE = re.compile(
-    r"```(rust|text|python)\n(# Figure (\d+): ([^\n]+))\n(.*?)```"
-    r"(?:\n(?:--\n)?\n?```text\n(?!# Figure)(?:--\n)?(.*?)```)?",
+    r"```(rust|text|python)\n((?:#|//) Figure (\d+): ([^\n]+))\n(.*?)```"
+    r"(?:\n(?:--\n)?\n?```text\n(?!(?:#|//) Figure)(?:--\n)?(.*?)```)?",
     re.S,
 )
 

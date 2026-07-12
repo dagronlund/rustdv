@@ -15,7 +15,7 @@ Rust's `5` has a type too — but the type exists only in the compiler's head. E
 This means the checking that Python spreads across the whole runtime, Rust performs all at once, up front. The Python book demonstrated dynamic typing with a program that called a string method on an integer — and the key detail was *when* the program failed. Let's port that exact example. In figure 1, `ends_with` is a real method on Rust strings, just as `endswith()` was in Python, and calling a method looks exactly the way it looked in Python: `mystring.ends_with("orld")`. Then we try it on an integer.
 
 ```rust
-# Figure 1: Calling an undefined method
+// Figure 1: Calling an undefined method
 
 fn main() {
     let mystring = "Hello, World";
@@ -43,7 +43,7 @@ Compare this to the Python book's version of the same mistake. There, the progra
 Here, nothing ran. Not the broken line, and — look carefully — not the correct lines either. Rust refused to produce a program at all. That is the trade in its purest form: Python checks each operation the moment it happens, so a mistake costs you a run; Rust checks every operation before any of them happen, so a mistake costs you a compile. In Chapter 1 we noted that for verification work this trade is nearly a gift, because in our world "a run" is not a millisecond of interpreter time — it is a simulator license, an elaboration, and a lunch break. Delete the offending line, as in figure 2, and the program compiles and runs.
 
 ```rust
-# Figure 2: The corrected program
+// Figure 2: The corrected program
 
 fn main() {
     let mystring = "Hello, World";
@@ -69,7 +69,7 @@ When the Python interpreter raised an exception, it was reporting an accident th
 The catch is that this reviewer communicates in a format you have to learn to read, and reading it well is a genuine skill — the single most valuable skill in this book, which is why our figures will so often show error messages rather than output. Let's dissect one. Figure 3 makes a mistake with TinyALU flavor: an ADD of two 8-bit operands can carry into nine bits, so the result belongs in a `u16` — but we try to store it back into a `u8` register. This is precisely the assignment the Python book warned about in its history lesson, the one where SystemVerilog "will happily chop off the top eight bits."
 
 ```rust
-# Figure 3: The mistake SystemVerilog would have allowed
+// Figure 3: The mistake SystemVerilog would have allowed
 
 fn main() {
     let a: u8 = 0xFF;
@@ -107,7 +107,7 @@ Read it from the top, because the compiler writes for readers who do:
 Figure 4 takes the honest fix: our register was simply too small for an ADD result, so we widen it. The point of the figure is how little drama the fix involves once the message has told you both ends of the mismatch.
 
 ```rust
-# Figure 4: The corrected program
+// Figure 4: The corrected program
 
 fn main() {
     let a: u8 = 0xFF;
@@ -126,7 +126,7 @@ fn main() {
 The compiler's helpfulness extends past types into plain proofreading. The Python book admitted that a typo'd name in Python surfaces as a runtime `AttributeError`, possibly weeks later, possibly on the one branch of the testbench that only executes when the DUT misbehaves. In Rust:
 
 ```rust
-# Figure 5: The compiler as proofreader
+// Figure 5: The compiler as proofreader
 
 fn main() {
     let result = 42;
@@ -175,7 +175,7 @@ Which raises the obvious worry for anyone who lived through Python 2-to-3: what 
 **`clippy`** is the linter — `pylint`'s job — but with a compiler's leverage, since it analyzes the same typed, checked view of your program the compiler sees. It catches correctness hazards, but its everyday gift to a Rust learner is idiom: clippy knows what fluent Rust looks like and will tell you, kindly and specifically, when you have written Python in Rust syntax. Run it as `cargo clippy`; a representative complaint (output abridged) looks like this:
 
 ```rust
-# Figure 6: Clippy teaching idiom
+// Figure 6: Clippy teaching idiom
 
 fn main() {
     let done = true;

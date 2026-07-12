@@ -10,7 +10,7 @@ This chapter ports all of that to Rust, and then keeps going, because Rust has a
 Rust's `if` looks like Python's with the punctuation swapped: braces instead of indentation, and no colon. Like Python — and unlike C and SystemVerilog — Rust does not require parentheses around the condition. Unlike everybody, Rust *insists* on the braces, even for one-line bodies.
 
 ```rust
-# Figure 1: A Rust if statement
+// Figure 1: A Rust if statement
 
 fn main() {
     let name = "Roy";
@@ -28,7 +28,7 @@ Hey, you're not Danny.
 One difference matters more than it looks. Python happily tested any value for truth: `if nn:` meant "if `nn` is nonzero," `if my_list:` meant "if the list is nonempty." Rust conditions must be `bool` — actually, literally `bool`. Write `if nn {` where `nn` is an integer and the compiler stops you:
 
 ```rust
-# Figure 2: Rust has no truthiness
+// Figure 2: Rust has no truthiness
 
 fn main() {
     let nn = 5;
@@ -52,7 +52,7 @@ You will grumble about this for a week and then remember every testbench where `
 There is no `elif` keyword. Rust spells it `else if`, and a chain of them ports the Python book's switch replacement directly:
 
 ```rust
-# Figure 3: else if as a switch (for now)
+// Figure 3: else if as a switch (for now)
 
 fn main() {
     let (a, b) = (5, 5);
@@ -83,7 +83,7 @@ The Python book called `elif` a switch replacement "at the cost of more code." H
 Here is the first genuinely new idea. In Chapter 3 we met Rust's distinction between statements and expressions: an expression produces a value. In Rust, `if`/`else` *is an expression* — the whole construct evaluates to the value of whichever branch ran. That means you can bind it with `let`:
 
 ```rust
-# Figure 4: Conditional assignment — no ternary needed
+// Figure 4: Conditional assignment — no ternary needed
 
 fn main() {
     let aa = 5;
@@ -108,7 +108,7 @@ Python gave us two loops, `while` and `for`. Rust gives us three: `while`, `for`
 `while` works exactly as you expect, condition first, braces around the body. Here is the Python book's counting loop, ported:
 
 ```rust
-# Figure 5: A while loop in action
+// Figure 5: A while loop in action
 
 fn main() {
     let mut nn = 0;
@@ -130,7 +130,7 @@ Two Chapter 3 details show up here: `nn` needs `mut` because we reassign it, and
 Now the new one. The Python book emulated a do-while with `while True:` and a `break`. Rust looked at how often programmers write intentionally infinite loops — event loops, polling loops, driver loops that run until the test ends — and decided the pattern deserved its own keyword:
 
 ```rust
-# Figure 6: loop — the intentional infinite loop
+// Figure 6: loop — the intentional infinite loop
 
 fn main() {
     let mut nn = 0;
@@ -163,7 +163,7 @@ Python's `range()` was a constructor with three calling conventions. Rust builds
 The `for` loop iterates over a range just as Python's did:
 
 ```rust
-# Figure 7: Looping through numbers using a range
+// Figure 7: Looping through numbers using a range
 
 fn main() {
     for ii in 0..4 {
@@ -181,7 +181,7 @@ fn main() {
 Where is `step`? Ranges are iterators (a concept that transfers straight from the Python book's sequences chapters — Chapter 12 makes it rigorous), and iterators have adapter methods. `range(1, 14, 2)` becomes:
 
 ```rust
-# Figure 8: Stepping through a range
+// Figure 8: Stepping through a range
 
 fn main() {
     for ii in (1..14).step_by(2) {
@@ -205,7 +205,7 @@ Now the centerpiece. Python replaced `case`/`switch` with `elif` chains and call
 Start with the direct port. Figure 3's `else if` chain becomes:
 
 ```rust
-# Figure 9: match as a switch
+// Figure 9: match as a switch
 
 fn main() {
     let (a, b) = (5, 5);
@@ -236,7 +236,7 @@ Read it as: compare `operation` against each *pattern* on the left of a `=>`; ru
 Delete the `_` arm from a `match` and something remarkable happens. Here is a `match` on a raw op code — the TinyALU's four operations, numbered 1 through 4 as they were in the Python book's `Ops` IntEnum — with no wildcard:
 
 ```rust
-# Figure 10: The compiler catches missing cases
+// Figure 10: The compiler catches missing cases
 
 fn main() {
     let op_code: u8 = 2;
@@ -270,7 +270,7 @@ For a `u8`, exhaustiveness is a nice safety net. The reason this book teaches `m
 The left side of a `match` arm is not limited to constants. Patterns can be ranges — and here the TinyALU gives us a real example. Recall from the Python book that ADD, AND, and XOR complete in one cycle while MUL takes three. With op codes 1 through 4:
 
 ```rust
-# Figure 11: Matching on ranges
+// Figure 11: Matching on ranges
 
 fn main() {
     let op_code: u8 = 4;
@@ -293,7 +293,7 @@ Range patterns use the inclusive `..=` form, and you can also combine alternativ
 Patterns can also take structured data apart. Match on a tuple, and each position of the pattern matches the corresponding element — with `_` skipping positions you don't care about and plain names *binding* the values so the arm can use them:
 
 ```rust
-# Figure 12: Matching and destructuring a tuple
+// Figure 12: Matching and destructuring a tuple
 
 fn main() {
     let operands: (u8, u8) = (0, 200);

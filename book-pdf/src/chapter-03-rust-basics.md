@@ -20,7 +20,7 @@ Everything in this chapter goes inside `fn main()` in `src/basics/src/main.rs` u
 In Python, a variable is a name tag you can peel off one object and stick on another. In Rust, `let` creates a **binding**: it associates a name with a value, and — here is the first surprise — that binding is **immutable by default**. Assigning to it a second time is not merely discouraged. It does not compile.
 
 ```rust
-# Figure 2: Assigning twice to an immutable binding
+// Figure 2: Assigning twice to an immutable binding
 
 fn main() {
     let xx = 5;
@@ -50,7 +50,7 @@ help: consider making this binding mutable
 Read that error the way Chapter 2 taught you: it names the rule, points at both the first assignment and the offending one, and then *tells you the fix*. If you want a variable that varies, you ask for one with `mut`:
 
 ```rust
-# Figure 3: A mutable binding
+// Figure 3: A mutable binding
 
 fn main() {
     let mut xx = 5;
@@ -84,7 +84,7 @@ The scalar types you will actually use:
 Why should a verification engineer care, beyond nostalgia for SystemVerilog's `byte`? Because *your DUT already thinks this way*, and now your testbench can agree with it. The TinyALU's A and B legs are eight bits wide. In the Python book we drove them from an `int` and relied on discipline (and the BFM) to keep values in range — nothing in the language stopped a careless test from generating `a = 300`. In Rust, a TinyALU operand is a `u8`, and 300 *is not a value that type can hold*. The type system now knows something true about the hardware, and it never forgets it:
 
 ```rust
-# Figure 4: The TinyALU's A leg really is a u8
+// Figure 4: The TinyALU's A leg really is a u8
 
 fn main() {
     let aa: u8 = 0xFF;
@@ -114,7 +114,7 @@ One honest wrinkle while we are here: what happens when arithmetic *overflows* a
 Here is the Python book's very first figure, which showed that a `float` in an operation means a `float` result — `ii + ff` quietly promoted the `int`, and `ii/ii` produced a `float` even from two `int`s. Let's port it one-for-one and watch Rust refuse to play:
 
 ```rust
-# Figure 5: A float in operations means... a compile error
+// Figure 5: A float in operations means... a compile error
 
 fn main() {
     let ii: i32 = 1;
@@ -136,7 +136,7 @@ error[E0277]: cannot add a `f64` to `i32`
 Rust performs **no implicit numeric conversions**. Not int-to-float, not `u8`-to-`u16`, nothing. If you want a conversion, you write one, using the `as` keyword — and once you do, the rest of the ported figure behaves recognizably, with one telling difference in the last line:
 
 ```rust
-# Figure 6: The same figure, with the conversions made explicit
+// Figure 6: The same figure, with the conversions made explicit
 
 fn main() {
     let ii: i32 = 1;
@@ -158,7 +158,7 @@ In the Python original, `dd = ii/ii` printed `1.0` — division *always* returne
 The same strictness rewrites the Python book's augmented-assignment figure. In Python, `xx` started as an `int` at 1, and after `xx /= 4` it had silently become a `float` holding 1.5 — the variable changed *type* mid-flight. Watch the Rust version:
 
 ```rust
-# Figure 7: Augmented assignments — the type never changes
+// Figure 7: Augmented assignments — the type never changes
 
 fn main() {
     let mut xx = 1;
@@ -186,7 +186,7 @@ Same operators, same rhythm — Rust has `+=`, `*=`, `/=`, and friends, though l
 The Python book's constructor figure turned the string `"3.14159"` into a `float` by creating a new object: `pi = float("3.14159")`. Rust's version of that pattern is **shadowing**: declaring a *new* binding, with `let`, that reuses an old name.
 
 ```rust
-# Figure 8: Creating a number from a string, by shadowing
+// Figure 8: Creating a number from a string, by shadowing
 
 fn main() {
     let pi = "3.14159";
@@ -208,7 +208,7 @@ Two small notes on Figure 8. First, `parse` can fail — `"pi".parse()` has nowh
 You have been reading `println!` output all chapter; now let's look at the format strings themselves, next to the f-strings you know. `{}` is the placeholder, arguments fill placeholders in order, and — the part that makes Rust feel almost Pythonic — a variable name can go directly inside the braces:
 
 ```rust
-# Figure 9: Format strings, next to the f-strings you know
+// Figure 9: Format strings, next to the f-strings you know
 
 fn main() {
     let aa: u8 = 0x2A;
@@ -240,7 +240,7 @@ Here is the concept in this chapter most likely to be genuinely new, rather than
 Two demonstrations. First, `if` is an expression, which means it can sit on the right-hand side of a `let`:
 
 ```rust
-# Figure 10: if is an expression
+// Figure 10: if is an expression
 
 fn main() {
     let count: u8 = 42;
@@ -258,7 +258,7 @@ Python has the ternary form `"even" if count % 2 == 0 else "odd"` for exactly th
 Second, a block — any `{ ... }` — is an expression whose value is its **last expression, written without a semicolon**:
 
 ```rust
-# Figure 11: A block is an expression; the semicolon is the switch
+// Figure 11: A block is an expression; the semicolon is the switch
 
 fn main() {
     let nn = {
@@ -282,7 +282,7 @@ Look hard at `doubled + 1` — no semicolon. That is not sloppy punctuation; it 
 Which brings us, with suspicious convenience, to functions — because a function body is just another block, and returning a value is just the block-expression rule again.
 
 ```rust
-# Figure 12: A TinyALU prediction function
+// Figure 12: A TinyALU prediction function
 
 fn predict_add(aa: u8, bb: u8) -> u16 {
     aa as u16 + bb as u16

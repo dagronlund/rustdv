@@ -9,7 +9,7 @@ The Python book opened its Classes chapter with a claim: object-oriented program
 A Rust struct is the part of a Python class that holds data — and only that part. You declare every field, with its type, up front:
 
 ```rust
-# Figure 1: Defining and instantiating a struct
+// Figure 1: Defining and instantiating a struct
 
 struct Animal {
     kg: f64,
@@ -31,7 +31,7 @@ Two things deserve a look. First, the declaration reads more like the SystemVeri
 That last point is not a style preference; it is enforcement. The Python book's figure 7 created a `yorkie`, forgot to set `kg`, and got an `AttributeError` — at runtime, at the moment of use, which in a testbench means mid-simulation. Here is the same mistake in Rust:
 
 ```rust
-# Figure 2: Forgetting a field is now a compile error
+// Figure 2: Forgetting a field is now a compile error
 
 struct Animal {
     kg: f64,
@@ -63,7 +63,7 @@ One freedom is genuinely gone: you cannot add a field to an object after the fac
 A Python class bundles data and behavior in one indented block. Rust separates them: the struct declares the data, and an `impl` block — short for *implementation* — attaches the behavior. Here is `get_pounds()`, ported:
 
 ```rust
-# Figure 3: A method in an impl block
+// Figure 3: A method in an impl block
 
 struct Animal {
     kg: f64,
@@ -95,7 +95,7 @@ And yes, the explicit form still works: `Animal::get_pounds(&walrus)` is legal R
 When a method needs to *change* the object, it says so:
 
 ```rust
-# Figure 4: A method that mutates takes &mut self
+// Figure 4: A method that mutates takes &mut self
 
 struct Animal {
     kg: f64,
@@ -128,7 +128,7 @@ The Python book introduced `__init__()` as the standard way to force initializat
 By near-universal convention, the constructor is an associated function named `new`:
 
 ```rust
-# Figure 5: The new() associated function
+// Figure 5: The new() associated function
 
 struct Animal {
     kg: f64,
@@ -164,7 +164,7 @@ This is the Python book's figure 8, translated. A few notes on the translation:
 The Python book sorted methods into three kinds — instance methods, class methods, and static methods — with a decorator apiece. Rust flattens the taxonomy to two: if it takes `self` in some form, it is a *method*, called with a dot; if it does not, it is an *associated function*, called with `::`. Python's `@staticmethod` and `@classmethod` both collapse into the second kind, and the class-variable pattern comes along as an *associated constant*:
 
 ```rust
-# Figure 6: Associated constants and functions replace class variables and static methods
+// Figure 6: Associated constants and functions replace class variables and static methods
 
 struct Triangle;
 
@@ -197,7 +197,7 @@ The Python book introduced `Ops` in `tinyalu_utils` as an `enum.IntEnum` — a c
 Here is `Ops`, ported, together with the prediction function it exists to serve:
 
 ```rust
-# Figure 7: The Ops enumeration and an exhaustive match
+// Figure 7: The Ops enumeration and an exhaustive match
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Ops {
@@ -238,7 +238,7 @@ Working through the new pieces:
 That guarantee sounds abstract until the day it saves you. Suppose the TinyALU grows a subtract instruction. In Python you would add `SUB = 5` to the IntEnum, and every `if/elif` over ops in the testbench — the prediction function, the coverage model, the driver — would keep running, silently wrong, until a failing test (or worse, a passing one) sent you hunting. Watch what happens in Rust the moment we add the variant and change nothing else:
 
 ```rust
-# Figure 8: The compiler finds every match the new variant breaks
+// Figure 8: The compiler finds every match the new variant breaks
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Ops {
@@ -273,7 +273,7 @@ Stop and appreciate what just happened, because it is the concrete version of th
 Every value in the Python testbench was ultimately an integer — `get_int()` existed precisely to coerce simulator values that might contain `x` or `z` into something Python could compute with. But hardware signals are not integers. They are four-state values, and Rust lets us say so directly:
 
 ```rust
-# Figure 9: A four-state Logic enum
+// Figure 9: A four-state Logic enum
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Logic {
@@ -303,14 +303,14 @@ fn main() {
 The signal reads: x
 ```
 
-`Logic` is not a teaching toy: when we reach rustdv-sim in Chapter 17, reading a signal hands you exactly this type, ported from the same four-state value type cocotb defines. Notice what the enum buys us that an IntEnum encoding (say, `X = 2`) never could: there is no integer pretense to leak. Nothing can accidentally add `X` to a running sum, because `X` is not a number — it is one of four states a wire can be in, and any code that consumes a `Logic` must, thanks to exhaustive `match`, say what it does about `x` and `z`. The "forgot to handle the unknown state" bug is unrepresentable.
+`Logic` is not a teaching toy: when we reach rustdv-sim in Chapter 17, reading a signal hands you a `LogicArray` — a vector of exactly this type — ported from the same four-state value types cocotb defines. Notice what the enum buys us that an IntEnum encoding (say, `X = 2`) never could: there is no integer pretense to leak. Nothing can accidentally add `X` to a running sum, because `X` is not a number — it is one of four states a wire can be in, and any code that consumes a `Logic` must, thanks to exhaustive `match`, say what it does about `x` and `z`. The "forgot to handle the unknown state" bug is unrepresentable.
 
 ## Variants that carry data
 
 Everything so far, an IntEnum could at least gesture at. This last capability it could not. Rust enum variants can *carry data* — different data per variant — which makes an enum a type that says "this value is exactly one of the following shapes." Computer scientists call this a *sum type*; testbench authors will call it the right way to model outcomes:
 
 ```rust
-# Figure 10: An enum whose variants carry payloads
+// Figure 10: An enum whose variants carry payloads
 
 #[derive(Debug)]
 enum CheckResult {

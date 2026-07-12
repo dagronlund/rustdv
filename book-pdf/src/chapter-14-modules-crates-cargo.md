@@ -13,7 +13,7 @@ A **module** in Rust is a named scope you declare with the `mod` keyword. Unlike
 We will need a home for the TinyALU's prediction logic — the pure function that computes what the DUT *should* produce. This was `tinyalu_utils.py`'s most important resident, and it will be our example for the rest of the chapter.
 
 ```rust
-# Figure 1: A module declared inline, in the middle of main.rs
+// Figure 1: A module declared inline, in the middle of main.rs
 
 mod predictor {
     #[derive(Clone, Copy, Debug, PartialEq)]
@@ -47,7 +47,7 @@ Everything between the braces of `mod predictor` lives in the `predictor` namesp
 Writing `predictor::Ops::Add` at every call site gets old, and Rust's answer is the `use` declaration — the direct descendant of Python's `from ... import ...`.
 
 ```rust
-# Figure 2: use brings names into scope, like Python's from-import
+// Figure 2: use brings names into scope, like Python's from-import
 
 mod predictor {
     #[derive(Clone, Copy, Debug, PartialEq)]
@@ -99,7 +99,7 @@ You may have noticed the `pub` keywords sprinkled through figures 1 and 2. They 
 Recall how the Python book handled this. Python has no private anything: every name in every module is importable by anyone, and the convention is that an underscore prefix (`_my_helper`) means *please don't*. The book was frank that this is etiquette, not enforcement — pyuvm's internals are full of underscored names that nothing actually stops you from reaching. Rust replaces the etiquette with a compile error. Let's provoke one. Suppose the predictor grows a private helper that the outside world has no business calling:
 
 ```rust
-# Figure 3: Private by default — the underscore convention, enforced
+// Figure 3: Private by default — the underscore convention, enforced
 
 mod predictor {
     pub enum Ops { Add = 1, And = 2, Xor = 3, Mul = 4 }
@@ -207,7 +207,7 @@ Two sections, both readable at sight. `[package]` names and versions the crate i
 Now the capability I flagged in Chapter 1 as worth the price of admission. It has been sitting quietly inside cargo the whole time, waiting for us to have code worth testing. We do: `alu_prediction` is a pure function — values in, value out, no DUT, no signals, no simulator. In the Python testbench, logic like this could only be exercised by running the whole cocotb stack against the simulator, or by setting up pytest scaffolding alongside it, which the book's flow never did. In Rust, testing it is built into the language and the tool. You write functions marked `#[test]`, and `cargo test` finds and runs them. The convention is a `tests` submodule at the bottom of the file whose code it tests:
 
 ```rust
-# Figure 6: Unit tests live beside the code they test
+// Figure 6: Unit tests live beside the code they test
 
 // src/predictor.rs
 

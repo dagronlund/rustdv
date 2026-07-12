@@ -51,3 +51,32 @@ right.
   trailing space the book's transcripts trim. Harmless; `check.sh` ignores it.
 - Several figures produce `dead_code` warnings (unused enum variants/fields).
   Expected — the figures define more than they use.
+
+## 4. Ch 10 Fig 4 / Ch 11 Fig 6 — previews updated to match the implemented rustdv (2026-07-11)
+
+When rustdv was implemented (see `/STATUS.md`), two Part I previews drifted
+from the real API and were corrected in the book source and here:
+
+- **Ch 10 Fig 4** (`Component` trait): `start` was shown as a *required*
+  method. In the implementation every lifecycle method has a default empty
+  body — components override only what they use (pyuvm's no-op-phase
+  pattern) — so a structural env can `impl Component` with an empty block.
+- **Ch 11 Fig 6** (driver preview): shown as a library-provided generic
+  `Driver<REQ, RSP>` struct. The implementation follows the review-memo's
+  mechanism/methodology split: the *port* is the library's generic type
+  (`SeqItemPort<REQ, RSP = REQ>`); your driver is an ordinary struct that
+  owns one. The figure now shows both lines.
+
+Both are `fragments/` (non-runnable previews), so no build behavior changed.
+
+## 5. Book-wide: figure captions in rust blocks were invisible when rendered (2026-07-11)
+
+Figure captions were written as `# Figure N: ...` inside ```rust code
+blocks. `#` is not a Rust comment — and worse, mdBook treats `#`-prefixed
+lines in rust blocks as *hidden* ("boring") lines, so every rust figure's
+caption was missing from the rendered HTML/PDF even though the prose
+references the numbers. All 106 rust-block captions across the 14 chapters
+and the Interlude are now `// Figure N: ...` (a real, visible Rust
+comment). Captions in ```text and ```python blocks keep `#`, which is
+visible and idiomatic there. `regression/regress.py`'s FIG_RE accepts both
+markers; book-sync passes 107/107 after the change. Reported by Ray.

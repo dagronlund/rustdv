@@ -31,7 +31,7 @@ This is just an enum with a payload, exactly like the ones you built in Chapter 
 You met `Option` briefly in Chapter 8, because `HashMap` lookups return one. Let's port the Python book's football-players dictionary directly. In Python, `players.get(4)` returned `None`, and `players.get(4, "Not in database")` supplied a default. Figure 1 is the same program in Rust.
 
 ```rust
-# Figure 1: A HashMap lookup returns Option
+// Figure 1: A HashMap lookup returns Option
 
 use std::collections::HashMap;
 
@@ -83,7 +83,7 @@ enum Result<T, E> {
 `T` is the type you get on success; `E` is the error type you get instead. And now we can port the Python book's exceptions chapter scenario for scenario, starting where it started: dividing by zero.
 
 ```rust
-# Figure 2: You still can't divide by zero
+// Figure 2: You still can't divide by zero
 
 fn main() {
     let divisor: i32 = "0".parse().unwrap();
@@ -105,7 +105,7 @@ That is a **panic** — Rust's crash. We will come back to panics later in the c
 The Python book's `nice_div()` caught `ZeroDivisionError` and returned `math.inf`. Our integer version can't return infinity, but it can do something better: return a `Result` that names what went wrong. Figure 3 is `nice_div`, Rust edition.
 
 ```rust
-# Figure 3: nice_div returns a Result instead of raising
+// Figure 3: nice_div returns a Result instead of raising
 
 #[derive(Debug)]
 enum DivError {
@@ -146,7 +146,7 @@ Notice also who's who in the port: the `Err` arm of the `match` is playing the r
 The Python book's next scenario was `nice_div(3, "zero")` — dividing an `int` by a `str`, which raised a `TypeError`, which required a second `except` block to catch. Figure 4 ports that call to Rust.
 
 ```rust
-# Figure 4: The TypeError scenario, ported to Rust
+// Figure 4: The TypeError scenario, ported to Rust
 
 fn main() {
     match nice_div(3, "zero") {
@@ -176,7 +176,7 @@ Back to the boss metaphor. The genuinely good idea inside exceptions was *delega
 Suppose we're writing a little TinyALU-flavored utility: compute a ratio of two accumulated counts as a percentage. It calls `nice_div`, and if the division fails, our function can't succeed either — the error should go up to *our* caller. Written longhand, that's a `match` where the `Err` arm just re-returns the error. Written idiomatically, it's figure 5.
 
 ```rust
-# Figure 5: The ? operator sends the error up the stack
+// Figure 5: The ? operator sends the error up the stack
 
 fn percent(numerator: u32, denominator: u32) -> Result<u32, DivError> {
     let ratio = nice_div(numerator * 100, denominator)?;
@@ -212,7 +212,7 @@ One more nicety: `main` itself can return a `Result`. When it returns an `Err`, 
 Let's build one the TinyALU will actually need. Think ahead to a testbench utility that decodes an operation field from the DUT into our `Ops` enum from Chapter 7. Two things can go wrong: the bits might not encode any legal operation, or the DUT might never hand us the value at all before the clock runs out. That's a two-variant enum, one variant carrying the offending byte:
 
 ```rust
-# Figure 6: A custom error enum for the TinyALU
+// Figure 6: A custom error enum for the TinyALU
 
 use std::fmt;
 
@@ -286,7 +286,7 @@ The panicking family has members you will use daily:
 Figure 7 ports the Python book's `assert` scenario — the `xor_bytes` function that rejected values that don't fit in a byte. The port sharpens the example nicely: in Rust, `xor_bytes` takes `&[u8]`, so a value over 255 can't even reach the function (the `TypeError` disappearance, again). What still *can* go wrong is a claim about our own logic — say, this version that folds in a parity check the surrounding testbench relies on:
 
 ```rust
-# Figure 7: assert! guards an invariant
+// Figure 7: assert! guards an invariant
 
 fn xor_bytes(bytes: &[u8]) -> u8 {
     let mut xor = 0;
