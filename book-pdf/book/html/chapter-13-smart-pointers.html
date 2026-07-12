@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-255f8fe6.js";
+            window.path_to_searchindex_js = "searchindex-a58967d8.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-266d771a.js"></script>
+        <script src="toc-dfd4f298.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -183,8 +183,8 @@
 <p>The answer is that the rules are absolute but the <em>enforcement point</em> is negotiable. Rust provides a small set of standard-library types — the community calls them <strong>smart pointers</strong> — that let you buy back Python-style sharing, one capability at a time, each purchase visible in your code and each with a price tag attached. This chapter teaches the three you will actually meet: <code>Box&lt;T&gt;</code>, <code>Rc&lt;T&gt;</code>, and <code>RefCell&lt;T&gt;</code>. By the end you will be able to read <code>Rc&lt;RefCell&lt;T&gt;&gt;</code> and recognize an old friend wearing a name tag: a Python object reference, made visible.</p>
 <h2 id="boxt-the-heap-on-request"><a class="header" href="#boxt-the-heap-on-request"><code>Box&lt;T&gt;</code>: the heap, on request</a></h2>
 <p>The simplest smart pointer barely earns the name. <code>Box&lt;T&gt;</code> puts a value on the heap and owns it — one owner, moved and dropped exactly like everything in Chapter 5. The only thing that changed is <em>where the bytes live</em>.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 1: A Box owns its value on the heap — everything else is Chapter 5
-</span>
+<pre class="playground"><code class="language-rust">// Figure 1: A Box owns its value on the heap — everything else is Chapter 5
+
 struct Transaction {
     a: u8,
     b: u8,
@@ -218,8 +218,8 @@ print(sys.getrefcount(a))
 </code></pre>
 <p>(<code>getrefcount</code> reports one higher than you’d guess, because the act of calling it lends the list one more temporary reference. Even the inspection tool participates in the scheme.)</p>
 <p>Rust’s <code>Rc&lt;T&gt;</code> — <em>reference counted</em> — is exactly this mechanism, with two differences: you opt into it per value instead of paying for it everywhere, and the increments happen only where you can see them. <code>Rc::new</code> wraps a value and starts the count at one. <code>Rc::clone</code> does <em>not</em> copy the value — it copies the <em>handle</em> and increments the count, which is precisely what Python’s <code>b = a</code> did behind your back. When each <code>Rc</code> handle is dropped, the count decrements; at zero, the value is dropped. It is CPython’s memory management, offered à la carte.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: Rc::clone increments a refcount — on purpose, where you can see it
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: Rc::clone increments a refcount — on purpose, where you can see it
+
 use std::rc::Rc;
 
 fn main() {
@@ -248,8 +248,8 @@ driver sees: TinyALU BFM
 <p>¹ Mostly. CPython also runs a cycle-detecting garbage collector to rescue objects that point at each other and hold their mutual counts above zero forever. Hold that thought — <code>Rc</code> has the same weakness and no rescue squad, and it is going to matter later in this chapter.</p>
 </blockquote>
 <p>So can several components share a BFM this way? Almost. There is a catch, and it is the same catch Chapter 6 stamped into <code>&amp;T</code>: sharing is a <em>reader’s</em> privilege.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 4: Shared owners are readers — Rc will not hand out write access
-</span>
+<pre class="playground"><code class="language-rust">// Figure 4: Shared owners are readers — Rc will not hand out write access
+
 use std::rc::Rc;
 
 struct Scoreboard {
@@ -276,8 +276,8 @@ error[E0594]: cannot assign to data in an `Rc`
 <h2 id="refcellt-the-borrow-checker-moved-to-runtime"><a class="header" href="#refcellt-the-borrow-checker-moved-to-runtime"><code>RefCell&lt;T&gt;</code>: the borrow checker, moved to runtime</a></h2>
 <p>Everything the borrow checker has done so far, it has done at compile time, by proving things about your source code. But some sharing patterns are true in ways a compiler cannot see from the source — <em>these two components take turns, I promise</em> — and for those, Rust offers a deal: <strong><code>RefCell&lt;T&gt;</code> keeps the borrowing rules but checks them at runtime.</strong> Same law, different courtroom.</p>
 <p>A <code>RefCell&lt;T&gt;</code> wraps a value and replaces <code>&amp;</code>/<code>&amp;mut</code> with two accessor methods: <code>borrow()</code> returns a read handle, <code>borrow_mut()</code> returns a write handle, and the cell <em>counts</em> its outstanding loans. Many readers, or one writer — enforced by a counter at the door instead of a proof in the compiler.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 5: Interior mutability — mutation through an immutable binding
-</span>
+<pre class="playground"><code class="language-rust">// Figure 5: Interior mutability — mutation through an immutable binding
+
 use std::cell::RefCell;
 
 struct Scoreboard {
@@ -296,8 +296,8 @@ errors: 1
 </code></pre>
 <p>Look hard at the first line of <code>main</code>: there is no <code>mut</code>. Since Chapter 3, that has meant untouchable — yet we mutated <code>errors</code> anyway. This trick has a name, <strong>interior mutability</strong>: from the outside, <code>sb</code> is an immutable value you can share freely; on the inside, the cell hands out exclusive write access to one caller at a time, checked at the moment of the call. If that sounds familiar, it should — it is the “Protecting attributes” chapter’s move, replayed at the level of the type system. Python’s <code>Temperature</code> class hid <code>__temp</code> behind properties so the class could enforce its rules at every access; <code>RefCell</code> hides its value behind <code>borrow</code> and <code>borrow_mut</code> so the <em>borrowing</em> rules get enforced at every access. Both designs answer the same question — who gets to touch this value, and on whose terms? — by making all traffic pass through a gatekeeper. The difference is what the gatekeeper checks: Python’s properties checked whatever validation you wrote by hand; <code>RefCell</code> checks aliasing XOR mutability, the one rule this whole language is built on.</p>
 <p>And what happens when the rule is violated? At compile time, a violation was a program that never existed. At runtime, the program exists — it is halfway through a simulation — so the only honest response left is to stop:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 6: The borrow checker at runtime — a panic replaces the compile error
-</span>
+<pre class="playground"><code class="language-rust">// Figure 6: The borrow checker at runtime — a panic replaces the compile error
+
 use std::cell::RefCell;
 
 struct Scoreboard {
@@ -326,8 +326,8 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 <h2 id="rcrefcellt-a-python-reference-made-visible"><a class="header" href="#rcrefcellt-a-python-reference-made-visible"><code>Rc&lt;RefCell&lt;T&gt;&gt;</code>: a Python reference, made visible</a></h2>
 <p>Now stack them. <code>Rc</code> gave us shared ownership with read-only access; <code>RefCell</code> gave us gate-checked mutation of a shared value. Compose them — <code>Rc&lt;RefCell&lt;T&gt;&gt;</code> — and you have shared handles, any of which can mutate the value, with the borrow rules enforced at each access. Which is to say: you have rebuilt the Python object reference, the thing every variable in every Python program you ever wrote actually was.</p>
 <p>Chapter 5 opened with a Python figure that proved <code>b = a</code> gives two names for one mutable object, and then showed Rust refusing to compile the same experiment. We have been in debt to that figure for eight chapters. Time to pay it off:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 7: Chapter 5's Python experiment, finally legal in Rust — with its costs itemized
-</span>
+<pre class="playground"><code class="language-rust">// Figure 7: Chapter 5's Python experiment, finally legal in Rust — with its costs itemized
+
 use std::cell::RefCell;
 use std::rc::Rc;
 

@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-255f8fe6.js";
+            window.path_to_searchindex_js = "searchindex-a58967d8.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-266d771a.js"></script>
+        <script src="toc-dfd4f298.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -183,8 +183,8 @@
 <p>But that model, taken alone, is unlivable. A scoreboard that must <em>own</em> every transaction it merely wants to <em>look at</em> would be a scoreboard fed entirely by <code>clone()</code> calls. A coverage collector that steals the transaction from the scoreboard is not a testbench, it is a relay race. Most of the time a component does not need responsibility for a value. It needs access. Rust’s mechanism for access-without-responsibility is the <strong>reference</strong>, and the act of granting one is called <strong>borrowing</strong> — a word chosen carefully, because a borrow, unlike a Python reference, comes with an obligation to give the value back and rules about what you may do while you hold it.</p>
 <h2 id="shared-references-many-readers"><a class="header" href="#shared-references-many-readers">Shared references: many readers</a></h2>
 <p>A shared reference is written <code>&amp;T</code> — “a reference to a T” — and you create one with <code>&amp;</code>:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 1: Shared references — everyone may look, nobody may touch
-</span>
+<pre class="playground"><code class="language-rust">// Figure 1: Shared references — everyone may look, nobody may touch
+
 struct Transaction {
     data: u8,
 }
@@ -215,8 +215,8 @@ Still the owner: 42
 <p>If you want a Python analogy, <code>&amp;T</code> is what every Python reference <em>pretended</em> to be in a well-disciplined codebase: a handle you pass around for reading, trusting that nobody mutates through it. Rust removes the trust and keeps the handle.</p>
 <h2 id="exclusive-references-one-writer"><a class="header" href="#exclusive-references-one-writer">Exclusive references: one writer</a></h2>
 <p>Sometimes touching is the point. A driver that receives a transaction may legitimately need to fill in a timestamp; a BFM may need to update a field before sending. For write access you need the second kind of reference, <code>&amp;mut T</code> — an <strong>exclusive reference</strong>:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: An exclusive reference grants write access
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: An exclusive reference grants write access
+
 struct Transaction {
     data: u8,
 }
@@ -251,8 +251,8 @@ After scramble: 99
 <h2 id="the-nulltrigger-race-rejected-at-compile-time"><a class="header" href="#the-nulltrigger-race-rejected-at-compile-time">The NullTrigger race, rejected at compile time</a></h2>
 <p>Recall the pattern the Python book told you never to write: a shared <code>transaction_data</code> variable, a monitor task that writes it, a consumer task that reads it, both triggered by the same clock edge, with a <code>NullTrigger</code> deployed as a prayer that the reader runs second. In Python, that code runs. It even works, usually, on your simulator, until the scheduler’s ordering shifts and it silently doesn’t.</p>
 <p>We cannot yet write real concurrent tasks in Rust — the executor and <code>spawn</code> arrive in Part II — but we do not need them to expose the bug, because the bug was never really about tasks. It was about <em>two live accessors of one value, one of them a writer, with no enforced order</em>. We can write exactly that in six lines, giving the monitor its write access and the scoreboard its read access, just as the Python version did:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: Two tasks' worth of access to one value -- the borrow checker objects
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: Two tasks' worth of access to one value -- the borrow checker objects
+
 fn main() {
     let mut transaction_data: Option&lt;u8&gt; = None;
 
@@ -286,8 +286,8 @@ error: could not compile `borrow_race` (bin "borrow_race") due to 1 previous err
 <p>Sit with what just happened. The Python book documented this bug, explained why it was nondeterministic, and taught you a discipline to avoid it. cocotb’s own docstring says <strong>Do not do this</strong> in bold. And still, nothing in the Python toolchain would stop a tired engineer from writing it on a Friday afternoon, and nothing would flag it until a scheduler reordering made a regression flicker, weeks later, in someone else’s test. Rust converts the whole affair into three seconds of compile time and an error message with line numbers. Chapter 1 promised that discipline is good but proof is better; Figure 3 is that promise kept.</p>
 <h2 id="the-fix-make-the-ordering-real"><a class="header" href="#the-fix-make-the-ordering-real">The fix: make the ordering real</a></h2>
 <p>The Python fix was an <code>Event</code>: the monitor writes, <em>then</em> sets the event; the consumer awaits the event, <em>then</em> reads. Notice what the <code>Event</code> actually contributed — it forced the write and the read into a definite order, so that the writer was finished before the reader began. The borrow checker demands precisely the same thing, and in straight-line code you provide it the same way: sequence the accesses so they do not overlap.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 4: The same actors, with the ordering made real
-</span>
+<pre class="playground"><code class="language-rust">// Figure 4: The same actors, with the ordering made real
+
 fn main() {
     let mut transaction_data: Option&lt;u8&gt; = None;
 

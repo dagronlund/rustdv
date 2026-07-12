@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-255f8fe6.js";
+            window.path_to_searchindex_js = "searchindex-a58967d8.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-266d771a.js"></script>
+        <script src="toc-dfd4f298.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -190,8 +190,8 @@
 <h2 id="vec-the-list-that-owns-its-contents"><a class="header" href="#vec-the-list-that-owns-its-contents">Vec: the list that owns its contents</a></h2>
 <p>A <code>Vec&lt;T&gt;</code> is Rust’s growable array: the analog of the Python list, and every bit the workhorse the list was. The first difference is visible in the type: a Python list holds <em>anything</em> (<code>['a', 3, LL]</code> was a perfectly good list), while a <code>Vec&lt;T&gt;</code> holds values of exactly one type <code>T</code>. You have met this trade before — it is the same static-typing bargain from Chapter 3, and it is usually what a testbench wanted anyway. A history log of ALU transactions should hold transactions, all of them, and nothing else.</p>
 <p>Let’s build exactly that. Figure 1 creates a log of the <code>AluCommand</code> transactions we defined in Chapter 7 and pushes commands into it, the way a monitor might record everything it sees.¹</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 1: A Vec&lt;AluCommand&gt; as a transaction history log
-</span>
+<pre class="playground"><code class="language-rust">// Figure 1: A Vec&lt;AluCommand&gt; as a transaction history log
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Ops { Add = 1, And = 2, Xor = 3, Mul = 4 }
 
@@ -212,8 +212,8 @@ first: AluCommand { a: 5, b: 3, op: Add }
 </code></pre>
 <p>Familiar territory: <code>push</code> is <code>append</code>, <code>len()</code> is <code>len()</code>, <code>log[0]</code> is <code>log[0]</code>. Note that <code>log</code> must be <code>let mut</code> — Chapter 3’s immutability-by-default applies to collections with no exceptions, which means a testbench data structure cannot be quietly modified by code you didn’t expect to modify it. Also note <code>Vec::new()</code> gave us an empty vector; the <code>vec!</code> macro is the literal syntax, so <code>vec![1, 2, 3]</code> is Rust’s <code>[1, 2, 3]</code>.</p>
 <p>Now the part that is genuinely new. In Python, a list holds <em>references</em>. When you append a transaction to a list, the list gets one more name for an object that still has all its other names; the monitor keeps its handle, the scoreboard keeps its handle, and the GC sorts out the afterlife. A <code>Vec</code> holds <em>values</em>. When you push a transaction into a <code>Vec</code>, the transaction <strong>moves</strong> into the <code>Vec</code> — the vector becomes the owner, exactly as if you had assigned it to a new variable in Chapter 5. Figure 2 shows what happens when we forget.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: Pushing is a move
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: Pushing is a move
+
 fn main() {
     let mut log: Vec&lt;AluCommand&gt; = Vec::new();
     let cmd = AluCommand { a: 5, b: 3, op: Ops::Add };
@@ -241,8 +241,8 @@ help: consider cloning the value if the performance cost is acceptable
 <p>One more <code>Vec</code> note before we move on: indexing past the end panics, where Python raised <code>IndexError</code>. There is also <code>log.get(7)</code>, which does not panic but instead returns a value that is either something or nothing — a type called <code>Option</code> that keeps appearing in this chapter’s corners and gets the full treatment in Chapter 9.</p>
 <h2 id="iteration-borrow-or-consume-your-choice"><a class="header" href="#iteration-borrow-or-consume-your-choice">Iteration: borrow or consume, your choice</a></h2>
 <p>The <code>for</code> loop over a <code>Vec</code> looks exactly like Python — and hides the chapter’s second lesson in a single character. Figure 3 loops over the log the obvious way and then tries to use it afterward.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: A for loop can consume the collection
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: A for loop can consume the collection
+
 fn main() {
     let log = vec![
         AluCommand { a: 5, b: 3, op: Ops::Add },
@@ -270,8 +270,8 @@ help: consider borrowing to avoid moving into the for loop
    |                +
 </code></pre>
 <p><code>for cmd in log</code> <em>consumes</em> the vector: ownership of the whole <code>Vec</code> moves into the loop, each element moves into <code>cmd</code> in turn, and when the loop ends there is nothing left. That is occasionally exactly what you want — a scoreboard draining its queue at end of test, say. But most of the time you want Python’s behavior, looking at the elements while leaving the collection intact, and the compiler’s <code>help</code> line hands you the idiom: borrow it.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 4: Borrowing iteration leaves the Vec intact
-</span>
+<pre class="playground"><code class="language-rust">// Figure 4: Borrowing iteration leaves the Vec intact
+
 fn main() {
     let log = vec![
         AluCommand { a: 5, b: 3, op: Ops::Add },
@@ -302,8 +302,8 @@ AluCommand { a: 2, b: 2, op: Mul }
 <li><strong><code>&amp;str</code></strong> (pronounced “string slice”) — a <em>borrowed view</em> of string data that lives somewhere else. It doesn’t own anything; it points at characters and knows how many of them it covers. It is Chapter 6’s <code>&amp;T</code>, specialized for text.</li>
 </ul>
 <p>The reason beginners meet the confusing one first: <strong>every string literal is a <code>&amp;str</code>.</strong> When you write <code>"TinyALU"</code>, those seven bytes are baked into your compiled program itself, and the literal is a borrowed slice pointing into that program memory. It costs nothing, it lives forever, and it is read-only. Figure 5 shows both types and the traffic between them.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 5: String literals are borrowed; String is owned
-</span>
+<pre class="playground"><code class="language-rust">// Figure 5: String literals are borrowed; String is owned
+
 fn main() {
     let dut: &amp;str = "TinyALU";            // borrowed slice into program memory
     let mut name: String = String::from("Tiny");
@@ -322,8 +322,8 @@ TinyALU
 <p><strong>Store <code>String</code>, pass <code>&amp;str</code>.</strong> Struct fields that keep text own it as <code>String</code>; function parameters that read text borrow it as <code>&amp;str</code>.</p>
 </blockquote>
 <p>The reasoning is pure Chapter 6. A function that only <em>reads</em> a name has no business demanding ownership of it — that would force every caller to give up (or clone) their string just so you could look at it. A parameter of type <code>&amp;str</code> says “lend me a view,” and it is maximally accepting: a <code>&amp;String</code> coerces to a <code>&amp;str</code> automatically, so callers can pass a literal, a slice, or a borrowed <code>String</code>, all with no copying. Figure 6 shows the shape.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 6: Take &amp;str; accept everything
-</span>
+<pre class="playground"><code class="language-rust">// Figure 6: Take &amp;str; accept everything
+
 fn report_pass(test_name: &amp;str) {
     println!("PASSED: {}", test_name);
 }
@@ -344,8 +344,8 @@ still have random_ops
 <h2 id="hashmap-the-dictionary-minus-the-ordering-promise"><a class="header" href="#hashmap-the-dictionary-minus-the-ordering-promise">HashMap: the dictionary, minus the ordering promise</a></h2>
 <p><code>HashMap&lt;K, V&gt;</code> is the Python dict: store a value under a key, get it back later. It lives in the standard library’s collections module rather than the language itself, so it needs an import — your first <code>use</code> statement doing real work.</p>
 <p>The Python book’s signature dictionary example counted the letters in <code>"Mississippi"</code>, using <code>KeyError</code> (and then <code>setdefault</code>) to handle the first time each letter appeared. Our version counts something a verification engineer actually tallies: how many times the testbench has exercised each ALU operation — the raw material of functional coverage. Rust’s replacement for the whole <code>try</code>/<code>except KeyError</code>/<code>setdefault</code> dance is the <em>entry API</em>, and it is one line.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 7: A HashMap&lt;Ops, u32&gt; op-frequency counter
-</span>
+<pre class="playground"><code class="language-rust">// Figure 7: A HashMap&lt;Ops, u32&gt; op-frequency counter
+
 use std::collections::HashMap;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

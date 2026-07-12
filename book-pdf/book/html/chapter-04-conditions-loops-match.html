@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-255f8fe6.js";
+            window.path_to_searchindex_js = "searchindex-a58967d8.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-266d771a.js"></script>
+        <script src="toc-dfd4f298.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -183,8 +183,8 @@
 <p>This chapter ports all of that to Rust, and then keeps going, because Rust has a construct Python never gave us: <code>match</code>. Two-thirds of this chapter is warm-up — conditions and loops transfer from Python almost without friction — and the last third introduces the construct the rest of this book leans on constantly. When we meet <code>Result</code> in Chapter 9, <code>Option</code> alongside it, and the <code>Ops</code> enum in Chapter 7, <code>match</code> is how we will take them apart. Learn it well here, in miniature, and every later chapter gets easier.</p>
 <h2 id="if-and-else"><a class="header" href="#if-and-else">if and else</a></h2>
 <p>Rust’s <code>if</code> looks like Python’s with the punctuation swapped: braces instead of indentation, and no colon. Like Python — and unlike C and SystemVerilog — Rust does not require parentheses around the condition. Unlike everybody, Rust <em>insists</em> on the braces, even for one-line bodies.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 1: A Rust if statement
-</span>
+<pre class="playground"><code class="language-rust">// Figure 1: A Rust if statement
+
 fn main() {
     let name = "Roy";
     if name != "Danny" {
@@ -195,8 +195,8 @@ fn main() {
 Hey, you're not Danny.
 </code></pre>
 <p>One difference matters more than it looks. Python happily tested any value for truth: <code>if nn:</code> meant “if <code>nn</code> is nonzero,” <code>if my_list:</code> meant “if the list is nonempty.” Rust conditions must be <code>bool</code> — actually, literally <code>bool</code>. Write <code>if nn {</code> where <code>nn</code> is an integer and the compiler stops you:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: Rust has no truthiness
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: Rust has no truthiness
+
 fn main() {
     let nn = 5;
     if nn {
@@ -212,8 +212,8 @@ error[E0308]: mismatched types
 </code></pre>
 <p>You will grumble about this for a week and then remember every testbench where <code>if dut.done:</code> silently tested the wrong thing — a handle instead of a value, a list instead of its contents. Rust makes you write <code>if nn != 0</code>, and the intent goes on the record.¹</p>
 <p>There is no <code>elif</code> keyword. Rust spells it <code>else if</code>, and a chain of them ports the Python book’s switch replacement directly:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: else if as a switch (for now)
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: else if as a switch (for now)
+
 fn main() {
     let (a, b) = (5, 5);
     let operation = "divide";
@@ -236,8 +236,8 @@ Illegal Operation: divide
 </blockquote>
 <h2 id="if-is-an-expression"><a class="header" href="#if-is-an-expression">if is an expression</a></h2>
 <p>Here is the first genuinely new idea. In Chapter 3 we met Rust’s distinction between statements and expressions: an expression produces a value. In Rust, <code>if</code>/<code>else</code> <em>is an expression</em> — the whole construct evaluates to the value of whichever branch ran. That means you can bind it with <code>let</code>:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 4: Conditional assignment — no ternary needed
-</span>
+<pre class="playground"><code class="language-rust">// Figure 4: Conditional assignment — no ternary needed
+
 fn main() {
     let aa = 5;
     let message = if aa == 5 { "five_val" } else { "other_val" };
@@ -253,8 +253,8 @@ five_val
 <h2 id="three-loops-one-of-them-new"><a class="header" href="#three-loops-one-of-them-new">Three loops, one of them new</a></h2>
 <p>Python gave us two loops, <code>while</code> and <code>for</code>. Rust gives us three: <code>while</code>, <code>for</code>, and <code>loop</code>. The first two are your old friends in new clothes; the third is the new idea.</p>
 <p><code>while</code> works exactly as you expect, condition first, braces around the body. Here is the Python book’s counting loop, ported:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 5: A while loop in action
-</span>
+<pre class="playground"><code class="language-rust">// Figure 5: A while loop in action
+
 fn main() {
     let mut nn = 0;
     while nn &lt;= 13 {
@@ -268,8 +268,8 @@ fn main() {
 </code></pre>
 <p>Two Chapter 3 details show up here: <code>nn</code> needs <code>mut</code> because we reassign it, and <code>print!</code> (without the <code>ln</code>) is how Rust says <code>end=" "</code> — it prints without the newline. <code>continue</code> and <code>break</code> exist, spelled the same and meaning the same as in Python; I will not re-teach them.</p>
 <p>Now the new one. The Python book emulated a do-while with <code>while True:</code> and a <code>break</code>. Rust looked at how often programmers write intentionally infinite loops — event loops, polling loops, driver loops that run until the test ends — and decided the pattern deserved its own keyword:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 6: loop — the intentional infinite loop
-</span>
+<pre class="playground"><code class="language-rust">// Figure 6: loop — the intentional infinite loop
+
 fn main() {
     let mut nn = 0;
     let first_big_square = loop {
@@ -292,8 +292,8 @@ fn main() {
 <li><code>0..=8</code> — start at 0, stop <em>at</em> 8, inclusive. Python had no direct equivalent; you wrote <code>range(0, 9)</code> and remembered why.</li>
 </ul>
 <p>The <code>for</code> loop iterates over a range just as Python’s did:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 7: Looping through numbers using a range
-</span>
+<pre class="playground"><code class="language-rust">// Figure 7: Looping through numbers using a range
+
 fn main() {
     for ii in 0..4 {
         print!("{ii} ");
@@ -304,8 +304,8 @@ fn main() {
 0 1 2 3
 </code></pre>
 <p>Where is <code>step</code>? Ranges are iterators (a concept that transfers straight from the Python book’s sequences chapters — Chapter 12 makes it rigorous), and iterators have adapter methods. <code>range(1, 14, 2)</code> becomes:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 8: Stepping through a range
-</span>
+<pre class="playground"><code class="language-rust">// Figure 8: Stepping through a range
+
 fn main() {
     for ii in (1..14).step_by(2) {
         print!("{ii} ");
@@ -319,8 +319,8 @@ fn main() {
 <h2 id="match-the-construct-python-never-had"><a class="header" href="#match-the-construct-python-never-had">match: the construct Python never had</a></h2>
 <p>Now the centerpiece. Python replaced <code>case</code>/<code>switch</code> with <code>elif</code> chains and called the trade “more flexibility at the cost of more code.” Rust’s <code>match</code> refuses the trade: it delivers more flexibility than <code>case</code> <em>and</em> less code than <code>elif</code> — and then adds a property neither language offered, one that this book will spend many chapters collecting dividends on.</p>
 <p>Start with the direct port. Figure 3’s <code>else if</code> chain becomes:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 9: match as a switch
-</span>
+<pre class="playground"><code class="language-rust">// Figure 9: match as a switch
+
 fn main() {
     let (a, b) = (5, 5);
     let operation = "multiply";
@@ -343,8 +343,8 @@ answer = 25
 </ol>
 <h2 id="exhaustiveness-the-compiler-counts-your-cases"><a class="header" href="#exhaustiveness-the-compiler-counts-your-cases">Exhaustiveness: the compiler counts your cases</a></h2>
 <p>Delete the <code>_</code> arm from a <code>match</code> and something remarkable happens. Here is a <code>match</code> on a raw op code — the TinyALU’s four operations, numbered 1 through 4 as they were in the Python book’s <code>Ops</code> IntEnum — with no wildcard:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 10: The compiler catches missing cases
-</span>
+<pre class="playground"><code class="language-rust">// Figure 10: The compiler catches missing cases
+
 fn main() {
     let op_code: u8 = 2;
     let name = match op_code {
@@ -368,8 +368,8 @@ error[E0004]: non-exhaustive patterns: `0_u8` and `5_u8..=u8::MAX` not covered
 <p>For a <code>u8</code>, exhaustiveness is a nice safety net. The reason this book teaches <code>match</code> in Chapter 4 rather than Chapter 14 is what happens when the thing being matched has a <em>small, meaningful</em> set of cases. In Chapter 7, <code>Ops</code> returns as a true Rust enum with exactly four values, and a <code>match</code> on it needs exactly four arms — no wildcard, no dead cases, and if the TinyALU ever grows a fifth operation, <strong>every <code>match</code> in the testbench that fails to handle it becomes a compile error</strong>. Your scoreboard, your coverage collector, your predictor: the compiler hands you the complete list of code that must learn about the new op. That is the refactoring-without-fear promise of Chapter 1, delivered by a control-flow statement.</p>
 <h2 id="patterns-ranges-tuples-and-taking-things-apart"><a class="header" href="#patterns-ranges-tuples-and-taking-things-apart">Patterns: ranges, tuples, and taking things apart</a></h2>
 <p>The left side of a <code>match</code> arm is not limited to constants. Patterns can be ranges — and here the TinyALU gives us a real example. Recall from the Python book that ADD, AND, and XOR complete in one cycle while MUL takes three. With op codes 1 through 4:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 11: Matching on ranges
-</span>
+<pre class="playground"><code class="language-rust">// Figure 11: Matching on ranges
+
 fn main() {
     let op_code: u8 = 4;
     let cycles = match op_code {
@@ -384,8 +384,8 @@ This operation takes 3 cycle(s)
 </code></pre>
 <p>Range patterns use the inclusive <code>..=</code> form, and you can also combine alternatives with <code>|</code>, as in <code>1 | 3 =&gt; ...</code>. The compiler still does its exhaustiveness arithmetic across all of it.</p>
 <p>Patterns can also take structured data apart. Match on a tuple, and each position of the pattern matches the corresponding element — with <code>_</code> skipping positions you don’t care about and plain names <em>binding</em> the values so the arm can use them:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 12: Matching and destructuring a tuple
-</span>
+<pre class="playground"><code class="language-rust">// Figure 12: Matching and destructuring a tuple
+
 fn main() {
     let operands: (u8, u8) = (0, 200);
     let comment = match operands {

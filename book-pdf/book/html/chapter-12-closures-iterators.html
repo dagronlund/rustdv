@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-255f8fe6.js";
+            window.path_to_searchindex_js = "searchindex-a58967d8.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-266d771a.js"></script>
+        <script src="toc-dfd4f298.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -183,8 +183,8 @@
 </blockquote>
 <h2 id="closures-functions-as-values"><a class="header" href="#closures-functions-as-values">Closures: functions as values</a></h2>
 <p>A closure is a function without a name, written inline, that can use the variables around it. Python had these in two flavors: <code>lambda x: x + 1</code> for one-liners, and nested <code>def</code> for anything longer. Rust has one syntax for both. The parameters go between vertical bars, and the body follows.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 1: A closure is an unnamed function in a variable
-</span>
+<pre class="playground"><code class="language-rust">// Figure 1: A closure is an unnamed function in a variable
+
 fn main() {
     let add_one = |x: u32| x + 1;
 
@@ -206,8 +206,8 @@ fn main() {
 <p>A Python closure that mentions an outer variable just… uses it. Every Python name is a reference, so the closure captures a reference, silently, and if two pieces of code mutate the same captured object at the same time, that is your problem to discover at runtime. The Python book’s NullTrigger race — two tasks sharing <code>transaction_data</code> — was exactly this bug wearing a coroutine costume.</p>
 <p>Rust closures also capture outer variables, but here is the difference: <em>capturing is subject to the ownership rules from Chapters 5 and 6, like everything else.</em> A closure that reads a variable borrows it with <code>&amp;T</code>. A closure that mutates one borrows it with <code>&amp;mut T</code>. A closure that consumes one takes ownership. The compiler looks at the closure’s body, picks the least drastic mode that works, and then enforces it — visibly, in the type system, at compile time.</p>
 <p>Watch the three modes in order. First, a closure that only reads.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: A closure that reads captures by shared borrow
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: A closure that reads captures by shared borrow
+
 fn main() {
     let ops = vec!["ADD", "AND", "XOR", "MUL"];
 
@@ -223,8 +223,8 @@ ops under test: ["ADD", "AND", "XOR", "MUL"]
 still mine: 4 ops
 </code></pre>
 <p><code>show</code> borrowed <code>ops</code> the way any <code>&amp;Vec</code> would, so we can call it repeatedly and still use <code>ops</code> afterward. Second, a closure that mutates.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: A closure that mutates captures by exclusive borrow
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: A closure that mutates captures by exclusive borrow
+
 fn main() {
     let mut errors = Vec::new();
 
@@ -240,8 +240,8 @@ fn main() {
 </code></pre>
 <p>Two things changed. The closure itself must be declared <code>let mut</code>, because calling it mutates the captured <code>errors</code> — mutation is never invisible in Rust, not even here. And while <code>log_error</code> is alive, it holds the <em>exclusive</em> borrow of <code>errors</code>; if we tried to <code>println!("{errors:?}")</code> between the two calls, the compiler would refuse, citing the aliasing-XOR-mutability rule from Chapter 6. One writer, no readers alongside. The race the Python book could only warn you about is structurally impossible to write.</p>
 <p>Third, a closure that takes ownership. Sometimes a closure must own its captures — most often because it will outlive the scope it was created in, which is precisely the situation when you store a closure in a struct or hand it to another task. The <code>move</code> keyword forces the transfer.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 4: A move closure takes ownership of its captures
-</span>
+<pre class="playground"><code class="language-rust">// Figure 4: A move closure takes ownership of its captures
+
 fn main() {
     let test_name = String::from("alu_smoke_test");
 
@@ -270,8 +270,8 @@ error[E0382]: borrow of moved value: `test_name`
 <pre><code class="language-python">even_squares = [nn**2 for nn in range(11) if nn % 2 == 0]
 </code></pre>
 <p>A comprehension has four parts: an expression, a variable, an iterator, and a filter. Rust has no comprehension syntax. Instead it lets you take those same four parts and chain them left to right as method calls on the iterator — each method taking, naturally, a closure.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 5: The list comprehension, as an iterator chain
-</span>
+<pre class="playground"><code class="language-rust">// Figure 5: The list comprehension, as an iterator chain
+
 fn main() {
     let even_squares: Vec&lt;u32&gt; = (0..=10)
         .filter(|nn| nn % 2 == 0)
@@ -285,8 +285,8 @@ even squares [0, 4, 16, 36, 64, 100]
 </code></pre>
 <p>Read the chain aloud and it is the comprehension in sentence order: take the range zero through ten, <em>filter</em> it down to the even numbers, <em>map</em> each survivor to its square, and <em>collect</em> the results into a <code>Vec</code>. The <code>|nn| ...</code> closures are the comprehension’s expression and filter parts, now explicit values passed as arguments. Where the Python book had to teach you the four positions inside the brackets, the Rust version wears its structure on the outside — and when a chain grows too clever, it splits across lines exactly as figure 5 shows, no special multi-line dispensation required.</p>
 <p>The Python book’s dictionary comprehension ports the same way. <code>{ii : ii**3 for ii in range(4)}</code> becomes a chain that maps each number to a <code>(key, value)</code> pair and collects into a <code>HashMap</code>:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 6: The dictionary comprehension, collected into a HashMap
-</span>
+<pre class="playground"><code class="language-rust">// Figure 6: The dictionary comprehension, collected into a HashMap
+
 use std::collections::HashMap;
 
 fn main() {
@@ -301,8 +301,8 @@ cubes: {2: 8, 0: 0, 3: 27, 1: 1}
 </code></pre>
 <p>Two things to notice. <code>collect()</code> is doing something quietly remarkable: the <em>same method</em> built a <code>Vec</code> in figure 5 and a <code>HashMap</code> here, steered by the type annotation on the left — the generics machinery from Chapter 11 earning its keep. (One wrinkle: the closure’s parameter carries its own <code>: u32</code>, because a method call like <code>.pow</code> must know its receiver’s concrete type on the spot — inference has not yet flowed backward from the annotation when the closure body is checked.) And look at that output order. Chapter 8 warned you that Rust’s <code>HashMap</code>, unlike the Python dict you knew, promises nothing about iteration order, and here is the proof; your run will likely print a different scramble.</p>
 <p>One more adapter completes the everyday set. Where <code>map</code> transforms each element and <code>filter</code> drops some, <strong><code>fold</code></strong> boils the whole stream down to a single value: it takes a starting accumulator and a closure that combines the accumulator with each element in turn. Here is a scoreboard-flavored example — counting mismatches in a list of (expected, actual) pairs:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 7: fold reduces a stream to one value
-</span>
+<pre class="playground"><code class="language-rust">// Figure 7: fold reduces a stream to one value
+
 fn main() {
     let results = [(0x55u16, 0x55u16), (0x100, 0x100), (0x0FE, 0x0FF)];
 
@@ -323,8 +323,8 @@ mismatches: 1
 <h2 id="where-generators-went"><a class="header" href="#where-generators-went">Where generators went</a></h2>
 <p>Rust has no <code>yield</code> statement.² What it has instead is the <code>Iterator</code> trait — one required method, <code>next()</code>, which returns <code>Some(value)</code> until the stream is exhausted and <code>None</code> thereafter. That <code>Option</code> should ring a bell from Chapter 9: where Python generators signal exhaustion with a <code>StopIteration</code> exception behind the scenes, Rust signals it in the return type, in the open.</p>
 <p>Any type that implements <code>Iterator</code> works in a <code>for</code> loop, chains with every adapter above, and collects into collections. The Python book’s favorite generator was Fibonacci, so let us port it. Where Python kept <code>lastnumb</code> and <code>numb</code> alive between <code>yield</code>s inside a paused function, Rust keeps them as fields in a struct, and <code>next()</code> advances the state one step per call.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 8: The Fibonacci generator, as an Iterator implementation
-</span>
+<pre class="playground"><code class="language-rust">// Figure 8: The Fibonacci generator, as an Iterator implementation
+
 struct Fibonacci {
     curr: u64,
     next: u64,
@@ -360,8 +360,8 @@ fn main() {
             yield (aa, bb)
 </code></pre>
 <p>And in Rust, as a function returning <code>impl Iterator</code>:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 9: A TinyALU operand-pair stream, replacing a generator function
-</span>
+<pre class="playground"><code class="language-rust">// Figure 9: A TinyALU operand-pair stream, replacing a generator function
+
 fn operand_pairs(n: u8) -&gt; impl Iterator&lt;Item = (u8, u8)&gt; {
     (0..n).flat_map(move |aa| (0..n).map(move |bb| (aa, bb)))
 }
@@ -382,8 +382,8 @@ fn main() {
 <h2 id="closures-you-keep-a-seed-for-part-iv"><a class="header" href="#closures-you-keep-a-seed-for-part-iv">Closures you keep: a seed for Part IV</a></h2>
 <p>Everything so far has passed closures <em>downward</em> — into <code>map</code>, into <code>filter</code>, used and forgotten. The last idea in this chapter is the one with the longest reach in this book: a closure is a value, and like any value, it can be <strong>stored in a struct field</strong> and called later, by code that has no idea what the closure does inside.</p>
 <p>Because every closure has its own unwritable type, storing one takes a trait object — Chapter 10’s <code>dyn</code>, boxed up: <code>Box&lt;dyn Fn(u8, u8) -&gt; u16&gt;</code> is “some heap-allocated callable, taking two <code>u8</code>s, returning a <code>u16</code>; I don’t know or care which one.” Here is a toy checker whose <em>prediction function is data</em>:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 10: A struct that carries its behavior as a closure
-</span>
+<pre class="playground"><code class="language-rust">// Figure 10: A struct that carries its behavior as a closure
+
 struct Checker {
     predict: Box&lt;dyn Fn(u8, u8) -&gt; u16&gt;,
 }

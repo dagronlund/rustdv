@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-255f8fe6.js";
+            window.path_to_searchindex_js = "searchindex-a58967d8.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-266d771a.js"></script>
+        <script src="toc-dfd4f298.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,8 +184,8 @@
 <h2 id="modules-namespaces-inside-a-crate"><a class="header" href="#modules-namespaces-inside-a-crate">Modules: namespaces inside a crate</a></h2>
 <p>A <strong>module</strong> in Rust is a named scope you declare with the <code>mod</code> keyword. Unlike Python, where every file automatically <em>is</em> a module, a Rust module is something you declare explicitly — and you can declare one right in the middle of a file. Let’s start there, because it makes the concept visible before any files get involved.</p>
 <p>We will need a home for the TinyALU’s prediction logic — the pure function that computes what the DUT <em>should</em> produce. This was <code>tinyalu_utils.py</code>’s most important resident, and it will be our example for the rest of the chapter.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 1: A module declared inline, in the middle of main.rs
-</span>
+<pre class="playground"><code class="language-rust">// Figure 1: A module declared inline, in the middle of main.rs
+
 mod predictor {
     #[derive(Clone, Copy, Debug, PartialEq)]
     pub enum Ops { Add = 1, And = 2, Xor = 3, Mul = 4 }
@@ -210,8 +210,8 @@ fn main() {
 <p>Everything between the braces of <code>mod predictor</code> lives in the <code>predictor</code> namespace, and code outside reaches it with <code>::</code> — <code>predictor::alu_prediction</code> — exactly the job Python’s <code>.</code> did in <code>pyuvm.FIFO_DEBUG</code>. Note in passing that the prediction itself is honest about widths in a way the Python version never had to be: the TinyALU’s operands are <code>u8</code> and its result bus is sixteen bits wide, so <code>Add</code> and <code>Mul</code> cast up to <code>u16</code> <em>before</em> operating. <code>0xFF + 0x01</code> carries into bit eight instead of wrapping to zero. Chapter 3 planted that seed; here it flowers.</p>
 <h2 id="use-bringing-paths-into-scope"><a class="header" href="#use-bringing-paths-into-scope"><code>use</code>: bringing paths into scope</a></h2>
 <p>Writing <code>predictor::Ops::Add</code> at every call site gets old, and Rust’s answer is the <code>use</code> declaration — the direct descendant of Python’s <code>from ... import ...</code>.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: use brings names into scope, like Python's from-import
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: use brings names into scope, like Python's from-import
+
 mod predictor {
     #[derive(Clone, Copy, Debug, PartialEq)]
     pub enum Ops { Add = 1, And = 2, Xor = 3, Mul = 4 }
@@ -258,8 +258,8 @@ XOR: 0x00cc
 <h2 id="pub-privacy-the-compiler-enforces"><a class="header" href="#pub-privacy-the-compiler-enforces"><code>pub</code>: privacy the compiler enforces</a></h2>
 <p>You may have noticed the <code>pub</code> keywords sprinkled through figures 1 and 2. They are not decoration. In Rust, <strong>everything in a module is private by default</strong> — invisible to code outside the module — and <code>pub</code> is how an item opts into being part of the module’s public interface.</p>
 <p>Recall how the Python book handled this. Python has no private anything: every name in every module is importable by anyone, and the convention is that an underscore prefix (<code>_my_helper</code>) means <em>please don’t</em>. The book was frank that this is etiquette, not enforcement — pyuvm’s internals are full of underscored names that nothing actually stops you from reaching. Rust replaces the etiquette with a compile error. Let’s provoke one. Suppose the predictor grows a private helper that the outside world has no business calling:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: Private by default — the underscore convention, enforced
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: Private by default — the underscore convention, enforced
+
 mod predictor {
     pub enum Ops { Add = 1, And = 2, Xor = 3, Mul = 4 }
 
@@ -345,8 +345,8 @@ rand = "0.9.1"
 <p>Now the capability I flagged in Chapter 1 as worth the price of admission. It has been sitting quietly inside cargo the whole time, waiting for us to have code worth testing. We do: <code>alu_prediction</code> is a pure function — values in, value out, no DUT, no signals, no simulator. In the Python testbench, logic like this could only be exercised by running the whole cocotb stack against the simulator, or by setting up pytest scaffolding alongside it, which the book’s flow never did. In Rust, testing it is built into the language and the tool. You write functions marked <code>#[test]</code>, and <code>cargo test</code> finds and runs them. The convention is a <code>tests</code> submodule at the bottom of the file whose code it tests:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span><span class="boring">Figure 6: Unit tests live beside the code they test
-</span>
+</span>// Figure 6: Unit tests live beside the code they test
+
 // src/predictor.rs
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -436,6 +436,9 @@ test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
+                            <a rel="next prefetch" href="interlude-tinyalu-testbench.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
 
                         <div style="clear: both"></div>
                     </nav>
@@ -447,6 +450,9 @@ test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
+                    <a rel="next prefetch" href="interlude-tinyalu-testbench.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
             </nav>
 
         </div>

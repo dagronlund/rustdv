@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-255f8fe6.js";
+            window.path_to_searchindex_js = "searchindex-a58967d8.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-266d771a.js"></script>
+        <script src="toc-dfd4f298.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -204,8 +204,8 @@ True
 <p>Every value in Rust has exactly one <strong>owner</strong> — the variable (or, later, the struct field) responsible for it. When the owner goes out of scope, the value is destroyed, immediately. Assignment doesn’t copy a name tag; it <strong>moves</strong> ownership to the new variable, and the old one is dead.</p>
 </blockquote>
 <p>That last clause is the shock. Let’s take the shock now, on purpose, with the compiler watching. Figure 2 is the two-names experiment from figure 1, translated into Rust.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: Assignment moves — and the old name is gone
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: Assignment moves — and the old name is gone
+
 fn main() {
     let a = String::from("ADD 5 3");
     let b = a;
@@ -234,8 +234,8 @@ help: consider cloning the value if the performance cost is acceptable
 <p>Notice, too, the compiler’s parting suggestion: <code>a.clone()</code>. It has read your mind — or at least your options. We’ll take it up on that shortly.</p>
 <h2 id="scope-is-the-destructor"><a class="header" href="#scope-is-the-destructor">Scope is the destructor</a></h2>
 <p>If every value has exactly one owner, then “who frees this?” has a mechanical answer: the owner does, at the moment it goes out of scope. Rust calls this <strong>dropping</strong> the value, and it is as deterministic as the closing brace it happens at.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: Values die at the closing brace — every time, on time
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: Values die at the closing brace — every time, on time
+
 fn main() {
     {
         let cmd = String::from("MUL 7 6");
@@ -255,8 +255,8 @@ after the scope
 </blockquote>
 <h2 id="wait--my-integers-have-been-fine"><a class="header" href="#wait--my-integers-have-been-fine">Wait — my integers have been fine</a></h2>
 <p>A fair objection: you’ve been assigning integers back and forth since Chapter 3 without the compiler saying a word about moves. Figure 4 confirms it.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 4: Copy types don't move — small values are simply copied
-</span>
+<pre class="playground"><code class="language-rust">// Figure 4: Copy types don't move — small values are simply copied
+
 fn main() {
     let a: u8 = 5;
     let b = a;              // copies the byte; a is still alive
@@ -270,8 +270,8 @@ a = 5, b = 5
 <h2 id="the-monitor-and-the-scoreboard"><a class="header" href="#the-monitor-and-the-scoreboard">The monitor and the scoreboard</a></h2>
 <p>Every mechanism in this chapter has been abstract enough to shrug at. So let’s make it a testbench problem — <em>the</em> testbench problem, the one you’ve written a dozen times: a monitor observes a transaction on the TinyALU’s command bus and hands it to a scoreboard.</p>
 <p>We need a transaction type. Structs get their own chapter (Chapter 7); for today, read the first four lines of figure 5 as “a Python class with only data and no methods” — fields, types, no ceremony. The <code>op</code> field really wants to be a proper enum, and in Chapter 7 it becomes one; a <code>u8</code> stands in for now. And we need the two parties: a <code>scoreboard</code> function that takes a <code>Transaction</code> <em>by value</em>, and a <code>main</code> that plays the monitor. In pyuvm these would be components connected by an analysis port; here in our cargo playground, two functions are enough to expose the question that matters.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 5: The monitor hands off a transaction — and learns what "hands off" means
-</span>
+<pre class="playground"><code class="language-rust">// Figure 5: The monitor hands off a transaction — and learns what "hands off" means
+
 struct Transaction {
     a: u8,
     b: u8,
@@ -311,8 +311,8 @@ help: consider cloning the value if the performance cost is acceptable
 <p><strong>Answer two: the monitor still needs it</strong> — to log it, to hand a second copy to a coverage collector. Then the monitor must keep <em>a real copy</em>, and Rust has an explicit word for that.</p>
 <h2 id="clone-copies-you-can-see"><a class="header" href="#clone-copies-you-can-see"><code>.clone()</code>: copies you can see</a></h2>
 <p>The compiler suggested it twice, so let’s take the hint. Adding <code>#[derive(Clone)]</code> above the struct asks the compiler to write a field-by-field copy routine for us (that one magic line gets a full explanation in Chapters 10 and 21; for now, “please generate the copying code” is the whole story). Then <code>.clone()</code> makes an independent duplicate wherever we ask.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 6: The monitor keeps a copy — explicitly
-</span>
+<pre class="playground"><code class="language-rust">// Figure 6: The monitor keeps a copy — explicitly
+
 #[derive(Clone)]
 struct Transaction {
     a: u8,

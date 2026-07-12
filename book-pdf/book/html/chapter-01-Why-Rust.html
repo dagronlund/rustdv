@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-255f8fe6.js";
+            window.path_to_searchindex_js = "searchindex-a58967d8.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-266d771a.js"></script>
+        <script src="toc-dfd4f298.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -204,7 +204,7 @@
 <p>There is no REPL. Python let you poke at ideas interactively; Rust asks you to write a small program. The playground projects in Part I are this book’s substitute, and honestly, <code>cargo</code> makes them cheap enough that you will not miss the prompt much.</p>
 <p>If your testbenches are small, your regressions short, and your team fluent in Python, Python remains a fine answer, and I will not pretend otherwise. This book is for when one of those three stops being true.</p>
 <h2 id="code-examples"><a class="header" href="#code-examples">Code examples</a></h2>
-<p>The conventions are the ones you know. Every example has a figure number; code is followed by <code>--</code> and then its output. Examples live in the <code>rust4uvm_examples</code> repository, in directories named after their chapters, with instructions in each <code>README.md</code>. Early chapters use standalone cargo projects the way the Python book used Jupyter notebooks; from Chapter 17 on, examples are simulation directories.</p>
+<p>The conventions are the ones you know. Every example has a figure number; code is followed by <code>--</code> and then its output. Examples live in the book’s <code>rustdv-examples</code> repository, in directories named after their chapters, with instructions in each <code>README.md</code>. Early chapters use standalone cargo projects the way the Python book used Jupyter notebooks; from Chapter 17 on, examples are simulation directories.</p>
 <p>We should not break a two-book tradition. In figure 1, we create a program with <code>cargo new</code>, Rust’s project generator — meet <code>cargo</code> now, because like <code>pip</code>, <code>venv</code>, <code>make</code>, and <code>pytest</code> fused into one tool, it will be everywhere.</p>
 <pre><code class="language-text"># Figure 1: Creating our first program
 
@@ -212,8 +212,8 @@
     Creating binary (application) `hello` package
 </code></pre>
 <p><code>cargo new</code> writes a tiny project containing <code>src/main.rs</code>, which is where figure 2 lives. Where Python let us type <code>print("Hello, world.")</code> naked at a prompt, Rust asks for a function — <code>fn main()</code> is where every Rust program begins. The exclamation point on <code>println!</code> marks it as a <em>macro</em> rather than a function, a distinction that will matter a great deal in Chapter 21 and not at all before then.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: The classic first program
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: The classic first program
+
 fn main() {
     println!("Hello, world.");
 }</code></pre>

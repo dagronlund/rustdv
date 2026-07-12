@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-255f8fe6.js";
+            window.path_to_searchindex_js = "searchindex-a58967d8.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-266d771a.js"></script>
+        <script src="toc-dfd4f298.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -199,8 +199,8 @@
 <span class="boring">}</span></code></pre>
 <p>This is just an enum with a payload, exactly like the ones you built in Chapter 7 — it happens to be defined in the standard library and generic over any type <code>T</code> (generics get their full treatment in Chapter 11; for now, read <code>Option&lt;u8&gt;</code> as “maybe a <code>u8</code>”).</p>
 <p>You met <code>Option</code> briefly in Chapter 8, because <code>HashMap</code> lookups return one. Let’s port the Python book’s football-players dictionary directly. In Python, <code>players.get(4)</code> returned <code>None</code>, and <code>players.get(4, "Not in database")</code> supplied a default. Figure 1 is the same program in Rust.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 1: A HashMap lookup returns Option
-</span>
+<pre class="playground"><code class="language-rust">// Figure 1: A HashMap lookup returns Option
+
 use std::collections::HashMap;
 
 fn main() {
@@ -240,8 +240,8 @@ Number 4? Not in database
 }
 <span class="boring">}</span></code></pre>
 <p><code>T</code> is the type you get on success; <code>E</code> is the error type you get instead. And now we can port the Python book’s exceptions chapter scenario for scenario, starting where it started: dividing by zero.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: You still can't divide by zero
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: You still can't divide by zero
+
 fn main() {
     let divisor: i32 = "0".parse().unwrap();
     println!("3/0 = {}", 3 / divisor);
@@ -254,8 +254,8 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 <p>A word about the <code>parse</code>: it is there because it has to be. Write <code>let divisor = 0;</code> and rustc, able to <em>see</em> the zero, refuses to compile the division at all. Only a divisor the compiler cannot predict — one arriving at runtime, as bus values do — gets the chance to panic.</p>
 <p>That is a <strong>panic</strong> — Rust’s crash. We will come back to panics later in the chapter, because they have a specific job, and “report a divide by zero to the caller” is not it. When the possibility of failure is part of a function’s honest contract, the function should return it. The standard library agrees: alongside the <code>/</code> operator, integers provide <code>checked_div</code>, which returns an <code>Option</code> — <code>None</code> instead of a crash.²</p>
 <p>The Python book’s <code>nice_div()</code> caught <code>ZeroDivisionError</code> and returned <code>math.inf</code>. Our integer version can’t return infinity, but it can do something better: return a <code>Result</code> that names what went wrong. Figure 3 is <code>nice_div</code>, Rust edition.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: nice_div returns a Result instead of raising
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: nice_div returns a Result instead of raising
+
 #[derive(Debug)]
 enum DivError {
     DivideByZero,
@@ -286,8 +286,8 @@ You screwed up your division, human: DivideByZero
 <p>Notice also who’s who in the port: the <code>Err</code> arm of the <code>match</code> is playing the role of Python’s <code>except ZeroDivisionError</code> block, and constructing <code>Err(DivError::DivideByZero)</code> is playing the role of <code>raise</code>. Same drama, but now the error travels as a return value, in plain sight.</p>
 <h3 id="the-exception-that-vanished"><a class="header" href="#the-exception-that-vanished">The exception that vanished</a></h3>
 <p>The Python book’s next scenario was <code>nice_div(3, "zero")</code> — dividing an <code>int</code> by a <code>str</code>, which raised a <code>TypeError</code>, which required a second <code>except</code> block to catch. Figure 4 ports that call to Rust.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 4: The TypeError scenario, ported to Rust
-</span>
+<pre class="playground"><code class="language-rust">// Figure 4: The TypeError scenario, ported to Rust
+
 fn main() {
     match nice_div(3, "zero") {
         Ok(result) =&gt; println!("nice_div = {result}"),
@@ -307,8 +307,8 @@ error[E0308]: mismatched types
 <h2 id="the--operator-propagation-you-can-see"><a class="header" href="#the--operator-propagation-you-can-see">The <code>?</code> operator: propagation you can see</a></h2>
 <p>Back to the boss metaphor. The genuinely good idea inside exceptions was <em>delegation</em>: a low-level function shouldn’t have to decide what a divide-by-zero means for the whole program. It should hand the problem upward. Python’s <code>raise</code> did that invisibly. Rust does it with one visible character.</p>
 <p>Suppose we’re writing a little TinyALU-flavored utility: compute a ratio of two accumulated counts as a percentage. It calls <code>nice_div</code>, and if the division fails, our function can’t succeed either — the error should go up to <em>our</em> caller. Written longhand, that’s a <code>match</code> where the <code>Err</code> arm just re-returns the error. Written idiomatically, it’s figure 5.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 5: The ? operator sends the error up the stack
-</span>
+<pre class="playground"><code class="language-rust">// Figure 5: The ? operator sends the error up the stack
+
 fn percent(numerator: u32, denominator: u32) -&gt; Result&lt;u32, DivError&gt; {
     let ratio = nice_div(numerator * 100, denominator)?;
     Ok(ratio)
@@ -333,8 +333,8 @@ percent failed: DivideByZero
 <h2 id="designing-an-error-enum"><a class="header" href="#designing-an-error-enum">Designing an error enum</a></h2>
 <p><code>DivError</code> had one variant, which made it a demo. Real error types earn their keep when there are several ways to fail and the caller might care which one happened — exactly the job Python’s exception <em>class hierarchy</em> did, with <code>except ZeroDivisionError</code> and <code>except TypeError</code> selecting by type. In Rust, the error type is an enum, the variants are the failure modes, payloads carry the evidence, and <code>match</code> does the selecting.</p>
 <p>Let’s build one the TinyALU will actually need. Think ahead to a testbench utility that decodes an operation field from the DUT into our <code>Ops</code> enum from Chapter 7. Two things can go wrong: the bits might not encode any legal operation, or the DUT might never hand us the value at all before the clock runs out. That’s a two-variant enum, one variant carrying the offending byte:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 6: A custom error enum for the TinyALU
-</span>
+<pre class="playground"><code class="language-rust">// Figure 6: A custom error enum for the TinyALU
+
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -398,8 +398,8 @@ decode failed: invalid ALU op code: 0x07
 <li><strong><code>.expect("message")</code></strong> — <code>unwrap</code> with a message you choose, which makes it strictly better in code you keep.⁴</li>
 </ul>
 <p>Figure 7 ports the Python book’s <code>assert</code> scenario — the <code>xor_bytes</code> function that rejected values that don’t fit in a byte. The port sharpens the example nicely: in Rust, <code>xor_bytes</code> takes <code>&amp;[u8]</code>, so a value over 255 can’t even reach the function (the <code>TypeError</code> disappearance, again). What still <em>can</em> go wrong is a claim about our own logic — say, this version that folds in a parity check the surrounding testbench relies on:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 7: assert! guards an invariant
-</span>
+<pre class="playground"><code class="language-rust">// Figure 7: assert! guards an invariant
+
 fn xor_bytes(bytes: &amp;[u8]) -&gt; u8 {
     let mut xor = 0;
     for b in bytes {

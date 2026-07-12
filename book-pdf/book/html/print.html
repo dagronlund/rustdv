@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-255f8fe6.js";
+            window.path_to_searchindex_js = "searchindex-a58967d8.js";
         </script>
 
         <!-- Custom JS scripts for mdbook-pdf PDF generation -->
@@ -64,9 +64,9 @@
                 }
             });
         </script>
-    <div style="display: none"><a href="#chapter-01-why-rust">chapter-01-why-rust</a><a href="#chapter-02-rust-concepts">chapter-02-rust-concepts</a><a href="#chapter-03-rust-basics">chapter-03-rust-basics</a><a href="#chapter-04-conditions-loops-match">chapter-04-conditions-loops-match</a><a href="#chapter-05-ownership">chapter-05-ownership</a><a href="#chapter-06-borrowing-references">chapter-06-borrowing-references</a><a href="#chapter-07-structs-enums-methods">chapter-07-structs-enums-methods</a><a href="#chapter-08-collections">chapter-08-collections</a><a href="#chapter-09-result-option-exceptions">chapter-09-result-option-exceptions</a><a href="#chapter-10-traits">chapter-10-traits</a><a href="#chapter-11-generics">chapter-11-generics</a><a href="#chapter-12-closures-iterators">chapter-12-closures-iterators</a><a href="#chapter-13-smart-pointers">chapter-13-smart-pointers</a><a href="#chapter-14-modules-crates-cargo">chapter-14-modules-crates-cargo</a></div>
+    <div style="display: none"><a href="#chapter-01-why-rust">chapter-01-why-rust</a><a href="#chapter-02-rust-concepts">chapter-02-rust-concepts</a><a href="#chapter-03-rust-basics">chapter-03-rust-basics</a><a href="#chapter-04-conditions-loops-match">chapter-04-conditions-loops-match</a><a href="#chapter-05-ownership">chapter-05-ownership</a><a href="#chapter-06-borrowing-references">chapter-06-borrowing-references</a><a href="#chapter-07-structs-enums-methods">chapter-07-structs-enums-methods</a><a href="#chapter-08-collections">chapter-08-collections</a><a href="#chapter-09-result-option-exceptions">chapter-09-result-option-exceptions</a><a href="#chapter-10-traits">chapter-10-traits</a><a href="#chapter-11-generics">chapter-11-generics</a><a href="#chapter-12-closures-iterators">chapter-12-closures-iterators</a><a href="#chapter-13-smart-pointers">chapter-13-smart-pointers</a><a href="#chapter-14-modules-crates-cargo">chapter-14-modules-crates-cargo</a><a href="#interlude-tinyalu-testbench">interlude-tinyalu-testbench</a></div>
         <!-- Start loading toc.js asap -->
-        <script src="toc-266d771a.js"></script>
+        <script src="toc-dfd4f298.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -231,7 +231,7 @@
 <p>There is no REPL. Python let you poke at ideas interactively; Rust asks you to write a small program. The playground projects in Part I are this book’s substitute, and honestly, <code>cargo</code> makes them cheap enough that you will not miss the prompt much.</p>
 <p>If your testbenches are small, your regressions short, and your team fluent in Python, Python remains a fine answer, and I will not pretend otherwise. This book is for when one of those three stops being true.</p>
 <h2 id="code-examples"><a class="header" href="#code-examples">Code examples</a></h2>
-<p>The conventions are the ones you know. Every example has a figure number; code is followed by <code>--</code> and then its output. Examples live in the <code>rust4uvm_examples</code> repository, in directories named after their chapters, with instructions in each <code>README.md</code>. Early chapters use standalone cargo projects the way the Python book used Jupyter notebooks; from Chapter 17 on, examples are simulation directories.</p>
+<p>The conventions are the ones you know. Every example has a figure number; code is followed by <code>--</code> and then its output. Examples live in the book’s <code>rustdv-examples</code> repository, in directories named after their chapters, with instructions in each <code>README.md</code>. Early chapters use standalone cargo projects the way the Python book used Jupyter notebooks; from Chapter 17 on, examples are simulation directories.</p>
 <p>We should not break a two-book tradition. In figure 1, we create a program with <code>cargo new</code>, Rust’s project generator — meet <code>cargo</code> now, because like <code>pip</code>, <code>venv</code>, <code>make</code>, and <code>pytest</code> fused into one tool, it will be everywhere.</p>
 <pre><code class="language-text"># Figure 1: Creating our first program
 
@@ -239,8 +239,8 @@
     Creating binary (application) `hello` package
 </code></pre>
 <p><code>cargo new</code> writes a tiny project containing <code>src/main.rs</code>, which is where figure 2 lives. Where Python let us type <code>print("Hello, world.")</code> naked at a prompt, Rust asks for a function — <code>fn main()</code> is where every Rust program begins. The exclamation point on <code>println!</code> marks it as a <em>macro</em> rather than a function, a distinction that will matter a great deal in Chapter 21 and not at all before then.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: The classic first program
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: The classic first program
+
 fn main() {
     println!("Hello, world.");
 }</code></pre>
@@ -267,8 +267,8 @@ Hello, world.
 <p>In Python, the number <code>5</code> is an object of class <code>int</code>, and it knows it. The type information travels with the object at runtime; that is what makes <code>type(5)</code> possible, and it is what makes dynamic typing work — every operation on every object begins with the interpreter looking up, right then, whether the object can do the thing.</p>
 <p>Rust’s <code>5</code> has a type too — but the type exists only in the compiler’s head. Every value in a Rust program has exactly one type, known completely before the program runs. The compiler uses that knowledge to check every operation in the program, and then it throws the types away. The compiled binary contains no type tags, no class objects, no lookup tables — just the machine code that the types proved correct. There is no <code>type()</code> function in Rust for the same reason there is no ghost in a finished building: by the time the program runs, the types have done their work and left.¹</p>
 <p>This means the checking that Python spreads across the whole runtime, Rust performs all at once, up front. The Python book demonstrated dynamic typing with a program that called a string method on an integer — and the key detail was <em>when</em> the program failed. Let’s port that exact example. In figure 1, <code>ends_with</code> is a real method on Rust strings, just as <code>endswith()</code> was in Python, and calling a method looks exactly the way it looked in Python: <code>mystring.ends_with("orld")</code>. Then we try it on an integer.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 1: Calling an undefined method
-</span>
+<pre class="playground"><code class="language-rust">// Figure 1: Calling an undefined method
+
 fn main() {
     let mystring = "Hello, World";
     println!("{}", mystring.ends_with("orld"));
@@ -288,8 +288,8 @@ error: could not compile `concepts` (bin "concepts") due to 1 previous error
 </code></pre>
 <p>Compare this to the Python book’s version of the same mistake. There, the program <em>ran</em>: it printed <code>True</code> for the string, created the integer, and only then died with an <code>AttributeError</code> at line 4. The first three lines executed; the trouble was discovered in the act of transgressing.</p>
 <p>Here, nothing ran. Not the broken line, and — look carefully — not the correct lines either. Rust refused to produce a program at all. That is the trade in its purest form: Python checks each operation the moment it happens, so a mistake costs you a run; Rust checks every operation before any of them happen, so a mistake costs you a compile. In Chapter 1 we noted that for verification work this trade is nearly a gift, because in our world “a run” is not a millisecond of interpreter time — it is a simulator license, an elaboration, and a lunch break. Delete the offending line, as in figure 2, and the program compiles and runs.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: The corrected program
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: The corrected program
+
 fn main() {
     let mystring = "Hello, World";
     println!("{}", mystring.ends_with("orld"));
@@ -305,8 +305,8 @@ true
 <p>Everything in this book now depends on a mental adjustment, so let’s make it explicitly.</p>
 <p>When the Python interpreter raised an exception, it was reporting an accident that had already happened: the program was running, it hit something it couldn’t do, and it stopped. When the Rust compiler rejects your program, nothing has happened yet. A rejection is not a failure report — it is a <em>prediction</em>, delivered while the mistake is still free. The compiler is not an adversary blocking the door to the simulator. It is a reviewer who reads every line of your testbench, every time, in seconds, and never gets bored or skims.</p>
 <p>The catch is that this reviewer communicates in a format you have to learn to read, and reading it well is a genuine skill — the single most valuable skill in this book, which is why our figures will so often show error messages rather than output. Let’s dissect one. Figure 3 makes a mistake with TinyALU flavor: an ADD of two 8-bit operands can carry into nine bits, so the result belongs in a <code>u16</code> — but we try to store it back into a <code>u8</code> register. This is precisely the assignment the Python book warned about in its history lesson, the one where SystemVerilog “will happily chop off the top eight bits.”</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: The mistake SystemVerilog would have allowed
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: The mistake SystemVerilog would have allowed
+
 fn main() {
     let a: u8 = 0xFF;
     let b: u8 = 0x01;
@@ -337,8 +337,8 @@ For more information about this error, try `rustc --explain E0308`.
 <li><strong>The <code>help</code> block</strong>: a suggested fix, often as a ready-to-paste diff (those <code>+</code> signs mark what to insert). And notice what this particular suggestion says out loud: converting a <code>u16</code> to a <code>u8</code> <em>can lose data</em>, so the suggested conversion is one that checks at runtime and panics if the value doesn’t fit. Rust will let you chop bits — with <code>result as u8</code>, exactly the truncation SystemVerilog performs silently — but you must write the chop yourself, in ink, where a reviewer can see it.</li>
 </ul>
 <p>Figure 4 takes the honest fix: our register was simply too small for an ADD result, so we widen it. The point of the figure is how little drama the fix involves once the message has told you both ends of the mismatch.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 4: The corrected program
-</span>
+<pre class="playground"><code class="language-rust">// Figure 4: The corrected program
+
 fn main() {
     let a: u8 = 0xFF;
     let b: u8 = 0x01;
@@ -350,8 +350,8 @@ fn main() {
 256
 </code></pre>
 <p>The compiler’s helpfulness extends past types into plain proofreading. The Python book admitted that a typo’d name in Python surfaces as a runtime <code>AttributeError</code>, possibly weeks later, possibly on the one branch of the testbench that only executes when the DUT misbehaves. In Rust:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 5: The compiler as proofreader
-</span>
+<pre class="playground"><code class="language-rust">// Figure 5: The compiler as proofreader
+
 fn main() {
     let result = 42;
     println!("{}", resutl);
@@ -381,8 +381,8 @@ error[E0425]: cannot find value `resutl` in this scope
 <p><strong><code>cargo</code></strong> you met in Chapter 1 — <code>pip</code>, <code>venv</code>, <code>make</code>, and <code>pytest</code> fused into one tool. It creates projects (<code>cargo new</code>), builds them (<code>cargo build</code>), builds-and-runs them (<code>cargo run</code>), fetches dependencies declared in <code>Cargo.toml</code>, and runs tests (<code>cargo test</code> — the star of Chapter 14, where we will unit-test testbench components with no simulator in sight). Because every Rust project is a cargo project with the same layout, there is no per-project incantation to learn; every example in this book builds the same way.</p>
 <p><strong><code>rustfmt</code></strong> reformats your source into the community-standard style, the job <code>black</code> did in Python: <code>cargo fmt</code>, and the formatting debate is over. This book’s figures are all <code>rustfmt</code>-clean, so what you read is what your editor will produce.</p>
 <p><strong><code>clippy</code></strong> is the linter — <code>pylint</code>’s job — but with a compiler’s leverage, since it analyzes the same typed, checked view of your program the compiler sees. It catches correctness hazards, but its everyday gift to a Rust learner is idiom: clippy knows what fluent Rust looks like and will tell you, kindly and specifically, when you have written Python in Rust syntax. Run it as <code>cargo clippy</code>; a representative complaint (output abridged) looks like this:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 6: Clippy teaching idiom
-</span>
+<pre class="playground"><code class="language-rust">// Figure 6: Clippy teaching idiom
+
 fn main() {
     let done = true;
     if done == true {
@@ -416,8 +416,8 @@ warning: equality checks against true are unnecessary
 <p>Everything in this chapter goes inside <code>fn main()</code> in <code>src/basics/src/main.rs</code> unless a figure shows its own function.</p>
 <h2 id="let-bindings-not-name-tags"><a class="header" href="#let-bindings-not-name-tags"><code>let</code>: bindings, not name tags</a></h2>
 <p>In Python, a variable is a name tag you can peel off one object and stick on another. In Rust, <code>let</code> creates a <strong>binding</strong>: it associates a name with a value, and — here is the first surprise — that binding is <strong>immutable by default</strong>. Assigning to it a second time is not merely discouraged. It does not compile.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: Assigning twice to an immutable binding
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: Assigning twice to an immutable binding
+
 fn main() {
     let xx = 5;
     println!("xx: {xx}");
@@ -441,8 +441,8 @@ help: consider making this binding mutable
   |         +++
 </code></pre>
 <p>Read that error the way Chapter 2 taught you: it names the rule, points at both the first assignment and the offending one, and then <em>tells you the fix</em>. If you want a variable that varies, you ask for one with <code>mut</code>:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: A mutable binding
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: A mutable binding
+
 fn main() {
     let mut xx = 5;
     println!("xx: {xx}");
@@ -468,8 +468,8 @@ xx: 6
 <li><strong><code>char</code>:</strong> a single Unicode character, in single quotes: <code>'A'</code>. Not a one-character string — a distinct type, four bytes wide.</li>
 </ul>
 <p>Why should a verification engineer care, beyond nostalgia for SystemVerilog’s <code>byte</code>? Because <em>your DUT already thinks this way</em>, and now your testbench can agree with it. The TinyALU’s A and B legs are eight bits wide. In the Python book we drove them from an <code>int</code> and relied on discipline (and the BFM) to keep values in range — nothing in the language stopped a careless test from generating <code>a = 300</code>. In Rust, a TinyALU operand is a <code>u8</code>, and 300 <em>is not a value that type can hold</em>. The type system now knows something true about the hardware, and it never forgets it:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 4: The TinyALU's A leg really is a u8
-</span>
+<pre class="playground"><code class="language-rust">// Figure 4: The TinyALU's A leg really is a u8
+
 fn main() {
     let aa: u8 = 0xFF;
     let bb: u8 = 300;
@@ -490,8 +490,8 @@ error: literal out of range for `u8`
 <p>One honest wrinkle while we are here: what happens when arithmetic <em>overflows</em> a <code>u8</code> at runtime — say, <code>200 + 100</code> where both values arrived from a random generator? In a debug build, the program panics (halts with an error) at the overflowing operation; in a release build, the value wraps around modulo 256, the way the hardware would. If wrapping is what you <em>mean</em> — and in ALU-prediction code it often is — Rust provides methods like <code>wrapping_add</code> that say so explicitly. We will use exactly that when we write the TinyALU predictor, because “the model overflows exactly like the DUT, on purpose, in writing” is the kind of sentence verification sign-off meetings love.</p>
 <h2 id="no-implicit-conversions--diffing-against-the-python-book"><a class="header" href="#no-implicit-conversions--diffing-against-the-python-book">No implicit conversions — diffing against the Python book</a></h2>
 <p>Here is the Python book’s very first figure, which showed that a <code>float</code> in an operation means a <code>float</code> result — <code>ii + ff</code> quietly promoted the <code>int</code>, and <code>ii/ii</code> produced a <code>float</code> even from two <code>int</code>s. Let’s port it one-for-one and watch Rust refuse to play:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 5: A float in operations means... a compile error
-</span>
+<pre class="playground"><code class="language-rust">// Figure 5: A float in operations means... a compile error
+
 fn main() {
     let ii: i32 = 1;
     let ff: f64 = 2.0;
@@ -507,8 +507,8 @@ error[E0277]: cannot add a `f64` to `i32`
   |                 ^ no implementation for `i32 + f64`
 </code></pre>
 <p>Rust performs <strong>no implicit numeric conversions</strong>. Not int-to-float, not <code>u8</code>-to-<code>u16</code>, nothing. If you want a conversion, you write one, using the <code>as</code> keyword — and once you do, the rest of the ported figure behaves recognizably, with one telling difference in the last line:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 6: The same figure, with the conversions made explicit
-</span>
+<pre class="playground"><code class="language-rust">// Figure 6: The same figure, with the conversions made explicit
+
 fn main() {
     let ii: i32 = 1;
     let ff: f64 = 2.0;
@@ -523,8 +523,8 @@ dd: 1
 </code></pre>
 <p>In the Python original, <code>dd = ii/ii</code> printed <code>1.0</code> — division <em>always</em> returned a <code>float</code>. In Rust, dividing two integers is integer division: <code>dd</code> is <code>1</code>, an <code>i32</code>, and <code>7 / 2</code> would be <code>3</code>. If you want the fractional answer, convert to floats first. Neither behavior is right or wrong, but they are different, and scoreboard math is exactly where that difference bites — so it is worth one figure now instead of one confused afternoon later.</p>
 <p>The same strictness rewrites the Python book’s augmented-assignment figure. In Python, <code>xx</code> started as an <code>int</code> at 1, and after <code>xx /= 4</code> it had silently become a <code>float</code> holding 1.5 — the variable changed <em>type</em> mid-flight. Watch the Rust version:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 7: Augmented assignments — the type never changes
-</span>
+<pre class="playground"><code class="language-rust">// Figure 7: Augmented assignments — the type never changes
+
 fn main() {
     let mut xx = 1;
     println!("xx: {xx}");
@@ -544,8 +544,8 @@ xx /= 4: 1
 <p>Same operators, same rhythm — Rust has <code>+=</code>, <code>*=</code>, <code>/=</code>, and friends, though like Python it has no <code>++</code>. But <code>xx</code> was born an <code>i32</code> and will die an <code>i32</code>; <code>6 /= 4</code> gives 1, not 1.5. A binding’s type is fixed for the binding’s whole life. Which raises an obvious question: what do we do when we genuinely want the Python pattern — same <em>idea</em>, new <em>type</em>?</p>
 <h2 id="shadowing-same-name-new-binding"><a class="header" href="#shadowing-same-name-new-binding">Shadowing: same name, new binding</a></h2>
 <p>The Python book’s constructor figure turned the string <code>"3.14159"</code> into a <code>float</code> by creating a new object: <code>pi = float("3.14159")</code>. Rust’s version of that pattern is <strong>shadowing</strong>: declaring a <em>new</em> binding, with <code>let</code>, that reuses an old name.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 8: Creating a number from a string, by shadowing
-</span>
+<pre class="playground"><code class="language-rust">// Figure 8: Creating a number from a string, by shadowing
+
 fn main() {
     let pi = "3.14159";
     let pi: f64 = pi.parse().expect("not a number");
@@ -558,8 +558,8 @@ fn main() {
 <p>Two small notes on Figure 8. First, <code>parse</code> can fail — <code>"pi".parse()</code> has nowhere good to go — so it returns a <code>Result</code>, Rust’s replacement for exceptions; <code>.expect("...")</code> says “give me the value, and halt with this message if it failed.” That is a blunt instrument we will trade for proper tools in Chapter 9; the Python original had the same rough edge, raising <code>ValueError</code> on <code>int("3.14159")</code>. Second, the annotation <code>: f64</code> is doing real work: it is how <code>parse</code> knows <em>what</em> to parse the string into.</p>
 <h2 id="println-and-format-strings"><a class="header" href="#println-and-format-strings"><code>println!</code> and format strings</a></h2>
 <p>You have been reading <code>println!</code> output all chapter; now let’s look at the format strings themselves, next to the f-strings you know. <code>{}</code> is the placeholder, arguments fill placeholders in order, and — the part that makes Rust feel almost Pythonic — a variable name can go directly inside the braces:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 9: Format strings, next to the f-strings you know
-</span>
+<pre class="playground"><code class="language-rust">// Figure 9: Format strings, next to the f-strings you know
+
 fn main() {
     let aa: u8 = 0x2A;
     let bb: u8 = 7;
@@ -581,8 +581,8 @@ sum: 49
 <h2 id="expressions-vs-statements"><a class="header" href="#expressions-vs-statements">Expressions vs. statements</a></h2>
 <p>Here is the concept in this chapter most likely to be genuinely new, rather than a stricter spelling of something Python had. Python divides the world into statements (<code>if</code>, <code>for</code>, assignments) and expressions (things with values), and mostly keeps them apart. In Rust, nearly everything is an <strong>expression</strong> — nearly everything <em>has a value</em> — and the language leans on this constantly.</p>
 <p>Two demonstrations. First, <code>if</code> is an expression, which means it can sit on the right-hand side of a <code>let</code>:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 10: if is an expression
-</span>
+<pre class="playground"><code class="language-rust">// Figure 10: if is an expression
+
 fn main() {
     let count: u8 = 42;
     let parity = if count % 2 == 0 { "even" } else { "odd" };
@@ -593,8 +593,8 @@ fn main() {
 </code></pre>
 <p>Python has the ternary form <code>"even" if count % 2 == 0 else "odd"</code> for exactly this job; Rust simply has no separate ternary, because ordinary <code>if</code> already returns a value. The compiler checks that both arms produce the same type — an <code>if</code> that gives you a string on Mondays and an integer on Tuesdays does not compile — and an <code>else</code> is required when you use the value, because the value must exist either way.</p>
 <p>Second, a block — any <code>{ ... }</code> — is an expression whose value is its <strong>last expression, written without a semicolon</strong>:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 11: A block is an expression; the semicolon is the switch
-</span>
+<pre class="playground"><code class="language-rust">// Figure 11: A block is an expression; the semicolon is the switch
+
 fn main() {
     let nn = {
         let doubled = 2 * 3;
@@ -611,8 +611,8 @@ fn main() {
 </blockquote>
 <h2 id="functions"><a class="header" href="#functions">Functions</a></h2>
 <p>Which brings us, with suspicious convenience, to functions — because a function body is just another block, and returning a value is just the block-expression rule again.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 12: A TinyALU prediction function
-</span>
+<pre class="playground"><code class="language-rust">// Figure 12: A TinyALU prediction function
+
 fn predict_add(aa: u8, bb: u8) -&gt; u16 {
     aa as u16 + bb as u16
 }
@@ -650,8 +650,8 @@ fn main() {
 <p>This chapter ports all of that to Rust, and then keeps going, because Rust has a construct Python never gave us: <code>match</code>. Two-thirds of this chapter is warm-up — conditions and loops transfer from Python almost without friction — and the last third introduces the construct the rest of this book leans on constantly. When we meet <code>Result</code> in Chapter 9, <code>Option</code> alongside it, and the <code>Ops</code> enum in Chapter 7, <code>match</code> is how we will take them apart. Learn it well here, in miniature, and every later chapter gets easier.</p>
 <h2 id="if-and-else"><a class="header" href="#if-and-else">if and else</a></h2>
 <p>Rust’s <code>if</code> looks like Python’s with the punctuation swapped: braces instead of indentation, and no colon. Like Python — and unlike C and SystemVerilog — Rust does not require parentheses around the condition. Unlike everybody, Rust <em>insists</em> on the braces, even for one-line bodies.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 1: A Rust if statement
-</span>
+<pre class="playground"><code class="language-rust">// Figure 1: A Rust if statement
+
 fn main() {
     let name = "Roy";
     if name != "Danny" {
@@ -662,8 +662,8 @@ fn main() {
 Hey, you're not Danny.
 </code></pre>
 <p>One difference matters more than it looks. Python happily tested any value for truth: <code>if nn:</code> meant “if <code>nn</code> is nonzero,” <code>if my_list:</code> meant “if the list is nonempty.” Rust conditions must be <code>bool</code> — actually, literally <code>bool</code>. Write <code>if nn {</code> where <code>nn</code> is an integer and the compiler stops you:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: Rust has no truthiness
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: Rust has no truthiness
+
 fn main() {
     let nn = 5;
     if nn {
@@ -679,8 +679,8 @@ error[E0308]: mismatched types
 </code></pre>
 <p>You will grumble about this for a week and then remember every testbench where <code>if dut.done:</code> silently tested the wrong thing — a handle instead of a value, a list instead of its contents. Rust makes you write <code>if nn != 0</code>, and the intent goes on the record.¹</p>
 <p>There is no <code>elif</code> keyword. Rust spells it <code>else if</code>, and a chain of them ports the Python book’s switch replacement directly:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: else if as a switch (for now)
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: else if as a switch (for now)
+
 fn main() {
     let (a, b) = (5, 5);
     let operation = "divide";
@@ -703,8 +703,8 @@ Illegal Operation: divide
 </blockquote>
 <h2 id="if-is-an-expression"><a class="header" href="#if-is-an-expression">if is an expression</a></h2>
 <p>Here is the first genuinely new idea. In Chapter 3 we met Rust’s distinction between statements and expressions: an expression produces a value. In Rust, <code>if</code>/<code>else</code> <em>is an expression</em> — the whole construct evaluates to the value of whichever branch ran. That means you can bind it with <code>let</code>:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 4: Conditional assignment — no ternary needed
-</span>
+<pre class="playground"><code class="language-rust">// Figure 4: Conditional assignment — no ternary needed
+
 fn main() {
     let aa = 5;
     let message = if aa == 5 { "five_val" } else { "other_val" };
@@ -720,8 +720,8 @@ five_val
 <h2 id="three-loops-one-of-them-new"><a class="header" href="#three-loops-one-of-them-new">Three loops, one of them new</a></h2>
 <p>Python gave us two loops, <code>while</code> and <code>for</code>. Rust gives us three: <code>while</code>, <code>for</code>, and <code>loop</code>. The first two are your old friends in new clothes; the third is the new idea.</p>
 <p><code>while</code> works exactly as you expect, condition first, braces around the body. Here is the Python book’s counting loop, ported:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 5: A while loop in action
-</span>
+<pre class="playground"><code class="language-rust">// Figure 5: A while loop in action
+
 fn main() {
     let mut nn = 0;
     while nn &lt;= 13 {
@@ -735,8 +735,8 @@ fn main() {
 </code></pre>
 <p>Two Chapter 3 details show up here: <code>nn</code> needs <code>mut</code> because we reassign it, and <code>print!</code> (without the <code>ln</code>) is how Rust says <code>end=" "</code> — it prints without the newline. <code>continue</code> and <code>break</code> exist, spelled the same and meaning the same as in Python; I will not re-teach them.</p>
 <p>Now the new one. The Python book emulated a do-while with <code>while True:</code> and a <code>break</code>. Rust looked at how often programmers write intentionally infinite loops — event loops, polling loops, driver loops that run until the test ends — and decided the pattern deserved its own keyword:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 6: loop — the intentional infinite loop
-</span>
+<pre class="playground"><code class="language-rust">// Figure 6: loop — the intentional infinite loop
+
 fn main() {
     let mut nn = 0;
     let first_big_square = loop {
@@ -759,8 +759,8 @@ fn main() {
 <li><code>0..=8</code> — start at 0, stop <em>at</em> 8, inclusive. Python had no direct equivalent; you wrote <code>range(0, 9)</code> and remembered why.</li>
 </ul>
 <p>The <code>for</code> loop iterates over a range just as Python’s did:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 7: Looping through numbers using a range
-</span>
+<pre class="playground"><code class="language-rust">// Figure 7: Looping through numbers using a range
+
 fn main() {
     for ii in 0..4 {
         print!("{ii} ");
@@ -771,8 +771,8 @@ fn main() {
 0 1 2 3
 </code></pre>
 <p>Where is <code>step</code>? Ranges are iterators (a concept that transfers straight from the Python book’s sequences chapters — Chapter 12 makes it rigorous), and iterators have adapter methods. <code>range(1, 14, 2)</code> becomes:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 8: Stepping through a range
-</span>
+<pre class="playground"><code class="language-rust">// Figure 8: Stepping through a range
+
 fn main() {
     for ii in (1..14).step_by(2) {
         print!("{ii} ");
@@ -786,8 +786,8 @@ fn main() {
 <h2 id="match-the-construct-python-never-had"><a class="header" href="#match-the-construct-python-never-had">match: the construct Python never had</a></h2>
 <p>Now the centerpiece. Python replaced <code>case</code>/<code>switch</code> with <code>elif</code> chains and called the trade “more flexibility at the cost of more code.” Rust’s <code>match</code> refuses the trade: it delivers more flexibility than <code>case</code> <em>and</em> less code than <code>elif</code> — and then adds a property neither language offered, one that this book will spend many chapters collecting dividends on.</p>
 <p>Start with the direct port. Figure 3’s <code>else if</code> chain becomes:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 9: match as a switch
-</span>
+<pre class="playground"><code class="language-rust">// Figure 9: match as a switch
+
 fn main() {
     let (a, b) = (5, 5);
     let operation = "multiply";
@@ -810,8 +810,8 @@ answer = 25
 </ol>
 <h2 id="exhaustiveness-the-compiler-counts-your-cases"><a class="header" href="#exhaustiveness-the-compiler-counts-your-cases">Exhaustiveness: the compiler counts your cases</a></h2>
 <p>Delete the <code>_</code> arm from a <code>match</code> and something remarkable happens. Here is a <code>match</code> on a raw op code — the TinyALU’s four operations, numbered 1 through 4 as they were in the Python book’s <code>Ops</code> IntEnum — with no wildcard:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 10: The compiler catches missing cases
-</span>
+<pre class="playground"><code class="language-rust">// Figure 10: The compiler catches missing cases
+
 fn main() {
     let op_code: u8 = 2;
     let name = match op_code {
@@ -835,8 +835,8 @@ error[E0004]: non-exhaustive patterns: `0_u8` and `5_u8..=u8::MAX` not covered
 <p>For a <code>u8</code>, exhaustiveness is a nice safety net. The reason this book teaches <code>match</code> in Chapter 4 rather than Chapter 14 is what happens when the thing being matched has a <em>small, meaningful</em> set of cases. In Chapter 7, <code>Ops</code> returns as a true Rust enum with exactly four values, and a <code>match</code> on it needs exactly four arms — no wildcard, no dead cases, and if the TinyALU ever grows a fifth operation, <strong>every <code>match</code> in the testbench that fails to handle it becomes a compile error</strong>. Your scoreboard, your coverage collector, your predictor: the compiler hands you the complete list of code that must learn about the new op. That is the refactoring-without-fear promise of Chapter 1, delivered by a control-flow statement.</p>
 <h2 id="patterns-ranges-tuples-and-taking-things-apart"><a class="header" href="#patterns-ranges-tuples-and-taking-things-apart">Patterns: ranges, tuples, and taking things apart</a></h2>
 <p>The left side of a <code>match</code> arm is not limited to constants. Patterns can be ranges — and here the TinyALU gives us a real example. Recall from the Python book that ADD, AND, and XOR complete in one cycle while MUL takes three. With op codes 1 through 4:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 11: Matching on ranges
-</span>
+<pre class="playground"><code class="language-rust">// Figure 11: Matching on ranges
+
 fn main() {
     let op_code: u8 = 4;
     let cycles = match op_code {
@@ -851,8 +851,8 @@ This operation takes 3 cycle(s)
 </code></pre>
 <p>Range patterns use the inclusive <code>..=</code> form, and you can also combine alternatives with <code>|</code>, as in <code>1 | 3 =&gt; ...</code>. The compiler still does its exhaustiveness arithmetic across all of it.</p>
 <p>Patterns can also take structured data apart. Match on a tuple, and each position of the pattern matches the corresponding element — with <code>_</code> skipping positions you don’t care about and plain names <em>binding</em> the values so the arm can use them:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 12: Matching and destructuring a tuple
-</span>
+<pre class="playground"><code class="language-rust">// Figure 12: Matching and destructuring a tuple
+
 fn main() {
     let operands: (u8, u8) = (0, 200);
     let comment = match operands {
@@ -910,8 +910,8 @@ True
 <p>Every value in Rust has exactly one <strong>owner</strong> — the variable (or, later, the struct field) responsible for it. When the owner goes out of scope, the value is destroyed, immediately. Assignment doesn’t copy a name tag; it <strong>moves</strong> ownership to the new variable, and the old one is dead.</p>
 </blockquote>
 <p>That last clause is the shock. Let’s take the shock now, on purpose, with the compiler watching. Figure 2 is the two-names experiment from figure 1, translated into Rust.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: Assignment moves — and the old name is gone
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: Assignment moves — and the old name is gone
+
 fn main() {
     let a = String::from("ADD 5 3");
     let b = a;
@@ -940,8 +940,8 @@ help: consider cloning the value if the performance cost is acceptable
 <p>Notice, too, the compiler’s parting suggestion: <code>a.clone()</code>. It has read your mind — or at least your options. We’ll take it up on that shortly.</p>
 <h2 id="scope-is-the-destructor"><a class="header" href="#scope-is-the-destructor">Scope is the destructor</a></h2>
 <p>If every value has exactly one owner, then “who frees this?” has a mechanical answer: the owner does, at the moment it goes out of scope. Rust calls this <strong>dropping</strong> the value, and it is as deterministic as the closing brace it happens at.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: Values die at the closing brace — every time, on time
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: Values die at the closing brace — every time, on time
+
 fn main() {
     {
         let cmd = String::from("MUL 7 6");
@@ -961,8 +961,8 @@ after the scope
 </blockquote>
 <h2 id="wait--my-integers-have-been-fine"><a class="header" href="#wait--my-integers-have-been-fine">Wait — my integers have been fine</a></h2>
 <p>A fair objection: you’ve been assigning integers back and forth since Chapter 3 without the compiler saying a word about moves. Figure 4 confirms it.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 4: Copy types don't move — small values are simply copied
-</span>
+<pre class="playground"><code class="language-rust">// Figure 4: Copy types don't move — small values are simply copied
+
 fn main() {
     let a: u8 = 5;
     let b = a;              // copies the byte; a is still alive
@@ -976,8 +976,8 @@ a = 5, b = 5
 <h2 id="the-monitor-and-the-scoreboard"><a class="header" href="#the-monitor-and-the-scoreboard">The monitor and the scoreboard</a></h2>
 <p>Every mechanism in this chapter has been abstract enough to shrug at. So let’s make it a testbench problem — <em>the</em> testbench problem, the one you’ve written a dozen times: a monitor observes a transaction on the TinyALU’s command bus and hands it to a scoreboard.</p>
 <p>We need a transaction type. Structs get their own chapter (Chapter 7); for today, read the first four lines of figure 5 as “a Python class with only data and no methods” — fields, types, no ceremony. The <code>op</code> field really wants to be a proper enum, and in Chapter 7 it becomes one; a <code>u8</code> stands in for now. And we need the two parties: a <code>scoreboard</code> function that takes a <code>Transaction</code> <em>by value</em>, and a <code>main</code> that plays the monitor. In pyuvm these would be components connected by an analysis port; here in our cargo playground, two functions are enough to expose the question that matters.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 5: The monitor hands off a transaction — and learns what "hands off" means
-</span>
+<pre class="playground"><code class="language-rust">// Figure 5: The monitor hands off a transaction — and learns what "hands off" means
+
 struct Transaction {
     a: u8,
     b: u8,
@@ -1017,8 +1017,8 @@ help: consider cloning the value if the performance cost is acceptable
 <p><strong>Answer two: the monitor still needs it</strong> — to log it, to hand a second copy to a coverage collector. Then the monitor must keep <em>a real copy</em>, and Rust has an explicit word for that.</p>
 <h2 id="clone-copies-you-can-see"><a class="header" href="#clone-copies-you-can-see"><code>.clone()</code>: copies you can see</a></h2>
 <p>The compiler suggested it twice, so let’s take the hint. Adding <code>#[derive(Clone)]</code> above the struct asks the compiler to write a field-by-field copy routine for us (that one magic line gets a full explanation in Chapters 10 and 21; for now, “please generate the copying code” is the whole story). Then <code>.clone()</code> makes an independent duplicate wherever we ask.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 6: The monitor keeps a copy — explicitly
-</span>
+<pre class="playground"><code class="language-rust">// Figure 6: The monitor keeps a copy — explicitly
+
 #[derive(Clone)]
 struct Transaction {
     a: u8,
@@ -1060,8 +1060,8 @@ monitor logging: a was 5
 <p>But that model, taken alone, is unlivable. A scoreboard that must <em>own</em> every transaction it merely wants to <em>look at</em> would be a scoreboard fed entirely by <code>clone()</code> calls. A coverage collector that steals the transaction from the scoreboard is not a testbench, it is a relay race. Most of the time a component does not need responsibility for a value. It needs access. Rust’s mechanism for access-without-responsibility is the <strong>reference</strong>, and the act of granting one is called <strong>borrowing</strong> — a word chosen carefully, because a borrow, unlike a Python reference, comes with an obligation to give the value back and rules about what you may do while you hold it.</p>
 <h2 id="shared-references-many-readers"><a class="header" href="#shared-references-many-readers">Shared references: many readers</a></h2>
 <p>A shared reference is written <code>&amp;T</code> — “a reference to a T” — and you create one with <code>&amp;</code>:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 1: Shared references — everyone may look, nobody may touch
-</span>
+<pre class="playground"><code class="language-rust">// Figure 1: Shared references — everyone may look, nobody may touch
+
 struct Transaction {
     data: u8,
 }
@@ -1092,8 +1092,8 @@ Still the owner: 42
 <p>If you want a Python analogy, <code>&amp;T</code> is what every Python reference <em>pretended</em> to be in a well-disciplined codebase: a handle you pass around for reading, trusting that nobody mutates through it. Rust removes the trust and keeps the handle.</p>
 <h2 id="exclusive-references-one-writer"><a class="header" href="#exclusive-references-one-writer">Exclusive references: one writer</a></h2>
 <p>Sometimes touching is the point. A driver that receives a transaction may legitimately need to fill in a timestamp; a BFM may need to update a field before sending. For write access you need the second kind of reference, <code>&amp;mut T</code> — an <strong>exclusive reference</strong>:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: An exclusive reference grants write access
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: An exclusive reference grants write access
+
 struct Transaction {
     data: u8,
 }
@@ -1128,8 +1128,8 @@ After scramble: 99
 <h2 id="the-nulltrigger-race-rejected-at-compile-time"><a class="header" href="#the-nulltrigger-race-rejected-at-compile-time">The NullTrigger race, rejected at compile time</a></h2>
 <p>Recall the pattern the Python book told you never to write: a shared <code>transaction_data</code> variable, a monitor task that writes it, a consumer task that reads it, both triggered by the same clock edge, with a <code>NullTrigger</code> deployed as a prayer that the reader runs second. In Python, that code runs. It even works, usually, on your simulator, until the scheduler’s ordering shifts and it silently doesn’t.</p>
 <p>We cannot yet write real concurrent tasks in Rust — the executor and <code>spawn</code> arrive in Part II — but we do not need them to expose the bug, because the bug was never really about tasks. It was about <em>two live accessors of one value, one of them a writer, with no enforced order</em>. We can write exactly that in six lines, giving the monitor its write access and the scoreboard its read access, just as the Python version did:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: Two tasks' worth of access to one value -- the borrow checker objects
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: Two tasks' worth of access to one value -- the borrow checker objects
+
 fn main() {
     let mut transaction_data: Option&lt;u8&gt; = None;
 
@@ -1163,8 +1163,8 @@ error: could not compile `borrow_race` (bin "borrow_race") due to 1 previous err
 <p>Sit with what just happened. The Python book documented this bug, explained why it was nondeterministic, and taught you a discipline to avoid it. cocotb’s own docstring says <strong>Do not do this</strong> in bold. And still, nothing in the Python toolchain would stop a tired engineer from writing it on a Friday afternoon, and nothing would flag it until a scheduler reordering made a regression flicker, weeks later, in someone else’s test. Rust converts the whole affair into three seconds of compile time and an error message with line numbers. Chapter 1 promised that discipline is good but proof is better; Figure 3 is that promise kept.</p>
 <h2 id="the-fix-make-the-ordering-real"><a class="header" href="#the-fix-make-the-ordering-real">The fix: make the ordering real</a></h2>
 <p>The Python fix was an <code>Event</code>: the monitor writes, <em>then</em> sets the event; the consumer awaits the event, <em>then</em> reads. Notice what the <code>Event</code> actually contributed — it forced the write and the read into a definite order, so that the writer was finished before the reader began. The borrow checker demands precisely the same thing, and in straight-line code you provide it the same way: sequence the accesses so they do not overlap.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 4: The same actors, with the ordering made real
-</span>
+<pre class="playground"><code class="language-rust">// Figure 4: The same actors, with the ordering made real
+
 fn main() {
     let mut transaction_data: Option&lt;u8&gt; = None;
 
@@ -1207,8 +1207,8 @@ Scoreboard checking 42
 </blockquote>
 <h2 id="structs-the-data-declared"><a class="header" href="#structs-the-data-declared">Structs: the data, declared</a></h2>
 <p>A Rust struct is the part of a Python class that holds data — and only that part. You declare every field, with its type, up front:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 1: Defining and instantiating a struct
-</span>
+<pre class="playground"><code class="language-rust">// Figure 1: Defining and instantiating a struct
+
 struct Animal {
     kg: f64,
 }
@@ -1222,8 +1222,8 @@ Walrus mass: 1000
 </code></pre>
 <p>Two things deserve a look. First, the declaration reads more like the SystemVerilog <code>Animal</code> from the Python book’s figure 3 than like anything Python ever asked of us: the fields are part of the definition, not something we improvise later. Second, instantiation uses a <em>struct literal</em> — <code>Animal { kg: 1000.0 }</code> — which names every field and supplies every value. There is no separate “create empty, then populate” step, because an empty <code>Animal</code> is not a thing Rust permits to exist.</p>
 <p>That last point is not a style preference; it is enforcement. The Python book’s figure 7 created a <code>yorkie</code>, forgot to set <code>kg</code>, and got an <code>AttributeError</code> — at runtime, at the moment of use, which in a testbench means mid-simulation. Here is the same mistake in Rust:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: Forgetting a field is now a compile error
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: Forgetting a field is now a compile error
+
 struct Animal {
     kg: f64,
 }
@@ -1246,8 +1246,8 @@ error[E0063]: missing field `kg` in initializer of `Animal`
 </blockquote>
 <h2 id="impl-blocks-where-behavior-lives"><a class="header" href="#impl-blocks-where-behavior-lives"><code>impl</code> blocks: where behavior lives</a></h2>
 <p>A Python class bundles data and behavior in one indented block. Rust separates them: the struct declares the data, and an <code>impl</code> block — short for <em>implementation</em> — attaches the behavior. Here is <code>get_pounds()</code>, ported:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: A method in an impl block
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: A method in an impl block
+
 struct Animal {
     kg: f64,
 }
@@ -1269,8 +1269,8 @@ Walrus weight in pounds 454.55
 <p>Python’s <code>self</code> is an ordinary argument that the interpreter fills in for you — the Classes chapter demonstrated this by calling <code>Animal.get_pounds(walrus)</code> explicitly, passing the object by hand. Rust’s <code>&amp;self</code> is doing the same job, but it carries more information: that ampersand says this method <em>borrows</em> the animal, read-only, exactly as Chapter 6 taught. The method can look at <code>self.kg</code>; it cannot modify it, and it does not take ownership of the walrus. The signature tells you the method’s relationship to the object before you read a line of the body.</p>
 <p>And yes, the explicit form still works: <code>Animal::get_pounds(&amp;walrus)</code> is legal Rust and does exactly what <code>Animal.get_pounds(walrus)</code> did in Python’s figure 5. What Python offered as a party trick, Rust treats as the ordinary meaning that the dot syntax abbreviates.</p>
 <p>When a method needs to <em>change</em> the object, it says so:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 4: A method that mutates takes &amp;mut self
-</span>
+<pre class="playground"><code class="language-rust">// Figure 4: A method that mutates takes &amp;mut self
+
 struct Animal {
     kg: f64,
 }
@@ -1293,8 +1293,8 @@ Walrus mass after lunch: 1003.5
 <h2 id="associated-functions-new-and-the-end-of-__init__"><a class="header" href="#associated-functions-new-and-the-end-of-__init__">Associated functions: <code>new()</code> and the end of <code>__init__</code></a></h2>
 <p>The Python book introduced <code>__init__()</code> as the standard way to force initialization — a magic method, called implicitly when you invoke the class name. Rust has no magic methods and no implicit calls. What it has is the <em>associated function</em>: a function in an <code>impl</code> block that takes no <code>self</code> at all, called through the type name with <code>::</code>.</p>
 <p>By near-universal convention, the constructor is an associated function named <code>new</code>:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 5: The new() associated function
-</span>
+<pre class="playground"><code class="language-rust">// Figure 5: The new() associated function
+
 struct Animal {
     kg: f64,
 }
@@ -1323,8 +1323,8 @@ The Yorkie weighs 9.1 pounds
 <li>There is nothing special about <code>new</code>. It is not a keyword, the language does not call it for you, and you could name it <code>hatch()</code> if you enjoyed confusing people. The compiler’s only contribution is the guarantee from figure 2: however an <code>Animal</code> gets built, every field gets a value.</li>
 </ul>
 <p>The Python book sorted methods into three kinds — instance methods, class methods, and static methods — with a decorator apiece. Rust flattens the taxonomy to two: if it takes <code>self</code> in some form, it is a <em>method</em>, called with a dot; if it does not, it is an <em>associated function</em>, called with <code>::</code>. Python’s <code>@staticmethod</code> and <code>@classmethod</code> both collapse into the second kind, and the class-variable pattern comes along as an <em>associated constant</em>:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 6: Associated constants and functions replace class variables and static methods
-</span>
+<pre class="playground"><code class="language-rust">// Figure 6: Associated constants and functions replace class variables and static methods
+
 struct Triangle;
 
 impl Triangle {
@@ -1346,8 +1346,8 @@ I have 3 sides.
 <p>Now for the construct that earns this chapter its place in the book.</p>
 <p>The Python book introduced <code>Ops</code> in <code>tinyalu_utils</code> as an <code>enum.IntEnum</code> — a class that “not only names the operations but also maps the names to the correct opcode integer.” That was the best Python could do: an enum there is a set of named constants, each secretly an integer wearing a name tag. Rust enums start at that point and keep going.</p>
 <p>Here is <code>Ops</code>, ported, together with the prediction function it exists to serve:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 7: The Ops enumeration and an exhaustive match
-</span>
+<pre class="playground"><code class="language-rust">// Figure 7: The Ops enumeration and an exhaustive match
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Ops {
     Add = 1,
@@ -1379,8 +1379,8 @@ Add of 0x0A and 0x05 -&gt; 0x000f
 <p>That guarantee sounds abstract until the day it saves you. Suppose the TinyALU grows a subtract instruction. In Python you would add <code>SUB = 5</code> to the IntEnum, and every <code>if/elif</code> over ops in the testbench — the prediction function, the coverage model, the driver — would keep running, silently wrong, until a failing test (or worse, a passing one) sent you hunting. Watch what happens in Rust the moment we add the variant and change nothing else:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span><span class="boring">Figure 8: The compiler finds every match the new variant breaks
-</span>
+</span>// Figure 8: The compiler finds every match the new variant breaks
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Ops {
     Add = 1,
@@ -1408,8 +1408,8 @@ help: ensure that all possible cases are being handled by
 </blockquote>
 <h2 id="four-states-no-integers-logic"><a class="header" href="#four-states-no-integers-logic">Four states, no integers: <code>Logic</code></a></h2>
 <p>Every value in the Python testbench was ultimately an integer — <code>get_int()</code> existed precisely to coerce simulator values that might contain <code>x</code> or <code>z</code> into something Python could compute with. But hardware signals are not integers. They are four-state values, and Rust lets us say so directly:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 9: A four-state Logic enum
-</span>
+<pre class="playground"><code class="language-rust">// Figure 9: A four-state Logic enum
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Logic {
     Zero,
@@ -1434,11 +1434,11 @@ fn main() {
 <pre><code class="language-text">--
 The signal reads: x
 </code></pre>
-<p><code>Logic</code> is not a teaching toy: when we reach rustdv-sim in Chapter 17, reading a signal hands you exactly this type, ported from the same four-state value type cocotb defines. Notice what the enum buys us that an IntEnum encoding (say, <code>X = 2</code>) never could: there is no integer pretense to leak. Nothing can accidentally add <code>X</code> to a running sum, because <code>X</code> is not a number — it is one of four states a wire can be in, and any code that consumes a <code>Logic</code> must, thanks to exhaustive <code>match</code>, say what it does about <code>x</code> and <code>z</code>. The “forgot to handle the unknown state” bug is unrepresentable.</p>
+<p><code>Logic</code> is not a teaching toy: when we reach rustdv-sim in Chapter 17, reading a signal hands you a <code>LogicArray</code> — a vector of exactly this type — ported from the same four-state value types cocotb defines. Notice what the enum buys us that an IntEnum encoding (say, <code>X = 2</code>) never could: there is no integer pretense to leak. Nothing can accidentally add <code>X</code> to a running sum, because <code>X</code> is not a number — it is one of four states a wire can be in, and any code that consumes a <code>Logic</code> must, thanks to exhaustive <code>match</code>, say what it does about <code>x</code> and <code>z</code>. The “forgot to handle the unknown state” bug is unrepresentable.</p>
 <h2 id="variants-that-carry-data"><a class="header" href="#variants-that-carry-data">Variants that carry data</a></h2>
 <p>Everything so far, an IntEnum could at least gesture at. This last capability it could not. Rust enum variants can <em>carry data</em> — different data per variant — which makes an enum a type that says “this value is exactly one of the following shapes.” Computer scientists call this a <em>sum type</em>; testbench authors will call it the right way to model outcomes:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 10: An enum whose variants carry payloads
-</span>
+<pre class="playground"><code class="language-rust">// Figure 10: An enum whose variants carry payloads
+
 #[derive(Debug)]
 enum CheckResult {
     Pass,
@@ -1487,8 +1487,8 @@ FAIL: expected 0x000f, got 0x0005
 <h2 id="vec-the-list-that-owns-its-contents"><a class="header" href="#vec-the-list-that-owns-its-contents">Vec: the list that owns its contents</a></h2>
 <p>A <code>Vec&lt;T&gt;</code> is Rust’s growable array: the analog of the Python list, and every bit the workhorse the list was. The first difference is visible in the type: a Python list holds <em>anything</em> (<code>['a', 3, LL]</code> was a perfectly good list), while a <code>Vec&lt;T&gt;</code> holds values of exactly one type <code>T</code>. You have met this trade before — it is the same static-typing bargain from Chapter 3, and it is usually what a testbench wanted anyway. A history log of ALU transactions should hold transactions, all of them, and nothing else.</p>
 <p>Let’s build exactly that. Figure 1 creates a log of the <code>AluCommand</code> transactions we defined in Chapter 7 and pushes commands into it, the way a monitor might record everything it sees.¹</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 1: A Vec&lt;AluCommand&gt; as a transaction history log
-</span>
+<pre class="playground"><code class="language-rust">// Figure 1: A Vec&lt;AluCommand&gt; as a transaction history log
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Ops { Add = 1, And = 2, Xor = 3, Mul = 4 }
 
@@ -1509,8 +1509,8 @@ first: AluCommand { a: 5, b: 3, op: Add }
 </code></pre>
 <p>Familiar territory: <code>push</code> is <code>append</code>, <code>len()</code> is <code>len()</code>, <code>log[0]</code> is <code>log[0]</code>. Note that <code>log</code> must be <code>let mut</code> — Chapter 3’s immutability-by-default applies to collections with no exceptions, which means a testbench data structure cannot be quietly modified by code you didn’t expect to modify it. Also note <code>Vec::new()</code> gave us an empty vector; the <code>vec!</code> macro is the literal syntax, so <code>vec![1, 2, 3]</code> is Rust’s <code>[1, 2, 3]</code>.</p>
 <p>Now the part that is genuinely new. In Python, a list holds <em>references</em>. When you append a transaction to a list, the list gets one more name for an object that still has all its other names; the monitor keeps its handle, the scoreboard keeps its handle, and the GC sorts out the afterlife. A <code>Vec</code> holds <em>values</em>. When you push a transaction into a <code>Vec</code>, the transaction <strong>moves</strong> into the <code>Vec</code> — the vector becomes the owner, exactly as if you had assigned it to a new variable in Chapter 5. Figure 2 shows what happens when we forget.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: Pushing is a move
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: Pushing is a move
+
 fn main() {
     let mut log: Vec&lt;AluCommand&gt; = Vec::new();
     let cmd = AluCommand { a: 5, b: 3, op: Ops::Add };
@@ -1538,8 +1538,8 @@ help: consider cloning the value if the performance cost is acceptable
 <p>One more <code>Vec</code> note before we move on: indexing past the end panics, where Python raised <code>IndexError</code>. There is also <code>log.get(7)</code>, which does not panic but instead returns a value that is either something or nothing — a type called <code>Option</code> that keeps appearing in this chapter’s corners and gets the full treatment in Chapter 9.</p>
 <h2 id="iteration-borrow-or-consume-your-choice"><a class="header" href="#iteration-borrow-or-consume-your-choice">Iteration: borrow or consume, your choice</a></h2>
 <p>The <code>for</code> loop over a <code>Vec</code> looks exactly like Python — and hides the chapter’s second lesson in a single character. Figure 3 loops over the log the obvious way and then tries to use it afterward.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: A for loop can consume the collection
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: A for loop can consume the collection
+
 fn main() {
     let log = vec![
         AluCommand { a: 5, b: 3, op: Ops::Add },
@@ -1567,8 +1567,8 @@ help: consider borrowing to avoid moving into the for loop
    |                +
 </code></pre>
 <p><code>for cmd in log</code> <em>consumes</em> the vector: ownership of the whole <code>Vec</code> moves into the loop, each element moves into <code>cmd</code> in turn, and when the loop ends there is nothing left. That is occasionally exactly what you want — a scoreboard draining its queue at end of test, say. But most of the time you want Python’s behavior, looking at the elements while leaving the collection intact, and the compiler’s <code>help</code> line hands you the idiom: borrow it.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 4: Borrowing iteration leaves the Vec intact
-</span>
+<pre class="playground"><code class="language-rust">// Figure 4: Borrowing iteration leaves the Vec intact
+
 fn main() {
     let log = vec![
         AluCommand { a: 5, b: 3, op: Ops::Add },
@@ -1599,8 +1599,8 @@ AluCommand { a: 2, b: 2, op: Mul }
 <li><strong><code>&amp;str</code></strong> (pronounced “string slice”) — a <em>borrowed view</em> of string data that lives somewhere else. It doesn’t own anything; it points at characters and knows how many of them it covers. It is Chapter 6’s <code>&amp;T</code>, specialized for text.</li>
 </ul>
 <p>The reason beginners meet the confusing one first: <strong>every string literal is a <code>&amp;str</code>.</strong> When you write <code>"TinyALU"</code>, those seven bytes are baked into your compiled program itself, and the literal is a borrowed slice pointing into that program memory. It costs nothing, it lives forever, and it is read-only. Figure 5 shows both types and the traffic between them.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 5: String literals are borrowed; String is owned
-</span>
+<pre class="playground"><code class="language-rust">// Figure 5: String literals are borrowed; String is owned
+
 fn main() {
     let dut: &amp;str = "TinyALU";            // borrowed slice into program memory
     let mut name: String = String::from("Tiny");
@@ -1619,8 +1619,8 @@ TinyALU
 <p><strong>Store <code>String</code>, pass <code>&amp;str</code>.</strong> Struct fields that keep text own it as <code>String</code>; function parameters that read text borrow it as <code>&amp;str</code>.</p>
 </blockquote>
 <p>The reasoning is pure Chapter 6. A function that only <em>reads</em> a name has no business demanding ownership of it — that would force every caller to give up (or clone) their string just so you could look at it. A parameter of type <code>&amp;str</code> says “lend me a view,” and it is maximally accepting: a <code>&amp;String</code> coerces to a <code>&amp;str</code> automatically, so callers can pass a literal, a slice, or a borrowed <code>String</code>, all with no copying. Figure 6 shows the shape.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 6: Take &amp;str; accept everything
-</span>
+<pre class="playground"><code class="language-rust">// Figure 6: Take &amp;str; accept everything
+
 fn report_pass(test_name: &amp;str) {
     println!("PASSED: {}", test_name);
 }
@@ -1641,8 +1641,8 @@ still have random_ops
 <h2 id="hashmap-the-dictionary-minus-the-ordering-promise"><a class="header" href="#hashmap-the-dictionary-minus-the-ordering-promise">HashMap: the dictionary, minus the ordering promise</a></h2>
 <p><code>HashMap&lt;K, V&gt;</code> is the Python dict: store a value under a key, get it back later. It lives in the standard library’s collections module rather than the language itself, so it needs an import — your first <code>use</code> statement doing real work.</p>
 <p>The Python book’s signature dictionary example counted the letters in <code>"Mississippi"</code>, using <code>KeyError</code> (and then <code>setdefault</code>) to handle the first time each letter appeared. Our version counts something a verification engineer actually tallies: how many times the testbench has exercised each ALU operation — the raw material of functional coverage. Rust’s replacement for the whole <code>try</code>/<code>except KeyError</code>/<code>setdefault</code> dance is the <em>entry API</em>, and it is one line.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 7: A HashMap&lt;Ops, u32&gt; op-frequency counter
-</span>
+<pre class="playground"><code class="language-rust">// Figure 7: A HashMap&lt;Ops, u32&gt; op-frequency counter
+
 use std::collections::HashMap;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -1713,8 +1713,8 @@ Add: 3
 <span class="boring">}</span></code></pre>
 <p>This is just an enum with a payload, exactly like the ones you built in Chapter 7 — it happens to be defined in the standard library and generic over any type <code>T</code> (generics get their full treatment in Chapter 11; for now, read <code>Option&lt;u8&gt;</code> as “maybe a <code>u8</code>”).</p>
 <p>You met <code>Option</code> briefly in Chapter 8, because <code>HashMap</code> lookups return one. Let’s port the Python book’s football-players dictionary directly. In Python, <code>players.get(4)</code> returned <code>None</code>, and <code>players.get(4, "Not in database")</code> supplied a default. Figure 1 is the same program in Rust.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 1: A HashMap lookup returns Option
-</span>
+<pre class="playground"><code class="language-rust">// Figure 1: A HashMap lookup returns Option
+
 use std::collections::HashMap;
 
 fn main() {
@@ -1754,8 +1754,8 @@ Number 4? Not in database
 }
 <span class="boring">}</span></code></pre>
 <p><code>T</code> is the type you get on success; <code>E</code> is the error type you get instead. And now we can port the Python book’s exceptions chapter scenario for scenario, starting where it started: dividing by zero.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: You still can't divide by zero
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: You still can't divide by zero
+
 fn main() {
     let divisor: i32 = "0".parse().unwrap();
     println!("3/0 = {}", 3 / divisor);
@@ -1768,8 +1768,8 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 <p>A word about the <code>parse</code>: it is there because it has to be. Write <code>let divisor = 0;</code> and rustc, able to <em>see</em> the zero, refuses to compile the division at all. Only a divisor the compiler cannot predict — one arriving at runtime, as bus values do — gets the chance to panic.</p>
 <p>That is a <strong>panic</strong> — Rust’s crash. We will come back to panics later in the chapter, because they have a specific job, and “report a divide by zero to the caller” is not it. When the possibility of failure is part of a function’s honest contract, the function should return it. The standard library agrees: alongside the <code>/</code> operator, integers provide <code>checked_div</code>, which returns an <code>Option</code> — <code>None</code> instead of a crash.²</p>
 <p>The Python book’s <code>nice_div()</code> caught <code>ZeroDivisionError</code> and returned <code>math.inf</code>. Our integer version can’t return infinity, but it can do something better: return a <code>Result</code> that names what went wrong. Figure 3 is <code>nice_div</code>, Rust edition.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: nice_div returns a Result instead of raising
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: nice_div returns a Result instead of raising
+
 #[derive(Debug)]
 enum DivError {
     DivideByZero,
@@ -1800,8 +1800,8 @@ You screwed up your division, human: DivideByZero
 <p>Notice also who’s who in the port: the <code>Err</code> arm of the <code>match</code> is playing the role of Python’s <code>except ZeroDivisionError</code> block, and constructing <code>Err(DivError::DivideByZero)</code> is playing the role of <code>raise</code>. Same drama, but now the error travels as a return value, in plain sight.</p>
 <h3 id="the-exception-that-vanished"><a class="header" href="#the-exception-that-vanished">The exception that vanished</a></h3>
 <p>The Python book’s next scenario was <code>nice_div(3, "zero")</code> — dividing an <code>int</code> by a <code>str</code>, which raised a <code>TypeError</code>, which required a second <code>except</code> block to catch. Figure 4 ports that call to Rust.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 4: The TypeError scenario, ported to Rust
-</span>
+<pre class="playground"><code class="language-rust">// Figure 4: The TypeError scenario, ported to Rust
+
 fn main() {
     match nice_div(3, "zero") {
         Ok(result) =&gt; println!("nice_div = {result}"),
@@ -1821,8 +1821,8 @@ error[E0308]: mismatched types
 <h2 id="the--operator-propagation-you-can-see"><a class="header" href="#the--operator-propagation-you-can-see">The <code>?</code> operator: propagation you can see</a></h2>
 <p>Back to the boss metaphor. The genuinely good idea inside exceptions was <em>delegation</em>: a low-level function shouldn’t have to decide what a divide-by-zero means for the whole program. It should hand the problem upward. Python’s <code>raise</code> did that invisibly. Rust does it with one visible character.</p>
 <p>Suppose we’re writing a little TinyALU-flavored utility: compute a ratio of two accumulated counts as a percentage. It calls <code>nice_div</code>, and if the division fails, our function can’t succeed either — the error should go up to <em>our</em> caller. Written longhand, that’s a <code>match</code> where the <code>Err</code> arm just re-returns the error. Written idiomatically, it’s figure 5.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 5: The ? operator sends the error up the stack
-</span>
+<pre class="playground"><code class="language-rust">// Figure 5: The ? operator sends the error up the stack
+
 fn percent(numerator: u32, denominator: u32) -&gt; Result&lt;u32, DivError&gt; {
     let ratio = nice_div(numerator * 100, denominator)?;
     Ok(ratio)
@@ -1847,8 +1847,8 @@ percent failed: DivideByZero
 <h2 id="designing-an-error-enum"><a class="header" href="#designing-an-error-enum">Designing an error enum</a></h2>
 <p><code>DivError</code> had one variant, which made it a demo. Real error types earn their keep when there are several ways to fail and the caller might care which one happened — exactly the job Python’s exception <em>class hierarchy</em> did, with <code>except ZeroDivisionError</code> and <code>except TypeError</code> selecting by type. In Rust, the error type is an enum, the variants are the failure modes, payloads carry the evidence, and <code>match</code> does the selecting.</p>
 <p>Let’s build one the TinyALU will actually need. Think ahead to a testbench utility that decodes an operation field from the DUT into our <code>Ops</code> enum from Chapter 7. Two things can go wrong: the bits might not encode any legal operation, or the DUT might never hand us the value at all before the clock runs out. That’s a two-variant enum, one variant carrying the offending byte:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 6: A custom error enum for the TinyALU
-</span>
+<pre class="playground"><code class="language-rust">// Figure 6: A custom error enum for the TinyALU
+
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -1912,8 +1912,8 @@ decode failed: invalid ALU op code: 0x07
 <li><strong><code>.expect("message")</code></strong> — <code>unwrap</code> with a message you choose, which makes it strictly better in code you keep.⁴</li>
 </ul>
 <p>Figure 7 ports the Python book’s <code>assert</code> scenario — the <code>xor_bytes</code> function that rejected values that don’t fit in a byte. The port sharpens the example nicely: in Rust, <code>xor_bytes</code> takes <code>&amp;[u8]</code>, so a value over 255 can’t even reach the function (the <code>TypeError</code> disappearance, again). What still <em>can</em> go wrong is a claim about our own logic — say, this version that folds in a parity check the surrounding testbench relies on:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 7: assert! guards an invariant
-</span>
+<pre class="playground"><code class="language-rust">// Figure 7: assert! guards an invariant
+
 fn xor_bytes(bytes: &amp;[u8]) -&gt; u8 {
     let mut xor = 0;
     for b in bytes {
@@ -1979,8 +1979,8 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 <p>This chapter rebuilds that material piece by piece: the Animal menagerie, the <code>super()</code> question, multiple inheritance, and then the payoff for verification — how traits replace the dunder methods (<code>__eq__</code>, <code>__str__</code>, <code>__lt__</code>) that the Python book taught you to write on every transaction class.</p>
 <h2 id="shared-behavior-without-a-base-class"><a class="header" href="#shared-behavior-without-a-base-class">Shared behavior without a base class</a></h2>
 <p>A trait is a named list of method signatures that a type can opt into. It declares <em>what</em> a type can do; a separate <code>impl</code> block declares that a particular type does it. Here is the Python book’s Animal example, rebuilt.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 1: Shared behavior through a trait, not a base class
-</span>
+<pre class="playground"><code class="language-rust">// Figure 1: Shared behavior through a trait, not a base class
+
 trait Animal {
     fn species(&amp;self) -&gt; &amp;str;
     fn sound(&amp;self) -&gt; &amp;str;
@@ -2017,8 +2017,8 @@ The cat says 'miāo'
 <h2 id="where-did-super-go"><a class="header" href="#where-did-super-go">Where did super() go?</a></h2>
 <p>The Python book’s most instructive inheritance bug was <code>SmallDog</code>. It extended <code>Dog</code>, overrode <code>__init__()</code> to set <code>self.sound = "yap yap"</code>, forgot to call <code>super().__init__()</code>, and blew up with an <code>AttributeError</code> because <code>self.species</code> was never set — data attributes, unlike methods, are not inherited. The fix was <code>super().__init__()</code>, and the book told you to make it a habit.</p>
 <p>Rust closes this bug at both ends. First: struct fields are declared in the struct, not created by whichever initializer happens to run. There is no execution order that leaves a <code>SmallDog</code> half-built, because a struct that is missing a field does not compile. Second: when a <code>SmallDog</code> wants to reuse <code>Dog</code>’s behavior, it does so by <em>containing</em> a <code>Dog</code> — composition — and delegating to it explicitly.¹</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: SmallDog by composition — delegation replaces super()
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: SmallDog by composition — delegation replaces super()
+
 struct SmallDog {
     dog: Dog,    // a SmallDog HAS the dog parts
 }
@@ -2040,8 +2040,8 @@ The dog says 'yap yap'
 <h2 id="wearing-many-hats"><a class="header" href="#wearing-many-hats">Wearing many hats</a></h2>
 <p>The Python book used multiple inheritance for Pat, the firefighter with kids: <code>class FirefighterWithKids(Parent, Firefighter)</code>, followed by a careful discussion of the MRO and a design rule borrowed from <em>Highlander</em> — of <code>__init__()</code> methods, there can be only one.</p>
 <p>In Rust, “Pat has two roles” is simply “Pat implements two traits.” There is nothing to diagram.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: Multiple roles as multiple trait implementations
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: Multiple roles as multiple trait implementations
+
 trait Parent {
     fn kiss(&amp;self);
 }
@@ -2083,20 +2083,20 @@ Pat sprays water.
 <p>That pattern — “here is the full interface; override what you use” — is exactly what default methods are for, and it is how rustdv’s <code>Component</code> lifecycle trait is designed. A preview, signatures only (Chapter 24 does this properly):</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span><span class="boring">Figure 4: The shape of rustdv's Component trait (preview — signatures only)
-</span>
+</span>// Figure 4: The shape of rustdv's Component trait (preview — signatures only)
+
 pub trait Component {
-    fn start(&amp;mut self, ctx: &amp;mut RunCtx);            // required: every component runs
+    fn start(&amp;mut self, ctx: &amp;mut RunCtx) {}          // default: nothing to run
     fn check(&amp;mut self, errors: &amp;mut CheckSink) {}    // default: do nothing
     fn report(&amp;self) {}                               // default: do nothing
 }
 <span class="boring">}</span></code></pre>
-<p>A scoreboard overrides <code>check()</code>; a driver doesn’t, and inherits the empty default — the same division of labor the Python book taught in its <code>uvm_component</code> chapter, with one upgrade. In pyuvm, the empty methods lived in a base class you extended, so getting them required joining the inheritance hierarchy. In rustdv, they live in a trait you implement, so a component is just a plain struct — its fields are its children, per Chapter 24 — that opts into the lifecycle. Same methodology, no family tree.</p>
+<p>A driver overrides <code>start()</code>; a scoreboard overrides <code>check()</code>; each inherits the empty default for every phase it ignores, and a purely structural component — an env that exists to hold its children — can implement the trait without overriding anything at all. The same division of labor the Python book taught in its <code>uvm_component</code> chapter, with one upgrade. In pyuvm, the empty methods lived in a base class you extended, so getting them required joining the inheritance hierarchy. In rustdv, they live in a trait you implement, so a component is just a plain struct — its fields are its children, per Chapter 24 — that opts into the lifecycle. Same methodology, no family tree.</p>
 <h2 id="deriving-the-compiler-writes-the-boring-impls"><a class="header" href="#deriving-the-compiler-writes-the-boring-impls">Deriving: the compiler writes the boring impls</a></h2>
 <p>The Python book taught you a set of magic methods — the dunders — because transactions need them: <code>__eq__</code> so the scoreboard can compare a prediction to a result, <code>__str__</code> so logs are readable, and it was your job to write each one on every transaction class. Rust maps each dunder to a standard trait, and for most of them the compiler will write the implementation for you. The keyword is <code>#[derive(...)]</code>, an attribute you place on a struct or enum, listing traits whose implementations the compiler should generate from the fields.</p>
 <p>Let’s put the TinyALU’s transaction under the microscope.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 5: Derived traits on the TinyALU command transaction
-</span>
+<pre class="playground"><code class="language-rust">// Figure 5: Derived traits on the TinyALU command transaction
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Ops {
     Add = 1,
@@ -2124,8 +2124,8 @@ AluCommand { a: 170, b: 85, op: Xor }
 </code></pre>
 <p>One line above the struct bought us three implementations. <code>Clone</code> gives <code>cmd.clone()</code>, a field-wise copy. <code>PartialEq</code> gives <code>==</code>, a field-wise comparison — in Python this was you writing <code>__eq__</code> by hand, remembering to compare every field, and remembering again when you added a field. The derived version regenerates from the struct definition on every compile, so it <em>cannot</em> fall out of sync with the fields. <code>Debug</code> gives the <code>{:?}</code> format you see in the output: a machine-ish rendering of the whole struct, which is <code>__repr__</code>’s job.³</p>
 <p>That leaves <code>__str__</code> — the human-friendly rendering. Its Rust counterpart is the <code>Display</code> trait, and here the compiler makes you write it yourself, on purpose: Rust’s position is that a machine can guess how to <em>dump</em> your type but not how to <em>present</em> it. Implementing <code>Display</code> is our first hand-written implementation of a standard-library trait, and it looks like every trait impl you’ve seen this chapter:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 6: Implementing Display by hand — the __str__ of Rust
-</span>
+<pre class="playground"><code class="language-rust">// Figure 6: Implementing Display by hand — the __str__ of Rust
+
 use std::fmt;
 
 impl fmt::Display for AluCommand {
@@ -2168,8 +2168,8 @@ cmd: a=0xaa b=0x55 op=Xor
 <p>We now have <code>Dog</code>, <code>Cat</code>, and <code>SmallDog</code>, each implementing <code>Animal</code>, and one question left — the question inheritance answered with “they share a base class”: how do we write code that works on <em>any</em> animal?</p>
 <p>Rust gives two answers, and choosing between them is a skill this book will exercise from here to the final chapter.</p>
 <p><strong>Answer one: generics.</strong> Write a function with a type parameter, and <em>bound</em> the parameter by the trait:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 7: Generic function — dispatch resolved at compile time
-</span>
+<pre class="playground"><code class="language-rust">// Figure 7: Generic function — dispatch resolved at compile time
+
 fn check_in&lt;T: Animal&gt;(animal: &amp;T) {
     animal.make_sound();
 }
@@ -2184,8 +2184,8 @@ The cat says 'miāo'
 </code></pre>
 <p><code>&lt;T: Animal&gt;</code> reads “for any type T that implements Animal.” This is duck typing with the ducks counted before the program runs: where Python said “just call <code>make_sound()</code> and hope,” the bound <em>documents</em> the requirement in the signature and the compiler <em>checks</em> it at every call site. Behind the scenes the compiler compiles a separate copy of <code>check_in</code> for <code>Dog</code> and for <code>Cat</code> — a process called <strong>monomorphization</strong> — so each call dispatches directly, as fast as if you had written the two functions by hand. Generic code costs nothing at runtime. Chapter 11 is entirely about this machinery, so I’ll leave it warm rather than cooked.</p>
 <p><strong>Answer two: trait objects.</strong> Sometimes you need one collection holding a mixture of types — a Python list held anything, and a kennel holds whatever shows up. For that, Rust erases the concrete type behind a pointer:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 8: Trait objects — dispatch resolved at runtime
-</span>
+<pre class="playground"><code class="language-rust">// Figure 8: Trait objects — dispatch resolved at runtime
+
 fn main() {
     let kennel: Vec&lt;Box&lt;dyn Animal&gt;&gt; = vec![
         Box::new(Dog),
@@ -2221,8 +2221,8 @@ The dog says 'yap yap'
 <p>Let’s write it the way you would naively write it, because the failure is the lesson.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span><span class="boring">Figure 1: A generic function, first attempt — the compiler wants proof
-</span>
+</span>// Figure 1: A generic function, first attempt — the compiler wants proof
+
 fn largest&lt;T&gt;(list: &amp;[T]) -&gt; &amp;T {
     let mut largest = &amp;list[0];
     for item in list {
@@ -2249,8 +2249,8 @@ help: consider restricting type parameter `T`
 </code></pre>
 <p>Read the declaration first: <code>fn largest&lt;T&gt;</code> says “this function is defined for some type T, to be named later,” and then <code>&amp;[T]</code> and <code>&amp;T</code> use the placeholder as if it were a real type. Python would have shrugged and run this. Rust refuses, and its objection is philosophically the whole chapter: <em>you said T could be any type, and then you compared two of them with <code>&gt;</code>. Not every type can do that.</em> What do we know about a type we know nothing about? Nothing — so we may call nothing on it.</p>
 <p>The fix is in the compiler’s own <code>help</code> text, and it is Chapter 10’s vocabulary: a <strong>trait bound</strong>. <code>T: PartialOrd</code> narrows “any type” to “any type that implements <code>PartialOrd</code>” — the ordering trait from Chapter 10’s dunder table, the one behind <code>&lt;</code> and <code>&gt;</code>.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: The bound is the fix — and the documentation
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: The bound is the fix — and the documentation
+
 fn largest&lt;T: PartialOrd&gt;(list: &amp;[T]) -&gt; &amp;T {
     let mut largest = &amp;list[0];
     for item in list {
@@ -2279,8 +2279,8 @@ last test name:  alu_xor_test
 <p>The bound does double duty, and this is worth slowing down for. To the <em>compiler</em> it is a permission slip: inside <code>largest</code>, exactly the methods of <code>PartialOrd</code> may be called on <code>T</code>, no more. To the <em>reader</em> it is documentation you can trust: the signature <code>fn largest&lt;T: PartialOrd&gt;(list: &amp;[T]) -&gt; &amp;T</code> tells you everything this function will ever demand of your type. Python’s equivalent contract lived in the docstring, the tribal knowledge, or the stack trace.</p>
 <h2 id="more-than-one-requirement"><a class="header" href="#more-than-one-requirement">More than one requirement</a></h2>
 <p>A bound can require several traits at once, joined with <code>+</code>. Here is a function a scoreboard might want — compare an expected transaction against an actual one, and complain legibly on a mismatch. Comparing needs <code>PartialEq</code>; complaining legibly needs <code>Debug</code>. Both go in the contract:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: Multiple bounds with a where clause
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: Multiple bounds with a where clause
+
 use std::fmt::Debug;
 
 fn check_match&lt;T&gt;(expected: &amp;T, actual: &amp;T) -&gt; bool
@@ -2305,8 +2305,8 @@ MISMATCH: expected 84, actual 85
 <p>We could have written <code>fn check_match&lt;T: PartialEq + Debug&gt;(...)</code> and it would mean the same thing; the <code>where</code> clause is the same information moved out of the angle brackets so the signature stays readable. Convention, and this book, use the inline form for one short bound and <code>where</code> for anything longer. Either way, look at what this function is: the Python book’s duck-typed checker — “anything with an <code>__eq__</code> and a <code>__repr__</code>” — with the duck requirements written down and enforced. A transaction type that forgot to derive <code>PartialEq</code> doesn’t fail in hour three of a regression; it fails to compile, with an error pointing at the missing derive.</p>
 <h2 id="generic-structs"><a class="header" href="#generic-structs">Generic structs</a></h2>
 <p>Type parameters work on structs the same way, and you already know the syntax from the consumer side — <code>Vec&lt;T&gt;</code> — so producing one holds no surprises. Here is a register model wide enough for any leg of the TinyALU:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 4: A generic struct — one definition, many widths
-</span>
+<pre class="playground"><code class="language-rust">// Figure 4: A generic struct — one definition, many widths
+
 struct Register&lt;T&gt; {
     value: T,
 }
@@ -2342,8 +2342,8 @@ A: 0xaa  result: 0x7100
 <p>Nothing is, and the reason is the best idea in this chapter. At compile time, the compiler finds every concrete type your program actually uses with <code>largest</code>, and generates a separate, specialized copy of the function for each one — a process called <strong>monomorphization</strong>, “making single-formed.” Your generic source code is a stencil; the compiler stamps it out once per type. Conceptually, figure 2 compiles as if you had written:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span><span class="boring">Figure 5: What the compiler generates from figure 2 (conceptually — you never see this)
-</span>
+</span>// Figure 5: What the compiler generates from figure 2 (conceptually — you never see this)
+
 fn largest_u8(list: &amp;[u8]) -&gt; &amp;u8 {
     // ... same body, with T = u8 throughout
 }
@@ -2359,22 +2359,24 @@ fn largest_str(list: &amp;[&amp;str]) -&gt; &amp;&amp;str {
 <p>Each call site in <code>main</code> is wired directly to its own stamped-out copy. When <code>largest(&amp;operands)</code> runs, there is no lookup, no vtable, no “which type is this?” — the <code>u8</code> version was chosen before the program existed as a binary, and the call is exactly as fast as the hand-written <code>u8</code>-only function you refused to copy-paste three times. The same happens to structs: <code>Register&lt;u8&gt;</code> and <code>Register&lt;u16&gt;</code> compile to two independent struct definitions, each with its own specialized methods. This is what the design of rustdv means by <em>generic code costs nothing at runtime</em>: you write the abstraction once and pay for it never.²</p>
 <p>Set the two models side by side, because this is the chapter’s picture. Python answers “which <code>write()</code> do I call?” by looking it up when the call happens — maximally flexible, paid for on every transaction of every test of every regression. Rust answers the same question once, at compile time, by generating the exact code each caller needs — and the flexibility you give up is precisely the flexibility of being wrong. Chapter 10’s trait objects (<code>Box&lt;dyn Animal&gt;</code>, the vtable, the runtime dispatch) remain available for the cases that genuinely need runtime choice; monomorphized generics are what you get everywhere else, which in a testbench is almost everywhere.</p>
 <p>Honesty requires the other side of the ledger, and it is real but modest: stamping out copies takes compile time and makes the binary larger. A generic function used with thirty types is compiled thirty times. For testbench code — a handful of transaction types, not thirty — you will notice this approximately never, but now you know why heavily generic Rust code compiles slower than it runs.</p>
-<h2 id="the-destination-driverreq-rsp"><a class="header" href="#the-destination-driverreq-rsp">The destination: Driver&lt;REQ, RSP&gt;</a></h2>
+<h2 id="the-destination-seqitemportreq-rsp"><a class="header" href="#the-destination-seqitemportreq-rsp">The destination: SeqItemPort&lt;REQ, RSP&gt;</a></h2>
 <p>Part I keeps promising that these language chapters are load-bearing, so let me show you the load. In pyuvm, <code>uvm_driver</code> had a <code>seq_item_port</code>, and what came out of <code>get_next_item()</code> was — whatever the sequencer sent. If a misconfigured test wired a memory sequence to the ALU agent, the driver discovered it at runtime, usually as an <code>AttributeError</code> deep in <code>run_phase()</code>, and the Python book taught you the discipline to avoid it.</p>
-<p>rustdv’s driver states its requirements in its name. Signatures only — Part IV builds this for real:</p>
+<p>rustdv’s driver states its requirements in its port’s type. Signatures only — Part IV builds this for real:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span><span class="boring">Figure 6: The shape of rustdv's driver (preview — signatures only)
-</span>
-pub struct Driver&lt;REQ, RSP = REQ&gt; {
-    pub seq_item_port: SeqItemPort&lt;REQ, RSP&gt;,
+</span>// Figure 6: The shape of rustdv's driver (preview — signatures only)
+
+pub struct SeqItemPort&lt;REQ, RSP = REQ&gt; { /* channel endpoints — elided */ }
+
+pub struct AluDriver {                       // your driver: a plain struct...
+    seq_item_port: SeqItemPort&lt;AluCommand&gt;,  // ...that owns a typed port
     // ...
 }
 <span class="boring">}</span></code></pre>
-<p>Everything in this chapter is in that one line. Two type parameters, because a driver’s conversation has two directions: <code>REQ</code> is the request transaction it pulls from the sequencer, <code>RSP</code> the response it may send back. Type parameters can have <em>defaults</em> — <code>RSP = REQ</code> says “if you don’t name a response type, it’s the same as the request,” so the common no-response driver is just <code>Driver&lt;AluCommand&gt;</code>. And the port inside is a generic struct over the same two parameters, so the driver, its port, and the sequencer on the far end must all agree on the transaction types <em>or the testbench does not compile</em>. The wrong-sequence-on-the-wrong-agent bug does not become an error message. It becomes unwritable.</p>
-<p>That is the trade this book keeps making, in its purest form yet: the duck-typed flexibility of pyuvm’s driver — any port, any transaction, sort it out at runtime — exchanged for a signature that is documentation, contract, and proof all at once. And thanks to monomorphization, <code>Driver&lt;AluCommand&gt;</code> compiles to code as direct as a driver hand-written for ALU commands alone, because that is literally what the compiler makes of it.</p>
+<p>Everything in this chapter is in the first line. Two type parameters, because a driver’s conversation has two directions: <code>REQ</code> is the request transaction it pulls from the sequencer, <code>RSP</code> the response it may send back. Type parameters can have <em>defaults</em> — <code>RSP = REQ</code> says “if you don’t name a response type, it’s the same as the request,” so the common no-response port is just <code>SeqItemPort&lt;AluCommand&gt;</code>. There is no <code>uvm_driver</code> base class to extend — your driver is an ordinary struct that owns a port — but the port, the sequencer on its far end, and every transaction that crosses between them must agree on the types <em>or the testbench does not compile</em>. The wrong-sequence-on-the-wrong-agent bug does not become an error message. It becomes unwritable.</p>
+<p>That is the trade this book keeps making, in its purest form yet: the duck-typed flexibility of pyuvm’s driver — any port, any transaction, sort it out at runtime — exchanged for a signature that is documentation, contract, and proof all at once. And thanks to monomorphization, <code>SeqItemPort&lt;AluCommand&gt;</code> compiles to code as direct as a port hand-written for ALU commands alone, because that is literally what the compiler makes of it.</p>
 <h2 id="summary-6"><a class="header" href="#summary-6">Summary</a></h2>
-<p>Generics let one definition serve many types: type parameters in angle brackets stand for a type named later, on functions (<code>fn largest&lt;T: PartialOrd&gt;(list: &amp;[T]) -&gt; &amp;T</code>) and on structs (<code>Register&lt;T&gt;</code>, and the <code>Vec&lt;T&gt;</code>, <code>Option&lt;T&gt;</code>, and <code>Result&lt;T, E&gt;</code> you have used since Chapter 8). Trait bounds are the contract — <code>T: PartialOrd</code>, or several requirements joined with <code>+</code>, or a <code>where</code> clause when the list grows — and they replace Python’s duck typing with the same idea checked at compile time: if it implements the bound, it’s a duck, and the compiler verifies the feathers before the program runs. Monomorphization is why none of this costs anything at runtime: the compiler stamps out a specialized copy of the generic code for each concrete type used, so every call dispatches directly, in exchange for some compile time and binary size. And <code>Driver&lt;REQ, RSP = REQ&gt;</code> is where the book is taking all of it — a driver whose transaction types are part of its type, so mismatched testbench plumbing fails at compile time instead of mid-regression.</p>
+<p>Generics let one definition serve many types: type parameters in angle brackets stand for a type named later, on functions (<code>fn largest&lt;T: PartialOrd&gt;(list: &amp;[T]) -&gt; &amp;T</code>) and on structs (<code>Register&lt;T&gt;</code>, and the <code>Vec&lt;T&gt;</code>, <code>Option&lt;T&gt;</code>, and <code>Result&lt;T, E&gt;</code> you have used since Chapter 8). Trait bounds are the contract — <code>T: PartialOrd</code>, or several requirements joined with <code>+</code>, or a <code>where</code> clause when the list grows — and they replace Python’s duck typing with the same idea checked at compile time: if it implements the bound, it’s a duck, and the compiler verifies the feathers before the program runs. Monomorphization is why none of this costs anything at runtime: the compiler stamps out a specialized copy of the generic code for each concrete type used, so every call dispatches directly, in exchange for some compile time and binary size. And <code>SeqItemPort&lt;REQ, RSP = REQ&gt;</code> is where the book is taking all of it — a driver whose port carries its transaction types in its type, so mismatched testbench plumbing fails at compile time instead of mid-regression.</p>
 <p>We now have types that carry proofs. What we do not yet have is Rust’s way of passing <em>behavior</em> around — the thing Python did every time it handed a function to <code>sorted(key=...)</code> or stored a coroutine to run later, and the thing rustdv’s factory will do for a living. Chapter 12 takes up closures and iterators, and if you enjoyed watching the compiler specialize your generics for free, you are going to like what it does to a <code>for</code> loop.</p>
 <blockquote>
 <p>¹ When inference can’t decide — or you want to be explicit — you can name the type at the call site with <code>largest::&lt;u8&gt;(&amp;operands)</code>. The <code>::&lt;&gt;</code> operator is universally called the <em>turbofish</em>, it is official Rust culture, and no, nobody has come up with a better name. Swim on.</p>
@@ -2391,8 +2393,8 @@ pub struct Driver&lt;REQ, RSP = REQ&gt; {
 </blockquote>
 <h2 id="closures-functions-as-values"><a class="header" href="#closures-functions-as-values">Closures: functions as values</a></h2>
 <p>A closure is a function without a name, written inline, that can use the variables around it. Python had these in two flavors: <code>lambda x: x + 1</code> for one-liners, and nested <code>def</code> for anything longer. Rust has one syntax for both. The parameters go between vertical bars, and the body follows.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 1: A closure is an unnamed function in a variable
-</span>
+<pre class="playground"><code class="language-rust">// Figure 1: A closure is an unnamed function in a variable
+
 fn main() {
     let add_one = |x: u32| x + 1;
 
@@ -2414,8 +2416,8 @@ fn main() {
 <p>A Python closure that mentions an outer variable just… uses it. Every Python name is a reference, so the closure captures a reference, silently, and if two pieces of code mutate the same captured object at the same time, that is your problem to discover at runtime. The Python book’s NullTrigger race — two tasks sharing <code>transaction_data</code> — was exactly this bug wearing a coroutine costume.</p>
 <p>Rust closures also capture outer variables, but here is the difference: <em>capturing is subject to the ownership rules from Chapters 5 and 6, like everything else.</em> A closure that reads a variable borrows it with <code>&amp;T</code>. A closure that mutates one borrows it with <code>&amp;mut T</code>. A closure that consumes one takes ownership. The compiler looks at the closure’s body, picks the least drastic mode that works, and then enforces it — visibly, in the type system, at compile time.</p>
 <p>Watch the three modes in order. First, a closure that only reads.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: A closure that reads captures by shared borrow
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: A closure that reads captures by shared borrow
+
 fn main() {
     let ops = vec!["ADD", "AND", "XOR", "MUL"];
 
@@ -2431,8 +2433,8 @@ ops under test: ["ADD", "AND", "XOR", "MUL"]
 still mine: 4 ops
 </code></pre>
 <p><code>show</code> borrowed <code>ops</code> the way any <code>&amp;Vec</code> would, so we can call it repeatedly and still use <code>ops</code> afterward. Second, a closure that mutates.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: A closure that mutates captures by exclusive borrow
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: A closure that mutates captures by exclusive borrow
+
 fn main() {
     let mut errors = Vec::new();
 
@@ -2448,8 +2450,8 @@ fn main() {
 </code></pre>
 <p>Two things changed. The closure itself must be declared <code>let mut</code>, because calling it mutates the captured <code>errors</code> — mutation is never invisible in Rust, not even here. And while <code>log_error</code> is alive, it holds the <em>exclusive</em> borrow of <code>errors</code>; if we tried to <code>println!("{errors:?}")</code> between the two calls, the compiler would refuse, citing the aliasing-XOR-mutability rule from Chapter 6. One writer, no readers alongside. The race the Python book could only warn you about is structurally impossible to write.</p>
 <p>Third, a closure that takes ownership. Sometimes a closure must own its captures — most often because it will outlive the scope it was created in, which is precisely the situation when you store a closure in a struct or hand it to another task. The <code>move</code> keyword forces the transfer.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 4: A move closure takes ownership of its captures
-</span>
+<pre class="playground"><code class="language-rust">// Figure 4: A move closure takes ownership of its captures
+
 fn main() {
     let test_name = String::from("alu_smoke_test");
 
@@ -2478,8 +2480,8 @@ error[E0382]: borrow of moved value: `test_name`
 <pre><code class="language-python">even_squares = [nn**2 for nn in range(11) if nn % 2 == 0]
 </code></pre>
 <p>A comprehension has four parts: an expression, a variable, an iterator, and a filter. Rust has no comprehension syntax. Instead it lets you take those same four parts and chain them left to right as method calls on the iterator — each method taking, naturally, a closure.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 5: The list comprehension, as an iterator chain
-</span>
+<pre class="playground"><code class="language-rust">// Figure 5: The list comprehension, as an iterator chain
+
 fn main() {
     let even_squares: Vec&lt;u32&gt; = (0..=10)
         .filter(|nn| nn % 2 == 0)
@@ -2493,8 +2495,8 @@ even squares [0, 4, 16, 36, 64, 100]
 </code></pre>
 <p>Read the chain aloud and it is the comprehension in sentence order: take the range zero through ten, <em>filter</em> it down to the even numbers, <em>map</em> each survivor to its square, and <em>collect</em> the results into a <code>Vec</code>. The <code>|nn| ...</code> closures are the comprehension’s expression and filter parts, now explicit values passed as arguments. Where the Python book had to teach you the four positions inside the brackets, the Rust version wears its structure on the outside — and when a chain grows too clever, it splits across lines exactly as figure 5 shows, no special multi-line dispensation required.</p>
 <p>The Python book’s dictionary comprehension ports the same way. <code>{ii : ii**3 for ii in range(4)}</code> becomes a chain that maps each number to a <code>(key, value)</code> pair and collects into a <code>HashMap</code>:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 6: The dictionary comprehension, collected into a HashMap
-</span>
+<pre class="playground"><code class="language-rust">// Figure 6: The dictionary comprehension, collected into a HashMap
+
 use std::collections::HashMap;
 
 fn main() {
@@ -2509,8 +2511,8 @@ cubes: {2: 8, 0: 0, 3: 27, 1: 1}
 </code></pre>
 <p>Two things to notice. <code>collect()</code> is doing something quietly remarkable: the <em>same method</em> built a <code>Vec</code> in figure 5 and a <code>HashMap</code> here, steered by the type annotation on the left — the generics machinery from Chapter 11 earning its keep. (One wrinkle: the closure’s parameter carries its own <code>: u32</code>, because a method call like <code>.pow</code> must know its receiver’s concrete type on the spot — inference has not yet flowed backward from the annotation when the closure body is checked.) And look at that output order. Chapter 8 warned you that Rust’s <code>HashMap</code>, unlike the Python dict you knew, promises nothing about iteration order, and here is the proof; your run will likely print a different scramble.</p>
 <p>One more adapter completes the everyday set. Where <code>map</code> transforms each element and <code>filter</code> drops some, <strong><code>fold</code></strong> boils the whole stream down to a single value: it takes a starting accumulator and a closure that combines the accumulator with each element in turn. Here is a scoreboard-flavored example — counting mismatches in a list of (expected, actual) pairs:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 7: fold reduces a stream to one value
-</span>
+<pre class="playground"><code class="language-rust">// Figure 7: fold reduces a stream to one value
+
 fn main() {
     let results = [(0x55u16, 0x55u16), (0x100, 0x100), (0x0FE, 0x0FF)];
 
@@ -2531,8 +2533,8 @@ mismatches: 1
 <h2 id="where-generators-went"><a class="header" href="#where-generators-went">Where generators went</a></h2>
 <p>Rust has no <code>yield</code> statement.² What it has instead is the <code>Iterator</code> trait — one required method, <code>next()</code>, which returns <code>Some(value)</code> until the stream is exhausted and <code>None</code> thereafter. That <code>Option</code> should ring a bell from Chapter 9: where Python generators signal exhaustion with a <code>StopIteration</code> exception behind the scenes, Rust signals it in the return type, in the open.</p>
 <p>Any type that implements <code>Iterator</code> works in a <code>for</code> loop, chains with every adapter above, and collects into collections. The Python book’s favorite generator was Fibonacci, so let us port it. Where Python kept <code>lastnumb</code> and <code>numb</code> alive between <code>yield</code>s inside a paused function, Rust keeps them as fields in a struct, and <code>next()</code> advances the state one step per call.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 8: The Fibonacci generator, as an Iterator implementation
-</span>
+<pre class="playground"><code class="language-rust">// Figure 8: The Fibonacci generator, as an Iterator implementation
+
 struct Fibonacci {
     curr: u64,
     next: u64,
@@ -2568,8 +2570,8 @@ fn main() {
             yield (aa, bb)
 </code></pre>
 <p>And in Rust, as a function returning <code>impl Iterator</code>:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 9: A TinyALU operand-pair stream, replacing a generator function
-</span>
+<pre class="playground"><code class="language-rust">// Figure 9: A TinyALU operand-pair stream, replacing a generator function
+
 fn operand_pairs(n: u8) -&gt; impl Iterator&lt;Item = (u8, u8)&gt; {
     (0..n).flat_map(move |aa| (0..n).map(move |bb| (aa, bb)))
 }
@@ -2590,8 +2592,8 @@ fn main() {
 <h2 id="closures-you-keep-a-seed-for-part-iv"><a class="header" href="#closures-you-keep-a-seed-for-part-iv">Closures you keep: a seed for Part IV</a></h2>
 <p>Everything so far has passed closures <em>downward</em> — into <code>map</code>, into <code>filter</code>, used and forgotten. The last idea in this chapter is the one with the longest reach in this book: a closure is a value, and like any value, it can be <strong>stored in a struct field</strong> and called later, by code that has no idea what the closure does inside.</p>
 <p>Because every closure has its own unwritable type, storing one takes a trait object — Chapter 10’s <code>dyn</code>, boxed up: <code>Box&lt;dyn Fn(u8, u8) -&gt; u16&gt;</code> is “some heap-allocated callable, taking two <code>u8</code>s, returning a <code>u16</code>; I don’t know or care which one.” Here is a toy checker whose <em>prediction function is data</em>:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 10: A struct that carries its behavior as a closure
-</span>
+<pre class="playground"><code class="language-rust">// Figure 10: A struct that carries its behavior as a closure
+
 struct Checker {
     predict: Box&lt;dyn Fn(u8, u8) -&gt; u16&gt;,
 }
@@ -2635,8 +2637,8 @@ FAIL: (15, 53) expected 5, got 6
 <p>The answer is that the rules are absolute but the <em>enforcement point</em> is negotiable. Rust provides a small set of standard-library types — the community calls them <strong>smart pointers</strong> — that let you buy back Python-style sharing, one capability at a time, each purchase visible in your code and each with a price tag attached. This chapter teaches the three you will actually meet: <code>Box&lt;T&gt;</code>, <code>Rc&lt;T&gt;</code>, and <code>RefCell&lt;T&gt;</code>. By the end you will be able to read <code>Rc&lt;RefCell&lt;T&gt;&gt;</code> and recognize an old friend wearing a name tag: a Python object reference, made visible.</p>
 <h2 id="boxt-the-heap-on-request"><a class="header" href="#boxt-the-heap-on-request"><code>Box&lt;T&gt;</code>: the heap, on request</a></h2>
 <p>The simplest smart pointer barely earns the name. <code>Box&lt;T&gt;</code> puts a value on the heap and owns it — one owner, moved and dropped exactly like everything in Chapter 5. The only thing that changed is <em>where the bytes live</em>.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 1: A Box owns its value on the heap — everything else is Chapter 5
-</span>
+<pre class="playground"><code class="language-rust">// Figure 1: A Box owns its value on the heap — everything else is Chapter 5
+
 struct Transaction {
     a: u8,
     b: u8,
@@ -2670,8 +2672,8 @@ print(sys.getrefcount(a))
 </code></pre>
 <p>(<code>getrefcount</code> reports one higher than you’d guess, because the act of calling it lends the list one more temporary reference. Even the inspection tool participates in the scheme.)</p>
 <p>Rust’s <code>Rc&lt;T&gt;</code> — <em>reference counted</em> — is exactly this mechanism, with two differences: you opt into it per value instead of paying for it everywhere, and the increments happen only where you can see them. <code>Rc::new</code> wraps a value and starts the count at one. <code>Rc::clone</code> does <em>not</em> copy the value — it copies the <em>handle</em> and increments the count, which is precisely what Python’s <code>b = a</code> did behind your back. When each <code>Rc</code> handle is dropped, the count decrements; at zero, the value is dropped. It is CPython’s memory management, offered à la carte.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: Rc::clone increments a refcount — on purpose, where you can see it
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: Rc::clone increments a refcount — on purpose, where you can see it
+
 use std::rc::Rc;
 
 fn main() {
@@ -2700,8 +2702,8 @@ driver sees: TinyALU BFM
 <p>¹ Mostly. CPython also runs a cycle-detecting garbage collector to rescue objects that point at each other and hold their mutual counts above zero forever. Hold that thought — <code>Rc</code> has the same weakness and no rescue squad, and it is going to matter later in this chapter.</p>
 </blockquote>
 <p>So can several components share a BFM this way? Almost. There is a catch, and it is the same catch Chapter 6 stamped into <code>&amp;T</code>: sharing is a <em>reader’s</em> privilege.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 4: Shared owners are readers — Rc will not hand out write access
-</span>
+<pre class="playground"><code class="language-rust">// Figure 4: Shared owners are readers — Rc will not hand out write access
+
 use std::rc::Rc;
 
 struct Scoreboard {
@@ -2728,8 +2730,8 @@ error[E0594]: cannot assign to data in an `Rc`
 <h2 id="refcellt-the-borrow-checker-moved-to-runtime"><a class="header" href="#refcellt-the-borrow-checker-moved-to-runtime"><code>RefCell&lt;T&gt;</code>: the borrow checker, moved to runtime</a></h2>
 <p>Everything the borrow checker has done so far, it has done at compile time, by proving things about your source code. But some sharing patterns are true in ways a compiler cannot see from the source — <em>these two components take turns, I promise</em> — and for those, Rust offers a deal: <strong><code>RefCell&lt;T&gt;</code> keeps the borrowing rules but checks them at runtime.</strong> Same law, different courtroom.</p>
 <p>A <code>RefCell&lt;T&gt;</code> wraps a value and replaces <code>&amp;</code>/<code>&amp;mut</code> with two accessor methods: <code>borrow()</code> returns a read handle, <code>borrow_mut()</code> returns a write handle, and the cell <em>counts</em> its outstanding loans. Many readers, or one writer — enforced by a counter at the door instead of a proof in the compiler.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 5: Interior mutability — mutation through an immutable binding
-</span>
+<pre class="playground"><code class="language-rust">// Figure 5: Interior mutability — mutation through an immutable binding
+
 use std::cell::RefCell;
 
 struct Scoreboard {
@@ -2748,8 +2750,8 @@ errors: 1
 </code></pre>
 <p>Look hard at the first line of <code>main</code>: there is no <code>mut</code>. Since Chapter 3, that has meant untouchable — yet we mutated <code>errors</code> anyway. This trick has a name, <strong>interior mutability</strong>: from the outside, <code>sb</code> is an immutable value you can share freely; on the inside, the cell hands out exclusive write access to one caller at a time, checked at the moment of the call. If that sounds familiar, it should — it is the “Protecting attributes” chapter’s move, replayed at the level of the type system. Python’s <code>Temperature</code> class hid <code>__temp</code> behind properties so the class could enforce its rules at every access; <code>RefCell</code> hides its value behind <code>borrow</code> and <code>borrow_mut</code> so the <em>borrowing</em> rules get enforced at every access. Both designs answer the same question — who gets to touch this value, and on whose terms? — by making all traffic pass through a gatekeeper. The difference is what the gatekeeper checks: Python’s properties checked whatever validation you wrote by hand; <code>RefCell</code> checks aliasing XOR mutability, the one rule this whole language is built on.</p>
 <p>And what happens when the rule is violated? At compile time, a violation was a program that never existed. At runtime, the program exists — it is halfway through a simulation — so the only honest response left is to stop:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 6: The borrow checker at runtime — a panic replaces the compile error
-</span>
+<pre class="playground"><code class="language-rust">// Figure 6: The borrow checker at runtime — a panic replaces the compile error
+
 use std::cell::RefCell;
 
 struct Scoreboard {
@@ -2778,8 +2780,8 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 <h2 id="rcrefcellt-a-python-reference-made-visible"><a class="header" href="#rcrefcellt-a-python-reference-made-visible"><code>Rc&lt;RefCell&lt;T&gt;&gt;</code>: a Python reference, made visible</a></h2>
 <p>Now stack them. <code>Rc</code> gave us shared ownership with read-only access; <code>RefCell</code> gave us gate-checked mutation of a shared value. Compose them — <code>Rc&lt;RefCell&lt;T&gt;&gt;</code> — and you have shared handles, any of which can mutate the value, with the borrow rules enforced at each access. Which is to say: you have rebuilt the Python object reference, the thing every variable in every Python program you ever wrote actually was.</p>
 <p>Chapter 5 opened with a Python figure that proved <code>b = a</code> gives two names for one mutable object, and then showed Rust refusing to compile the same experiment. We have been in debt to that figure for eight chapters. Time to pay it off:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 7: Chapter 5's Python experiment, finally legal in Rust — with its costs itemized
-</span>
+<pre class="playground"><code class="language-rust">// Figure 7: Chapter 5's Python experiment, finally legal in Rust — with its costs itemized
+
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -2829,8 +2831,8 @@ same object: true
 <h2 id="modules-namespaces-inside-a-crate"><a class="header" href="#modules-namespaces-inside-a-crate">Modules: namespaces inside a crate</a></h2>
 <p>A <strong>module</strong> in Rust is a named scope you declare with the <code>mod</code> keyword. Unlike Python, where every file automatically <em>is</em> a module, a Rust module is something you declare explicitly — and you can declare one right in the middle of a file. Let’s start there, because it makes the concept visible before any files get involved.</p>
 <p>We will need a home for the TinyALU’s prediction logic — the pure function that computes what the DUT <em>should</em> produce. This was <code>tinyalu_utils.py</code>’s most important resident, and it will be our example for the rest of the chapter.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 1: A module declared inline, in the middle of main.rs
-</span>
+<pre class="playground"><code class="language-rust">// Figure 1: A module declared inline, in the middle of main.rs
+
 mod predictor {
     #[derive(Clone, Copy, Debug, PartialEq)]
     pub enum Ops { Add = 1, And = 2, Xor = 3, Mul = 4 }
@@ -2855,8 +2857,8 @@ fn main() {
 <p>Everything between the braces of <code>mod predictor</code> lives in the <code>predictor</code> namespace, and code outside reaches it with <code>::</code> — <code>predictor::alu_prediction</code> — exactly the job Python’s <code>.</code> did in <code>pyuvm.FIFO_DEBUG</code>. Note in passing that the prediction itself is honest about widths in a way the Python version never had to be: the TinyALU’s operands are <code>u8</code> and its result bus is sixteen bits wide, so <code>Add</code> and <code>Mul</code> cast up to <code>u16</code> <em>before</em> operating. <code>0xFF + 0x01</code> carries into bit eight instead of wrapping to zero. Chapter 3 planted that seed; here it flowers.</p>
 <h2 id="use-bringing-paths-into-scope"><a class="header" href="#use-bringing-paths-into-scope"><code>use</code>: bringing paths into scope</a></h2>
 <p>Writing <code>predictor::Ops::Add</code> at every call site gets old, and Rust’s answer is the <code>use</code> declaration — the direct descendant of Python’s <code>from ... import ...</code>.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: use brings names into scope, like Python's from-import
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: use brings names into scope, like Python's from-import
+
 mod predictor {
     #[derive(Clone, Copy, Debug, PartialEq)]
     pub enum Ops { Add = 1, And = 2, Xor = 3, Mul = 4 }
@@ -2903,8 +2905,8 @@ XOR: 0x00cc
 <h2 id="pub-privacy-the-compiler-enforces"><a class="header" href="#pub-privacy-the-compiler-enforces"><code>pub</code>: privacy the compiler enforces</a></h2>
 <p>You may have noticed the <code>pub</code> keywords sprinkled through figures 1 and 2. They are not decoration. In Rust, <strong>everything in a module is private by default</strong> — invisible to code outside the module — and <code>pub</code> is how an item opts into being part of the module’s public interface.</p>
 <p>Recall how the Python book handled this. Python has no private anything: every name in every module is importable by anyone, and the convention is that an underscore prefix (<code>_my_helper</code>) means <em>please don’t</em>. The book was frank that this is etiquette, not enforcement — pyuvm’s internals are full of underscored names that nothing actually stops you from reaching. Rust replaces the etiquette with a compile error. Let’s provoke one. Suppose the predictor grows a private helper that the outside world has no business calling:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: Private by default — the underscore convention, enforced
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: Private by default — the underscore convention, enforced
+
 mod predictor {
     pub enum Ops { Add = 1, And = 2, Xor = 3, Mul = 4 }
 
@@ -2990,8 +2992,8 @@ rand = "0.9.1"
 <p>Now the capability I flagged in Chapter 1 as worth the price of admission. It has been sitting quietly inside cargo the whole time, waiting for us to have code worth testing. We do: <code>alu_prediction</code> is a pure function — values in, value out, no DUT, no signals, no simulator. In the Python testbench, logic like this could only be exercised by running the whole cocotb stack against the simulator, or by setting up pytest scaffolding alongside it, which the book’s flow never did. In Rust, testing it is built into the language and the tool. You write functions marked <code>#[test]</code>, and <code>cargo test</code> finds and runs them. The convention is a <code>tests</code> submodule at the bottom of the file whose code it tests:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span><span class="boring">Figure 6: Unit tests live beside the code they test
-</span>
+</span>// Figure 6: Unit tests live beside the code they test
+
 // src/predictor.rs
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -3072,6 +3074,352 @@ test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured
 <h2 id="summary-8"><a class="header" href="#summary-8">Summary</a></h2>
 <p>In this chapter we gave Rust code a place to live. <code>mod</code> declares modules — inline for small things, <code>mod foo;</code> pointing at <code>foo.rs</code> for real ones — and the module tree is written in the program rather than discovered on a search path. <code>use</code> brings paths into scope the way <code>from ... import</code> did, glob imports and all, with preludes as the sanctioned exception. Everything is private until <code>pub</code> says otherwise, turning Python’s underscore etiquette into a compiler-kept promise. Crates are the unit of compilation and distribution — Python’s module/package/distribution muddle, resolved into one concept — with workspaces gathering related crates, as rustdv’s own crates will be gathered. <code>Cargo.toml</code> declares dependencies, <code>cargo add</code> fetches them from crates.io, and <code>Cargo.lock</code> makes every build reproducible. And <code>cargo test</code> runs unit tests against pure testbench logic in milliseconds, no simulator required — a capability we will never stop using.</p>
 <p>This chapter also closes Part I, so take a step back and look at what you now own. You came in knowing no Rust. You now hold the whole toolkit this book’s testbenches are built from: ownership and borrowing, the responsibility-and-access model that replaces the garbage collector and turns data races into compile errors; structs, enums, and <code>match</code>, which gave <code>Ops</code> and four-state logic honest types; <code>Result</code> and <code>Option</code>, where exceptions used to be; traits, doing the work of inheritance and the dunder methods; generics, closures, and iterators, which will carry typed drivers and the factory’s job; the smart pointers that make sharing explicit; and now modules, crates, and cargo to organize and test all of it. Every one of these landed on ground the Python book prepared, and every one was chosen because a coming chapter needs it. What you cannot yet do is <em>wait</em> — no Timer, no RisingEdge, no way to say “pause this task until the clock rises.” That is Part II’s business. Chapter 15 picks up exactly where the Python book’s “Coroutines” chapter left off — same Rogue game, same event loop — and shows how <code>async</code>/<code>await</code> works when the language gives you the syntax but hands <em>you</em> the engine. The simulator is finally in sight.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="interlude-the-complete-tinyalu-testbench"><a class="header" href="#interlude-the-complete-tinyalu-testbench">Interlude: The Complete TinyALU Testbench</a></h1>
+<blockquote>
+<p><strong>In Python we…</strong> ended the book at testbench 8.0: a TinyALU driven by sequences, checked by a scoreboard, measured by coverage, all of it held together by pyuvm. This interlude shows you the same summit in Rust — the complete, running rustdv testbench — <em>before</em> the climb. Nothing here is pseudocode and nothing is a preview-shaped promise: every line below compiles, runs on Icarus Verilog, and finishes with <code>REGRESSION: PASS</code>.</p>
+</blockquote>
+<p>Part I handed you fourteen chapters of language and kept saying they were load-bearing. This is the load. What follows is the actual TinyALU testbench from the rustdv repository — the code lives in the <code>tinyalu_tb</code> crate of the rustdv workspace, not in the examples tree, because it is not an exercise; it is the thing this book exists to teach you to build.</p>
+<p>Read it the way you’d read the last page of a mystery you intend to enjoy properly later. You will understand more of it than you expect — that’s Part I paying off — and the parts you don’t understand yet each have a chapter with their name on it. A map of those chapters closes the interlude.</p>
+<h2 id="the-cast-reintroduced"><a class="header" href="#the-cast-reintroduced">The cast, reintroduced</a></h2>
+<p>Same DUT, same architecture. The TinyALU still takes two 8-bit operands and an op code, still raises <code>done</code>, still multiplies in three cycles what it adds in one. Around it stands the testbench you already know by role: a BFM that speaks the pin protocol, a driver fed by a sequencer, two monitors publishing what they see, a scoreboard predicting and comparing, coverage counting ops. What changed is the language underneath — and, as you’re about to see, how much of the testbench’s correctness moved from runtime discipline into the type system.</p>
+<h2 id="transactions-no-base-class-three-derives"><a class="header" href="#transactions-no-base-class-three-derives">Transactions: no base class, three derives</a></h2>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Figure 1: The TinyALU transactions (tinyalu_tb/src/alu_item.rs)
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[repr(u8)]
+pub enum Ops {
+    Add = 1,
+    And = 2,
+    Xor = 3,
+    Mul = 4,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct AluCommand {
+    pub a: u8,
+    pub b: u8,
+    pub op: Ops,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct AluResult {
+    pub result: u16,
+}
+<span class="boring">}</span></code></pre>
+<p>Chapter 7 gave you <code>Ops</code> as an enum with no integer pretense; Chapter 10 promised that derives would do the work of <code>uvm_sequence_item</code>’s dunder methods. Here is the whole of it: <code>Clone</code> is <code>do_copy</code>, <code>PartialEq</code> is <code>do_compare</code>, <code>Debug</code> is <code>convert2string</code>. There is no transaction base class in this testbench because there is nothing left for one to do.</p>
+<p>The scoreboard’s golden model is a free function over that plain data — which means it is testable with no simulator in sight:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Figure 2: The predictor, and a unit test that needs no simulator
+
+pub fn predict(cmd: &amp;AluCommand) -&gt; AluResult {
+    let a = cmd.a as u16;
+    let b = cmd.b as u16;
+    let result = match cmd.op {
+        Ops::Add =&gt; a + b,
+        Ops::And =&gt; a &amp; b,
+        Ops::Xor =&gt; a ^ b,
+        Ops::Mul =&gt; a * b,
+    };
+    AluResult { result }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn predict_add_carries_into_bit8() {
+        let r = predict(&amp;AluCommand { a: 0xFF, b: 0xFF, op: Ops::Add });
+        assert_eq!(r.result, 0x01FE);
+    }
+}
+<span class="boring">}</span></code></pre>
+<pre><code class="language-text">$ cargo test
+--
+test alu_item::tests::predict_add_carries_into_bit8 ... ok
+test result: ok. 4 passed; 0 failed
+</code></pre>
+<p>Chapter 14 called this capability — <code>cargo test</code> on pure testbench logic, milliseconds, no license checkout — something we would never stop using. The shipping testbench uses it from day one.</p>
+<h2 id="the-bfm-one-owner-of-the-pins-shared-by-handle"><a class="header" href="#the-bfm-one-owner-of-the-pins-shared-by-handle">The BFM: one owner of the pins, shared by handle</a></h2>
+<p>The <code>TinyAluBfm</code> plays exactly the role it played in the Python book: it owns the typed signal handles and speaks the <code>start</code>/<code>done</code> handshake, so nothing else in the testbench touches a pin. Its surface is four async methods and a queue-fed state machine:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Figure 3: The BFM's surface (tinyalu_tb/src/alu_bfm.rs, abridged)
+
+pub struct TinyAluBfm {
+    clk: LogicHandle,
+    reset_n: LogicHandle,
+    start: LogicHandle,
+    done: LogicHandle,
+    // ... A, B, op, result, and three queues
+}
+
+impl TinyAluBfm {
+    pub fn new(dut: &amp;HierarchyHandle) -&gt; Result&lt;TinyAluBfm, HandleError&gt; {
+        Ok(TinyAluBfm {
+            clk: dut.signal("clk")?,
+            reset_n: dut.signal("reset_n")?,
+            // ...
+        })
+    }
+
+    pub async fn reset(&amp;self) { /* five falling edges, deassert, flush */ }
+    pub async fn send_op(&amp;self, cmd: AluCommand) { self.driver_q.put(cmd).await }
+    pub async fn get_cmd(&amp;self) -&gt; AluCommand { self.cmd_q.get().await }
+    pub async fn get_result(&amp;self) -&gt; AluResult { self.result_q.get().await }
+}
+<span class="boring">}</span></code></pre>
+<p>Three things to notice with Part I eyes. First, <code>dut.signal("clk")?</code> returns a <code>Result</code> — a typo’d signal name is an <code>Err</code> at time zero with the scope and name in the message, not an <code>AttributeError</code> forty minutes into elaboration (Chapter 9). Second, every method takes <code>&amp;self</code>: the BFM’s sharing is read-shaped from the outside, which is why — third — the testbench shares it as <code>Rc&lt;TinyAluBfm&gt;</code>, the exact pattern Chapter 13 previewed. One BFM, created by the test, a counted handle passed to each component that needs it, no <code>RefCell</code> anywhere.</p>
+<p>Inside, the BFM runs the same three free-running loops the Python book’s did — a driver state machine and two monitors, each watching falling clock edges:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Figure 4: The BFM driver loop — the book's driver_bfm, in Rust (abridged)
+
+spawn_named(
+    async move {
+        loop {
+            clk.falling_edge().await;
+            let st = start.get_binstr();
+            let dn = done.get_binstr();
+            if st == "0" &amp;&amp; dn == "0" {
+                if let Some(cmd) = q.try_get() {
+                    a.set_u64(cmd.a as u64);
+                    b.set_u64(cmd.b as u64);
+                    op.set_u64(cmd.op.as_u64());
+                    start.set_u64(1);
+                }
+            } else if st == "1" &amp;&amp; dn == "1" {
+                start.set_u64(0);
+            }
+        }
+    },
+    "bfm.driver",
+);
+<span class="boring">}</span></code></pre>
+<p><code>clk.falling_edge().await</code> is Part II’s whole subject matter compressed into one expression — a future, an executor, a simulator callback (Chapters 15–17). The <code>set_u64</code> calls are scheduled writes, applied at the simulator’s read-write phase exactly as cocotb applied them. And the <code>async move { loop { ... } }</code> block owns everything it captured, per Chapter 5 — this task cannot race another task for these locals, because no other task can even name them.</p>
+<h2 id="components-structs-that-opt-into-a-lifecycle"><a class="header" href="#components-structs-that-opt-into-a-lifecycle">Components: structs that opt into a lifecycle</a></h2>
+<p>Chapter 10’s Figure 4 showed you the shape of the <code>Component</code> trait — default empty methods, override what you use. The driver overrides <code>start</code>:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Figure 5: The driver (tinyalu_tb/src/components.rs)
+
+#[derive(rustdv::Component)]
+pub struct Driver {
+    bfm: Rc&lt;TinyAluBfm&gt;,
+    seq_item_port: Option&lt;SeqItemPort&lt;AluCommand&gt;&gt;,
+}
+
+impl Component for Driver {
+    fn start(&amp;mut self, _ctx: &amp;mut RunCtx) {
+        let bfm = self.bfm.clone();
+        let mut port = self.seq_item_port.take().expect("Driver started twice");
+        spawn_named(
+            async move {
+                loop {
+                    let item = port.get_next_item().await;
+                    bfm.send_op(item.payload().clone()).await;
+                    port.item_done(None);
+                }
+            },
+            "driver",
+        );
+    }
+}
+<span class="boring">}</span></code></pre>
+<p>There is Chapter 11’s <code>SeqItemPort&lt;AluCommand&gt;</code>, doing in earnest what Figure 6 previewed: the port’s type is the contract, and a sequence of the wrong transaction type cannot be wired to this driver in code that compiles. The <code>get_next_item</code> / <code>item_done</code> handshake is pyuvm’s, preserved event for event — Part IV walks it. One idiom is worth flagging now so it doesn’t ambush you later: the port lives in an <code>Option</code>, and <code>start</code> <em>takes</em> it (<code>Option::take</code>, Chapter 9) to move it into the spawned task. Ownership of the port passes from the component to the task that uses it — the baton pass from Chapter 5, load-bearing at last.</p>
+<p>The scoreboard overrides the other end of the lifecycle. It drains the two analysis FIFOs the monitors feed, predicts, and compares — with <code>PartialEq</code> doing the comparison policy, on the data, in the checker, where it belongs:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Figure 6: The scoreboard's check phase (abridged)
+
+impl Component for Scoreboard {
+    fn check(&amp;mut self, errors: &amp;mut CheckSink) {
+        loop {
+            match (self.cmd_fifo.try_get(), self.result_fifo.try_get()) {
+                (Some(cmd), Some(actual)) =&gt; {
+                    let expected = predict(&amp;cmd);
+                    self.compared += 1;
+                    if expected != actual {
+                        errors.error(format!(
+                            "scoreboard mismatch: {cmd:?} -&gt; got {actual:?}, expected {expected:?}"
+                        ));
+                    }
+                }
+                (None, None) =&gt; break,
+                (Some(cmd), None) =&gt; {
+                    errors.error(format!("scoreboard: command {cmd:?} has no result"));
+                }
+                (None, Some(res)) =&gt; {
+                    errors.error(format!("scoreboard: result {res:?} has no command"));
+                }
+            }
+        }
+    }
+
+    fn report(&amp;self) {
+        log::info(&amp;format!(
+            "scoreboard: {} compared, {} mismatches",
+            self.compared, self.mismatches
+        ));
+    }
+}
+<span class="boring">}</span></code></pre>
+<p>Every arm of that <code>match</code> is a distinct end-of-test story — matched pair, clean exhaustion, orphaned command, orphaned result — and Chapter 4’s exhaustiveness rule means forgetting one is a compile error. Coverage, meanwhile, is Chapter 10’s <code>Subscriber&lt;T&gt;</code> trait earning its keep: a collector that counts ops as the command monitor broadcasts them, and errors in <code>check</code> if any op was never exercised.</p>
+<h2 id="the-environment-the-ownership-tree-is-the-component-tree"><a class="header" href="#the-environment-the-ownership-tree-is-the-component-tree">The environment: the ownership tree is the component tree</a></h2>
+<p>Chapter 13 ended by telling you rustdv barely needs smart pointers because the hierarchy is just structs owning structs. Here is that claim, in the shipping code:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Figure 7: The environment and its config (tinyalu_tb/src/env.rs, abridged)
+
+pub struct AluEnvConfig {
+    pub bfm: Rc&lt;TinyAluBfm&gt;,
+    pub is_active: Active,
+    pub enable_coverage: bool,
+}
+
+#[derive(rustdv::Component)]
+pub struct AluEnv {
+    seqr: Sequencer&lt;AluCommand&gt;,
+    #[component(child)]
+    driver: Option&lt;Driver&gt;,
+    #[component(child)]
+    cmd_mon: CmdMonitor,
+    #[component(child)]
+    result_mon: ResultMonitor,
+    #[component(child)]
+    scoreboard: Scoreboard,
+    #[component(child)]
+    coverage: Option&lt;Coverage&gt;,
+}
+
+impl AluEnv {
+    pub fn new(config: AluEnvConfig) -&gt; AluEnv {
+        // build: construct children bottom-up in one pass.
+        let seqr: Sequencer&lt;AluCommand&gt; = Sequencer::new();
+        let cmd_ap: AnalysisPort&lt;AluCommand&gt; = AnalysisPort::new();
+        let result_ap = AnalysisPort::new();
+
+        // connect: endpoints are constructor arguments; a missing
+        // connection is a missing argument — a compile error.
+        let cmd_fifo = cmd_ap.connect_fifo();
+        let result_fifo = result_ap.connect_fifo();
+        let scoreboard = Scoreboard::new(cmd_fifo, result_fifo);
+
+        let coverage = config.enable_coverage.then(|| Coverage::new(&amp;cmd_ap));
+
+        let driver = match config.is_active {
+            Active::Active =&gt; Some(Driver::new(config.bfm.clone(), seqr.seq_item_port())),
+            Active::Passive =&gt; None,
+        };
+
+        let cmd_mon = CmdMonitor::new(config.bfm.clone(), cmd_ap);
+        let result_mon = ResultMonitor::new(config.bfm, result_ap);
+
+        AluEnv { seqr, driver, cmd_mon, result_mon, scoreboard, coverage }
+    }
+}
+<span class="boring">}</span></code></pre>
+<p>Read the field list first: children are fields, and the hierarchy is the struct tree — no parent pointers, no global component registry, no <code>Rc</code> cycles to leak. Then read the two comments in <code>new</code>, because they are the whole of pyuvm’s <code>build_phase</code> and <code>connect_phase</code>: building <em>is</em> constructing your children; connecting <em>is</em> passing endpoints as arguments. A <code>ConfigDB</code> string path that might miss at runtime became <code>AluEnvConfig</code>, a typed struct — the wrong type in a field is now the compiler’s problem, not seed 8,441’s.</p>
+<p>And look at what active/passive became. In pyuvm, an agent consulted a config value at build time and warned at runtime if it held garbage. Here, <code>is_active</code> is a two-variant enum (Chapter 7), and a passive environment simply <em>does not construct</em> a driver: <code>driver: Option&lt;Driver&gt;</code> (Chapter 9). The illegal state — a passive agent with a live driver — is not checked for. It is unrepresentable.</p>
+<h2 id="sequences-and-tests"><a class="header" href="#sequences-and-tests">Sequences and tests</a></h2>
+<p>The sequence protocol is pyuvm’s, and the ordering the book taught — operands filled in <em>after</em> <code>start_item</code> grants, at the moment the driver is ready — survives intact:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Figure 8: The random sequence (tinyalu_tb/src/sequences.rs, abridged)
+
+impl Sequence&lt;AluCommand&gt; for RandomSeq {
+    fn body&lt;'a&gt;(
+        &amp;'a mut self,
+        mut ctx: SeqCtx&lt;AluCommand&gt;,
+    ) -&gt; Pin&lt;Box&lt;dyn Future&lt;Output = Result&lt;(), SeqError&gt;&gt; + 'a&gt;&gt; {
+        Box::pin(async move {
+            for _ in 0..self.n_per_op {
+                for op in Ops::ALL {
+                    let mut cmd = AluCommand { a: 0, b: 0, op };
+                    ctx.start_item(&amp;mut cmd).await;
+                    // Late generation: fill at grant time.
+                    cmd.a = self.rng.u8();
+                    cmd.b = self.rng.u8();
+                    ctx.finish_item(cmd).await?;
+                }
+            }
+            Ok(())
+        })
+    }
+}
+<span class="boring">}</span></code></pre>
+<p>A test is an <code>async fn</code> returning <code>Result&lt;(), TestError&gt;</code>, exactly as Chapter 9 promised, registered by an attribute where <code>@cocotb.test()</code> used a decorator (Part III explains the machinery):</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Figure 9: The tests (tinyalu_tb/src/lib.rs, abridged)
+
+rustdv::vpi_bootstrap!();
+
+#[rustdv::test(timeout_time = 500, timeout_unit = "us")]
+async fn random_ops(ctx: TestCtx) -&gt; Result&lt;(), TestError&gt; {
+    let (bfm, mut env) = build_testbench(&amp;ctx, true).await?;
+    let mut seq = RandomSeq { n_per_op: 5, rng: ctx.rng() };
+    run_sequence(&amp;bfm, &amp;mut env, &amp;mut seq, "random_ops sequence").await?;
+    log::info("random_ops: sequence complete");
+    Ok(())
+}
+
+#[rustdv::test(timeout_time = 500, timeout_unit = "us")]
+async fn max_ops(ctx: TestCtx) -&gt; Result&lt;(), TestError&gt; {
+    let (bfm, mut env) = build_testbench(&amp;ctx, true).await?;
+    let mut seq = MaxSeq;
+    run_sequence(&amp;bfm, &amp;mut env, &amp;mut seq, "max_ops sequence").await?;
+    log::info("max_ops: sequence complete");
+    Ok(())
+}
+<span class="boring">}</span></code></pre>
+<p><code>max_ops</code> differs from <code>random_ops</code> in one line — the sequence it starts. That is the factory’s job done by ordinary values, the trade Chapter 12 set up when it taught you that closures and behavior are things you can hand around.</p>
+<h2 id="running-it"><a class="header" href="#running-it">Running it</a></h2>
+<p>One script builds the testbench as a shared library, compiles the DUT under Icarus, and hands both to the simulator. The testbench drives the DUT directly — there is no Verilog testbench file at all:</p>
+<pre><code class="language-text"># Figure 10: The regression, for real
+$ sim/run_rustdv.sh
+--
+      0.00ns INFO     rustdv: found 2 test(s), RUSTDV_RANDOM_SEED=1
+      0.00ns INFO     running random_ops (1/2)  [tinyalu_tb/src/lib.rs:67]
+     75.00ns INFO     cmd_monitor: AluCommand { a: 193, b: 103, op: Add }
+     75.00ns INFO     result_monitor: AluResult { result: 296 }
+     95.00ns INFO     cmd_monitor: AluCommand { a: 94, b: 11, op: And }
+     95.00ns INFO     result_monitor: AluResult { result: 10 }
+    ...
+    625.00ns INFO     scoreboard: 20 compared, 0 mismatches
+    625.00ns INFO     coverage: Add=5 And=5 Mul=5 Xor=5
+    625.00ns INFO     random_ops PASSED
+    625.00ns INFO     running max_ops (2/2)  [tinyalu_tb/src/lib.rs:76]
+    ...
+    810.00ns INFO     scoreboard: 4 compared, 0 mismatches
+    810.00ns INFO     coverage: Add=1 And=1 Mul=1 Xor=1
+    810.00ns INFO     max_ops PASSED
+******************************************************************************
+** TEST                                       STATUS  SIM TIME (ns)      **
+******************************************************************************
+** random_ops                                   PASS         625.00      **
+** max_ops                                      PASS         185.00      **
+******************************************************************************
+REGRESSION: PASS
+</code></pre>
+<p>The transcript should feel like coming home: sim-time-stamped log lines, a monitor narrating transactions, a scoreboard summary, cocotb’s result table. The seed is printed so the run reproduces; set <code>RUSTDV_RANDOM_SEED</code> to chase a failure.</p>
+<p>And because a checker you have never seen fail is a checker you should not trust, the repository’s status log records the sabotage run: with the DUT’s XOR deliberately corrupted into an OR, the same regression flags every affected transaction —</p>
+<pre><code class="language-text"># Figure 11: The same testbench, catching a planted bug
+--
+    810.00ns ERROR    scoreboard mismatch: AluCommand { a: 255, b: 255, op: Xor }
+                      -&gt; got AluResult { result: 255 }, expected AluResult { result: 0 }
+    810.00ns ERROR    max_ops FAILED: 1 check failure(s): ...
+REGRESSION: FAIL
+</code></pre>
+<p>— which is the last word on whether all those types left the testbench any teeth.</p>
+<h2 id="what-you-already-understand-and-whats-ahead"><a class="header" href="#what-you-already-understand-and-whats-ahead">What you already understand, and what’s ahead</a></h2>
+<p>Tally what Part I let you read fluently just now: enums and <code>match</code> in the transactions and the scoreboard (Chapters 4, 7); ownership moving the port into the driver’s task (Chapter 5); <code>Result</code> and <code>?</code> threading every fallible step (Chapter 9); traits and derives replacing the base classes (Chapter 10); <code>SeqItemPort&lt;AluCommand&gt;</code> (Chapter 11); a closure-shaped factory replacement (Chapter 12); one <code>Rc</code> where one resource is genuinely shared (Chapter 13); a workspace, a prelude, and simulator-free unit tests (Chapter 14).</p>
+<p>What remains is the machinery you just took on faith, and it is exactly the rest of the book. <code>falling_edge().await</code> and the executor that resumes it: Chapters 15–17. The BFM built for real, testbenches 1.0 and 2.0: Chapters 18–20. <code>#[rustdv::test]</code>, <code>#[derive(Component)]</code>, and how tests get discovered with no import step: Chapter 21. The <code>Component</code> lifecycle, configs, channels, analysis ports, and the sequencer handshake, one pyuvm chapter at a time: Part IV. And the capstone — this testbench again, rebuilt by your own hands and grown to testbench 8.0: Part V.</p>
+<p>You have seen the summit. Now we climb.</p>
 
                     </main>
 

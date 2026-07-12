@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-255f8fe6.js";
+            window.path_to_searchindex_js = "searchindex-a58967d8.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-266d771a.js"></script>
+        <script src="toc-dfd4f298.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -182,8 +182,8 @@
 </blockquote>
 <h2 id="structs-the-data-declared"><a class="header" href="#structs-the-data-declared">Structs: the data, declared</a></h2>
 <p>A Rust struct is the part of a Python class that holds data — and only that part. You declare every field, with its type, up front:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 1: Defining and instantiating a struct
-</span>
+<pre class="playground"><code class="language-rust">// Figure 1: Defining and instantiating a struct
+
 struct Animal {
     kg: f64,
 }
@@ -197,8 +197,8 @@ Walrus mass: 1000
 </code></pre>
 <p>Two things deserve a look. First, the declaration reads more like the SystemVerilog <code>Animal</code> from the Python book’s figure 3 than like anything Python ever asked of us: the fields are part of the definition, not something we improvise later. Second, instantiation uses a <em>struct literal</em> — <code>Animal { kg: 1000.0 }</code> — which names every field and supplies every value. There is no separate “create empty, then populate” step, because an empty <code>Animal</code> is not a thing Rust permits to exist.</p>
 <p>That last point is not a style preference; it is enforcement. The Python book’s figure 7 created a <code>yorkie</code>, forgot to set <code>kg</code>, and got an <code>AttributeError</code> — at runtime, at the moment of use, which in a testbench means mid-simulation. Here is the same mistake in Rust:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: Forgetting a field is now a compile error
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: Forgetting a field is now a compile error
+
 struct Animal {
     kg: f64,
 }
@@ -221,8 +221,8 @@ error[E0063]: missing field `kg` in initializer of `Animal`
 </blockquote>
 <h2 id="impl-blocks-where-behavior-lives"><a class="header" href="#impl-blocks-where-behavior-lives"><code>impl</code> blocks: where behavior lives</a></h2>
 <p>A Python class bundles data and behavior in one indented block. Rust separates them: the struct declares the data, and an <code>impl</code> block — short for <em>implementation</em> — attaches the behavior. Here is <code>get_pounds()</code>, ported:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: A method in an impl block
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: A method in an impl block
+
 struct Animal {
     kg: f64,
 }
@@ -244,8 +244,8 @@ Walrus weight in pounds 454.55
 <p>Python’s <code>self</code> is an ordinary argument that the interpreter fills in for you — the Classes chapter demonstrated this by calling <code>Animal.get_pounds(walrus)</code> explicitly, passing the object by hand. Rust’s <code>&amp;self</code> is doing the same job, but it carries more information: that ampersand says this method <em>borrows</em> the animal, read-only, exactly as Chapter 6 taught. The method can look at <code>self.kg</code>; it cannot modify it, and it does not take ownership of the walrus. The signature tells you the method’s relationship to the object before you read a line of the body.</p>
 <p>And yes, the explicit form still works: <code>Animal::get_pounds(&amp;walrus)</code> is legal Rust and does exactly what <code>Animal.get_pounds(walrus)</code> did in Python’s figure 5. What Python offered as a party trick, Rust treats as the ordinary meaning that the dot syntax abbreviates.</p>
 <p>When a method needs to <em>change</em> the object, it says so:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 4: A method that mutates takes &amp;mut self
-</span>
+<pre class="playground"><code class="language-rust">// Figure 4: A method that mutates takes &amp;mut self
+
 struct Animal {
     kg: f64,
 }
@@ -268,8 +268,8 @@ Walrus mass after lunch: 1003.5
 <h2 id="associated-functions-new-and-the-end-of-__init__"><a class="header" href="#associated-functions-new-and-the-end-of-__init__">Associated functions: <code>new()</code> and the end of <code>__init__</code></a></h2>
 <p>The Python book introduced <code>__init__()</code> as the standard way to force initialization — a magic method, called implicitly when you invoke the class name. Rust has no magic methods and no implicit calls. What it has is the <em>associated function</em>: a function in an <code>impl</code> block that takes no <code>self</code> at all, called through the type name with <code>::</code>.</p>
 <p>By near-universal convention, the constructor is an associated function named <code>new</code>:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 5: The new() associated function
-</span>
+<pre class="playground"><code class="language-rust">// Figure 5: The new() associated function
+
 struct Animal {
     kg: f64,
 }
@@ -298,8 +298,8 @@ The Yorkie weighs 9.1 pounds
 <li>There is nothing special about <code>new</code>. It is not a keyword, the language does not call it for you, and you could name it <code>hatch()</code> if you enjoyed confusing people. The compiler’s only contribution is the guarantee from figure 2: however an <code>Animal</code> gets built, every field gets a value.</li>
 </ul>
 <p>The Python book sorted methods into three kinds — instance methods, class methods, and static methods — with a decorator apiece. Rust flattens the taxonomy to two: if it takes <code>self</code> in some form, it is a <em>method</em>, called with a dot; if it does not, it is an <em>associated function</em>, called with <code>::</code>. Python’s <code>@staticmethod</code> and <code>@classmethod</code> both collapse into the second kind, and the class-variable pattern comes along as an <em>associated constant</em>:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 6: Associated constants and functions replace class variables and static methods
-</span>
+<pre class="playground"><code class="language-rust">// Figure 6: Associated constants and functions replace class variables and static methods
+
 struct Triangle;
 
 impl Triangle {
@@ -321,8 +321,8 @@ I have 3 sides.
 <p>Now for the construct that earns this chapter its place in the book.</p>
 <p>The Python book introduced <code>Ops</code> in <code>tinyalu_utils</code> as an <code>enum.IntEnum</code> — a class that “not only names the operations but also maps the names to the correct opcode integer.” That was the best Python could do: an enum there is a set of named constants, each secretly an integer wearing a name tag. Rust enums start at that point and keep going.</p>
 <p>Here is <code>Ops</code>, ported, together with the prediction function it exists to serve:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 7: The Ops enumeration and an exhaustive match
-</span>
+<pre class="playground"><code class="language-rust">// Figure 7: The Ops enumeration and an exhaustive match
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Ops {
     Add = 1,
@@ -354,8 +354,8 @@ Add of 0x0A and 0x05 -&gt; 0x000f
 <p>That guarantee sounds abstract until the day it saves you. Suppose the TinyALU grows a subtract instruction. In Python you would add <code>SUB = 5</code> to the IntEnum, and every <code>if/elif</code> over ops in the testbench — the prediction function, the coverage model, the driver — would keep running, silently wrong, until a failing test (or worse, a passing one) sent you hunting. Watch what happens in Rust the moment we add the variant and change nothing else:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span><span class="boring">Figure 8: The compiler finds every match the new variant breaks
-</span>
+</span>// Figure 8: The compiler finds every match the new variant breaks
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Ops {
     Add = 1,
@@ -383,8 +383,8 @@ help: ensure that all possible cases are being handled by
 </blockquote>
 <h2 id="four-states-no-integers-logic"><a class="header" href="#four-states-no-integers-logic">Four states, no integers: <code>Logic</code></a></h2>
 <p>Every value in the Python testbench was ultimately an integer — <code>get_int()</code> existed precisely to coerce simulator values that might contain <code>x</code> or <code>z</code> into something Python could compute with. But hardware signals are not integers. They are four-state values, and Rust lets us say so directly:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 9: A four-state Logic enum
-</span>
+<pre class="playground"><code class="language-rust">// Figure 9: A four-state Logic enum
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Logic {
     Zero,
@@ -409,11 +409,11 @@ fn main() {
 <pre><code class="language-text">--
 The signal reads: x
 </code></pre>
-<p><code>Logic</code> is not a teaching toy: when we reach rustdv-sim in Chapter 17, reading a signal hands you exactly this type, ported from the same four-state value type cocotb defines. Notice what the enum buys us that an IntEnum encoding (say, <code>X = 2</code>) never could: there is no integer pretense to leak. Nothing can accidentally add <code>X</code> to a running sum, because <code>X</code> is not a number — it is one of four states a wire can be in, and any code that consumes a <code>Logic</code> must, thanks to exhaustive <code>match</code>, say what it does about <code>x</code> and <code>z</code>. The “forgot to handle the unknown state” bug is unrepresentable.</p>
+<p><code>Logic</code> is not a teaching toy: when we reach rustdv-sim in Chapter 17, reading a signal hands you a <code>LogicArray</code> — a vector of exactly this type — ported from the same four-state value types cocotb defines. Notice what the enum buys us that an IntEnum encoding (say, <code>X = 2</code>) never could: there is no integer pretense to leak. Nothing can accidentally add <code>X</code> to a running sum, because <code>X</code> is not a number — it is one of four states a wire can be in, and any code that consumes a <code>Logic</code> must, thanks to exhaustive <code>match</code>, say what it does about <code>x</code> and <code>z</code>. The “forgot to handle the unknown state” bug is unrepresentable.</p>
 <h2 id="variants-that-carry-data"><a class="header" href="#variants-that-carry-data">Variants that carry data</a></h2>
 <p>Everything so far, an IntEnum could at least gesture at. This last capability it could not. Rust enum variants can <em>carry data</em> — different data per variant — which makes an enum a type that says “this value is exactly one of the following shapes.” Computer scientists call this a <em>sum type</em>; testbench authors will call it the right way to model outcomes:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 10: An enum whose variants carry payloads
-</span>
+<pre class="playground"><code class="language-rust">// Figure 10: An enum whose variants carry payloads
+
 #[derive(Debug)]
 enum CheckResult {
     Pass,

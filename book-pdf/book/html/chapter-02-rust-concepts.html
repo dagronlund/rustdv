@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-255f8fe6.js";
+            window.path_to_searchindex_js = "searchindex-a58967d8.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-266d771a.js"></script>
+        <script src="toc-dfd4f298.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -185,8 +185,8 @@
 <p>In Python, the number <code>5</code> is an object of class <code>int</code>, and it knows it. The type information travels with the object at runtime; that is what makes <code>type(5)</code> possible, and it is what makes dynamic typing work — every operation on every object begins with the interpreter looking up, right then, whether the object can do the thing.</p>
 <p>Rust’s <code>5</code> has a type too — but the type exists only in the compiler’s head. Every value in a Rust program has exactly one type, known completely before the program runs. The compiler uses that knowledge to check every operation in the program, and then it throws the types away. The compiled binary contains no type tags, no class objects, no lookup tables — just the machine code that the types proved correct. There is no <code>type()</code> function in Rust for the same reason there is no ghost in a finished building: by the time the program runs, the types have done their work and left.¹</p>
 <p>This means the checking that Python spreads across the whole runtime, Rust performs all at once, up front. The Python book demonstrated dynamic typing with a program that called a string method on an integer — and the key detail was <em>when</em> the program failed. Let’s port that exact example. In figure 1, <code>ends_with</code> is a real method on Rust strings, just as <code>endswith()</code> was in Python, and calling a method looks exactly the way it looked in Python: <code>mystring.ends_with("orld")</code>. Then we try it on an integer.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 1: Calling an undefined method
-</span>
+<pre class="playground"><code class="language-rust">// Figure 1: Calling an undefined method
+
 fn main() {
     let mystring = "Hello, World";
     println!("{}", mystring.ends_with("orld"));
@@ -206,8 +206,8 @@ error: could not compile `concepts` (bin "concepts") due to 1 previous error
 </code></pre>
 <p>Compare this to the Python book’s version of the same mistake. There, the program <em>ran</em>: it printed <code>True</code> for the string, created the integer, and only then died with an <code>AttributeError</code> at line 4. The first three lines executed; the trouble was discovered in the act of transgressing.</p>
 <p>Here, nothing ran. Not the broken line, and — look carefully — not the correct lines either. Rust refused to produce a program at all. That is the trade in its purest form: Python checks each operation the moment it happens, so a mistake costs you a run; Rust checks every operation before any of them happen, so a mistake costs you a compile. In Chapter 1 we noted that for verification work this trade is nearly a gift, because in our world “a run” is not a millisecond of interpreter time — it is a simulator license, an elaboration, and a lunch break. Delete the offending line, as in figure 2, and the program compiles and runs.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: The corrected program
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: The corrected program
+
 fn main() {
     let mystring = "Hello, World";
     println!("{}", mystring.ends_with("orld"));
@@ -223,8 +223,8 @@ true
 <p>Everything in this book now depends on a mental adjustment, so let’s make it explicitly.</p>
 <p>When the Python interpreter raised an exception, it was reporting an accident that had already happened: the program was running, it hit something it couldn’t do, and it stopped. When the Rust compiler rejects your program, nothing has happened yet. A rejection is not a failure report — it is a <em>prediction</em>, delivered while the mistake is still free. The compiler is not an adversary blocking the door to the simulator. It is a reviewer who reads every line of your testbench, every time, in seconds, and never gets bored or skims.</p>
 <p>The catch is that this reviewer communicates in a format you have to learn to read, and reading it well is a genuine skill — the single most valuable skill in this book, which is why our figures will so often show error messages rather than output. Let’s dissect one. Figure 3 makes a mistake with TinyALU flavor: an ADD of two 8-bit operands can carry into nine bits, so the result belongs in a <code>u16</code> — but we try to store it back into a <code>u8</code> register. This is precisely the assignment the Python book warned about in its history lesson, the one where SystemVerilog “will happily chop off the top eight bits.”</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: The mistake SystemVerilog would have allowed
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: The mistake SystemVerilog would have allowed
+
 fn main() {
     let a: u8 = 0xFF;
     let b: u8 = 0x01;
@@ -255,8 +255,8 @@ For more information about this error, try `rustc --explain E0308`.
 <li><strong>The <code>help</code> block</strong>: a suggested fix, often as a ready-to-paste diff (those <code>+</code> signs mark what to insert). And notice what this particular suggestion says out loud: converting a <code>u16</code> to a <code>u8</code> <em>can lose data</em>, so the suggested conversion is one that checks at runtime and panics if the value doesn’t fit. Rust will let you chop bits — with <code>result as u8</code>, exactly the truncation SystemVerilog performs silently — but you must write the chop yourself, in ink, where a reviewer can see it.</li>
 </ul>
 <p>Figure 4 takes the honest fix: our register was simply too small for an ADD result, so we widen it. The point of the figure is how little drama the fix involves once the message has told you both ends of the mismatch.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 4: The corrected program
-</span>
+<pre class="playground"><code class="language-rust">// Figure 4: The corrected program
+
 fn main() {
     let a: u8 = 0xFF;
     let b: u8 = 0x01;
@@ -268,8 +268,8 @@ fn main() {
 256
 </code></pre>
 <p>The compiler’s helpfulness extends past types into plain proofreading. The Python book admitted that a typo’d name in Python surfaces as a runtime <code>AttributeError</code>, possibly weeks later, possibly on the one branch of the testbench that only executes when the DUT misbehaves. In Rust:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 5: The compiler as proofreader
-</span>
+<pre class="playground"><code class="language-rust">// Figure 5: The compiler as proofreader
+
 fn main() {
     let result = 42;
     println!("{}", resutl);
@@ -299,8 +299,8 @@ error[E0425]: cannot find value `resutl` in this scope
 <p><strong><code>cargo</code></strong> you met in Chapter 1 — <code>pip</code>, <code>venv</code>, <code>make</code>, and <code>pytest</code> fused into one tool. It creates projects (<code>cargo new</code>), builds them (<code>cargo build</code>), builds-and-runs them (<code>cargo run</code>), fetches dependencies declared in <code>Cargo.toml</code>, and runs tests (<code>cargo test</code> — the star of Chapter 14, where we will unit-test testbench components with no simulator in sight). Because every Rust project is a cargo project with the same layout, there is no per-project incantation to learn; every example in this book builds the same way.</p>
 <p><strong><code>rustfmt</code></strong> reformats your source into the community-standard style, the job <code>black</code> did in Python: <code>cargo fmt</code>, and the formatting debate is over. This book’s figures are all <code>rustfmt</code>-clean, so what you read is what your editor will produce.</p>
 <p><strong><code>clippy</code></strong> is the linter — <code>pylint</code>’s job — but with a compiler’s leverage, since it analyzes the same typed, checked view of your program the compiler sees. It catches correctness hazards, but its everyday gift to a Rust learner is idiom: clippy knows what fluent Rust looks like and will tell you, kindly and specifically, when you have written Python in Rust syntax. Run it as <code>cargo clippy</code>; a representative complaint (output abridged) looks like this:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 6: Clippy teaching idiom
-</span>
+<pre class="playground"><code class="language-rust">// Figure 6: Clippy teaching idiom
+
 fn main() {
     let done = true;
     if done == true {

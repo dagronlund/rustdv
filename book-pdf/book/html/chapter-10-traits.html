@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-255f8fe6.js";
+            window.path_to_searchindex_js = "searchindex-a58967d8.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-266d771a.js"></script>
+        <script src="toc-dfd4f298.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,8 +184,8 @@
 <p>This chapter rebuilds that material piece by piece: the Animal menagerie, the <code>super()</code> question, multiple inheritance, and then the payoff for verification — how traits replace the dunder methods (<code>__eq__</code>, <code>__str__</code>, <code>__lt__</code>) that the Python book taught you to write on every transaction class.</p>
 <h2 id="shared-behavior-without-a-base-class"><a class="header" href="#shared-behavior-without-a-base-class">Shared behavior without a base class</a></h2>
 <p>A trait is a named list of method signatures that a type can opt into. It declares <em>what</em> a type can do; a separate <code>impl</code> block declares that a particular type does it. Here is the Python book’s Animal example, rebuilt.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 1: Shared behavior through a trait, not a base class
-</span>
+<pre class="playground"><code class="language-rust">// Figure 1: Shared behavior through a trait, not a base class
+
 trait Animal {
     fn species(&amp;self) -&gt; &amp;str;
     fn sound(&amp;self) -&gt; &amp;str;
@@ -222,8 +222,8 @@ The cat says 'miāo'
 <h2 id="where-did-super-go"><a class="header" href="#where-did-super-go">Where did super() go?</a></h2>
 <p>The Python book’s most instructive inheritance bug was <code>SmallDog</code>. It extended <code>Dog</code>, overrode <code>__init__()</code> to set <code>self.sound = "yap yap"</code>, forgot to call <code>super().__init__()</code>, and blew up with an <code>AttributeError</code> because <code>self.species</code> was never set — data attributes, unlike methods, are not inherited. The fix was <code>super().__init__()</code>, and the book told you to make it a habit.</p>
 <p>Rust closes this bug at both ends. First: struct fields are declared in the struct, not created by whichever initializer happens to run. There is no execution order that leaves a <code>SmallDog</code> half-built, because a struct that is missing a field does not compile. Second: when a <code>SmallDog</code> wants to reuse <code>Dog</code>’s behavior, it does so by <em>containing</em> a <code>Dog</code> — composition — and delegating to it explicitly.¹</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 2: SmallDog by composition — delegation replaces super()
-</span>
+<pre class="playground"><code class="language-rust">// Figure 2: SmallDog by composition — delegation replaces super()
+
 struct SmallDog {
     dog: Dog,    // a SmallDog HAS the dog parts
 }
@@ -245,8 +245,8 @@ The dog says 'yap yap'
 <h2 id="wearing-many-hats"><a class="header" href="#wearing-many-hats">Wearing many hats</a></h2>
 <p>The Python book used multiple inheritance for Pat, the firefighter with kids: <code>class FirefighterWithKids(Parent, Firefighter)</code>, followed by a careful discussion of the MRO and a design rule borrowed from <em>Highlander</em> — of <code>__init__()</code> methods, there can be only one.</p>
 <p>In Rust, “Pat has two roles” is simply “Pat implements two traits.” There is nothing to diagram.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 3: Multiple roles as multiple trait implementations
-</span>
+<pre class="playground"><code class="language-rust">// Figure 3: Multiple roles as multiple trait implementations
+
 trait Parent {
     fn kiss(&amp;self);
 }
@@ -288,20 +288,20 @@ Pat sprays water.
 <p>That pattern — “here is the full interface; override what you use” — is exactly what default methods are for, and it is how rustdv’s <code>Component</code> lifecycle trait is designed. A preview, signatures only (Chapter 24 does this properly):</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span><span class="boring">Figure 4: The shape of rustdv's Component trait (preview — signatures only)
-</span>
+</span>// Figure 4: The shape of rustdv's Component trait (preview — signatures only)
+
 pub trait Component {
-    fn start(&amp;mut self, ctx: &amp;mut RunCtx);            // required: every component runs
+    fn start(&amp;mut self, ctx: &amp;mut RunCtx) {}          // default: nothing to run
     fn check(&amp;mut self, errors: &amp;mut CheckSink) {}    // default: do nothing
     fn report(&amp;self) {}                               // default: do nothing
 }
 <span class="boring">}</span></code></pre>
-<p>A scoreboard overrides <code>check()</code>; a driver doesn’t, and inherits the empty default — the same division of labor the Python book taught in its <code>uvm_component</code> chapter, with one upgrade. In pyuvm, the empty methods lived in a base class you extended, so getting them required joining the inheritance hierarchy. In rustdv, they live in a trait you implement, so a component is just a plain struct — its fields are its children, per Chapter 24 — that opts into the lifecycle. Same methodology, no family tree.</p>
+<p>A driver overrides <code>start()</code>; a scoreboard overrides <code>check()</code>; each inherits the empty default for every phase it ignores, and a purely structural component — an env that exists to hold its children — can implement the trait without overriding anything at all. The same division of labor the Python book taught in its <code>uvm_component</code> chapter, with one upgrade. In pyuvm, the empty methods lived in a base class you extended, so getting them required joining the inheritance hierarchy. In rustdv, they live in a trait you implement, so a component is just a plain struct — its fields are its children, per Chapter 24 — that opts into the lifecycle. Same methodology, no family tree.</p>
 <h2 id="deriving-the-compiler-writes-the-boring-impls"><a class="header" href="#deriving-the-compiler-writes-the-boring-impls">Deriving: the compiler writes the boring impls</a></h2>
 <p>The Python book taught you a set of magic methods — the dunders — because transactions need them: <code>__eq__</code> so the scoreboard can compare a prediction to a result, <code>__str__</code> so logs are readable, and it was your job to write each one on every transaction class. Rust maps each dunder to a standard trait, and for most of them the compiler will write the implementation for you. The keyword is <code>#[derive(...)]</code>, an attribute you place on a struct or enum, listing traits whose implementations the compiler should generate from the fields.</p>
 <p>Let’s put the TinyALU’s transaction under the microscope.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 5: Derived traits on the TinyALU command transaction
-</span>
+<pre class="playground"><code class="language-rust">// Figure 5: Derived traits on the TinyALU command transaction
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Ops {
     Add = 1,
@@ -329,8 +329,8 @@ AluCommand { a: 170, b: 85, op: Xor }
 </code></pre>
 <p>One line above the struct bought us three implementations. <code>Clone</code> gives <code>cmd.clone()</code>, a field-wise copy. <code>PartialEq</code> gives <code>==</code>, a field-wise comparison — in Python this was you writing <code>__eq__</code> by hand, remembering to compare every field, and remembering again when you added a field. The derived version regenerates from the struct definition on every compile, so it <em>cannot</em> fall out of sync with the fields. <code>Debug</code> gives the <code>{:?}</code> format you see in the output: a machine-ish rendering of the whole struct, which is <code>__repr__</code>’s job.³</p>
 <p>That leaves <code>__str__</code> — the human-friendly rendering. Its Rust counterpart is the <code>Display</code> trait, and here the compiler makes you write it yourself, on purpose: Rust’s position is that a machine can guess how to <em>dump</em> your type but not how to <em>present</em> it. Implementing <code>Display</code> is our first hand-written implementation of a standard-library trait, and it looks like every trait impl you’ve seen this chapter:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 6: Implementing Display by hand — the __str__ of Rust
-</span>
+<pre class="playground"><code class="language-rust">// Figure 6: Implementing Display by hand — the __str__ of Rust
+
 use std::fmt;
 
 impl fmt::Display for AluCommand {
@@ -373,8 +373,8 @@ cmd: a=0xaa b=0x55 op=Xor
 <p>We now have <code>Dog</code>, <code>Cat</code>, and <code>SmallDog</code>, each implementing <code>Animal</code>, and one question left — the question inheritance answered with “they share a base class”: how do we write code that works on <em>any</em> animal?</p>
 <p>Rust gives two answers, and choosing between them is a skill this book will exercise from here to the final chapter.</p>
 <p><strong>Answer one: generics.</strong> Write a function with a type parameter, and <em>bound</em> the parameter by the trait:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 7: Generic function — dispatch resolved at compile time
-</span>
+<pre class="playground"><code class="language-rust">// Figure 7: Generic function — dispatch resolved at compile time
+
 fn check_in&lt;T: Animal&gt;(animal: &amp;T) {
     animal.make_sound();
 }
@@ -389,8 +389,8 @@ The cat says 'miāo'
 </code></pre>
 <p><code>&lt;T: Animal&gt;</code> reads “for any type T that implements Animal.” This is duck typing with the ducks counted before the program runs: where Python said “just call <code>make_sound()</code> and hope,” the bound <em>documents</em> the requirement in the signature and the compiler <em>checks</em> it at every call site. Behind the scenes the compiler compiles a separate copy of <code>check_in</code> for <code>Dog</code> and for <code>Cat</code> — a process called <strong>monomorphization</strong> — so each call dispatches directly, as fast as if you had written the two functions by hand. Generic code costs nothing at runtime. Chapter 11 is entirely about this machinery, so I’ll leave it warm rather than cooked.</p>
 <p><strong>Answer two: trait objects.</strong> Sometimes you need one collection holding a mixture of types — a Python list held anything, and a kennel holds whatever shows up. For that, Rust erases the concrete type behind a pointer:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">Figure 8: Trait objects — dispatch resolved at runtime
-</span>
+<pre class="playground"><code class="language-rust">// Figure 8: Trait objects — dispatch resolved at runtime
+
 fn main() {
     let kennel: Vec&lt;Box&lt;dyn Animal&gt;&gt; = vec![
         Box::new(Dog),
