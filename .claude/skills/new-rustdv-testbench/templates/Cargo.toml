@@ -1,0 +1,17 @@
+# Template: rustdv testbench crate manifest. Replace <names> and paths.
+[package]
+name = "<dut>_tb"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+# cdylib: loaded by the simulator as a VPI module.
+# rlib: lets `cargo test` run the pure-Rust unit tests.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+rustdv = { path = "<path-to-rustdv-facade>" }   # or version = "..." once published
+
+[dev-dependencies]
+# Panicking vpi_* stubs so `cargo test` executables link.
+rustdv-vpi-stubs = { path = "<path-to>/rustdv-vpi-stubs" }
