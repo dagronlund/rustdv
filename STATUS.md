@@ -215,3 +215,7 @@ example code; both fixed, Linux sweep re-verified green:
   `section$start$/section$end$` link_names (the linkme technique).
   ELF path is byte-for-byte what it was; Linux workspace tests +
   regression re-verified green. OQ-4's remaining platform is Windows.
+
+With these fixes the **full pre-push suite passes on macOS/arm64**
+(Ray's machine, 2026-07-13) as well as Linux — rustdv and all 20 book
+sim chapters now run on two platforms.
