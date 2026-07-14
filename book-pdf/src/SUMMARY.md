@@ -16,7 +16,7 @@
 
 ---
 
-[Interlude: The Complete TinyALU Testbench](interlude-tinyalu-testbench.md)
+- [Interlude: The Complete TinyALU Testbench](interlude-tinyalu-testbench.md)
 
 ---
 
@@ -51,5 +51,4 @@
 ---
 
 [Appendix A: Python-Book Chapter Map](appendix-a-chapter-map.md)
-
 [Appendix B: Python → Rust Idiom Translations](appendix-b-idiom-translations.md)
