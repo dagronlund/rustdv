@@ -207,3 +207,11 @@ example code; both fixed, Linux sweep re-verified green:
   Linux-only; the registration/collect machinery is now
   `#[cfg(target_os = "linux")]` with a non-Linux `main` that says so.
   Behavior on Linux unchanged.
+- **The test registry itself (OQ-4) now has Mach-O spellings.** rustc
+  rejects free-form `link_section` names on Apple targets, so the
+  `#[rustdv::test]` macro and the runner's sentinel emit
+  `__DATA,rustdv_tests` under `cfg(target_vendor = "apple")`, and
+  `collect_tests` reaches the section bounds through
+  `section$start$/section$end$` link_names (the linkme technique).
+  ELF path is byte-for-byte what it was; Linux workspace tests +
+  regression re-verified green. OQ-4's remaining platform is Windows.

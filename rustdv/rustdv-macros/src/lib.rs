@@ -130,7 +130,8 @@ const _: () = {{
         ::std::boxed::Box::pin({fn_name}(ctx))
     }}
     #[used]
-    #[link_section = "rustdv_tests"]
+    #[cfg_attr(not(target_vendor = "apple"), link_section = "rustdv_tests")]
+    #[cfg_attr(target_vendor = "apple", link_section = "__DATA,rustdv_tests")]
     static __RUSTDV_TEST_REG: &'static ::rustdv::TestRegistration = &::rustdv::TestRegistration {{
         name: "{test_name}",
         module: ::core::module_path!(),

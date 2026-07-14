@@ -119,7 +119,9 @@ fn sentinel_shim(_ctx: TestCtx) -> Pin<Box<dyn Future<Output = Result<(), TestEr
 }
 
 #[used]
-#[link_section = "rustdv_tests"]
+// ELF (Linux) names sections freely; Mach-O (macOS) wants segment,section.
+#[cfg_attr(not(target_vendor = "apple"), link_section = "rustdv_tests")]
+#[cfg_attr(target_vendor = "apple", link_section = "__DATA,rustdv_tests")]
 static SENTINEL: &TestRegistration = &TestRegistration {
     name: "__rustdv_sentinel",
     module: "rustdv_runner",
@@ -131,8 +133,20 @@ static SENTINEL: &TestRegistration = &TestRegistration {
     expect_fail: false,
 };
 
+// The linker-provided section bounds. ELF defines __start_/__stop_
+// symbols automatically; Mach-O spells them section$start$/section$end$
+// (reached via link_name — the \x01 prefix suppresses mangling).
+#[cfg(not(target_vendor = "apple"))]
 extern "C" {
     static __start_rustdv_tests: u8;
+    static __stop_rustdv_tests: u8;
+}
+
+#[cfg(target_vendor = "apple")]
+extern "C" {
+    #[link_name = "\x01section$start$__DATA$rustdv_tests"]
+    static __start_rustdv_tests: u8;
+    #[link_name = "\x01section$end$__DATA$rustdv_tests"]
     static __stop_rustdv_tests: u8;
 }
 
