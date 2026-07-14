@@ -1,6 +1,6 @@
 # Appendix A: Python-Book Chapter Map
 
-Every chapter of *Python for RTL Verification* and its companion chapter(s) here. Chapters 5 and 21 have no Python mirror — they cover ground (ownership; macros) that Python never made visible.
+Every chapter of [*Python for RTL Verification*](https://a.co/d/0hTKAJvh) and its companion chapter(s) here. Chapters 5 and 21 have no Python mirror — they cover ground (ownership; macros) that Python never made visible.
 
 | Python for RTL Verification | Rust for RTL Verification |
 |---|---|

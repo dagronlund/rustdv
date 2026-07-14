@@ -1,12 +1,12 @@
 # Chapter 1: Why Rust?
 
-Rust for RTL Verification is a book for verification engineers who have outgrown an interpreter and for Rust programmers who want to learn the Universal Verification Methodology (UVM). Mostly, though, it is a book for readers of *Python for RTL Verification* who are ready for a second language — one that trades a little of Python's ease for a lot of speed and an entirely new superpower: a compiler that finds testbench bugs before the simulator ever runs.
+Rust for RTL Verification is a book for verification engineers who have outgrown an interpreter and for Rust programmers who want to learn the Universal Verification Methodology (UVM). Mostly, though, it is a book for readers of [*Python for RTL Verification*](https://a.co/d/0hTKAJvh) who are ready for a second language — one that trades a little of Python's ease for a lot of speed and an entirely new superpower: a compiler that finds testbench bugs before the simulator ever runs.
 
 This book teaches you Rust the way the last book taught you Python: just enough of the language, arriving just in time, to build testbenches with rustdv-sim (our cocotb equivalent) and rustdv (our pyuvm equivalent). By the final chapter you will have rebuilt the TinyALU testbench — the same TinyALU, the same testbench architecture, versions 1.0 through 8.0 — in a language that compiles to native code and races through regressions.
 
 ## The book assumes you know the Python story
 
-*Python for RTL Verification* assumed you knew how to program. This book assumes more: that you know how to program *testbenches*, the way that book taught them. When we meet a sequence in Chapter 36, I will not explain what a sequence is for — you know. I will explain what it looks like in Rust and why it looks that way. If you have not read the Python book but know cocotb and pyuvm well, you will be fine. If neither is true, read that book first; this one will still be here.
+*Python for RTL Verification* assumed you knew how to program. This book assumes more: that you know how to program *testbenches*, the way that book taught them. When we meet a sequence in Chapter 36, I will not explain what a sequence is for — you know. I will explain what it looks like in Rust and why it looks that way. If you have not read the Python book but know cocotb and pyuvm well, you will be fine. If neither is true, read that book first (available on Amazon at https://a.co/d/0hTKAJvh); this one will still be here.
 
 A note on what you do *not* need: any Rust. Not one line. If you have heard alarming rumors about a thing called the borrow checker, you have heard correctly, and we will make friends with it in Chapter 5.
 
