@@ -144,6 +144,84 @@ dependencies = [
 ]
 
 [[package]]
+name = "ch28_config_debugging"
+version = "0.1.0"
+
+[[package]]
+name = "ch29_factory"
+version = "0.1.0"
+dependencies = [
+ "rustdv",
+]
+
+[[package]]
+name = "ch30_variation_point_testbench_5_0"
+version = "0.1.0"
+dependencies = [
+ "rustdv",
+ "tinyalu_utils",
+]
+
+[[package]]
+name = "ch31_component_communications"
+version = "0.1.0"
+dependencies = [
+ "rustdv",
+]
+
+[[package]]
+name = "ch32_analysis_ports"
+version = "0.1.0"
+dependencies = [
+ "rustdv",
+ "tinyalu_utils",
+]
+
+[[package]]
+name = "ch34_connections_testbench_6_0"
+version = "0.1.0"
+dependencies = [
+ "rustdv",
+ "tinyalu_utils",
+]
+
+[[package]]
+name = "ch35_transactions"
+version = "0.1.0"
+
+[[package]]
+name = "ch36_sequence_testbench_7_0"
+version = "0.1.0"
+dependencies = [
+ "rustdv",
+ "tinyalu_utils",
+]
+
+[[package]]
+name = "ch37_fibonacci_testbench_7_1"
+version = "0.1.0"
+dependencies = [
+ "rustdv",
+ "tinyalu_utils",
+]
+
+[[package]]
+name = "ch38_get_response_testbench_7_2"
+version = "0.1.0"
+dependencies = [
+ "rustdv",
+ "tinyalu_utils",
+]
+
+[[package]]
+name = "ch39_virtual_sequence_testbench_8_0"
+version = "0.1.0"
+dependencies = [
+ "rustdv",
+ "tinyalu_utils",
+]
+
+[[package]]
 name = "rustdv"
 version = "0.1.0"
 dependencies = [

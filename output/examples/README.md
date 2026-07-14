@@ -1,8 +1,18 @@
 # Rust for RTL Verification — Runnable Examples
 
-Every figure in the book, extracted **verbatim** from the book source
-(`book-pdf/src/`), organized so the file name tells you exactly which figure
-you are looking at. 105 figures total: 70 normal programs, 20 intentional
+Every figure in the book, organized so the file name (or chapter crate)
+tells you exactly which figure you are looking at.
+
+**Part I (ch 1–14):** every figure extracted verbatim into per-figure files,
+verified by the book-sync regression suite.
+
+**Parts II–V (ch 15–41):** most figures need a simulator, so each chapter is
+a crate whose `#[rustdv::test]` functions are the figures. Run a chapter with
+`sim-common/run_sim.sh <crate> <top> [hdl...]` (each chapter README gives the
+exact command); every chapter ends `REGRESSION: PASS` on Icarus, enforced by
+the `custom/sim-chNN` regression tests. Shared testbench code lives in
+`tinyalu-utils/` (the Rust `tinyalu_utils`), pure-Rust figures in
+`src/bin/`, and intentional compile errors in `compile-fail/` as before. 105 figures total: 70 normal programs, 20 intentional
 compile errors, 3 intentional panics, 1 unit-test figure, 3 non-runnable
 fragments, 2 Python contrast figures, and 6 shell transcripts.
 

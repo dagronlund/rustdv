@@ -154,3 +154,39 @@ toolchain drop. No source changes were needed; results reproduce the
 - [x] Mutation check repeated (XOR→OR at `tinyalu.sv:48`): scoreboard
   flags all 5 + 1 affected transactions, both tests FAIL, run ends
   `REGRESSION: FAIL`; DUT restored and clean run re-confirmed PASS
+
+## Book completion — 2026-07-13
+
+The manuscript (`book-pdf/src/`) is now **complete**: chapters 15–41 plus
+Appendices A (chapter map) and B (idiom translations) written, SUMMARY.md
+updated. Every figure in the new chapters runs: 20 new sim-chapter example
+crates under `output/examples/` (each a cdylib whose `#[rustdv::test]` fns
+are the chapter's figures, ending `REGRESSION: PASS` on Icarus), plus
+pure-Rust bins and compile-fail figures in the Part I style. Shared
+testbench code (the Rust `tinyalu_utils`, testbench versions 2.0–8.0)
+lives in `output/examples/tinyalu-utils/`.
+
+Regression: `output/regression/regress.py` — book-sync now scoped to
+Part I (Part II+ figures live inside sim crates), `custom/sim-ch15..39`
+tests run every sim chapter, examples suite unchanged. Full run on this
+VM: 107 book-sync + 95 examples + 20 sim chapters + smoke, all green.
+
+Library changes made for the book (all regression-verified):
+- **rustdv-sim**: `Debug` for `LogicHandle`/`HierarchyHandle`;
+  `#[must_use]` on Timer/Edge/NullTrigger (ch17's "forgot the await"
+  warning); `log::critical`; hierarchical per-target log levels
+  (`Logger`, `set_level_for`) and a file handler (`log_to_file`) — ch26.
+- **rustdv-gpi(-sys)**: SV variable vpiTypes (610–620) classify as logic
+  signals (counter.sv's `byte unsigned` port).
+- **rustdv-uvm**: `print_hierarchy` exported in facade/prelude; `Debug`
+  on `TlmFull`.
+- **rustdv-macros**: `#[derive(Component)]` now supports generic structs
+  and fields with generic types containing commas.
+- **tinyalu_tb / examples BFMs**: `wait_idle` hardened to require two
+  consecutive idle edges (fixed a race that could end a test with the
+  last command undriven; interlude transcript timings updated 625→635,
+  810→830 ns accordingly).
+
+Not done in the VM: regenerating `book-pdf/book/` (HTML/PDF) — mdBook
+isn't available offline here. `mdbook build book-pdf` on the host (or the
+docker flow) will rebuild the rendered book from the updated sources.

@@ -1,0 +1,9 @@
+[package]
+name = "ch31_fig08"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+rustdv = { path = "../../../../../rustdv" }

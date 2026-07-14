@@ -257,8 +257,11 @@ fn parse_struct(input: TokenStream) -> Result<(String, String, String, Vec<Field
     let mut current: Vec<TokenTree> = Vec::new();
 
     let mut toks = group.stream().into_iter().peekable();
+    let mut angle_depth = 0i32;
     while let Some(tt) = toks.next() {
         match &tt {
+            TokenTree::Punct(p) if p.as_char() == '<' => angle_depth += 1,
+            TokenTree::Punct(p) if p.as_char() == '>' => angle_depth -= 1,
             TokenTree::Punct(p) if p.as_char() == '#' => {
                 // attribute: #[ ... ]
                 if let Some(TokenTree::Group(g)) = toks.peek() {
@@ -272,7 +275,7 @@ fn parse_struct(input: TokenStream) -> Result<(String, String, String, Vec<Field
                     }
                 }
             }
-            TokenTree::Punct(p) if p.as_char() == ',' => {
+            TokenTree::Punct(p) if p.as_char() == ',' && angle_depth == 0 => {
                 if !current.is_empty() {
                     fields.push(make_field(&current, pending_child)?);
                     current.clear();

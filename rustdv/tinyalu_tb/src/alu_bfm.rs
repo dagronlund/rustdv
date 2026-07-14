@@ -81,10 +81,16 @@ impl TinyAluBfm {
     /// plus one edge for monitors to flush — the test's end-of-stimulus
     /// drain before check.
     pub async fn wait_idle(&self) {
-        loop {
+        // Two consecutive idle edges: a command popped from the queue but
+        // not yet driven (start rises at the *next* ReadWrite phase) must
+        // not fool us into declaring the bus quiet.
+        let mut idle_edges = 0;
+        while idle_edges < 2 {
             self.clk.falling_edge().await;
             if self.driver_q.is_empty() && self.start.is_low() && self.done.is_low() {
-                break;
+                idle_edges += 1;
+            } else {
+                idle_edges = 0;
             }
         }
         self.clk.falling_edge().await;

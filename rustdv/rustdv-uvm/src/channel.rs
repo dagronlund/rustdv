@@ -24,6 +24,7 @@ impl fmt::Display for TlmError {
 impl std::error::Error for TlmError {}
 
 /// `try_send` failure: returns the item (pyuvm try_put returning False).
+#[derive(Debug)]
 pub struct TlmFull<T>(pub T);
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TlmEmpty;

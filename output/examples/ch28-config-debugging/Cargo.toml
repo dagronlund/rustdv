@@ -1,0 +1,4 @@
+[package]
+name = "ch28_config_debugging"
+version = "0.1.0"
+edition = "2021"

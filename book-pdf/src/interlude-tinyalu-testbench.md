@@ -344,19 +344,19 @@ $ sim/run_rustdv.sh
      95.00ns INFO     cmd_monitor: AluCommand { a: 94, b: 11, op: And }
      95.00ns INFO     result_monitor: AluResult { result: 10 }
     ...
-    625.00ns INFO     scoreboard: 20 compared, 0 mismatches
-    625.00ns INFO     coverage: Add=5 And=5 Mul=5 Xor=5
-    625.00ns INFO     random_ops PASSED
-    625.00ns INFO     running max_ops (2/2)  [tinyalu_tb/src/lib.rs:76]
+    635.00ns INFO     scoreboard: 20 compared, 0 mismatches
+    635.00ns INFO     coverage: Add=5 And=5 Mul=5 Xor=5
+    635.00ns INFO     random_ops PASSED
+    635.00ns INFO     running max_ops (2/2)  [tinyalu_tb/src/lib.rs:76]
     ...
-    810.00ns INFO     scoreboard: 4 compared, 0 mismatches
-    810.00ns INFO     coverage: Add=1 And=1 Mul=1 Xor=1
-    810.00ns INFO     max_ops PASSED
+    830.00ns INFO     scoreboard: 4 compared, 0 mismatches
+    830.00ns INFO     coverage: Add=1 And=1 Mul=1 Xor=1
+    830.00ns INFO     max_ops PASSED
 ******************************************************************************
 ** TEST                                       STATUS  SIM TIME (ns)      **
 ******************************************************************************
-** random_ops                                   PASS         625.00      **
-** max_ops                                      PASS         185.00      **
+** random_ops                                   PASS         635.00      **
+** max_ops                                      PASS         195.00      **
 ******************************************************************************
 REGRESSION: PASS
 ```
@@ -368,9 +368,9 @@ And because a checker you have never seen fail is a checker you should not trust
 ```text
 # Figure 11: The same testbench, catching a planted bug
 --
-    810.00ns ERROR    scoreboard mismatch: AluCommand { a: 255, b: 255, op: Xor }
+    830.00ns ERROR    scoreboard mismatch: AluCommand { a: 255, b: 255, op: Xor }
                       -> got AluResult { result: 255 }, expected AluResult { result: 0 }
-    810.00ns ERROR    max_ops FAILED: 1 check failure(s): ...
+    830.00ns ERROR    max_ops FAILED: 1 check failure(s): ...
 REGRESSION: FAIL
 ```
 

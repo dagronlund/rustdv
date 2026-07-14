@@ -74,9 +74,14 @@ def run(cmd, cwd=None, timeout=120):
 
 # ---------------------------------------------------------------- book-sync
 def parse_book():
+    # book-sync covers Part I (chapters 1-14), whose figures are extracted
+    # verbatim into per-figure files. Part II+ figures live inside chapter
+    # sim crates and are exercised end-to-end by the custom sim-ch* tests.
     figs = {}
     for f in sorted(glob.glob(os.path.join(BOOK, "chapter-*.md"))):
         ch = int(re.search(r"chapter-(\d+)", f).group(1))
+        if ch > 14:
+            continue
         for m in FIG_RE.finditer(open(f, encoding="utf-8").read()):
             figs[(ch, int(m.group(3)))] = {
                 "lang": m.group(1),

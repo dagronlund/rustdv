@@ -7,6 +7,12 @@
 use rustdv::prelude::*;
 
 pub mod tb2;
+pub mod tb4;
+pub mod tb6;
+pub mod alu_item;
+pub mod bfm7;
+pub mod tb7;
+pub mod env7;
 
 // Chapter 18, Figure 2: The operation enumeration
 // Legal ops for the TinyALU
