@@ -26,8 +26,10 @@ case "$PROFILE" in
   *) echo "unknown profile: $PROFILE (use debug|release)" >&2; exit 2 ;;
 esac
 
-cp "$CARGO_TARGET_DIR/$( [ "$PROFILE" = release ] && echo release || echo debug )/libtinyalu_tb.so" \
-   build/tinyalu_tb.vpi
+PROFDIR="$( [ "$PROFILE" = release ] && echo release || echo debug )"
+LIB="$CARGO_TARGET_DIR/$PROFDIR/libtinyalu_tb.so"          # Linux
+[ -f "$LIB" ] || LIB="$CARGO_TARGET_DIR/$PROFDIR/libtinyalu_tb.dylib"  # macOS
+cp "$LIB" build/tinyalu_tb.vpi
 
 # timescale.v first: it sets 1ns/1ns for everything after it.
 iverilog -g2012 -o build/tinyalu_rustdv.vvp -s tinyalu hdl/timescale.v hdl/tinyalu.sv

@@ -190,3 +190,20 @@ Library changes made for the book (all regression-verified):
 Not done in the VM: regenerating `book-pdf/book/` (HTML/PDF) — mdBook
 isn't available offline here. `mdbook build book-pdf` on the host (or the
 docker flow) will rebuild the rendered book from the updated sources.
+
+### macOS portability fixes — 2026-07-13
+
+Ray's pre-push regression on macOS exposed two Linux-isms in the new
+example code; both fixed, Linux sweep re-verified green:
+
+- **VPI cdylibs wouldn't link on Mach-O** (undefined `vpi_*` symbols are
+  a load-time feature on Linux, an error on macOS). Added
+  `-undefined dynamic_lookup` for the two Apple targets in
+  `output/examples/.cargo/config.toml` and `rustdv/.cargo/config.toml`
+  (target-scoped: Linux builds untouched, D9's caveat still respected).
+  `sim-common/run_sim.sh` and `sim/run_rustdv.sh` now fall back from
+  `lib*.so` to `lib*.dylib`.
+- **ch21 fig04 (ELF `__start_/__stop_` section demo)** is inherently
+  Linux-only; the registration/collect machinery is now
+  `#[cfg(target_os = "linux")]` with a non-Linux `main` that says so.
+  Behavior on Linux unchanged.
