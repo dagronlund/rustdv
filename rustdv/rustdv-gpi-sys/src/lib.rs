@@ -49,6 +49,13 @@ pub const vpiParameter: PLI_INT32 = 41;
 pub const vpiPort: PLI_INT32 = 44;
 pub const vpiReg: PLI_INT32 = 48;
 pub const vpiRealVar: PLI_INT32 = 47;
+// SystemVerilog variable types (sv_vpi_user.h)
+pub const vpiLongIntVar: PLI_INT32 = 610;
+pub const vpiShortIntVar: PLI_INT32 = 611;
+pub const vpiIntVar: PLI_INT32 = 612;
+pub const vpiByteVar: PLI_INT32 = 614;
+pub const vpiEnumVar: PLI_INT32 = 617;
+pub const vpiBitVar: PLI_INT32 = 620;
 
 // ---------------------------------------------------------------------------
 // Value formats (t_vpi_value.format)

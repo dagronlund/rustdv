@@ -44,6 +44,7 @@ impl TrigShared {
 
 /// One-shot timed trigger (port of cocotb `Timer`, mapping row 13).
 /// Construction rejects zero durations, as cocotb's does.
+#[must_use = "triggers do nothing unless you .await them"]
 pub struct Timer {
     steps: u64,
     shared: Option<Rc<TrigShared>>,
@@ -113,6 +114,7 @@ pub(crate) enum EdgeKind {
 
 /// Edge trigger on a signal (ports of RisingEdge/FallingEdge/ValueChange,
 /// mapping row 14 — exposed as methods on typed handles).
+#[must_use = "triggers do nothing unless you .await them"]
 pub struct Edge {
     sig: gpi::LogicHandle,
     kind: EdgeKind,
@@ -175,6 +177,7 @@ impl Future for Edge {
 
 /// Yield once to the scheduler. Kept for parity but documented as a smell —
 /// prefer `Event` (cocotb NullTrigger docstring; book: Coroutines chapter).
+#[must_use = "triggers do nothing unless you .await them"]
 pub struct NullTrigger {
     yielded: bool,
 }

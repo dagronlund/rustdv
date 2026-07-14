@@ -161,8 +161,9 @@ struct Field {
 }
 
 /// Parse `struct Name { ... }` from the derive input token stream.
-/// Supported: non-generic structs with named fields.
-fn parse_struct(input: TokenStream) -> Result<(String, Vec<Field>), String> {
+/// Supported: structs with named fields, including simple generics
+/// (`struct Env<T: Tester + 'static> { ... }`).
+fn parse_struct(input: TokenStream) -> Result<(String, String, String, Vec<Field>), String> {
     let mut iter = input.into_iter().peekable();
     let mut struct_name: Option<String> = None;
 
@@ -182,21 +183,72 @@ fn parse_struct(input: TokenStream) -> Result<(String, Vec<Field>), String> {
     }
     let name = struct_name.ok_or("#[derive(Component)] supports only structs")?;
 
-    // The next brace group holds the fields. Anything else (generics,
-    // where clause, tuple struct) is unsupported.
+    // Capture optional generics `<...>` (with bounds), then the brace group.
     let mut fields_group = None;
+    let mut generics_tokens: Vec<TokenTree> = Vec::new();
+    let mut depth = 0i32;
     for tt in iter {
-        match tt {
-            TokenTree::Group(g) if g.delimiter() == Delimiter::Brace => {
-                fields_group = Some(g);
+        match &tt {
+            TokenTree::Group(g) if g.delimiter() == Delimiter::Brace && depth == 0 => {
+                fields_group = Some(g.clone());
                 break;
             }
             TokenTree::Punct(p) if p.as_char() == '<' => {
-                return Err("#[derive(Component)] does not support generic structs".into());
+                depth += 1;
+                generics_tokens.push(tt.clone());
+                continue;
+            }
+            TokenTree::Punct(p) if p.as_char() == '>' => {
+                depth -= 1;
+                generics_tokens.push(tt.clone());
+                continue;
             }
             _ => {}
         }
+        if depth > 0 {
+            generics_tokens.push(tt.clone());
+        }
     }
+    // impl generics: verbatim (`<T: Tester + 'static>`); type params: names only.
+    let impl_generics: String = {
+        let mut out = String::new();
+        for t in &generics_tokens {
+            let text = t.to_string();
+            if !out.is_empty() && !out.ends_with('\'') {
+                out.push(' ');
+            }
+            out.push_str(&text);
+        }
+        out
+    };
+    let type_params = {
+        // First ident (or lifetime) of each comma-separated part at depth 1.
+        let mut params: Vec<String> = Vec::new();
+        let mut d = 0i32;
+        let mut take_next_ident = true;
+        let mut lifetime = false;
+        for t in &generics_tokens {
+            match t {
+                TokenTree::Punct(p) if p.as_char() == '<' => d += 1,
+                TokenTree::Punct(p) if p.as_char() == '>' => d -= 1,
+                TokenTree::Punct(p) if p.as_char() == ',' && d == 1 => take_next_ident = true,
+                TokenTree::Punct(p) if p.as_char() == '\'' && d == 1 && take_next_ident => {
+                    lifetime = true
+                }
+                TokenTree::Ident(i) if d == 1 && take_next_ident => {
+                    let word = i.to_string();
+                    if word == "const" {
+                        continue; // the const param's name is the next ident
+                    }
+                    params.push(if lifetime { format!("'{word}") } else { word });
+                    take_next_ident = false;
+                    lifetime = false;
+                }
+                _ => {}
+            }
+        }
+        if params.is_empty() { String::new() } else { format!("< {} >", params.join(" , ")) }
+    };
     let group = fields_group.ok_or("#[derive(Component)] requires named fields")?;
 
     // Split the group's tokens into fields at top-level commas.
@@ -236,7 +288,7 @@ fn parse_struct(input: TokenStream) -> Result<(String, Vec<Field>), String> {
         fields.push(make_field(&current, pending_child)?);
     }
 
-    Ok((name, fields))
+    Ok((name, impl_generics, type_params, fields))
 }
 
 /// From tokens like `pub name : Type ...` extract name and type text.
@@ -270,7 +322,7 @@ fn make_field(tokens: &[TokenTree], is_child: bool) -> Result<Field, String> {
 /// registration (R5). The impl is hand-writable; the derive is convenience.
 #[proc_macro_derive(Component, attributes(component))]
 pub fn derive_component(input: TokenStream) -> TokenStream {
-    let (name, fields) = match parse_struct(input) {
+    let (name, impl_generics, type_params, fields) = match parse_struct(input) {
         Ok(v) => v,
         Err(e) => return compile_error(&e),
     };
@@ -294,7 +346,7 @@ pub fn derive_component(input: TokenStream) -> TokenStream {
 
     let out = format!(
         r#"
-impl ::rustdv::ComponentNode for {name} {{
+impl {impl_generics} ::rustdv::ComponentNode for {name} {type_params} {{
     fn node_name(&self) -> &'static str {{ "{name}" }}
     fn visit_children(&mut self, f: &mut dyn FnMut(&str, &mut dyn ::rustdv::ComponentNode)) {{
         let _ = &f;

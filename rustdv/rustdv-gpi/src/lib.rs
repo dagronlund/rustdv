@@ -120,7 +120,9 @@ impl AnyHandle {
     pub fn classify(h: ObjHandle) -> AnyHandle {
         match h.get(sys::vpiType) {
             sys::vpiModule => AnyHandle::Hierarchy(HierarchyHandle { h }),
-            sys::vpiNet | sys::vpiReg | sys::vpiIntegerVar | sys::vpiPort | sys::vpiMemory => {
+            sys::vpiNet | sys::vpiReg | sys::vpiIntegerVar | sys::vpiPort | sys::vpiMemory
+            | sys::vpiLongIntVar | sys::vpiShortIntVar | sys::vpiIntVar | sys::vpiByteVar
+            | sys::vpiEnumVar | sys::vpiBitVar => {
                 AnyHandle::Logic(LogicHandle { h })
             }
             _ => AnyHandle::Other(h),

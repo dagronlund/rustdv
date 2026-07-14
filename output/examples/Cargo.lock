@@ -57,3 +57,144 @@ version = "0.1.0"
 [[package]]
 name = "ch14_modules_crates_cargo"
 version = "0.1.0"
+
+[[package]]
+name = "ch15_async_await_executor"
+version = "0.1.0"
+dependencies = [
+ "rustdv",
+]
+
+[[package]]
+name = "ch16_tasks_queues"
+version = "0.1.0"
+dependencies = [
+ "rustdv",
+]
+
+[[package]]
+name = "ch17_simulating_with_rustdv_sim"
+version = "0.1.0"
+dependencies = [
+ "rustdv",
+]
+
+[[package]]
+name = "ch18_basic_testbench_1_0"
+version = "0.1.0"
+dependencies = [
+ "rustdv",
+]
+
+[[package]]
+name = "ch19_tinyalubfm"
+version = "0.1.0"
+dependencies = [
+ "rustdv",
+ "tinyalu_utils",
+]
+
+[[package]]
+name = "ch20_struct_based_testbench_2_0"
+version = "0.1.0"
+dependencies = [
+ "rustdv",
+ "tinyalu_utils",
+]
+
+[[package]]
+name = "ch21_macros"
+version = "0.1.0"
+
+[[package]]
+name = "ch23_uvm_test_testbench_3_0"
+version = "0.1.0"
+dependencies = [
+ "rustdv",
+ "tinyalu_utils",
+]
+
+[[package]]
+name = "ch24_components"
+version = "0.1.0"
+dependencies = [
+ "rustdv",
+]
+
+[[package]]
+name = "ch25_uvm_env_testbench_4_0"
+version = "0.1.0"
+dependencies = [
+ "rustdv",
+ "tinyalu_utils",
+]
+
+[[package]]
+name = "ch26_logging"
+version = "0.1.0"
+dependencies = [
+ "rustdv",
+]
+
+[[package]]
+name = "ch27_configuration"
+version = "0.1.0"
+dependencies = [
+ "rustdv",
+]
+
+[[package]]
+name = "rustdv"
+version = "0.1.0"
+dependencies = [
+ "rustdv-gpi",
+ "rustdv-macros",
+ "rustdv-runner",
+ "rustdv-sim",
+ "rustdv-uvm",
+]
+
+[[package]]
+name = "rustdv-gpi"
+version = "0.1.0"
+dependencies = [
+ "rustdv-gpi-sys",
+]
+
+[[package]]
+name = "rustdv-gpi-sys"
+version = "0.1.0"
+
+[[package]]
+name = "rustdv-macros"
+version = "0.1.0"
+
+[[package]]
+name = "rustdv-runner"
+version = "0.1.0"
+dependencies = [
+ "rustdv-gpi",
+ "rustdv-sim",
+ "rustdv-uvm",
+]
+
+[[package]]
+name = "rustdv-sim"
+version = "0.1.0"
+dependencies = [
+ "rustdv-gpi",
+]
+
+[[package]]
+name = "rustdv-uvm"
+version = "0.1.0"
+dependencies = [
+ "rustdv-sim",
+]
+
+[[package]]
+name = "tinyalu_utils"
+version = "0.1.0"
+dependencies = [
+ "rustdv",
+]

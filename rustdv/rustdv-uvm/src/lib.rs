@@ -23,7 +23,8 @@ pub mod sequence;
 pub use analysis::{AnalysisFifo, AnalysisPort, Subscriber};
 pub use channel::{channel, Receiver, Sender, TlmEmpty, TlmError, TlmFull};
 pub use component::{
-    check_all, extract_all, final_all, report_all, run_extract_check_report, start_all, Active,
+    check_all, extract_all, final_all, print_hierarchy, report_all, run_extract_check_report,
+    start_all, Active,
     CheckSink, Component, ComponentNode, RunCtx,
 };
 pub use fifo::TlmFifo;

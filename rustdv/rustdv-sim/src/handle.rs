@@ -74,6 +74,18 @@ pub struct LogicHandle {
     raw: gpi::LogicHandle,
 }
 
+impl std::fmt::Debug for LogicHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "LogicHandle(\"{}\")", self.full_name())
+    }
+}
+
+impl std::fmt::Debug for HierarchyHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "HierarchyHandle(\"{}\")", self.full_name())
+    }
+}
+
 impl LogicHandle {
     pub fn name(&self) -> String {
         self.raw.name()

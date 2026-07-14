@@ -135,3 +135,22 @@ regression.
 - Portability beyond Linux/ELF for the link-section test registry (OQ-4)
   and beyond VPI/Icarus for the backend (D1/OQ-1/OQ-2) are the two
   structural follow-ups before the book can claim multi-simulator support.
+
+## Re-verification — 2026-07-13 (fresh VM)
+
+Independent end-to-end rerun in a new session/VM, from the Path B
+toolchain drop. No source changes were needed; results reproduce the
+2026-07-11 run exactly.
+
+- Toolchain reinstalled from `toolchain-drop/`: rustc/cargo 1.97.0
+  aarch64-linux, Icarus 14.0 (devel, s20260301). Install note: extract
+  the tarballs from a VM-local copy (`cp` to `/tmp` first) — extracting
+  directly from the mount is ~15× slower and exceeds shell timeouts.
+- [x] `sim/run_smoke.sh icarus` → SMOKE: PASS
+- [x] `cargo build --workspace` — clean; `cargo test --workspace` — 8/8
+- [x] `sim/run_rustdv.sh` → **REGRESSION: PASS** (`random_ops` 20/0
+  mismatches, coverage Add=5 And=5 Mul=5 Xor=5, 625 ns; `max_ops` 4/0,
+  all ops, 185 ns); fresh `sim/build/results.xml` committed
+- [x] Mutation check repeated (XOR→OR at `tinyalu.sv:48`): scoreboard
+  flags all 5 + 1 affected transactions, both tests FAIL, run ends
+  `REGRESSION: FAIL`; DUT restored and clean run re-confirmed PASS
