@@ -141,8 +141,15 @@ impl Component for Scoreboard {
                     self.compared += 1;
                     if expected != actual {
                         self.mismatches += 1;
+                        log::info(&format!(
+                            "scoreboard: in={cmd:?} out={actual:?} expected={expected:?} check=FAIL"
+                        ));
                         errors.error(format!(
                             "scoreboard mismatch: {cmd:?} -> got {actual:?}, expected {expected:?}"
+                        ));
+                    } else {
+                        log::info(&format!(
+                            "scoreboard: in={cmd:?} out={actual:?} expected={expected:?} check=PASS"
                         ));
                     }
                 }
