@@ -8,7 +8,7 @@
 
         <!-- Custom HTML head -->
 
-        <meta name="description" content="An introduction to Rust using pyuvm as a base">
+        <meta name="description" content="A complete course in Rust and rustdv">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
 
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a5754ff7.js";
+            window.path_to_searchindex_js = "searchindex-3dacaab8.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-30fadfdb.js"></script>
+        <script src="toc-853cbe4a.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -176,12 +176,12 @@
                 <div id="mdbook-content" class="content">
                     <main class="markdown-body">
                         <h1 id="chapter-7-structs-enums-and-methods"><a class="header" href="#chapter-7-structs-enums-and-methods">Chapter 7: Structs, Enums, and Methods</a></h1>
-<p>The Python book opened its Classes chapter with a claim: object-oriented programming is the foundation of the expandability and reusability of UVM-based verification. That claim survives the trip to Rust intact. What does not survive is the machinery. Rust has no <code>class</code> statement, no <code>self</code> argument sliding invisibly into every method, no <code>__init__</code>, and no ability to bolt a data attribute onto an object whenever the mood strikes. In their place it offers two building blocks — structs and enums — and a place to hang behavior on them, the <code>impl</code> block. By the end of this chapter you will have both, plus the chapter’s real payoff: Rust enums, which are so much more capable than Python’s that they will quietly restructure how you think about testbench data.</p>
+<p>Both earlier books in this series built on the same claim: object-oriented programming is the foundation of the expandability and reusability of UVM-based verification. That claim survives the trip to Rust intact. What does not survive is the machinery. Rust has no <code>class</code> statement, no <code>self</code> or <code>this</code> sliding invisibly into every method, no <code>__init__</code>, and no ability to bolt a data attribute onto an object whenever the mood strikes. In their place it offers two building blocks — structs and enums — and a place to hang behavior on them, the <code>impl</code> block. By the end of this chapter you will have both, plus the chapter’s real payoff: Rust enums, which are so much more capable than Python’s or SystemVerilog’s that they will quietly restructure how you think about testbench data.</p>
 <blockquote>
-<p><strong>In Python we…</strong> created an object and added data attributes to it on the fly: <code>walrus = Animal()</code> followed by <code>walrus.kg = 1000</code>, no declaration anywhere. The Classes chapter called this “nothing like SystemVerilog, where the Animal class would have to define the kg variable at definition” — and it warned that the freedom cuts both ways, showing a <code>yorkie</code> whose forgotten <code>kg</code> attribute surfaced as a runtime <code>AttributeError</code>. Later, in <em>Basic testbench: 1.0</em>, we met <code>tinyalu_utils</code> and its <code>Ops(enum.IntEnum)</code>: <code>ADD = 1, AND = 2, XOR = 3, MUL = 4</code> — names mapped to opcode integers. Both of those patterns return in this chapter, and both come back changed.</p>
+<p><strong>In the UVM…</strong> every transaction and component was a class. Python let us build objects on the fly — <code>walrus = Animal()</code> then <code>walrus.kg = 1000</code>, no declaration anywhere — a freedom that cut both ways, surfacing a forgotten attribute as a runtime <code>AttributeError</code>. SystemVerilog made us declare every field at definition, as this chapter will too. And both dialects named the TinyALU’s operations with an enum — <code>typedef enum</code> in SV, <code>Ops(enum.IntEnum)</code> in Python: <code>ADD = 1, AND = 2, XOR = 3, MUL = 4</code>, names mapped to opcode integers. Both patterns return in this chapter, and both come back changed.</p>
 </blockquote>
 <h2 id="structs-the-data-declared"><a class="header" href="#structs-the-data-declared">Structs: the data, declared</a></h2>
-<p>A Rust struct is the part of a Python class that holds data — and only that part. You declare every field, with its type, up front:</p>
+<p>A Rust struct is the part of a class that holds data — and only that part. You declare every field, with its type, up front:</p>
 <pre class="playground"><code class="language-rust">// Figure 1: Defining and instantiating a struct
 
 struct Animal {
@@ -195,8 +195,8 @@ fn main() {
 <pre><code class="language-text">--
 Walrus mass: 1000
 </code></pre>
-<p>Two things deserve a look. First, the declaration reads more like the SystemVerilog <code>Animal</code> from the Python book’s figure 3 than like anything Python ever asked of us: the fields are part of the definition, not something we improvise later. Second, instantiation uses a <em>struct literal</em> — <code>Animal { kg: 1000.0 }</code> — which names every field and supplies every value. There is no separate “create empty, then populate” step, because an empty <code>Animal</code> is not a thing Rust permits to exist.</p>
-<p>That last point is not a style preference; it is enforcement. The Python book’s figure 7 created a <code>yorkie</code>, forgot to set <code>kg</code>, and got an <code>AttributeError</code> — at runtime, at the moment of use, which in a testbench means mid-simulation. Here is the same mistake in Rust:</p>
+<p>Two things deserve a look. First, the declaration reads like SystemVerilog, not Python: the fields are part of the definition, not something we improvise later. Second, instantiation uses a <em>struct literal</em> — <code>Animal { kg: 1000.0 }</code> — which names every field and supplies every value. There is no separate “create empty, then populate” step, because an empty <code>Animal</code> is not a thing Rust permits to exist.</p>
+<p>That last point is not a style preference; it is enforcement. In Python you could create a <code>yorkie</code>, forget to set <code>kg</code>, and get an <code>AttributeError</code> — at runtime, at the moment of use, which in a testbench means mid-simulation. Here is the same mistake in Rust:</p>
 <pre class="playground"><code class="language-rust">// Figure 2: Forgetting a field is now a compile error
 
 struct Animal {
@@ -214,13 +214,13 @@ error[E0063]: missing field `kg` in initializer of `Animal`
 6 |     let yorkie = Animal {};
   |                  ^^^^^^ missing `kg`
 </code></pre>
-<p>The program never ran. There is no such thing as an <code>Animal</code> with an undefined mass, so the class of bug the Python book had to warn you about is not a bug you can write.¹ This is the pattern of the whole chapter — of the whole book, really: where Python offered a convention and a warning, Rust offers a rule and a compile error.</p>
+<p>The program never ran. There is no such thing as an <code>Animal</code> with an undefined mass, so the class of bug Python could only warn about is not a bug you can write.¹ SystemVerilog engineers will feel at home — and should note the upgrade: an SV field you never assign holds a default value and simulates anyway; a Rust field you never assign stops the build. This is the pattern of the whole chapter — of the whole book, really: where your old language offered a convention and a warning, Rust offers a rule and a compile error.</p>
 <p>One freedom is genuinely gone: you cannot add a field to an object after the fact. <code>walrus.age = 12</code> on a struct with no <code>age</code> field does not compile. Every field a transaction will ever carry is visible in one place, in its definition, forever. For quick scripts this feels confining. For a transaction type that five components and three engineers share, it is exactly what you want.</p>
 <blockquote>
 <p>¹ The walrus, having survived one book already, takes this in stride.</p>
 </blockquote>
 <h2 id="impl-blocks-where-behavior-lives"><a class="header" href="#impl-blocks-where-behavior-lives"><code>impl</code> blocks: where behavior lives</a></h2>
-<p>A Python class bundles data and behavior in one indented block. Rust separates them: the struct declares the data, and an <code>impl</code> block — short for <em>implementation</em> — attaches the behavior. Here is <code>get_pounds()</code>, ported:</p>
+<p>Python and SystemVerilog classes bundle data and behavior in one block. Rust separates them: the struct declares the data, and an <code>impl</code> block — short for <em>implementation</em> — attaches the behavior. Here is a <code>get_pounds()</code> method:</p>
 <pre class="playground"><code class="language-rust">// Figure 3: A method in an impl block
 
 struct Animal {
@@ -240,9 +240,9 @@ fn main() {
 <pre><code class="language-text">--
 Walrus weight in pounds 454.55
 </code></pre>
-<p>The call site is pure Python: <code>walrus.get_pounds()</code>. The definition is where the languages diverge, and the divergence is instructive.</p>
-<p>Python’s <code>self</code> is an ordinary argument that the interpreter fills in for you — the Classes chapter demonstrated this by calling <code>Animal.get_pounds(walrus)</code> explicitly, passing the object by hand. Rust’s <code>&amp;self</code> is doing the same job, but it carries more information: that ampersand says this method <em>borrows</em> the animal, read-only, exactly as Chapter 6 taught. The method can look at <code>self.kg</code>; it cannot modify it, and it does not take ownership of the walrus. The signature tells you the method’s relationship to the object before you read a line of the body.</p>
-<p>And yes, the explicit form still works: <code>Animal::get_pounds(&amp;walrus)</code> is legal Rust and does exactly what <code>Animal.get_pounds(walrus)</code> did in Python’s figure 5. What Python offered as a party trick, Rust treats as the ordinary meaning that the dot syntax abbreviates.</p>
+<p>The call site reads like every language you know: <code>walrus.get_pounds()</code>. The definition is where the languages diverge, and the divergence is instructive.</p>
+<p>Python’s <code>self</code> is an ordinary argument that the interpreter fills in for you — <code>Animal.get_pounds(walrus)</code> works, passing the object by hand. (SystemVerilog’s <code>this</code> is closer to true magic; it simply appears.) Rust’s <code>&amp;self</code> is doing the same job, but it carries more information: that ampersand says this method <em>borrows</em> the animal, read-only, exactly as Chapter 6 taught. The method can look at <code>self.kg</code>; it cannot modify it, and it does not take ownership of the walrus. The signature tells you the method’s relationship to the object before you read a line of the body.</p>
+<p>And yes, the explicit form still works: <code>Animal::get_pounds(&amp;walrus)</code> is legal Rust and does exactly what Python’s hand-passed version does. What Python offered as a party trick, Rust treats as the ordinary meaning that the dot syntax abbreviates.</p>
 <p>When a method needs to <em>change</em> the object, it says so:</p>
 <pre class="playground"><code class="language-rust">// Figure 4: A method that mutates takes &amp;mut self
 
@@ -264,10 +264,10 @@ fn main() {
 <pre><code class="language-text">--
 Walrus mass after lunch: 1003.5
 </code></pre>
-<p>Notice <code>let mut walrus</code>. A method that takes <code>&amp;mut self</code> can only be called on a mutable binding — immutability by default, as in Chapter 3, extends all the way into method calls. Skim any <code>impl</code> block and the <code>&amp;self</code>/<code>&amp;mut self</code> split hands you a map of which methods observe and which methods mutate. In Python, discovering that a method quietly modified your transaction was an afternoon with the debugger; here it is a fact printed in the signature. When we build monitors and scoreboards, this distinction stops being philosophy: a scoreboard’s check wants <code>&amp;self</code>, its update wants <code>&amp;mut self</code>, and the compiler holds every caller to it.</p>
+<p>Notice <code>let mut walrus</code>. A method that takes <code>&amp;mut self</code> can only be called on a mutable binding — immutability by default, as in Chapter 3, extends all the way into method calls. Skim any <code>impl</code> block and the <code>&amp;self</code>/<code>&amp;mut self</code> split hands you a map of which methods observe and which methods mutate. In your old languages, discovering that a method quietly modified your transaction was an afternoon with the debugger; here it is a fact printed in the signature. When we build monitors and scoreboards, this distinction stops being philosophy: a scoreboard’s check wants <code>&amp;self</code>, its update wants <code>&amp;mut self</code>, and the compiler holds every caller to it.</p>
 <h2 id="associated-functions-new-and-the-end-of-__init__"><a class="header" href="#associated-functions-new-and-the-end-of-__init__">Associated functions: <code>new()</code> and the end of <code>__init__</code></a></h2>
-<p>The Python book introduced <code>__init__()</code> as the standard way to force initialization — a magic method, called implicitly when you invoke the class name. Rust has no magic methods and no implicit calls. What it has is the <em>associated function</em>: a function in an <code>impl</code> block that takes no <code>self</code> at all, called through the type name with <code>::</code>.</p>
-<p>By near-universal convention, the constructor is an associated function named <code>new</code>:</p>
+<p>Python forces initialization with <code>__init__()</code>, a magic method called implicitly when you invoke the class name; SystemVerilog answers to the <code>new</code> keyword and a <code>function new()</code> you write. Rust has no magic methods and no implicit calls. What it has is the <em>associated function</em>: a function in an <code>impl</code> block that takes no <code>self</code> at all, called through the type name with <code>::</code>.</p>
+<p>By near-universal convention, the constructor is an associated function named <code>new</code> — SystemVerilog engineers may enjoy that Rust agrees with them about the name:</p>
 <pre class="playground"><code class="language-rust">// Figure 5: The new() associated function
 
 struct Animal {
@@ -291,13 +291,13 @@ fn main() {
 <pre><code class="language-text">--
 The Yorkie weighs 9.1 pounds
 </code></pre>
-<p>This is the Python book’s figure 8, translated. A few notes on the translation:</p>
+<p>A few notes on the pattern:</p>
 <ul>
 <li><code>Self</code> (capital S) is shorthand for “the type this <code>impl</code> block belongs to” — here, <code>Animal</code>. Writing <code>-&gt; Self</code> and <code>Self { kg }</code> means the code survives a rename.</li>
 <li><code>Self { kg }</code> uses <em>field init shorthand</em>: when a variable and a field share a name, you may write the name once instead of <code>kg: kg</code>.</li>
 <li>There is nothing special about <code>new</code>. It is not a keyword, the language does not call it for you, and you could name it <code>hatch()</code> if you enjoyed confusing people. The compiler’s only contribution is the guarantee from figure 2: however an <code>Animal</code> gets built, every field gets a value.</li>
 </ul>
-<p>The Python book sorted methods into three kinds — instance methods, class methods, and static methods — with a decorator apiece. Rust flattens the taxonomy to two: if it takes <code>self</code> in some form, it is a <em>method</em>, called with a dot; if it does not, it is an <em>associated function</em>, called with <code>::</code>. Python’s <code>@staticmethod</code> and <code>@classmethod</code> both collapse into the second kind, and the class-variable pattern comes along as an <em>associated constant</em>:</p>
+<p>Python sorts methods into three kinds — instance, class, and static, a decorator apiece — and SystemVerilog splits its own hairs with <code>static</code> methods and variables. Rust flattens the taxonomy to two: if it takes <code>self</code> in some form, it is a <em>method</em>, called with a dot; if it does not, it is an <em>associated function</em>, called with <code>::</code>. The static and class-method patterns both collapse into the second kind, and the class-variable pattern comes along as an <em>associated constant</em>:</p>
 <pre class="playground"><code class="language-rust">// Figure 6: Associated constants and functions replace class variables and static methods
 
 struct Triangle;
@@ -316,11 +316,11 @@ fn main() {
 <pre><code class="language-text">--
 I have 3 sides.
 </code></pre>
-<p>(<code>struct Triangle;</code> with no braces is a <em>unit struct</em> — a type with no data, which is all our triangle ever needed.) The Python book gave two reasons to keep a static method inside a class: a logical home, and a consistent calling style. Both reasons apply verbatim here; the <code>impl</code> block <em>is</em> the logical home, and <code>Triangle::print_side_count()</code> is the consistent style.</p>
+<p>(<code>struct Triangle;</code> with no braces is a <em>unit struct</em> — a type with no data, which is all our triangle ever needed.) The two classic reasons to keep a static method inside a class — a logical home, and a consistent calling style — apply verbatim here; the <code>impl</code> block <em>is</em> the logical home, and <code>Triangle::print_side_count()</code> is the consistent style.</p>
 <h2 id="enums-the-star-of-the-chapter"><a class="header" href="#enums-the-star-of-the-chapter">Enums: the star of the chapter</a></h2>
 <p>Now for the construct that earns this chapter its place in the book.</p>
-<p>The Python book introduced <code>Ops</code> in <code>tinyalu_utils</code> as an <code>enum.IntEnum</code> — a class that “not only names the operations but also maps the names to the correct opcode integer.” That was the best Python could do: an enum there is a set of named constants, each secretly an integer wearing a name tag. Rust enums start at that point and keep going.</p>
-<p>Here is <code>Ops</code>, ported, together with the prediction function it exists to serve:</p>
+<p>Python names the TinyALU’s operations with an <code>enum.IntEnum</code> — named constants, each secretly an integer wearing a name tag. SystemVerilog’s <code>typedef enum</code> is the same idea with the same secret: underneath, it is an integer, and the language happily casts it back to one at the first opportunity. Rust enums start at that point and keep going.</p>
+<p>Here is <code>Ops</code>, together with the prediction function it exists to serve:</p>
 <pre class="playground"><code class="language-rust">// Figure 7: The Ops enumeration and an exhaustive match
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -349,9 +349,9 @@ Add of 0x0A and 0x05 -&gt; 0x000f
 </code></pre>
 <p>Working through the new pieces:</p>
 <p><strong>The <code>derive</code> line.</strong> <code>#[derive(Clone, Copy, Debug, PartialEq)]</code> asks the compiler to generate standard capabilities: copying, comparison with <code>==</code>, and the <code>{:?}</code> debug printing you see in <code>main</code>. These are <em>traits</em>, and Chapter 10 gives them their due; for now, read the line as “make this type behave like a sensible value.” IntEnum gave Python’s <code>Ops</code> comparison and printing for free by inheritance; the derive line is where Rust’s version of “for free” lives.</p>
-<p><strong>The discriminants.</strong> <code>Add = 1</code> assigns the variant an integer value, just as the IntEnum did, and <code>Ops::Add as u8</code> recovers it when the opcode has to go onto a bus. But note which way the equivalence runs. An IntEnum member <em>is</em> an int — you can add three to <code>Ops.ADD</code> and Python will let you. <code>Ops::Add</code> is not a number that happens to have a name; it is a value of type <code>Ops</code>, and arithmetic on it is a compile error. The integer is available on request, one direction only. (Going the other way — from a raw integer read off a bus back to an <code>Ops</code> — takes explicit code that must confront the possibility of an illegal opcode. Chapter 9’s <code>Result</code> is built for exactly that confrontation.)</p>
+<p><strong>The discriminants.</strong> <code>Add = 1</code> assigns the variant an integer value, just as the IntEnum and the <code>typedef enum</code> did, and <code>Ops::Add as u8</code> recovers it when the opcode has to go onto a bus. But note which way the equivalence runs. An IntEnum member <em>is</em> an int — you can add three to <code>Ops.ADD</code> and Python will let you — and an SV enum converts to an integer whenever the expression around it shrugs. <code>Ops::Add</code> is not a number that happens to have a name; it is a value of type <code>Ops</code>, and arithmetic on it is a compile error. The integer is available on request, one direction only. (Going the other way — from a raw integer read off a bus back to an <code>Ops</code> — takes explicit code that must confront the possibility of an illegal opcode. Chapter 9’s <code>Result</code> is built for exactly that confrontation.)</p>
 <p><strong>The <code>match</code>.</strong> Chapter 4 introduced <code>match</code> as the load-bearing construct; here is the load. A <code>match</code> on an enum must be <em>exhaustive</em>: every variant handled, or the code does not compile. The prediction function cannot silently do nothing for <code>Mul</code> the way a Python <code>if/elif</code> chain with no <code>else</code> can.</p>
-<p>That guarantee sounds abstract until the day it saves you. Suppose the TinyALU grows a subtract instruction. In Python you would add <code>SUB = 5</code> to the IntEnum, and every <code>if/elif</code> over ops in the testbench — the prediction function, the coverage model, the driver — would keep running, silently wrong, until a failing test (or worse, a passing one) sent you hunting. Watch what happens in Rust the moment we add the variant and change nothing else:</p>
+<p>That guarantee sounds abstract until the day it saves you. Suppose the TinyALU grows a subtract instruction. Add <code>SUB = 5</code> to the IntEnum or the <code>typedef enum</code>, and every <code>if/elif</code> chain and every <code>case</code> over ops in the testbench — the prediction function, the coverage model, the driver — keeps running, silently wrong, until a failing test (or worse, a passing one) sends you hunting. Watch what happens in Rust the moment we add the variant and change nothing else:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// Figure 8: The compiler finds every match the new variant breaks
@@ -377,12 +377,12 @@ note: `Ops` defined here
 help: ensure that all possible cases are being handled by
       adding a match arm with an explicit pattern
 </code></pre>
-<p>Stop and appreciate what just happened, because it is the concrete version of this book’s central promise. We changed the specification — one line — and the compiler produced a complete list of every place in the testbench that has not yet heard the news, before any simulator license was checked out, before any simulation ran, before any test could pass for the wrong reason. In the Python flow, this bug costs a simulation run at minimum and a shipped escape at maximum. Here it costs one compile, a few seconds, and it <em>cannot</em> be skipped. This is the refactoring-without-fear argument from Chapter 1, delivered.²</p>
+<p>Stop and appreciate what just happened, because it is the concrete version of this book’s central promise. We changed the specification — one line — and the compiler produced a complete list of every place in the testbench that has not yet heard the news, before any simulator license was checked out, before any simulation ran, before any test could pass for the wrong reason. In a runtime-checked flow, this bug costs a simulation run at minimum and a shipped escape at maximum. Here it costs one compile, a few seconds, and it <em>cannot</em> be skipped. This is the refactoring-without-fear argument from Chapter 1, delivered.²</p>
 <blockquote>
 <p>² There is an escape hatch — a <code>_ =&gt; ...</code> wildcard arm matches everything not yet named, and using one forfeits this protection. The idiom this book follows: never use a wildcard when matching an enum you own. Spend the extra lines; they are the tripwire.</p>
 </blockquote>
 <h2 id="four-states-no-integers-logic"><a class="header" href="#four-states-no-integers-logic">Four states, no integers: <code>Logic</code></a></h2>
-<p>Every value in the Python testbench was ultimately an integer — <code>get_int()</code> existed precisely to coerce simulator values that might contain <code>x</code> or <code>z</code> into something Python could compute with. But hardware signals are not integers. They are four-state values, and Rust lets us say so directly:</p>
+<p>SystemVerilog carries <code>x</code> and <code>z</code> natively — that is what <code>logic</code> is for. Python does not: every value in a cocotb testbench was ultimately an integer, and <code>get_int()</code> existed precisely to coerce simulator values that might contain <code>x</code> or <code>z</code> into something Python could compute with. Rust sides with SystemVerilog — hardware signals are not integers — and lets us say so directly:</p>
 <pre class="playground"><code class="language-rust">// Figure 9: A four-state Logic enum
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -409,7 +409,7 @@ fn main() {
 <pre><code class="language-text">--
 The signal reads: x
 </code></pre>
-<p><code>Logic</code> is not a teaching toy: when we reach rustdv-sim in Chapter 17, reading a signal hands you a <code>LogicArray</code> — a vector of exactly this type — ported from the same four-state value types cocotb defines. Notice what the enum buys us that an IntEnum encoding (say, <code>X = 2</code>) never could: there is no integer pretense to leak. Nothing can accidentally add <code>X</code> to a running sum, because <code>X</code> is not a number — it is one of four states a wire can be in, and any code that consumes a <code>Logic</code> must, thanks to exhaustive <code>match</code>, say what it does about <code>x</code> and <code>z</code>. The “forgot to handle the unknown state” bug is unrepresentable.</p>
+<p><code>Logic</code> is not a teaching toy: when we reach rustdv-sim in Chapter 17, reading a signal hands you a <code>LogicArray</code> — a vector of exactly this type — ported from the same four-state value types cocotb defines. Notice what the enum buys us that an IntEnum encoding (say, <code>X = 2</code>) never could — and that even SystemVerilog’s native <code>logic</code> does not: there is no integer pretense to leak. In SV, an <code>x</code> rides along in arithmetic as x-propagation and surfaces downstream as a mystery; here, nothing can accidentally add <code>X</code> to a running sum, because <code>X</code> is not a number — it is one of four states a wire can be in, and any code that consumes a <code>Logic</code> must, thanks to exhaustive <code>match</code>, say what it does about <code>x</code> and <code>z</code>. The “forgot to handle the unknown state” bug is unrepresentable.</p>
 <h2 id="variants-that-carry-data"><a class="header" href="#variants-that-carry-data">Variants that carry data</a></h2>
 <p>Everything so far, an IntEnum could at least gesture at. This last capability it could not. Rust enum variants can <em>carry data</em> — different data per variant — which makes an enum a type that says “this value is exactly one of the following shapes.” Computer scientists call this a <em>sum type</em>; testbench authors will call it the right way to model outcomes:</p>
 <pre class="playground"><code class="language-rust">// Figure 10: An enum whose variants carry payloads
@@ -440,11 +440,11 @@ fn main() {
 <pre><code class="language-text">--
 FAIL: expected 0x000f, got 0x0005
 </code></pre>
-<p>Read the <code>match</code> arms closely, because a new thing is happening: the second arm doesn’t just select the <code>Fail</code> variant, it <em>unpacks</em> it, binding <code>expected</code> and <code>actual</code> right there in the pattern. A passing check carries nothing; a failing check carries the evidence. In Python we would have modeled this with a boolean plus a couple of variables that are only meaningful when the boolean is <code>False</code> — a convention, enforced by hope. The enum makes the convention structural: the payload <em>exists</em> only in the variant it belongs to, and the only way to touch it is to admit, in a pattern, which case you are in.</p>
+<p>Read the <code>match</code> arms closely, because a new thing is happening: the second arm doesn’t just select the <code>Fail</code> variant, it <em>unpacks</em> it, binding <code>expected</code> and <code>actual</code> right there in the pattern. A passing check carries nothing; a failing check carries the evidence. In your old languages this was a boolean plus a couple of variables that are only meaningful when the boolean is false — a convention, enforced by hope. The enum makes the convention structural: the payload <em>exists</em> only in the variant it belongs to, and the only way to touch it is to admit, in a pattern, which case you are in.</p>
 <p>Once you see this shape, you will see it everywhere in Rust, because the standard library’s two most important types are exactly this pattern: <code>Option&lt;T&gt;</code> is an enum whose variants are <code>Some(T)</code> and <code>None</code>, and <code>Result&lt;T, E&gt;</code> is an enum whose variants are <code>Ok(T)</code> and <code>Err(E)</code>. Absence and failure, modeled as payload-carrying enums, matched exhaustively — that is the entire story of how Rust replaced both <code>None</code>-checking and exceptions, and it gets Chapter 9 to itself.</p>
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<p>Rust splits Python’s class into parts and makes each part explicit. A <strong>struct</strong> declares its data completely — every field, every type, no after-the-fact attributes — and the compiler guarantees no instance ever exists with a field unset, retiring the Python book’s <code>AttributeError</code> demonstration permanently. An <strong><code>impl</code> block</strong> attaches behavior: <strong>methods</strong> take <code>&amp;self</code> to observe or <code>&amp;mut self</code> to mutate, telling every caller which is which, while <strong>associated functions</strong> take no <code>self</code> and answer to the type name — <code>Animal::new(20.0)</code> — absorbing the jobs of <code>__init__</code>, <code>@classmethod</code>, and <code>@staticmethod</code> with one mechanism and zero magic.</p>
-<p><strong>Enums</strong> are the chapter’s prize. <code>Ops</code> returns from <code>tinyalu_utils</code> not as named integers but as a true sum type: exhaustively matched, so that adding a variant produces a compiler-generated to-do list of every site that must change — a testbench bug class eliminated before simulation. <code>Logic</code> models a wire’s four states without pretending they are numbers. And payload-carrying variants let one type hold differently-shaped alternatives — the pattern behind <code>Option</code> and <code>Result</code>, and behind more testbench types to come.</p>
+<p>Rust splits the class into parts and makes each part explicit. A <strong>struct</strong> declares its data completely — every field, every type, no after-the-fact attributes — and the compiler guarantees no instance ever exists with a field unset, retiring Python’s <code>AttributeError</code> surprise and SystemVerilog’s silently-defaulted field alike. An <strong><code>impl</code> block</strong> attaches behavior: <strong>methods</strong> take <code>&amp;self</code> to observe or <code>&amp;mut self</code> to mutate, telling every caller which is which, while <strong>associated functions</strong> take no <code>self</code> and answer to the type name — <code>Animal::new(20.0)</code> — absorbing constructors, class methods, and static methods with one mechanism and zero magic.</p>
+<p><strong>Enums</strong> are the chapter’s prize. <code>Ops</code> returns not as named integers but as a true sum type: exhaustively matched, so that adding a variant produces a compiler-generated to-do list of every site that must change — a testbench bug class eliminated before simulation. <code>Logic</code> models a wire’s four states without pretending they are numbers. And payload-carrying variants let one type hold differently-shaped alternatives — the pattern behind <code>Option</code> and <code>Result</code>, and behind more testbench types to come.</p>
 <p>Our transactions can now hold data and our enumerations can now hold their own. What we cannot yet do is hold <em>many</em> of anything — a queue of commands, a list of results, a scoreboard’s worth of expectations. Chapter 8 takes up Rust’s collections, where the Python sequences you know are waiting, with ownership along for the ride.</p>
 
                     </main>

@@ -8,7 +8,7 @@
 
         <!-- Custom HTML head -->
 
-        <meta name="description" content="An introduction to Rust using pyuvm as a base">
+        <meta name="description" content="A complete course in Rust and rustdv">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
 
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a5754ff7.js";
+            window.path_to_searchindex_js = "searchindex-3dacaab8.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-30fadfdb.js"></script>
+        <script src="toc-853cbe4a.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -176,13 +176,13 @@
                 <div id="mdbook-content" class="content">
                     <main class="markdown-body">
                         <h1 id="chapter-12-closures-and-iterators"><a class="header" href="#chapter-12-closures-and-iterators">Chapter 12: Closures and Iterators</a></h1>
-<p>The Python book taught two features that made testbench code shorter and stranger at the same time: comprehensions, which built a whole list in one bracketed line, and generators, which used <code>yield</code> to produce values one at a time without ever building the list at all. Both were ways of saying <em>here is a stream of values and a recipe for making them</em> — and both, you may remember, took a chapter to stop looking like magic.</p>
-<p>Rust has the same two ideas, reorganized around one feature: the <strong>iterator</strong>. And driving the iterator machinery is a smaller feature that this book has been saving up for eleven chapters, because it is quietly one of the most important in the language: the <strong>closure</strong>. Closures matter far beyond this chapter. When Part IV rebuilds the UVM factory, the mechanism that replaces the entire override registry will turn out to be a closure stored in a struct field. This is the chapter where you learn why that sentence makes sense.</p>
+<p>Python made testbench code shorter and stranger at the same time with two features: comprehensions, which built a whole list in one bracketed line, and generators, which used <code>yield</code> to produce values one at a time without ever building the list at all. Both were ways of saying <em>here is a stream of values and a recipe for making them</em>. SystemVerilog never had either — nor the feature underneath them — which makes this chapter the newest ground in Part I for half of this book’s readers, and worth every minute of it.</p>
+<p>Rust has both ideas, reorganized around one feature: the <strong>iterator</strong>. And driving the iterator machinery is a smaller feature that this book has been saving up for eleven chapters, because it is quietly one of the most important in the language: the <strong>closure</strong>. Closures matter far beyond this chapter. When Part IV rebuilds the UVM factory, the mechanism that replaces the entire override registry will turn out to be a closure stored in a struct field. This is the chapter where you learn why that sentence makes sense.</p>
 <blockquote>
-<p><strong>In Python we…</strong> created generators using the <code>yield</code> statement. “The yield statement is like the return statement in that it yields a number to the caller. Unlike return, yield continues running in the function like any other statement.” We wrote <code>my_range()</code> with a <code>while</code> loop around a <code>yield</code>, and a Fibonacci generator with two <code>yield</code> statements, and used both directly in <code>for</code> loops. And in the Lists chapter we met the list comprehension — <code>[nn**2 for nn in range(11) if nn % 2 == 0]</code> — four parts in square brackets that replaced a four-line <code>for</code> loop, with dictionary and set comprehensions following the same pattern in curly braces.</p>
+<p><strong>In the UVM…</strong> stimulus recipes were loops. Python’s dialect could also write them as generators — <code>yield</code> hands a value to the caller and <em>keeps running</em> — and as comprehensions like <code>[nn**2 for nn in range(11) if nn % 2 == 0]</code>, four parts in square brackets replacing a four-line loop. SystemVerilog’s closest analog was a task feeding a mailbox: the stream-of-values idea was there, but functions were never values you could pass around, store, or build streams from.</p>
 </blockquote>
 <h2 id="closures-functions-as-values"><a class="header" href="#closures-functions-as-values">Closures: functions as values</a></h2>
-<p>A closure is a function without a name, written inline, that can use the variables around it. Python had these in two flavors: <code>lambda x: x + 1</code> for one-liners, and nested <code>def</code> for anything longer. Rust has one syntax for both. The parameters go between vertical bars, and the body follows.</p>
+<p>A closure is a function without a name, written inline, that can use the variables around it. Python had these in two flavors: <code>lambda x: x + 1</code> for one-liners, and nested <code>def</code> for anything longer. SystemVerilog had nothing of the kind — an SV function has a name, a declaration, and an address in a package somewhere, and it certainly cannot be stored in a variable. Rust has one syntax, and the whole feature fits in a figure. The parameters go between vertical bars, and the body follows.</p>
 <pre class="playground"><code class="language-rust">// Figure 1: A closure is an unnamed function in a variable
 
 fn main() {
@@ -203,7 +203,7 @@ fn main() {
 <p><code>add_one</code> holds a function the way a variable holds a number. A single expression needs no braces; a multi-line body takes braces and, like every Rust block, evaluates to its last expression. Notice there is no return type written on either closure — the compiler infers closure types from how you use them, which is why closures usually look lighter than <code>fn</code> declarations. In fact the parameter types are usually optional too; I wrote <code>x: u32</code> for clarity, but <code>let add_one = |x| x + 1;</code> compiles fine once the compiler sees a call that pins the type down.</p>
 <p>So far this is <code>lambda</code> with different punctuation. The interesting part — the part Python never asked you to think about — is what happens when the closure uses a variable it did not declare.</p>
 <h2 id="capture-through-the-ownership-lens"><a class="header" href="#capture-through-the-ownership-lens">Capture, through the ownership lens</a></h2>
-<p>A Python closure that mentions an outer variable just… uses it. Every Python name is a reference, so the closure captures a reference, silently, and if two pieces of code mutate the same captured object at the same time, that is your problem to discover at runtime. The Python book’s NullTrigger race — two tasks sharing <code>transaction_data</code> — was exactly this bug wearing a coroutine costume.</p>
+<p>A Python closure that mentions an outer variable just… uses it. Every Python name is a reference, so the closure captures a reference, silently, and if two pieces of code mutate the same captured object at the same time, that is your problem to discover at runtime. Chapter 6’s shared-variable race — two processes sharing <code>transaction_data</code> — was exactly this bug wearing a coroutine costume.</p>
 <p>Rust closures also capture outer variables, but here is the difference: <em>capturing is subject to the ownership rules from Chapters 5 and 6, like everything else.</em> A closure that reads a variable borrows it with <code>&amp;T</code>. A closure that mutates one borrows it with <code>&amp;mut T</code>. A closure that consumes one takes ownership. The compiler looks at the closure’s body, picks the least drastic mode that works, and then enforces it — visibly, in the type system, at compile time.</p>
 <p>Watch the three modes in order. First, a closure that only reads.</p>
 <pre class="playground"><code class="language-rust">// Figure 2: A closure that reads captures by shared borrow
@@ -238,7 +238,7 @@ fn main() {
 <pre><code class="language-text">--
 2 errors: ["ADD result mismatch", "XOR result mismatch"]
 </code></pre>
-<p>Two things changed. The closure itself must be declared <code>let mut</code>, because calling it mutates the captured <code>errors</code> — mutation is never invisible in Rust, not even here. And while <code>log_error</code> is alive, it holds the <em>exclusive</em> borrow of <code>errors</code>; if we tried to <code>println!("{errors:?}")</code> between the two calls, the compiler would refuse, citing the aliasing-XOR-mutability rule from Chapter 6. One writer, no readers alongside. The race the Python book could only warn you about is structurally impossible to write.</p>
+<p>Two things changed. The closure itself must be declared <code>let mut</code>, because calling it mutates the captured <code>errors</code> — mutation is never invisible in Rust, not even here. And while <code>log_error</code> is alive, it holds the <em>exclusive</em> borrow of <code>errors</code>; if we tried to <code>println!("{errors:?}")</code> between the two calls, the compiler would refuse, citing the aliasing-XOR-mutability rule from Chapter 6. One writer, no readers alongside. The race your old languages could only warn about is structurally impossible to write.</p>
 <p>Third, a closure that takes ownership. Sometimes a closure must own its captures — most often because it will outlive the scope it was created in, which is precisely the situation when you store a closure in a struct or hand it to another task. The <code>move</code> keyword forces the transfer.</p>
 <pre class="playground"><code class="language-rust">// Figure 4: A move closure takes ownership of its captures
 
@@ -266,7 +266,7 @@ error[E0382]: borrow of moved value: `test_name`
 <p>¹ The names describe how the closure may be <em>called</em>, and they nest: every <code>Fn</code> is also an <code>FnMut</code>, and every <code>FnMut</code> is also an <code>FnOnce</code> — a closure you may call many times can certainly be called once. Interviewers love this; day-to-day code mostly just needs you to recognize the three names.</p>
 </blockquote>
 <h2 id="iterator-adapters-comprehensions-unrolled"><a class="header" href="#iterator-adapters-comprehensions-unrolled">Iterator adapters: comprehensions, unrolled</a></h2>
-<p>Now the payoff. The Python book built <code>even_squares</code> twice — once with a <code>for</code> loop and <code>append()</code>, then in one line:</p>
+<p>Now the payoff. Python builds <code>even_squares</code> in one famous line:</p>
 <pre><code class="language-python">even_squares = [nn**2 for nn in range(11) if nn % 2 == 0]
 </code></pre>
 <p>A comprehension has four parts: an expression, a variable, an iterator, and a filter. Rust has no comprehension syntax. Instead it lets you take those same four parts and chain them left to right as method calls on the iterator — each method taking, naturally, a closure.</p>
@@ -283,8 +283,8 @@ fn main() {
 <pre><code class="language-text">--
 even squares [0, 4, 16, 36, 64, 100]
 </code></pre>
-<p>Read the chain aloud and it is the comprehension in sentence order: take the range zero through ten, <em>filter</em> it down to the even numbers, <em>map</em> each survivor to its square, and <em>collect</em> the results into a <code>Vec</code>. The <code>|nn| ...</code> closures are the comprehension’s expression and filter parts, now explicit values passed as arguments. Where the Python book had to teach you the four positions inside the brackets, the Rust version wears its structure on the outside — and when a chain grows too clever, it splits across lines exactly as figure 5 shows, no special multi-line dispensation required.</p>
-<p>The Python book’s dictionary comprehension ports the same way. <code>{ii : ii**3 for ii in range(4)}</code> becomes a chain that maps each number to a <code>(key, value)</code> pair and collects into a <code>HashMap</code>:</p>
+<p>Read the chain aloud and it is the comprehension in sentence order: take the range zero through ten, <em>filter</em> it down to the even numbers, <em>map</em> each survivor to its square, and <em>collect</em> the results into a <code>Vec</code>. The <code>|nn| ...</code> closures are the comprehension’s expression and filter parts, now explicit values passed as arguments. Where Python’s comprehension makes you learn the four positions inside the brackets, the Rust version wears its structure on the outside — and when a chain grows too clever, it splits across lines exactly as figure 5 shows, no special multi-line dispensation required.</p>
+<p>Python’s dictionary comprehension ports the same way. <code>{ii : ii**3 for ii in range(4)}</code> becomes a chain that maps each number to a <code>(key, value)</code> pair and collects into a <code>HashMap</code>:</p>
 <pre class="playground"><code class="language-rust">// Figure 6: The dictionary comprehension, collected into a HashMap
 
 use std::collections::HashMap;
@@ -299,7 +299,7 @@ fn main() {
 <pre><code class="language-text">--
 cubes: {2: 8, 0: 0, 3: 27, 1: 1}
 </code></pre>
-<p>Two things to notice. <code>collect()</code> is doing something quietly remarkable: the <em>same method</em> built a <code>Vec</code> in figure 5 and a <code>HashMap</code> here, steered by the type annotation on the left — the generics machinery from Chapter 11 earning its keep. (One wrinkle: the closure’s parameter carries its own <code>: u32</code>, because a method call like <code>.pow</code> must know its receiver’s concrete type on the spot — inference has not yet flowed backward from the annotation when the closure body is checked.) And look at that output order. Chapter 8 warned you that Rust’s <code>HashMap</code>, unlike the Python dict you knew, promises nothing about iteration order, and here is the proof; your run will likely print a different scramble.</p>
+<p>Two things to notice. <code>collect()</code> is doing something quietly remarkable: the <em>same method</em> built a <code>Vec</code> in figure 5 and a <code>HashMap</code> here, steered by the type annotation on the left — the generics machinery from Chapter 11 earning its keep. (One wrinkle: the closure’s parameter carries its own <code>: u32</code>, because a method call like <code>.pow</code> must know its receiver’s concrete type on the spot — inference has not yet flowed backward from the annotation when the closure body is checked.) And look at that output order. Chapter 8 warned you that Rust’s <code>HashMap</code>, unlike a Python dict or an SV associative array, promises nothing about iteration order, and here is the proof; your run will likely print a different scramble.</p>
 <p>One more adapter completes the everyday set. Where <code>map</code> transforms each element and <code>filter</code> drops some, <strong><code>fold</code></strong> boils the whole stream down to a single value: it takes a starting accumulator and a closure that combines the accumulator with each element in turn. Here is a scoreboard-flavored example — counting mismatches in a list of (expected, actual) pairs:</p>
 <pre class="playground"><code class="language-rust">// Figure 7: fold reduces a stream to one value
 
@@ -322,7 +322,7 @@ mismatches: 1
 <p>Which raises the obvious question: what happened to <code>yield</code>?</p>
 <h2 id="where-generators-went"><a class="header" href="#where-generators-went">Where generators went</a></h2>
 <p>Rust has no <code>yield</code> statement.² What it has instead is the <code>Iterator</code> trait — one required method, <code>next()</code>, which returns <code>Some(value)</code> until the stream is exhausted and <code>None</code> thereafter. That <code>Option</code> should ring a bell from Chapter 9: where Python generators signal exhaustion with a <code>StopIteration</code> exception behind the scenes, Rust signals it in the return type, in the open.</p>
-<p>Any type that implements <code>Iterator</code> works in a <code>for</code> loop, chains with every adapter above, and collects into collections. The Python book’s favorite generator was Fibonacci, so let us port it. Where Python kept <code>lastnumb</code> and <code>numb</code> alive between <code>yield</code>s inside a paused function, Rust keeps them as fields in a struct, and <code>next()</code> advances the state one step per call.</p>
+<p>Any type that implements <code>Iterator</code> works in a <code>for</code> loop, chains with every adapter above, and collects into collections. The classic generator is Fibonacci, so let us port it. Where a Python generator kept <code>lastnumb</code> and <code>numb</code> alive between <code>yield</code>s inside a paused function, Rust keeps them as fields in a struct, and <code>next()</code> advances the state one step per call.</p>
 <pre class="playground"><code class="language-rust">// Figure 8: The Fibonacci generator, as an Iterator implementation
 
 struct Fibonacci {
@@ -437,10 +437,10 @@ fn main() {
 PASS: (255, 1) -&gt; 256
 FAIL: (15, 53) expected 5, got 6
 </code></pre>
-<p>Two <code>Checker</code> values, one struct definition, two completely different behaviors — selected not by inheritance, not by overriding a virtual method, but by <em>which closure was placed in the field at construction time</em>. Sit with that for a moment, because it is the seed of something large. The UVM factory — the machinery the Python book spent a chapter on, with its registries and overrides, <code>create()</code> calls and override tables — exists to answer one question: <em>how does a test change what the testbench builds without editing the testbench?</em> Python and SystemVerilog needed a registry because they could not comfortably pass constructors around as values. Rust can. When Chapter 29 rebuilds the factory’s job, the answer will be a config struct carrying closure fields much like <code>predict</code> — a constructor in a box, replaced by the test in three visible lines, checked end to end by the compiler. You now hold the entire mechanism; Part IV supplies the methodology.</p>
+<p>Two <code>Checker</code> values, one struct definition, two completely different behaviors — selected not by inheritance, not by overriding a virtual method, but by <em>which closure was placed in the field at construction time</em>. Sit with that for a moment, because it is the seed of something large. The UVM factory — the registry, the <code>type_id::create()</code> calls, the override tables — exists to answer one question: <em>how does a test change what the testbench builds without editing the testbench?</em> Python and SystemVerilog needed a registry because they could not comfortably pass constructors around as values. Rust can. When Chapter 29 rebuilds the factory’s job, the answer will be a config struct carrying closure fields much like <code>predict</code> — a constructor in a box, replaced by the test in three visible lines, checked end to end by the compiler. You now hold the entire mechanism; Part IV supplies the methodology.</p>
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <p>Closures are unnamed functions in variables: <code>|x| x + 1</code>, with braces for multi-line bodies and types mostly inferred. They capture surrounding variables under the ordinary ownership rules — shared borrow to read, exclusive borrow to mutate, ownership when <code>move</code>d — and the traits <code>Fn</code>, <code>FnMut</code>, and <code>FnOnce</code> name those three calling contracts in signatures. Iterator adapter chains — <code>filter</code>, <code>map</code>, <code>flat_map</code>, <code>fold</code>, <code>collect</code> — replace Python’s list, set, and dictionary comprehensions part for part, and they are lazy by default, doing no work until consumed. Python’s generators map to the <code>Iterator</code> trait: implement <code>next()</code> on a struct for full control, or return <code>impl Iterator</code> built from adapters for the everyday case, with <code>move</code> closures carrying the captured state out of the function. Finally, closures are values: boxed as <code>Box&lt;dyn Fn(...)&gt;</code>, they can live in struct fields and be swapped at construction time — the mechanism Chapter 29 will grow into rustdv’s replacement for the UVM factory.</p>
-<p>That <code>Box</code> in figure 11 was the first time this book put a value on the heap on purpose, and I slipped it past you with one sentence of explanation. It deserves better — because <code>Box</code> has two siblings, <code>Rc</code> and <code>RefCell</code>, and among them they answer the question every pyuvm refugee eventually asks: <em>how do two components share one scoreboard?</em> Chapter 13 pays that debt.</p>
+<p>That <code>Box</code> in figure 11 was the first time this book put a value on the heap on purpose, and I slipped it past you with one sentence of explanation. It deserves better — because <code>Box</code> has two siblings, <code>Rc</code> and <code>RefCell</code>, and among them they answer the question every UVM engineer eventually asks here: <em>how do two components share one scoreboard?</em> Chapter 13 pays that debt.</p>
 
                     </main>
 
