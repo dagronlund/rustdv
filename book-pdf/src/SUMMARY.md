@@ -50,5 +50,6 @@
 
 ---
 
-[Appendix A: Python-Book Chapter Map](appendix-a-chapter-map.md)
+[Appendix A: Chapter Maps to the Earlier Books](appendix-a-chapter-map.md)
 [Appendix B: Python → Rust Idiom Translations](appendix-b-idiom-translations.md)
+[Appendix C: SystemVerilog-UVM → rustdv Translations](appendix-c-sv-translations.md)

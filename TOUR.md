@@ -15,11 +15,13 @@ sequencer handshake), running testbenches as native shared libraries
 loaded by Icarus Verilog over VPI. Zero external dependencies. The crate
 name `rustdv` is registered on crates.io (0.0.1 placeholder).
 
-**"Rust for RTL Verification"** is its book — the sequel to Ray Salemi's
-[*Python for RTL Verification*](https://a.co/d/0hTKAJvh): 41 chapters, an 
-interlude, and two appendices, complete in `book-pdf/src/` (mdBook). 
-The premise: the reader knows the Python book and learns Rust chapter by
-chapter while rebuilding the TinyALU testbench, versions 1.0 through 8.0.
+**"Rust for RTL Verification"** is its book — the third in Ray Salemi's
+series after [*The UVM Primer*](https://www.uvmprimer.com) (SystemVerilog)
+and [*Python for RTL Verification*](https://a.co/d/0hTKAJvh): 41 chapters,
+an interlude, and three appendices, complete in `book-pdf/src/` (mdBook).
+The premise: the reader is a UVM verification engineer — from SystemVerilog
+or Python; neither earlier book is a prerequisite — who learns Rust chapter
+by chapter while rebuilding the TinyALU testbench, versions 1.0 through 8.0.
 Every figure runs; every simulation transcript in the book is genuine 
 Icarus output.
 
@@ -74,7 +76,9 @@ pre-push hook:
 - Transcripts in the book and READMEs are real output and must stay in
   sync with reruns — verify claims by running things.
 - `/reference` is read-only. `/output` holds generated deliverables.
-- Book voice, if you edit chapters: "In Python we..." openers,
+- Book voice, if you edit chapters: the book addresses *both* UVM
+  audiences (SystemVerilog and Python) — recap blockquotes open
+  "**In the UVM...**"; see `book-pdf/dual-audience-style.md` for the rules.
   `// Figure N:` captions, output after `--`, and the chapter READMEs in
   `output/examples` map every figure to its runnable code.
 

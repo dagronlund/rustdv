@@ -1,6 +1,6 @@
 # Appendix B: Python → Rust Idiom Translations
 
-The working translations this book used, gathered for reference. Legend: **[C]** cocotb, **[P]** pyuvm.
+For readers coming from cocotb and pyuvm (and *Python for RTL Verification*): the working translations this book used, gathered for reference. SystemVerilog readers want Appendix C, this table's twin. Legend: **[C]** cocotb, **[P]** pyuvm.
 
 ## Language and runtime
 
