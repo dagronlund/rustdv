@@ -2,7 +2,7 @@
 
 Sixteen chapters in, we touch a design. This chapter connects everything Part II has built — futures, the executor, tasks — to an actual DUT in an actual simulator: getting handles to signals, reading and writing values, and waiting on clock edges. By its end you will have verified a piece of hardware in Rust, which means Chapter 18 gets to verify the piece of hardware this book is actually about.
 
-> **In Python we...** received the top of the simulation hierarchy as the test's argument, named it `dut`, and helped ourselves: `dut.reset_n.value = 0` set a signal, `get_int(dut.count)` read one, and `await FallingEdge(dut.clk)` synchronized with the design. The `tinyalu_utils` module supplied `get_int()` and the logger.
+> **In the UVM...** we reached the DUT through a handle. SystemVerilog testbenches got a virtual interface, delivered through the config database: `vif.reset_n <= 0` set a signal, `@(negedge vif.clk)` synchronized with the design. cocotb handed the test the top of the hierarchy as an argument named `dut`: `dut.reset_n.value = 0`, `get_int(dut.count)`, `await FallingEdge(dut.clk)` — same jobs, Python spellings.
 
 ## One continuity story before the code
 
@@ -68,7 +68,7 @@ fn get_int(signal: &LogicHandle) -> u64 {
 }
 ```
 
-`get_u64()` returns `Result<u64, ValueError>` because a signal holding `x` or `z` has no integer value — the same fact Python expressed by `int()` raising `ValueError`. The Python version needed a four-line `try/except`; Rust's `unwrap_or(0)` says "the value, or zero" in one expression. The policy remains testbench-specific, exactly as the Python book cautioned: a testbench that would rather die on `x` writes `get_u64()?` instead, and the choice is visible in the code.
+`get_u64()` returns `Result<u64, ValueError>` because a signal holding `x` or `z` has no integer value — the fact Python expressed by `int()` raising `ValueError`, and SystemVerilog expressed by letting the `x` ride silently into your arithmetic. The Python version needed a four-line `try/except`; Rust's `unwrap_or(0)` says "the value, or zero" in one expression. The policy remains testbench-specific: a testbench that would rather die on `x` writes `get_u64()?` instead, and either way the x-handling decision is visible in the code, per read, instead of ambient in the semantics.
 
 ## Testing reset
 
@@ -106,11 +106,11 @@ async fn no_count(ctx: TestCtx) -> Result<(), TestError> {
       8.00ns INFO     no_count PASSED
 ```
 
-Triggers ride on the handles now — `clk.rising_edge().await`, `clk.falling_edge().await`, `clk.value_change().await` — which is where cocotb 2.x was headed anyway with `signal.rising_edge`. One import vanished in the move: there is no `ClockCycles` in rustdv, because `for _ in 0..5 { clk.rising_edge().await; }` *is* the loop, visible, and needing no `rising=` keyword to flip its polarity — you call the edge you mean. The assertion at the end follows the Python book's advice and Chapter 9's taxonomy: `assert_eq!` marks a claim whose failure means the test fails, and the runner scores a panicking test as FAILED with the assertion's message in the log.
+Triggers ride on the handles now — `clk.rising_edge().await`, `clk.falling_edge().await`, `clk.value_change().await` — which is where cocotb 2.x was headed anyway with `signal.rising_edge`. One import vanished in the move: there is no `ClockCycles` in rustdv, because `for _ in 0..5 { clk.rising_edge().await; }` *is* the loop, visible, and needing no `rising=` keyword to flip its polarity — you call the edge you mean. The assertion at the end follows Chapter 9's taxonomy: `assert_eq!` marks a claim whose failure means the test fails, and the runner scores a panicking test as FAILED with the assertion's message in the log.
 
 ## Checking that the counter counts
 
-Set and sample on the falling edge — the DUT works on the rising edge, so the quiet half-cycle is ours, the discipline the Python book taught and every BFM in this book will use:
+Set and sample on the falling edge — the DUT works on the rising edge, so the quiet half-cycle is ours, the discipline every UVM BFM has always followed and every BFM in this book will too:
 
 ```rust
 // Figure 6: Testing that the counter counts
@@ -171,7 +171,7 @@ warning: unused `Edge` that must be used
    = note: triggers do nothing unless you .await them
 ```
 
-The program still compiles and still exhibits the bug — time does not advance, same as Python. The difference is that *the compiler told you*, at the exact line, with a note written for this exact mistake, before any simulation ran. Chapter 15 taught why the bug exists (a future does nothing until polled; laziness is structural); Rust's `#[must_use]` machinery turns that structural fact into a diagnostic. The Python book asked you to keep this mistake in mind. This book asks you to keep your build log clean, which is easier.
+The program still compiles and still exhibits the bug — time does not advance, same as a forgotten `await` in Python. The difference is that *the compiler told you*, at the exact line, with a note written for this exact mistake, before any simulation ran. Chapter 15 taught why the bug exists (a future does nothing until polled; laziness is structural); Rust's `#[must_use]` machinery turns that structural fact into a diagnostic. Earlier books asked you to keep this mistake in mind. This book asks you to keep your build log clean, which is easier.
 
 ## Summary
 

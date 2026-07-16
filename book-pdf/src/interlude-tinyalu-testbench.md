@@ -1,6 +1,6 @@
 # Interlude: The Complete TinyALU Testbench
 
-> **In Python we...** ended the book at testbench 8.0: a TinyALU driven by sequences, checked by a scoreboard, measured by coverage, all of it held together by pyuvm. This interlude shows you the same summit in Rust — the complete, running rustdv testbench — *before* the climb. Nothing here is pseudocode and nothing is a preview-shaped promise: every line below compiles, runs on Icarus Verilog, and finishes with `REGRESSION: PASS`.
+> **In the UVM...** the destination was always the same summit: a TinyALU driven by sequences, checked by a scoreboard, measured by coverage, held together by the methodology — whether *The UVM Primer* built it in SystemVerilog or *Python for RTL Verification* built it in pyuvm, both ended at testbench 8.0. This interlude shows you that summit in Rust — the complete, running rustdv testbench — *before* the climb. Nothing here is pseudocode and nothing is a preview-shaped promise: every line below compiles, runs on Icarus Verilog, and finishes with `REGRESSION: PASS`.
 
 Part I handed you fourteen chapters of language and kept saying they were load-bearing. This is the load. What follows is the actual TinyALU testbench from the rustdv repository — the code lives in the `tinyalu_tb` crate of the rustdv workspace, not in the examples tree, because it is not an exercise; it is the thing this book exists to teach you to build.
 
@@ -79,7 +79,7 @@ Chapter 14 called this capability — `cargo test` on pure testbench logic, mill
 
 ## The BFM: one owner of the pins, shared by handle
 
-The `TinyAluBfm` plays exactly the role it played in the Python book: it owns the typed signal handles and speaks the `start`/`done` handshake, so nothing else in the testbench touches a pin. Its surface is four async methods and a queue-fed state machine:
+The `TinyAluBfm` plays exactly the role a BFM has always played in this testbench: it owns the typed signal handles and speaks the `start`/`done` handshake, so nothing else in the testbench touches a pin. Its surface is four async methods and a queue-fed state machine:
 
 ```rust
 // Figure 3: The BFM's surface (tinyalu_tb/src/alu_bfm.rs, abridged)
@@ -110,7 +110,7 @@ impl TinyAluBfm {
 
 Three things to notice with Part I eyes. First, `dut.signal("clk")?` returns a `Result` — a typo'd signal name is an `Err` at time zero with the scope and name in the message, not an `AttributeError` forty minutes into elaboration (Chapter 9). Second, every method takes `&self`: the BFM's sharing is read-shaped from the outside, which is why — third — the testbench shares it as `Rc<TinyAluBfm>`, the exact pattern Chapter 13 previewed. One BFM, created by the test, a counted handle passed to each component that needs it, no `RefCell` anywhere.
 
-Inside, the BFM runs the same three free-running loops the Python book's did — a driver state machine and two monitors, each watching falling clock edges:
+Inside, the BFM runs the same three free-running loops its ancestors did — a driver state machine and two monitors, each watching falling clock edges:
 
 ```rust
 // Figure 4: The BFM driver loop — the book's driver_bfm, in Rust (abridged)

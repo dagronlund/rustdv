@@ -1,8 +1,8 @@
 # Chapter 19: TinyAluBfm
 
-Testbench 1.0 worked, and it is unmaintainable — one loop doing five jobs: signal-level communication, stimulus, checking, coverage, reporting. The Python book's diagnosis holds without translation: copy-and-modify testbenches lead "only to frustration and tears." The cure starts here, by extracting the lowest layer — everything that touches a pin — into a **bus functional model**.
+Testbench 1.0 worked, and it is unmaintainable — one loop doing five jobs: signal-level communication, stimulus, checking, coverage, reporting. The diagnosis both earlier books delivered holds without translation: copy-and-modify testbenches lead "only to frustration and tears." The cure starts here, by extracting the lowest layer — everything that touches a pin — into a **bus functional model**.
 
-> **In Python we...** built `TinyAluBfm` as a *singleton* class holding three queues and three forever-loops on the falling clock edge: `cmd_driver` drove commands from a queue, `cmd_mon` captured `(A, B, op)` tuples when `start` rose, and `result_mon` captured `result` when `done` rose. Tests talked only to `reset()`, `send_op()`, `get_cmd()`, and `get_result()`, and never touched a signal again.
+> **In the UVM...** the BFM owned the pins. SystemVerilog built it as an interface with tasks — the Primer's move, made in its third chapter. Python built `TinyAluBfm` as a *singleton* class holding three queues and three forever-loops on the falling clock edge: `cmd_driver` drove commands from a queue, `cmd_mon` captured `(A, B, op)` tuples when `start` rose, and `result_mon` captured `result` when `done` rose. Either way, tests talked only to `reset()`, `send_op()`, `get_cmd()`, and `get_result()`, and never touched a signal again.
 
 Same design here — the three loops, the three queues, the four-method surface — with one architectural change we should discuss up front, because it is this chapter's Rust lesson.
 
@@ -94,7 +94,7 @@ Line for line the Python `reset()`. Every future test resets the DUT with one aw
 
 ## The three loops
 
-The BFM's loops all share the Python book's skeleton — `loop { clk.falling_edge().await; ...work... }` — living on the falling edge because the DUT lives on the rising one. The monitors first, since they are simpler. Each is a private method returning the future its loop runs; keep an eye on how the loops get *access* to the pins:
+The BFM's loops all share the classic skeleton — `loop { clk.falling_edge().await; ...work... }` — living on the falling edge because the DUT lives on the rising one. The monitors first, since they are simpler. Each is a private method returning the future its loop runs; keep an eye on how the loops get *access* to the pins:
 
 ```rust
 // Figure 5: Monitoring the result bus
@@ -116,7 +116,7 @@ The BFM's loops all share the Python book's skeleton — `loop { clk.falling_edg
     }
 ```
 
-The protocol logic is the Python book's exactly: remember `prev_done`, and when `done` goes 0→1 across two falling edges, `result` is valid — capture it, publish it nonblockingly. The Rust texture is in the two lines before `async move`. A spawned task must own what it uses (`'static`, Chapter 12's `move` closures), and it cannot borrow `self`, which the executor might outlive. So the method *copies out* what the loop needs: `LogicHandle`s are cheap `Copy` types (they are IDs into the simulator), and cloning a `Queue` clones a handle to the shared queue (Chapter 16). The loop owns its working set outright — which is also why no other task can race it for `prev_done`.
+The protocol logic is the classic monitor's exactly: remember `prev_done`, and when `done` goes 0→1 across two falling edges, `result` is valid — capture it, publish it nonblockingly. The Rust texture is in the two lines before `async move`. A spawned task must own what it uses (`'static`, Chapter 12's `move` closures), and it cannot borrow `self`, which the executor might outlive. So the method *copies out* what the loop needs: `LogicHandle`s are cheap `Copy` types (they are IDs into the simulator), and cloning a `Queue` clones a handle to the shared queue (Chapter 16). The loop owns its working set outright — which is also why no other task can race it for `prev_done`.
 
 ```rust
 // Figure 6: Monitoring the command signals
@@ -183,7 +183,7 @@ The driver is the 1.0 loop's send-side, verbatim in spirit:
     }
 ```
 
-Python's `try: get_nowait() ... except QueueEmpty: continue` became the `match` on `Option` — same protocol, no exception. And notice, as the Python book noticed, what the driver *doesn't* do: it never reads `result`. Driving is its whole job; results belong to `result_mon`. Being able to ignore the rest of the testbench is what modularity buys.
+Python's `try: get_nowait() ... except QueueEmpty: continue` became the `match` on `Option` — same protocol, no exception. And notice what the driver *doesn't* do: it never reads `result`. Driving is its whole job; results belong to `result_mon`. Being able to ignore the rest of the testbench is what modularity buys.
 
 ## Starting the loops, and talking to them
 

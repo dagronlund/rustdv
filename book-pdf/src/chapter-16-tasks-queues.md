@@ -2,7 +2,7 @@
 
 Chapter 15 built the engine; this chapter builds the traffic. Testbenches are crowds of concurrent behaviors — a driver wiggling pins, monitors watching them, a scoreboard judging — and this chapter ports the two Python-book chapters that made such crowds manageable: launching coroutines as background *tasks*, and letting tasks talk through *queues*. It ends at the one place where the Rust model genuinely diverges from cocotb's, which is what happens when you kill a task.
 
-> **In Python we...** launched coroutines with `cocotb.start_soon()`, which returned a `RunningTask` we could await, ignore, or `kill()`; we waited for groups of tasks with `Combine()` and `First()`; and we connected tasks with `cocotb.queue.Queue`, whose blocking `put()`/`get()` and nonblocking `put_nowait()`/`get_nowait()` let a producer and consumer share data in order.
+> **In the UVM...** we ran things in parallel and wired them together. SystemVerilog forked processes with `fork...join_none`, reaped them with `join`/`join_any`, and killed them with `disable`; producers and consumers shared data through a `mailbox #(T)` with blocking `put()`/`get()` and nonblocking `try_put()`/`try_get()`. cocotb spelled the same ideas `start_soon()` — returning a `RunningTask` to await, ignore, or `kill()` — `Combine()`/`First()` for groups, and `cocotb.queue.Queue` for the data.
 
 All of it is here, most of it under a light Rust accent. And thanks to Chapter 15, none of it is magic: you know what a future is and what the executor does, so `spawn` is about to be a very short story.
 
@@ -26,7 +26,7 @@ Note what `counter` is *not*: not a test, not registered with anything, no attri
 
 ### Ignoring a running task
 
-First, the Python book's cautionary opener — launch it and walk away:
+First, the cautionary opener — launch it and walk away:
 
 ```rust
 // Figure 2: Launching a task and ignoring it
@@ -202,7 +202,7 @@ The second half is the honest loss: a cancelled Rust task cannot *await* during 
 
 ## Task communication: the sim-aware Queue
 
-With tasks running in parallel, they need to share data — in order, without races. The Python book's answer was `cocotb.queue.Queue`, and rustdv's is `sim::Queue<T>`: same blocking `put`/`get`, same nonblocking variants, executor-aware so that a blocked task parks itself with the executor rather than spinning.² One Rust twist up front: the queue is typed. A `Queue<u32>` carries `u32`s and nothing else; the Python queue carried anything, and a producer that put the wrong thing in was the consumer's runtime problem. Here it is the producer's compile error.
+With tasks running in parallel, they need to share data — in order, without races. The old answers were SystemVerilog's `mailbox #(T)` and cocotb's `Queue`; rustdv's is `sim::Queue<T>`: same blocking `put`/`get`, same nonblocking variants, executor-aware so that a blocked task parks itself with the executor rather than spinning.² One Rust twist up front: the queue is typed, always. A `Queue<u32>` carries `u32`s and nothing else; the Python queue carried anything — as did the default, unparameterized SV mailbox — and a producer that put the wrong thing in was the consumer's runtime problem. Here it is the producer's compile error.
 
 ```rust
 // Figure 9: A coroutine using a Queue to send data
@@ -259,7 +259,7 @@ async fn infinite_queue(_ctx: TestCtx) -> Result<(), TestError> {
      25.00ns INFO     Consumer got 3
 ```
 
-With unbounded capacity nothing ever blocks the producer, so it runs to completion in zero simulated time and *then* the consumer drains the queue — all sends, then all receives, the exact behavior the Python book showed for its infinite queue.
+With unbounded capacity nothing ever blocks the producer, so it runs to completion in zero simulated time and *then* the consumer drains the queue — all sends, then all receives, the classic unbounded-queue behavior in every dialect.
 
 ### A Queue of size 1
 
@@ -325,7 +325,7 @@ async fn producer_consumer_sim_delay(_ctx: TestCtx) -> Result<(), TestError> {
 
 ## Nonblocking communication
 
-Sometimes a task cannot afford to block — the Python book's example was a loop pacing itself on clock edges, which would miss edges if `get()` parked it. cocotb's escape was `put_nowait()`/`get_nowait()` plus `QueueFull`/`QueueEmpty` exceptions. rustdv has the same pair of operations, but — no exceptions — they answer in Chapter 9's vocabulary: `try_put` returns `Result<(), T>` (your item handed back on failure, so it isn't lost), and `try_get` returns `Option<T>`.
+Sometimes a task cannot afford to block — the classic example is a loop pacing itself on clock edges, which would miss edges if `get()` parked it. SystemVerilog's escape was `try_put()`/`try_get()`; cocotb's was `put_nowait()`/`get_nowait()` plus `QueueFull`/`QueueEmpty` exceptions. rustdv keeps SystemVerilog's names, but — no exceptions, no status-integer returns — they answer in Chapter 9's vocabulary: `try_put` returns `Result<(), T>` (your item handed back on failure, so it isn't lost), and `try_get` returns `Option<T>`.
 
 ```rust
 // Figure 14: Putting objects in a Queue without blocking
@@ -396,11 +396,11 @@ async fn producer_consumer_nowait(_ctx: TestCtx) -> Result<(), TestError> {
      48.00ns INFO     producer_consumer_nowait PASSED
 ```
 
-Note also, as the Python book noted, that the test *awaits the producer directly* rather than spawning it — a coroutine you need finished before proceeding can simply be awaited, no task required.
+Note also that the test *awaits the producer directly* rather than spawning it — a coroutine you need finished before proceeding can simply be awaited, no task required.
 
 ## Two more synchronizers you'll want
 
-Queues carry data; two lighter primitives carry *timing*, and Part IV uses both, so meet them now. `sim::Event` is cocotb's `Event`: any number of tasks `wait().await` on it, and one `set()` releases them all — with the same subtlety cocotb documents, that a wait on an already-set event returns immediately. It is the tool for "the reset is done," "the sequence may start" — every place the Python book warned you not to use a sleep. `sim::Lock` is cocotb's `Lock`, a mutex for tasks sharing a resource (two sequences sharing one bus), with cocotb's documented fairness guarantee preserved: acquisition order is request order, first-come first-served. Locking returns a `LockGuard` whose `Drop` releases — which you could have predicted by now: it is the objection guard pattern, the file pattern, the RAII pattern, and by Part IV it will simply be how you assume everything works.
+Queues carry data; two lighter primitives carry *timing*, and Part IV uses both, so meet them now. `sim::Event` does the job of SystemVerilog's named events and cocotb's `Event`: any number of tasks `wait().await` on it, and one `set()` releases them all — with the same subtlety cocotb documents, that a wait on an already-set event returns immediately. It is the tool for "the reset is done," "the sequence may start" — every place you were ever warned not to use a sleep. `sim::Lock` is cocotb's `Lock` and the one-key case of SystemVerilog's `semaphore`, a mutex for tasks sharing a resource (two sequences sharing one bus), with the fairness guarantee preserved: acquisition order is request order, first-come first-served. Locking returns a `LockGuard` whose `Drop` releases — which you could have predicted by now: it is the objection guard pattern, the file pattern, the RAII pattern, and by Part IV it will simply be how you assume everything works.
 
 ## Summary
 
