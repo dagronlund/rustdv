@@ -2,7 +2,7 @@
 
 The 6.0 testbench passes `(u64, u64, u64)` tuples, and everyone is tired of remembering that `op` is the thing at index 2. The UVM's answer was `uvm_object`: named-field transaction classes with standard copy, compare, and print machinery. This chapter gives the TinyALU its real transactions — and the porting story is the shortest in Part IV, because everything `uvm_object` labored to provide, the language derives.
 
-> **In Python we...** extended `uvm_sequence_item`, and got the machinery of `uvm_object`: `clone()` backed by a `do_copy()` that walked the fields; `__eq__` backed by `do_compare()`; `__str__` via `convert2string()`, which we overrode by hand for every class; plus `get_name()`, IDs for request/response matching, and stubs — pack, unpack, record — that pyuvm inherited from the specification and mostly declined to implement.
+> **In the UVM...** we extended `uvm_sequence_item`, and got the machinery of `uvm_object`: `clone()` backed by a `do_copy()` that walked the fields; equality backed by `do_compare()`; printing via `convert2string()`, which we overrode by hand for every class; plus `get_name()`, IDs for request/response matching, and the long tail — pack, unpack, record — that the specification demands and most testbenches quietly ignore.
 
 ## The transactions
 
@@ -62,7 +62,7 @@ AluCommand { a: 165, b: 117, op: Mul }
 tweaked == cmd: false
 ```
 
-The Python book's `uvm_object` chapter kept a table mapping UVM methods to Python dunders. Here it is with its third column, which is mostly one word:
+The classic table maps `uvm_object`'s methods to their Python dunders. Here it is with its third column, which is mostly one word:
 
 *Figure 3: The uvm_object surface, dispositioned*
 

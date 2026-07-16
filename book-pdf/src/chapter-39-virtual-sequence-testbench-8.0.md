@@ -1,8 +1,8 @@
 # Chapter 39: Virtual Sequence Testbench: 8.0
 
-The summit. Sequences generate stimulus; *virtual* sequences coordinate sequences — no items, no `start_item`, just a program that launches other sequences in whatever order and concurrency the test demands. Testbench 8.0 is the Python book's final version, and it arrives here with one upgrade the type system supplies for free.
+The summit. Sequences generate stimulus; *virtual* sequences coordinate sequences — no items, no `start_item`, just a program that launches other sequences in whatever order and concurrency the test demands. Testbench 8.0 is where both earlier journeys ended, and it arrives here with one upgrade the type system supplies for free.
 
-> **In Python we...** wrote `TestAllSeq(uvm_sequence)` whose `body()` fetched the sequencer from the ConfigDB and ran `rand_seq.start(seqr)` then `max_seq.start(seqr)`; the test started the virtual sequence *without* a sequencer argument. A parallel variant used `start_soon` and `Combine`. And if a virtual sequence mistakenly called `start_item()`, pyuvm raised `UVMSequenceError` at runtime.
+> **In the UVM...** we wrote a `TestAllSeq` extending `uvm_sequence` whose `body()` fetched the sequencer from the config database and ran `rand_seq.start(seqr)` then `max_seq.start(seqr)`; the test started the virtual sequence *without* a sequencer argument. A parallel variant forked the sub-sequences and joined them. And if a virtual sequence mistakenly called `start_item()`, the mistake surfaced at runtime.
 
 ## A virtual sequence is a program
 
@@ -57,7 +57,7 @@ The sequencer handle arrives as a field — where pyuvm's virtual sequence pulle
     305.00ns INFO     test_all PASSED
 ```
 
-Random operands, then a wall of `0xFF` — the Python book's figure 3, in order, eight compares, all covered.
+Random operands, then a wall of `0xFF` — in order, eight compares, all covered.
 
 ## Running sequences in parallel
 
@@ -101,7 +101,7 @@ impl TestAllParallelSeq {
 
 Random and max commands alternating, exactly as pyuvm's parallel figure showed — each sequence's own items stay in order (the handshake guarantees it), and the interleaving *between* sequences is the sequencer's FIFO fairness at work. (Two double-`?` lines in figure 4 deserve their gloss: awaiting a spawned task yields `Result<_, TaskError>` — Chapter 16 — wrapping the sequence's own `Result`. One `?` per layer of fallibility; nothing is silently dropped, including a sub-sequence that failed.)
 
-The Python book's chapter continued into pyuvm's `fork`-style helpers and sequence priorities; rustdv, like pyuvm, ships FIFO arbitration only — grab/lock/priority remain unported on both sides of the language divide, a gap both projects record rather than hide.
+SystemVerilog UVM veterans will ask about sequencer arbitration — grab, lock, priorities. rustdv, like pyuvm, ships FIFO arbitration only; the rest remains unported on both sides of the language divide, a gap both projects record rather than hide.
 
 ## The ladder, complete
 
@@ -124,7 +124,7 @@ Version 8.0 closes the climb that began with one `while` loop:
 8.0  virtual sequences: stimulus programs   (this chapter)
 ```
 
-Same summit as the Python book, same version numbers meaning the same steps — by the steeper, more scenic route Chapter 1 promised.
+Same summit as both earlier books, same architectural steps meaning the same things — by the steeper, more scenic route Chapter 1 promised.
 
 ## Summary
 

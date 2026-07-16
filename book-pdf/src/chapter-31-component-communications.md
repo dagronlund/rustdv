@@ -2,7 +2,7 @@
 
 Chapter 22 planted the problem: the 4.0/5.0 scoreboard calls `bfm.get_cmd()`, and whatever it takes, nobody else gets. Components need a standard way to send data to *each other* — the UVM's TLM (Transaction Level Modeling) system. This chapter ports it, and the port is rustdv's proudest compression: pyuvm implemented roughly thirty port/export classes; rustdv does the job with **two types and six methods**.
 
-> **In Python we...** connected components with TLM-1 machinery: `uvm_blocking_put_port` and its export on the far side, `uvm_get_port`, `uvm_nonblocking_put_port`, peek variants, each with `connect()` calls in `connect_phase` — and a runtime `UVMTLMConnectionError` when the wiring was wrong. `uvm_tlm_fifo` sat between a producer's put port and a consumer's get port.
+> **In the UVM...** we connected components with TLM-1 machinery: `uvm_blocking_put_port` and its export on the far side, `uvm_get_port`, `uvm_nonblocking_put_port`, peek variants, each with `connect()` calls in `connect_phase` — and a runtime error (pyuvm's `UVMTLMConnectionError`, SV's elaboration-time connection fatal) when the wiring was wrong. `uvm_tlm_fifo` sat between a producer's put port and a consumer's get port.
 
 ## The taxonomy, and what it was for
 
@@ -104,7 +104,7 @@ The pyuvm nonblocking ports returned a success boolean and made you check it (or
 
 ## Wiring mistakes, relocated
 
-The Python book's chapter ended, as TLM chapters must, with the runtime failure: connect a port to the wrong thing and `UVMTLMConnectionError` arrives during elaboration — if you're lucky, and during a confused simulation if you're not. The rustdv equivalent:
+Every TLM chapter must end with the runtime failure: connect a port to the wrong thing and the connection error arrives during elaboration — if you're lucky, and during a confused simulation if you're not. The rustdv equivalent:
 
 ```rust
 // Figure 8: A direction mismatch is a type error
@@ -158,7 +158,7 @@ A bare channel is invisible plumbing. Sometimes the buffer should be a *citizen*
       1.00ns INFO     flushed; empty=true
 ```
 
-`size()`, `used()`, `is_empty()`, `is_full()`, `flush()` — pyuvm's `uvm_tlm_fifo` surface, on a type that implements `ComponentNode` and can therefore sit as a `#[component(child)]` field, appearing in `print_hierarchy` like any other component. (pyuvm's default fifo size was 1; `TlmFifo::new(None)` is the unbounded spelling.) The transport/master/slave composites from the far end of the TLM-1 matrix are not ported: the Python book never taught them, pyuvm's own sources describe them as complexity inherited rather than chosen, and nothing in forty more chapters of TinyALU will miss them.
+`size()`, `used()`, `is_empty()`, `is_full()`, `flush()` — pyuvm's `uvm_tlm_fifo` surface, on a type that implements `ComponentNode` and can therefore sit as a `#[component(child)]` field, appearing in `print_hierarchy` like any other component. (pyuvm's default fifo size was 1; `TlmFifo::new(None)` is the unbounded spelling.) The transport/master/slave composites from the far end of the TLM-1 matrix are not ported: neither earlier book taught them, pyuvm's own sources describe them as complexity inherited rather than chosen, and nothing in forty more chapters of TinyALU will miss them.
 
 ## Summary
 

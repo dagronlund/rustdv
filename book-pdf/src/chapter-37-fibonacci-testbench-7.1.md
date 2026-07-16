@@ -2,7 +2,7 @@
 
 Testbench 7.0 sent commands and ignored the results — monitors caught them downstream. That is fine until the *next* command depends on the *last* answer, which real stimulus often does. Testbench 7.1 makes the dependency vivid the traditional way: the TinyALU computes Fibonacci numbers, each ADD consuming the previous ADD's sum. In pyuvm the result traveled back through a shared handle — the driver wrote `cmd.result`, and the sequence, still holding the same object, read it. Rust does not do shared-handle telepathy, and this chapter's quiet thesis is that the honest alternative — the response path — was the better design all along.
 
-> **In Python we...** wrote `FibonacciSeq`, whose body reused one `AluSeqItem`: `start_item`, set the operands to the last two numbers, `finish_item` — "and when the coroutine returns, a miracle happens: `cmd.result` contains the sum." The 7.1 `Driver` performed the miracle: it awaited `get_result()` from the BFM and copied the result into the sequence item before `item_done()`.
+> **In the UVM...** we wrote `FibonacciSeq`, whose body reused one sequence item: `start_item`, set the operands to the last two numbers, `finish_item` — "and when the coroutine returns, a miracle happens: `cmd.result` contains the sum." The driver performed the miracle by writing through the shared handle: it got the result from the BFM and copied it into the sequence item before `item_done()` — a classic move in SystemVerilog and pyuvm alike.
 
 ## The sequence
 
@@ -41,7 +41,7 @@ impl Sequence<AluCommand, AluResult> for FibonacciSeq {
 }
 ```
 
-Two changes from Chapter 36's sequences carry the whole story. The trait is now `Sequence<AluCommand, AluResult>` — the second parameter, defaulted away until now, names the response type. And after `finish_item` comes `ctx.get_response(None).await`: an explicit request for the answer, blocking until the driver supplies it. Where the Python book narrated a miracle — the result *appearing* in the item you were still holding — the Rust sequence *asks*, and the type system explains why it must: `finish_item(cmd)` consumed the command (Chapter 36 called this closing a hazard), so there is no shared handle for anyone to write a result into. The response path isn't a workaround for missing dynamism; it makes the data flow visible in the code — request goes down, response comes back, each with a type.
+Two changes from Chapter 36's sequences carry the whole story. The trait is now `Sequence<AluCommand, AluResult>` — the second parameter, defaulted away until now, names the response type. And after `finish_item` comes `ctx.get_response(None).await`: an explicit request for the answer, blocking until the driver supplies it. Where the old style narrated a miracle — the result *appearing* in the item you were still holding — the Rust sequence *asks*, and the type system explains why it must: `finish_item(cmd)` consumed the command (Chapter 36 called this closing a hazard), so there is no shared handle for anyone to write a result into. The response path isn't a workaround for missing dynamism; it makes the data flow visible in the code — request goes down, response comes back, each with a type.
 
 ## The driver
 
@@ -117,10 +117,10 @@ The environment swaps in the response-bearing pieces — `Sequencer<AluCommand, 
     215.00ns INFO     fibonacci_test PASSED
 ```
 
-The same nine numbers the Python book logged, computed the same way — each command's operands visibly built from the previous result in the monitor narration — and the scoreboard, fed by the driver's analysis port, confirms the DUT did the arithmetic honestly. The generator from Chapter 12's ancient history has become hardware-in-the-loop.
+The same nine numbers the earlier books logged, computed the same way — each command's operands visibly built from the previous result in the monitor narration — and the scoreboard, fed by the driver's analysis port, confirms the DUT did the arithmetic honestly. The generator from Chapter 12's ancient history has become hardware-in-the-loop.
 
 ## Summary
 
-Testbench 7.1 exercised the response path. A sequence that needs answers declares it in its type — `Sequence<AluCommand, AluResult>` — and asks with `ctx.get_response(None).await` after `finish_item`; the driver supplies answers with `item_done(Some(result))`, the envelope tagging each response with its request's id automatically. pyuvm's shared-handle miracle became an explicit request/response round trip, because `finish_item` consumes the item — the data flow the Python book performed offstage now appears in the code, typed in both directions. The 7.1 driver serializes by awaiting each result, which is what result-dependent stimulus wants and what pipelined stimulus does not.
+Testbench 7.1 exercised the response path. A sequence that needs answers declares it in its type — `Sequence<AluCommand, AluResult>` — and asks with `ctx.get_response(None).await` after `finish_item`; the driver supplies answers with `item_done(Some(result))`, the envelope tagging each response with its request's id automatically. The shared-handle miracle became an explicit request/response round trip, because `finish_item` consumes the item — the data flow the old style performed offstage now appears in the code, typed in both directions. The 7.1 driver serializes by awaiting each result, which is what result-dependent stimulus wants and what pipelined stimulus does not.
 
 `get_response(None)` took whatever response came first, which was safe because exactly one item was ever in flight. Run sequences *concurrently* — or pipeline one — and "whatever came first" stops being safe. That is what the transaction ids in the envelopes are for, and testbench 7.2 finally spends them.

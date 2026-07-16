@@ -1,6 +1,6 @@
 # Chapter 40: The Complete TinyALU Testbench
 
-The Python book never needed this chapter — its final testbench accreted in place across the sequence chapters. This book gets one anyway, for the readers who will use it as a template: the full 8.0-era testbench, end to end, as it ships in the rustdv repository's `tinyalu_tb` crate — the same code the Interlude showed you before the climb, now with no line unexplained. If you read the Interlude first (you did — it was the deal), this chapter is the victory lap with map annotations.
+The earlier books never needed this chapter — their final testbenches accreted in place across the closing chapters. This book gets one anyway, for the readers who will use it as a template: the full 8.0-era testbench, end to end, as it ships in the rustdv repository's `tinyalu_tb` crate — the same code the Interlude showed you before the climb, now with no line unexplained. If you read the Interlude first (you did — it was the deal), this chapter is the victory lap with map annotations.
 
 ## Project layout
 

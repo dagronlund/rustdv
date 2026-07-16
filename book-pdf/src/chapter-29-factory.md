@@ -2,11 +2,11 @@
 
 The UVM factory answers a question every test-writer eventually asks: *how do I change what the testbench does without editing the testbench?* Testbench 4.0 needed two environments because the tester was hardcoded into each; the factory's promise is one environment whose parts a test can swap from outside. The promise is kept in rustdv — this chapter and the next are the keeping — but the machinery goes the way of the ConfigDB's: the global registry, the override tables, and `create()` dissolve, and what delivers the capability is a language feature you have held since Chapter 12: **constructors are values, and closures carry them.**
 
-> **In Python we...** instantiated components through `TinyComponent.create("tc", self)` instead of calling the class, which routed construction through the UVM factory; then `set_type_override_by_type(TinyComponent, MediumComponent)` made every subsequent `create()` of a Tiny produce a Medium. A metaclass had registered every component class by name at import time, and the factory resolved overrides — including chains of them — at each creation.
+> **In the UVM...** we instantiated components through the factory — `tiny_component::type_id::create("tc", this)` in SV, `TinyComponent.create("tc", self)` in pyuvm — instead of calling the constructor; then `set_type_override_by_type(...)` made every subsequent create of a Tiny produce a Medium. Registration happened behind our backs — the `` `uvm_component_utils `` macro in SV, a metaclass at import time in Python — and the factory resolved overrides, including chains of them, at each creation.
 
 ## The component, created directly
 
-The Python book's lab animal, ported:
+The classic lab animal, ported:
 
 ```rust
 // Figure 1: A tiny example component
@@ -52,7 +52,7 @@ pub struct TinyEnv {
       0.00ns INFO     [uvm_test_top.tc]: I'm so tiny!
 ```
 
-Direct construction, and note precisely what the Python book noted: the component's *type is hardcoded* — in our case doubly so, in the field's type and in the constructor call. No test can change what `TinyEnv` builds without editing `TinyEnv`. In pyuvm the remedy began by swapping `TinyComponent("tc", self)` for `TinyComponent.create("tc", self)` — same result, but construction now routed through a global registry that overrides could redirect. rustdv has no `create()`, because it has something Python and SystemVerilog lack: constructors you can *pass around*.
+Direct construction, and note precisely what both earlier books noted: the component's *type is hardcoded* — in our case doubly so, in the field's type and in the constructor call. No test can change what `TinyEnv` builds without editing `TinyEnv`. The UVM's remedy began by swapping the constructor call for `create()` — same result, but construction now routed through a global registry that overrides could redirect. rustdv has no `create()`, because it has something Python and SystemVerilog lack: constructors you can *pass around*.
 
 ## The variation point
 
@@ -131,7 +131,7 @@ And the resolution story deserves its sentence of appreciation. pyuvm's `find_ov
 
 ## The honest ledger
 
-The Python book's factory chapter closed with `uvm_factory().debug_level` printing the registry's contents. There is no registry to print, which is the cue to write down what this design deliberately does *not* do — the same ledger rustdv's design keeps:
+The earlier books' factory chapters closed by printing the registry's contents — `factory.print()` in SV, `uvm_factory().debug_level` in pyuvm. There is no registry to print, which is the cue to write down what this design deliberately does *not* do — the same ledger rustdv's design keeps:
 
 ```text
 # Figure 9: The factory, dispositioned
@@ -149,7 +149,7 @@ string registry                         survives in exactly one place: test disc
 
 Two rows need a word. *Create-by-name* — conjuring a component from a string — was mechanism in service of the override table; with the table gone, a string-to-constructor map is something you can build in an afternoon if a flow genuinely needs it (a `HashMap<&str, Maker>` is not a framework). *Instance-path overrides* are the real loss, and the book will not pretend otherwise: in SV-UVM you can override every driver under `*.agent2` in an env whose source you cannot edit. With no global registry there is nothing to pattern-match against. The exchange is that an env's possible behaviors are exactly what its config type declares — no action at a distance — and the mitigation is a design convention this book teaches from here on: **envs intended for reuse expose maker fields in their configs.** An env without designed variation points can only be forked; rustdv is honestly weaker than SV-UVM here, and honestly clearer about what a given testbench can do.
 
-The dominant use of the factory in the Python book, though, was none of these exotica. It was: *the max-ops test overrides the random tester.* And for that, the next chapter shows, you often need even less machinery than this chapter built — because the thing tests most want to vary is the sequence, and sequences are just values you start.
+The dominant use of the factory in practice, though, is none of these exotica. It is: *the max-ops test overrides the random tester.* And for that, the next chapter shows, you often need even less machinery than this chapter built — because the thing tests most want to vary is the sequence, and sequences are just values you start.
 
 ## Summary
 

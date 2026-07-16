@@ -2,7 +2,7 @@
 
 The Python book's 7.2 chapter taught `get_response()` as the *alternative* to shared-handle results: the driver built a response item, called `set_id_info(cmd)` to link it to its request, and sent it back through `item_done()`. rustdv's Chapter 37 already crossed that bridge — with no shared handles to write through, the response path *is* the way results come back, and the id bookkeeping vanished into the envelope. So this chapter teaches what remains of 7.2, which is the part pyuvm's ids existed for all along: **retrieving responses by transaction id**, in whatever order the test wants them.
 
-> **In Python we...** created an `AluResultItem`, and the driver linked it to its command with `result_item.set_id_info(cmd)` before `item_done(result_item)`; the sequence awaited `get_response()`. The chapter closed with pitfalls — chiefly, that `get_response()` hangs when a driver never sends a response — and recommended the shared-handle style where it sufficed.
+> **In the UVM...** the driver created a response item and linked it to its command with `rsp.set_id_info(req)` before `item_done(rsp)`; the sequence awaited `get_response()`. The classic teaching closed with pitfalls — chiefly, that `get_response()` hangs when a driver never sends a response — and recommended the shared-handle style where it sufficed.
 
 ## The id you already had
 
@@ -65,12 +65,12 @@ Commands went down Add-And-Xor-Mul; responses came back Mul-Xor-And-Add, each co
 
 ## The pitfalls, ported honestly
 
-The Python book closed 7.2 with a warning that survives translation intact: **`get_response` on a request that will never get a response hangs forever.** Its example was a RAM whose writes produce no reply — a sequence calling `get_response()` after a write waits for a response the driver never sends. The rustdv failure mode is identical (the await parks on the response queue; eventually the test's timeout fires and the objection report names the survivor), and so is the discipline: *the sequence must know which requests respond*, calling `get_response` only for those. Where the response-per-request contract is real, encode it in the driver — `item_done(Some(...))` unconditionally — and where it is conditional, the honest shape is often a response type that says so: a `RSP = Option<ReadData>`, so even "no data" is a response and nothing hangs.
+One classic warning survives translation intact: **`get_response` on a request that will never get a response hangs forever.** Its example was a RAM whose writes produce no reply — a sequence calling `get_response()` after a write waits for a response the driver never sends. The rustdv failure mode is identical (the await parks on the response queue; eventually the test's timeout fires and the objection report names the survivor), and so is the discipline: *the sequence must know which requests respond*, calling `get_response` only for those. Where the response-per-request contract is real, encode it in the driver — `item_done(Some(...))` unconditionally — and where it is conditional, the honest shape is often a response type that says so: a `RSP = Option<ReadData>`, so even "no data" is a response and nothing hangs.
 
-The Python book's other conclusion — prefer shared handles over `get_response` where possible — does not port, because the premise doesn't: there is no shared-handle option, and Chapter 37 showed the response path costing one `.await`. What *does* port is the underlying advice, restated for Rust: use `get_response(None)` when one item is in flight and order is obvious; collect ids the moment more than one item can be outstanding.
+The other classic conclusion — prefer shared handles over `get_response` where possible — does not port, because the premise doesn't: there is no shared-handle option, and Chapter 37 showed the response path costing one `.await`. What *does* port is the underlying advice, restated for Rust: use `get_response(None)` when one item is in flight and order is obvious; collect ids the moment more than one item can be outstanding.
 
 ## Summary
 
 Testbench 7.2 spent the transaction ids the envelope had been minting all along. `finish_item` returns each request's `TxnId`; the driver's `item_done(Some(rsp))` tags responses automatically — `set_id_info`, retired in Chapter 37, stayed retired — and `get_response(Some(id))` cherry-picks from the response queue regardless of arrival order, with `None` remaining the FIFO-order mode for single-item-in-flight sequences. The hang-on-missing-response pitfall ports unchanged, and its mitigations are contracts: respond to everything, or make "nothing" a response.
 
-One rung remains on the ladder the Python book built: sequences that coordinate *other sequences* — stimulus of stimulus — and the 8.0 testbench that runs them. The summit is next.
+One rung remains on the ladder: sequences that coordinate *other sequences* — stimulus of stimulus — and the 8.0 testbench that runs them. The summit is next.

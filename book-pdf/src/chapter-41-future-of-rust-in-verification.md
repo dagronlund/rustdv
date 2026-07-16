@@ -1,6 +1,6 @@
 # Chapter 41: The Future of Rust in Verification
 
-The Python book closed by taking stock of a young movement, and honesty requires the same posture here — with the dial turned one notch further, because Rust verification in this book's moment is younger still. You have just finished a complete course built on a working stack: an executor, a trigger system, a component methodology, sequences, and a TinyALU regression that passes on a simulator you can download tonight. That is real. It is also early. This chapter takes stock the way the Python book taught us to: what we have, what is missing, and which way the arrows point.
+*Python for RTL Verification* closed by taking stock of a young movement, and honesty requires the same posture here — with the dial turned one notch further, because Rust verification in this book's moment is younger still. You have just finished a complete course built on a working stack: an executor, a trigger system, a component methodology, sequences, and a TinyALU regression that passes on a simulator you can download tonight. That is real. It is also early. This chapter takes stock the same way: what we have, what is missing, and which way the arrows point.
 
 ## What the experiment showed
 

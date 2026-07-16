@@ -2,7 +2,7 @@
 
 Chapter 33 built six components that don't know each other. This chapter introduces them — and it is the shortest architecture chapter in the book, because rustdv has no `connect_phase` to fill: wiring happens where construction happens, and the whole network fits in one constructor.
 
-> **In Python we...** connected everything in `connect_phase()` methods: the tester's put port to one side of a `uvm_tlm_fifo`, the driver's get port to the other; the monitors' analysis ports to the scoreboard's FIFO exports and the coverage export — a diagram's worth of `connect()` calls, each a runtime operation that could fail with `UVMTLMConnectionError`.
+> **In the UVM...** we connected everything in `connect_phase()` methods: the tester's put port to one side of a `uvm_tlm_fifo`, the driver's get port to the other; the monitors' analysis ports to the scoreboard's FIFO exports and the coverage export — a diagram's worth of `connect()` calls, each a runtime operation that could fail.
 
 ## The environment
 
@@ -94,7 +94,7 @@ A new voice in the transcript: the monitors narrate live — `cmd_monitor: (165,
 
 ## The agent-shaped hole
 
-One structural note before moving on, because the Python book's readers will be looking for it. SystemVerilog UVM (and pyuvm, in larger examples) groups driver-monitor-sequencer into an **agent** — the reusable bundle for one bus interface, with an `is_active` switch so a agent embedded in a bigger system can keep its monitors and drop its driver. The TinyALU testbench is small enough that the env plays the agent's role directly, but the pattern is worth one paragraph of Rust, because it lands on machinery you already have:
+One structural note before moving on, because UVM readers will be looking for it. The UVM groups driver-monitor-sequencer into an **agent** — the reusable bundle for one bus interface, with an `is_active` switch so an agent embedded in a bigger system can keep its monitors and drop its driver. The TinyALU testbench is small enough that the env plays the agent's role directly, but the pattern is worth one paragraph of Rust, because it lands on machinery you already have:
 
 ```rust
 // Figure 4: The agent pattern: active/passive as an enum and two Options
