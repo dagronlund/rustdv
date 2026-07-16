@@ -1,6 +1,6 @@
-// Rust for RTL Verification — Chapter 12, Figure 10
+// Rust for RTL Verification — Chapter 12, Figure 11
 // "A struct that carries its behavior as a closure"
-// Run with: cargo run --bin ch12_fig10_struct_that_carries_behavior
+// Run with: cargo run --bin ch12_fig11_struct_that_carries_behavior
 //
 // Expected output:
 //   PASS: (255, 1) -> 256

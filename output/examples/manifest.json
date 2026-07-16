@@ -981,11 +981,22 @@
  {
   "chapter": 12,
   "figure": 10,
+  "title": "The operand-pair stream, built lazily from adapters",
+  "kind": "bin",
+  "file": "ch12-closures-iterators/src/bin/ch12_fig10_operand_pair_stream_lazy.rs",
+  "error": null,
+  "bin": "ch12_fig10_operand_pair_stream_lazy",
+  "package": "ch12_closures_iterators",
+  "expected": "(0,0) (0,1) (0,2) (1,0) (1,1) (1,2) (2,0) (2,1) (2,2)\n"
+ },
+ {
+  "chapter": 12,
+  "figure": 11,
   "title": "A struct that carries its behavior as a closure",
   "kind": "bin",
-  "file": "ch12-closures-iterators/src/bin/ch12_fig10_struct_that_carries_behavior.rs",
+  "file": "ch12-closures-iterators/src/bin/ch12_fig11_struct_that_carries_behavior.rs",
   "error": null,
-  "bin": "ch12_fig10_struct_that_carries_behavior",
+  "bin": "ch12_fig11_struct_that_carries_behavior",
   "package": "ch12_closures_iterators",
   "expected": "PASS: (255, 1) -> 256\nFAIL: (15, 53) expected 5, got 6\n"
  },

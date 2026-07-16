@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="github-markdown-b4cf1fe7.css">
+        <link rel="stylesheet" href="github-markdown-482a44a1.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-138ce9c1.js";
+            window.path_to_searchindex_js = "searchindex-a5754ff7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-30fadfdb.js"></script>
@@ -329,7 +329,7 @@ percent failed: DivideByZero
 <li><strong>It’s visible in the signature.</strong> You can only use <code>?</code> in a function that itself returns a <code>Result</code> (the compiler enforces this, with a helpful error if you forget). So the ability to fail is contagious <em>in the types</em>: if <code>percent</code> propagates <code>nice_div</code>’s errors, then <code>percent</code>’s signature says <code>Result</code>, and its callers are on notice too. The chain of bosses is written down.</li>
 </ol>
 <p>The Python book showed re-raising: catch an exception, print a snarky message, then <code>raise</code> to send it upward anyway. The Rust spelling of that pattern is a <code>match</code> (or an <code>inspect_err</code> call) that logs and then returns the <code>Err</code> — nothing new to learn, just values. And when the error types along the chain differ, <code>?</code> will convert between them automatically if you’ve told it how; that hook is a trait called <code>From</code>, and traits are the very next chapter, so we’ll leave that thread hanging deliberately.</p>
-<p>One more nicety: <code>main</code> itself can return a <code>Result</code>. When it returns an <code>Err</code>, the program prints the error and exits with a failing status — the last boss in the chain has a sensible default. In Part II you’ll see that rustdv tests work the same way: a test is an <code>async fn</code> returning <code>Result&lt;(), TestError&gt;</code>, and an <code>Err</code> fails the test <em>(design doc: §0.6)</em>. The <code>?</code> operators sprinkled through a testbench are little arrows pointing at everything that can end the test.</p>
+<p>One more nicety: <code>main</code> itself can return a <code>Result</code>. When it returns an <code>Err</code>, the program prints the error and exits with a failing status — the last boss in the chain has a sensible default. In Part II you’ll see that rustdv tests work the same way: a test is an <code>async fn</code> returning <code>Result&lt;(), TestError&gt;</code>, and an <code>Err</code> fails the test. The <code>?</code> operators sprinkled through a testbench are little arrows pointing at everything that can end the test.</p>
 <h2 id="designing-an-error-enum"><a class="header" href="#designing-an-error-enum">Designing an error enum</a></h2>
 <p><code>DivError</code> had one variant, which made it a demo. Real error types earn their keep when there are several ways to fail and the caller might care which one happened — exactly the job Python’s exception <em>class hierarchy</em> did, with <code>except ZeroDivisionError</code> and <code>except TypeError</code> selecting by type. In Rust, the error type is an enum, the variants are the failure modes, payloads carry the evidence, and <code>match</code> does the selecting.</p>
 <p>Let’s build one the TinyALU will actually need. Think ahead to a testbench utility that decodes an operation field from the DUT into our <code>Ops</code> enum from Chapter 7. Two things can go wrong: the bits might not encode any legal operation, or the DUT might never hand us the value at all before the clock runs out. That’s a two-variant enum, one variant carrying the offending byte:</p>
@@ -438,7 +438,7 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 <p><code>.unwrap()</code> and <code>.expect()</code> sit exactly on this line, which is why they need judgment: each one converts an <code>Err</code>/<code>None</code> into a panic, so each one is a small signed statement that says “I claim this cannot fail here.” In playground code and examples, unwrap freely. In a testbench you’ll run for a year, prefer <code>expect</code> with a message that will make sense to whoever reads the panic — probably you, later, in a worse mood.</p>
 <p>One Python comfort has no direct Rust twin: <code>finally</code>. Rust’s guarantee of “this cleanup runs no matter what” doesn’t live in error-handling syntax at all — it lives in ownership. When a scope ends, by <code>return</code>, by <code>?</code>, or by panic-unwinding, values are dropped and their destructors run, as you saw in Chapter 5. Cleanup-on-any-exit is not something you remember to write in Rust; it’s where the <code>Drop</code> happens.</p>
 <h2 id="the-taxonomy-this-book-will-live-by"><a class="header" href="#the-taxonomy-this-book-will-live-by">The taxonomy this book will live by</a></h2>
-<p>Everything above compresses into one convention, and it is load-bearing: the rest of this book — and the design of rustdv itself — assumes it <em>(design doc: §7.3, testing conventions)</em>.</p>
+<p>Everything above compresses into one convention, and it is load-bearing: the rest of this book — and the design of rustdv itself — assumes it.</p>
 <blockquote>
 <p><strong>The failure taxonomy.</strong>
 <strong><code>Result::Err</code> is for checks</strong> — the DUT did something wrong. A scoreboard comparing predicted against actual and finding a mismatch produces an <code>Err</code>. The test fails, which is the test doing its job. This is <em>expected fallibility</em>: finding these is why we come to work.

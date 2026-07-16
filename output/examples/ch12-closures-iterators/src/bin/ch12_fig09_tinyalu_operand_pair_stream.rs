@@ -7,7 +7,13 @@
 
 
 fn operand_pairs(n: u8) -> impl Iterator<Item = (u8, u8)> {
-    (0..n).flat_map(move |aa| (0..n).map(move |bb| (aa, bb)))
+    let mut pairs = Vec::new();
+    for aa in 0..n {
+        for bb in 0..n {
+            pairs.push((aa, bb));
+        }
+    }
+    pairs.into_iter()
 }
 
 fn main() {

@@ -29,7 +29,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="github-markdown-b4cf1fe7.css">
+        <link rel="stylesheet" href="github-markdown-482a44a1.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-138ce9c1.js";
+            window.path_to_searchindex_js = "searchindex-a5754ff7.js";
         </script>
 
         <!-- Custom JS scripts for mdbook-pdf PDF generation -->
@@ -1843,7 +1843,7 @@ percent failed: DivideByZero
 <li><strong>It’s visible in the signature.</strong> You can only use <code>?</code> in a function that itself returns a <code>Result</code> (the compiler enforces this, with a helpful error if you forget). So the ability to fail is contagious <em>in the types</em>: if <code>percent</code> propagates <code>nice_div</code>’s errors, then <code>percent</code>’s signature says <code>Result</code>, and its callers are on notice too. The chain of bosses is written down.</li>
 </ol>
 <p>The Python book showed re-raising: catch an exception, print a snarky message, then <code>raise</code> to send it upward anyway. The Rust spelling of that pattern is a <code>match</code> (or an <code>inspect_err</code> call) that logs and then returns the <code>Err</code> — nothing new to learn, just values. And when the error types along the chain differ, <code>?</code> will convert between them automatically if you’ve told it how; that hook is a trait called <code>From</code>, and traits are the very next chapter, so we’ll leave that thread hanging deliberately.</p>
-<p>One more nicety: <code>main</code> itself can return a <code>Result</code>. When it returns an <code>Err</code>, the program prints the error and exits with a failing status — the last boss in the chain has a sensible default. In Part II you’ll see that rustdv tests work the same way: a test is an <code>async fn</code> returning <code>Result&lt;(), TestError&gt;</code>, and an <code>Err</code> fails the test <em>(design doc: §0.6)</em>. The <code>?</code> operators sprinkled through a testbench are little arrows pointing at everything that can end the test.</p>
+<p>One more nicety: <code>main</code> itself can return a <code>Result</code>. When it returns an <code>Err</code>, the program prints the error and exits with a failing status — the last boss in the chain has a sensible default. In Part II you’ll see that rustdv tests work the same way: a test is an <code>async fn</code> returning <code>Result&lt;(), TestError&gt;</code>, and an <code>Err</code> fails the test. The <code>?</code> operators sprinkled through a testbench are little arrows pointing at everything that can end the test.</p>
 <h2 id="designing-an-error-enum"><a class="header" href="#designing-an-error-enum">Designing an error enum</a></h2>
 <p><code>DivError</code> had one variant, which made it a demo. Real error types earn their keep when there are several ways to fail and the caller might care which one happened — exactly the job Python’s exception <em>class hierarchy</em> did, with <code>except ZeroDivisionError</code> and <code>except TypeError</code> selecting by type. In Rust, the error type is an enum, the variants are the failure modes, payloads carry the evidence, and <code>match</code> does the selecting.</p>
 <p>Let’s build one the TinyALU will actually need. Think ahead to a testbench utility that decodes an operation field from the DUT into our <code>Ops</code> enum from Chapter 7. Two things can go wrong: the bits might not encode any legal operation, or the DUT might never hand us the value at all before the clock runs out. That’s a two-variant enum, one variant carrying the offending byte:</p>
@@ -1952,7 +1952,7 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 <p><code>.unwrap()</code> and <code>.expect()</code> sit exactly on this line, which is why they need judgment: each one converts an <code>Err</code>/<code>None</code> into a panic, so each one is a small signed statement that says “I claim this cannot fail here.” In playground code and examples, unwrap freely. In a testbench you’ll run for a year, prefer <code>expect</code> with a message that will make sense to whoever reads the panic — probably you, later, in a worse mood.</p>
 <p>One Python comfort has no direct Rust twin: <code>finally</code>. Rust’s guarantee of “this cleanup runs no matter what” doesn’t live in error-handling syntax at all — it lives in ownership. When a scope ends, by <code>return</code>, by <code>?</code>, or by panic-unwinding, values are dropped and their destructors run, as you saw in Chapter 5. Cleanup-on-any-exit is not something you remember to write in Rust; it’s where the <code>Drop</code> happens.</p>
 <h2 id="the-taxonomy-this-book-will-live-by"><a class="header" href="#the-taxonomy-this-book-will-live-by">The taxonomy this book will live by</a></h2>
-<p>Everything above compresses into one convention, and it is load-bearing: the rest of this book — and the design of rustdv itself — assumes it <em>(design doc: §7.3, testing conventions)</em>.</p>
+<p>Everything above compresses into one convention, and it is load-bearing: the rest of this book — and the design of rustdv itself — assumes it.</p>
 <blockquote>
 <p><strong>The failure taxonomy.</strong>
 <strong><code>Result::Err</code> is for checks</strong> — the DUT did something wrong. A scoreboard comparing predicted against actual and finding a mismatch produces an <code>Err</code>. The test fails, which is the test doing its job. This is <em>expected fallibility</em>: finding these is why we come to work.
@@ -2562,15 +2562,38 @@ fn main() {
 0 1 1 2 3 5 8 13
 </code></pre>
 <p>The state that Python hid in a suspended stack frame is now a two-field struct you can see, and the resumption that Python performed by magic is now an ordinary method call. Notice that this iterator never returns <code>None</code> — it is <em>infinite</em>, which is fine, because it is lazy; <code>.take(8)</code> is an adapter that cuts the stream off after eight values. An infinite generator was a slightly daring trick in Python. In Rust it is Tuesday.</p>
-<p>Writing an <code>impl Iterator</code> block for every one-off stream would get old, though, and here Chapter 11’s <code>impl Trait</code> makes its second appearance — this time in a return position. A function can declare that it returns <em>some</em> iterator without naming the struct, and inside, you build that iterator out of ranges and adapters. This is the closest Rust idiom to “a function with <code>yield</code> in it,” and it is how this book will write value streams from here on.</p>
+<p>Writing an <code>impl Iterator</code> block for every one-off stream would get old, though, and here Chapter 11’s <code>impl Trait</code> makes its second appearance — this time in a return position. A function can declare that it returns <em>some</em> iterator without naming the struct, and inside, you build that iterator however is clearest — with an ordinary loop, or from ranges and adapters. This is the closest Rust idiom to “a function with <code>yield</code> in it,” and it is how this book will write value streams from here on.</p>
 <p>Suppose a test wants every combination of small A and B operands for the TinyALU. In Python:</p>
 <pre><code class="language-python">def operand_pairs(n):
     for aa in range(n):
         for bb in range(n):
             yield (aa, bb)
 </code></pre>
-<p>And in Rust, as a function returning <code>impl Iterator</code>:</p>
+<p>And in Rust, as a function returning <code>impl Iterator</code>. The honest first translation keeps the Python’s two loops exactly, and changes only one thing:</p>
 <pre class="playground"><code class="language-rust">// Figure 9: A TinyALU operand-pair stream, replacing a generator function
+
+fn operand_pairs(n: u8) -&gt; impl Iterator&lt;Item = (u8, u8)&gt; {
+    let mut pairs = Vec::new();
+    for aa in 0..n {
+        for bb in 0..n {
+            pairs.push((aa, bb));
+        }
+    }
+    pairs.into_iter()
+}
+
+fn main() {
+    for (aa, bb) in operand_pairs(3) {
+        print!("({aa},{bb}) ");
+    }
+    println!();
+}</code></pre>
+<pre><code class="language-text">--
+(0,0) (0,1) (0,2) (1,0) (1,1) (1,2) (2,0) (2,1) (2,2)
+</code></pre>
+<p>Line for line, the body <em>is</em> the Python: the same two loops, in the same order. Exactly one thing changed, at the end. Python’s <code>yield</code> handed each pair back the instant it was made; stable Rust has no <code>yield</code>, so instead you fill a <code>Vec</code> and hand back its iterator. <code>pairs.into_iter()</code> turns the vector into a stream of the same <code>(u8, u8)</code> items the signature promised, and the caller’s <code>for</code> loop cannot tell it apart from a generator. That is the whole lesson of this figure: a function that returns <code>impl Iterator</code> is how Rust writes “a function that produces a stream of values.”</p>
+<p>There is one price, and paying it is the next figure. This version builds the entire vector before it returns a single pair, where Python’s generator produced each pair on demand. For nine operand pairs that costs nothing — but the lazy form is worth seeing on its own, both because it is what you will meet in other people’s code and because it is where the two <code>move</code> keywords from Figure 4 stop being a curiosity and start earning their keep:</p>
+<pre class="playground"><code class="language-rust">// Figure 10: The operand-pair stream, built lazily from adapters
 
 fn operand_pairs(n: u8) -&gt; impl Iterator&lt;Item = (u8, u8)&gt; {
     (0..n).flat_map(move |aa| (0..n).map(move |bb| (aa, bb)))
@@ -2585,14 +2608,14 @@ fn main() {
 <pre><code class="language-text">--
 (0,0) (0,1) (0,2) (1,0) (1,1) (1,2) (2,0) (2,1) (2,2)
 </code></pre>
-<p><code>flat_map</code> is the nested-loop adapter: for each <code>aa</code> it produces a whole inner stream and splices the streams end to end. And look — there are our two <code>move</code> keywords from figure 4, no longer a curiosity. The inner closure must <em>own</em> its copy of <code>aa</code>, and the outer must own <code>n</code>, because these closures ride out of the function inside the returned iterator and live on long after <code>operand_pairs</code>’s local variables are gone. The capture rules you learned through the ownership lens are what make it safe to return a paused computation from a function. Python’s generators did the same thing by keeping the whole stack frame alive on the heap; Rust does it by moving exactly the values needed, and the compiler will name each one if you forget.</p>
+<p>The one new idea here is <code>flat_map</code>, the nested-loop adapter: for each <code>aa</code> it runs the inner closure, which produces a whole stream of <code>(aa, bb)</code> pairs, and <code>flat_map</code> splices those inner streams end to end — the outer <code>for aa</code> and the inner <code>for bb</code>, rewritten as adapters. Same nine pairs, same order, but now nothing is computed until the caller asks for the next one. And <em>that</em> laziness is what forces the two <code>move</code>s. The inner closure must own its copy of <code>aa</code>, and the outer must own <code>n</code>, because these closures ride out of the function inside the returned iterator and are called long after <code>operand_pairs</code>’s own variables are gone. The capture rules you learned through the ownership lens are exactly what make it safe to return a paused computation from a function. Python kept the whole stack frame alive on the heap to manage this; Rust moves in precisely the values the closures need, and the compiler names each one if you forget the <code>move</code>.</p>
 <blockquote>
 <p>² Generator syntax has been experimented with in unstable Rust for years, but stable Rust — the Rust this book teaches — does not have it, and honestly, between adapters and <code>impl Iterator</code>, you will rarely feel the gap.</p>
 </blockquote>
 <h2 id="closures-you-keep-a-seed-for-part-iv"><a class="header" href="#closures-you-keep-a-seed-for-part-iv">Closures you keep: a seed for Part IV</a></h2>
 <p>Everything so far has passed closures <em>downward</em> — into <code>map</code>, into <code>filter</code>, used and forgotten. The last idea in this chapter is the one with the longest reach in this book: a closure is a value, and like any value, it can be <strong>stored in a struct field</strong> and called later, by code that has no idea what the closure does inside.</p>
 <p>Because every closure has its own unwritable type, storing one takes a trait object — Chapter 10’s <code>dyn</code>, boxed up: <code>Box&lt;dyn Fn(u8, u8) -&gt; u16&gt;</code> is “some heap-allocated callable, taking two <code>u8</code>s, returning a <code>u16</code>; I don’t know or care which one.” Here is a toy checker whose <em>prediction function is data</em>:</p>
-<pre class="playground"><code class="language-rust">// Figure 10: A struct that carries its behavior as a closure
+<pre class="playground"><code class="language-rust">// Figure 11: A struct that carries its behavior as a closure
 
 struct Checker {
     predict: Box&lt;dyn Fn(u8, u8) -&gt; u16&gt;,
@@ -2627,7 +2650,7 @@ FAIL: (15, 53) expected 5, got 6
 <p>Two <code>Checker</code> values, one struct definition, two completely different behaviors — selected not by inheritance, not by overriding a virtual method, but by <em>which closure was placed in the field at construction time</em>. Sit with that for a moment, because it is the seed of something large. The UVM factory — the machinery the Python book spent a chapter on, with its registries and overrides, <code>create()</code> calls and override tables — exists to answer one question: <em>how does a test change what the testbench builds without editing the testbench?</em> Python and SystemVerilog needed a registry because they could not comfortably pass constructors around as values. Rust can. When Chapter 29 rebuilds the factory’s job, the answer will be a config struct carrying closure fields much like <code>predict</code> — a constructor in a box, replaced by the test in three visible lines, checked end to end by the compiler. You now hold the entire mechanism; Part IV supplies the methodology.</p>
 <h2 id="summary-7"><a class="header" href="#summary-7">Summary</a></h2>
 <p>Closures are unnamed functions in variables: <code>|x| x + 1</code>, with braces for multi-line bodies and types mostly inferred. They capture surrounding variables under the ordinary ownership rules — shared borrow to read, exclusive borrow to mutate, ownership when <code>move</code>d — and the traits <code>Fn</code>, <code>FnMut</code>, and <code>FnOnce</code> name those three calling contracts in signatures. Iterator adapter chains — <code>filter</code>, <code>map</code>, <code>flat_map</code>, <code>fold</code>, <code>collect</code> — replace Python’s list, set, and dictionary comprehensions part for part, and they are lazy by default, doing no work until consumed. Python’s generators map to the <code>Iterator</code> trait: implement <code>next()</code> on a struct for full control, or return <code>impl Iterator</code> built from adapters for the everyday case, with <code>move</code> closures carrying the captured state out of the function. Finally, closures are values: boxed as <code>Box&lt;dyn Fn(...)&gt;</code>, they can live in struct fields and be swapped at construction time — the mechanism Chapter 29 will grow into rustdv’s replacement for the UVM factory.</p>
-<p>That <code>Box</code> in figure 10 was the first time this book put a value on the heap on purpose, and I slipped it past you with one sentence of explanation. It deserves better — because <code>Box</code> has two siblings, <code>Rc</code> and <code>RefCell</code>, and among them they answer the question every pyuvm refugee eventually asks: <em>how do two components share one scoreboard?</em> Chapter 13 pays that debt.</p>
+<p>That <code>Box</code> in figure 11 was the first time this book put a value on the heap on purpose, and I slipped it past you with one sentence of explanation. It deserves better — because <code>Box</code> has two siblings, <code>Rc</code> and <code>RefCell</code>, and among them they answer the question every pyuvm refugee eventually asks: <em>how do two components share one scoreboard?</em> Chapter 13 pays that debt.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="chapter-13-smart-pointers-box-rc-and-refcell"><a class="header" href="#chapter-13-smart-pointers-box-rc-and-refcell">Chapter 13: Smart Pointers: Box, Rc, and RefCell</a></h1>
 <blockquote>
@@ -2818,8 +2841,8 @@ same object: true
 <p><strong>The temptation.</strong> This is the real cost. Once you know <code>Rc&lt;RefCell&lt;T&gt;&gt;</code> exists, every borrow-checker error acquires an easy exit: wrap it, clone it, move on. Do that habitually and you will have written Python with worse syntax — every shared value a potential runtime panic, every refcount a small tax, and the compiler’s proofs traded away for the debugging sessions this book keeps promising you left behind. The discipline is the same one the Python book taught for private attributes, pointed the other way: reach for the escape hatch deliberately, at a designed boundary, and let the default remain the default.</p>
 <h2 id="why-rustdv-barely-needs-any-of-this"><a class="header" href="#why-rustdv-barely-needs-any-of-this">Why rustdv barely needs any of this</a></h2>
 <p>Which brings us to the question this chapter has been building toward: how much <code>Rc&lt;RefCell&lt;T&gt;&gt;</code> will the testbenches in Part IV actually contain? You know how pyuvm is built — every child holds <code>_parent</code>, every parent holds <code>_children</code>, and a global <code>component_dict</code> holds a reference to everything. That is a graph full of exactly the parent-and-child cycles that make <code>Rc</code> leak, and it works in Python only because the garbage collector untangles what the refcounts cannot. Port that structure naively and you would be signing up for <code>Rc&lt;RefCell&lt;T&gt;&gt;</code> everywhere, <code>Weak</code> back-references to break the cycles, and a runtime borrow check on every component access — Python’s architecture with Rust’s ceremony, the worst page of both books.</p>
-<p>rustdv’s design refuses the premise: <strong>the component tree <em>is</em> the ownership tree</strong> (design doc: §0.2 and the component-hierarchy discussion, §5.2). An environment is a struct; its children are its fields; the parent owns them the way any struct owns its fields, and drops them at its own drop, in the way you have understood since Chapter 5. There is no back-pointer to a parent, no global registry, no cycle — so there is nothing for a refcount to get wrong and no shared mutation for a <code>RefCell</code> to referee. When the monitor needs to hand the scoreboard a transaction, it will not reach through a shared reference to poke scoreboard state; it will send the transaction down a channel, moving ownership the way Chapter 5’s baton pass always wanted to (design doc: §5.6). The hierarchy that forced Python into pervasive implicit sharing simply is not shaped that way here.</p>
-<p>What survives is the genuinely shared resource — the thing that really does have several users and really is one object. The canonical example, previewed now and built in Part IV: one <code>TinyAluBfm</code> wrapping the DUT interface, needed by a driver <em>and</em> a monitor at once. The design doc’s answer is a config struct carrying <code>bfm: Rc&lt;TinyAluBfm&gt;</code> — the test creates the BFM once, and each component that needs it receives a counted handle through its constructor (design doc: §5.4). Notice which half of this chapter that uses: <code>Rc</code> alone, no <code>RefCell</code>, because the BFM’s async methods take <code>&amp;self</code> and the sharing is read-shaped from the outside. Shared mutability, where it appears in rustdv at all, is deliberate, boundary-marked, and rare — every use called out in the design rather than ambient in the architecture (design doc: §0.2). The escape hatch exists, you now know exactly what it costs, and the framework’s job is to make sure you almost never reach for it.</p>
+<p>rustdv’s design refuses the premise: <strong>the component tree <em>is</em> the ownership tree</strong>. An environment is a struct; its children are its fields; the parent owns them the way any struct owns its fields, and drops them at its own drop, in the way you have understood since Chapter 5. There is no back-pointer to a parent, no global registry, no cycle — so there is nothing for a refcount to get wrong and no shared mutation for a <code>RefCell</code> to referee. When the monitor needs to hand the scoreboard a transaction, it will not reach through a shared reference to poke scoreboard state; it will send the transaction down a channel, moving ownership the way Chapter 5’s baton pass always wanted to. The hierarchy that forced Python into pervasive implicit sharing simply is not shaped that way here.</p>
+<p>What survives is the genuinely shared resource — the thing that really does have several users and really is one object. The canonical example, previewed now and built in Part IV: one <code>TinyAluBfm</code> wrapping the DUT interface, needed by a driver <em>and</em> a monitor at once. rustdv’s answer is a config struct carrying <code>bfm: Rc&lt;TinyAluBfm&gt;</code> — the test creates the BFM once, and each component that needs it receives a counted handle through its constructor. Notice which half of this chapter that uses: <code>Rc</code> alone, no <code>RefCell</code>, because the BFM’s async methods take <code>&amp;self</code> and the sharing is read-shaped from the outside. Shared mutability, where it appears in rustdv at all, is deliberate, boundary-marked, and rare — every use called out in the design rather than ambient in the architecture. The escape hatch exists, you now know exactly what it costs, and the framework’s job is to make sure you almost never reach for it.</p>
 <p>That completes the Rust you need for values: how they are owned, borrowed, shaped, collected, and — this chapter — shared on purpose. What you do not yet know is how Rust programs are <em>organized</em>: where <code>use std::rc::Rc</code> has been coming from all this time, what a crate actually is, and how <code>cargo</code> turns a directory of files into the testbench library a simulator can load. Chapter 14 is about modules, crates, and cargo — and it ends with something Python never quite gave you: unit tests that run in milliseconds, no simulator required.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="chapter-14-modules-crates-and-cargo"><a class="header" href="#chapter-14-modules-crates-and-cargo">Chapter 14: Modules, Crates, and Cargo</a></h1>
@@ -4011,7 +4034,7 @@ async fn producer_consumer_nowait(_ctx: TestCtx) -&gt; Result&lt;(), TestError&g
 <p>Under cocotb sits a C++ layer called the GPI — the <em>Generic Procedural Interface</em> — that abstracts the simulators’ native APIs (VPI for Verilog simulators, VHPI and FLI for VHDL) behind one set of calls: get a handle by name, read a value, write a value, register a callback. A decade of simulator quirks lives in that layer, and it is the unsung reason cocotb runs everywhere.</p>
 <p>rustdv speaks to the simulator through the same procedural interfaces, and its layering copies cocotb’s on purpose: a <code>-sys</code> crate of raw simulator bindings at the bottom, a safe wrapper crate above it that turns null pointers into <code>Err</code> and untracked lifetimes into owned types, and <code>rustdv-sim</code> — everything you met in Chapters 15 and 16 — on top.¹ The mechanical difference from cocotb is <em>what</em> the simulator loads: where cocotb’s makefiles arranged for the simulator to start an embedded Python interpreter that imports your test module, a rustdv testbench <strong>compiles to a shared library</strong> that the simulator loads directly, the way it would load any VPI plugin. That is the story behind the two ceremony lines from Chapter 15: <code>vpi_bootstrap!()</code> exports the entry points the simulator calls at startup, and the chapter run scripts hand <code>vvp</code> (Icarus’s runtime) our compiled library alongside the compiled design. No interpreter starts, because there is nothing to interpret; the testbench <em>is</em> native code, checked before the simulator ever ran.</p>
 <blockquote>
-<p>¹ On Icarus, today, the bottom crate binds VPI directly. The rustdv repository’s design documents record the plan for adopting cocotb’s own GPI library — inheriting its VHPI/FLI reach — as the multi-simulator step; the safe layer above is shaped so that swap stays invisible to testbench code.</p>
+<p>¹ On Icarus, today, the bottom crate binds VPI directly. rustdv’s plan is to adopt cocotb’s own GPI library — inheriting its VHPI/FLI reach — as the multi-simulator step; the safe layer above is shaped so that swap stays invisible to testbench code.</p>
 </blockquote>
 <h2 id="verifying-a-counter"><a class="header" href="#verifying-a-counter">Verifying a counter</a></h2>
 <p>Our DUT for the day, reprinted from the Python book down to the timescale:</p>
@@ -5614,7 +5637,7 @@ impl Component for LogComp {
 <p>Five calls, four lines — the same demonstration, the same missing line. <code>debug</code> ranks below the default INFO threshold and is filtered, precisely as in the Python book’s figure. The output format carries the pyuvm signature into the rustdv house style: simulated time, level, <code>[hierarchy.path]:</code>, message.</p>
 <p>One honest deviation to flag while it is visible in figure 2: pyuvm’s logger got its path <em>for free</em> — the component knew its parent, so <code>uvm_test_top.comp</code> materialized without your help. A rustdv component’s logger takes the path as a constructor argument, because a struct field does not know what field name it lives in. The convention is the one you’d guess (the logger path matches the field path: the env constructs <code>Scoreboard::new(...)</code> whose logger is <code>"env.scoreboard"</code>), and the derive-macro wiring that would automate it is on rustdv’s roadmap rather than in its present. One string per constructor is the current price of the feature.¹</p>
 <blockquote>
-<p>¹ Design-doc watchers: this is OQ-15’s “logging-span wiring,” deferred. The <code>Logger</code> API is shaped so the automation, when it lands, changes who <em>calls</em> <code>Logger::new</code> — not any code that logs.</p>
+<p>¹ The logging-span wiring is deferred. The <code>Logger</code> API is shaped so that when it lands, it changes who <em>calls</em> <code>Logger::new</code> — not any code that logs.</p>
 </blockquote>
 <h2 id="logging-levels"><a class="header" href="#logging-levels">Logging levels</a></h2>
 <p>The six levels come straight across, minus one that Python’s <code>logging</code> module defined but nobody used:</p>
@@ -5871,7 +5894,7 @@ error[E0062]: field `loga_msg` specified more than once
 </code></pre>
 <p>The conflict is not resolved by a precedence rule; it is rejected as a contradiction. A field has one value, set at one construction site, and two claimants collide in the compiler rather than in a debugging session at seed 8,441.</p>
 <h2 id="sharing-real-resources"><a class="header" href="#sharing-real-resources">Sharing real resources</a></h2>
-<p>Strings made the mechanics visible; the case that matters is sharing something live — the Python book’s own example was “we might have done this with a handle to the TinyAluBfm.” You have been reading the rustdv answer since Chapter 25: an <code>Rc&lt;TinyAluBfm&gt;</code> field in the config, cloned to each component that needs the one BFM. The design-doc form, which testbench 6.0 adopts wholesale:</p>
+<p>Strings made the mechanics visible; the case that matters is sharing something live — the Python book’s own example was “we might have done this with a handle to the TinyAluBfm.” You have been reading the rustdv answer since Chapter 25: an <code>Rc&lt;TinyAluBfm&gt;</code> field in the config, cloned to each component that needs the one BFM. The form testbench 6.0 adopts wholesale:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// Figure 11: The shape of a real config tree (testbench 6.0's, previewed)
@@ -6087,7 +6110,7 @@ impl FlexEnv {
     }
 }
 <span class="boring">}</span></code></pre>
-<p>Take it a piece at a time, because every piece is a Chapter 10–13 alumnus doing methodology work. <code>TinyLike</code> is the <em>contract of the slot</em>: what must be true of anything standing in this position — here, just “be a component” (real slots say more; testbench 6.0’s driver slot demands the driver interface). <code>make_tc</code> is a boxed <code>FnOnce</code> closure returning a boxed trait object: a constructor, stored in a struct field, called exactly once — <code>(config.make_tc)()</code> — where pyuvm called <code>create()</code>. The <code>Default</code> impl is the factory’s “no override registered” case: by default, the maker builds the original. And the child field became <code>Box&lt;dyn TinyLike&gt;</code> — dynamic dispatch, deliberately, because an overridable slot <em>is</em> the place where you don’t know the concrete type; this is the trait-objects-versus-generics line from Chapter 10, drawn exactly where the design doc drew it.</p>
+<p>Take it a piece at a time, because every piece is a Chapter 10–13 alumnus doing methodology work. <code>TinyLike</code> is the <em>contract of the slot</em>: what must be true of anything standing in this position — here, just “be a component” (real slots say more; testbench 6.0’s driver slot demands the driver interface). <code>make_tc</code> is a boxed <code>FnOnce</code> closure returning a boxed trait object: a constructor, stored in a struct field, called exactly once — <code>(config.make_tc)()</code> — where pyuvm called <code>create()</code>. The <code>Default</code> impl is the factory’s “no override registered” case: by default, the maker builds the original. And the child field became <code>Box&lt;dyn TinyLike&gt;</code> — dynamic dispatch, deliberately, because an overridable slot <em>is</em> the place where you don’t know the concrete type; this is the trait-objects-versus-generics line from Chapter 10, drawn exactly where rustdv’s design draws it.</p>
 <pre><code class="language-text"># Figure 5: The default maker builds the original component
 --
       0.00ns INFO     [uvm_test_top.tc]: I'm so tiny!
@@ -6121,7 +6144,7 @@ async fn medium_test(_ctx: TestCtx) -&gt; Result&lt;(), TestError&gt; {
 <p>That is <code>set_type_override_by_type(TinyComponent, MediumComponent)</code>: three visible lines in the test, no strings, no registry, checked end to end. If <code>MediumComponent</code> doesn’t satisfy the slot’s contract, the closure doesn’t compile — where pyuvm discovered an unsuitable override by runtime failure inside <code>create()</code>. If two tests want different substitutes, each builds its own config; there is no ambient global registry for one test’s override to leak through into the next test’s run, a bug class the SystemVerilog UVM knows well.</p>
 <p>And the resolution story deserves its sentence of appreciation. pyuvm’s <code>find_override</code> was a recursive resolver walking override <em>chains</em> — Tiny→Medium, Medium→Large, with loop detection, because overrides of overrides accumulate in a global table. The rustdv equivalent is: the field holds one closure. Assignment is visible and final; there is no chain to chase, no loop to detect, and “what will this env build?” is answered by reading the config at the construction site.</p>
 <h2 id="the-honest-ledger"><a class="header" href="#the-honest-ledger">The honest ledger</a></h2>
-<p>The Python book’s factory chapter closed with <code>uvm_factory().debug_level</code> printing the registry’s contents. There is no registry to print, which is the cue to write down what this design deliberately does <em>not</em> do — the same ledger the rustdv design documents keep:</p>
+<p>The Python book’s factory chapter closed with <code>uvm_factory().debug_level</code> printing the registry’s contents. There is no registry to print, which is the cue to write down what this design deliberately does <em>not</em> do — the same ledger rustdv’s design keeps:</p>
 <pre><code class="language-text"># Figure 9: The factory, dispositioned
 
 pyuvm capability                        rustdv disposition
@@ -6234,7 +6257,7 @@ async fn max_test(ctx: TestCtx) -&gt; Result&lt;(), TestError&gt; {
 <p>The env’s two components still talk to the DUT through one shared BFM, though, and the scoreboard still hoards <code>get_cmd()</code> — the very problem Chapter 22 flagged. Standard component-to-component communication is the next stop: channels, and the two-type answer to TLM’s thirty classes.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="chapter-31-component-communications"><a class="header" href="#chapter-31-component-communications">Chapter 31: Component Communications</a></h1>
-<p>Chapter 22 planted the problem: the 4.0/5.0 scoreboard calls <code>bfm.get_cmd()</code>, and whatever it takes, nobody else gets. Components need a standard way to send data to <em>each other</em> — the UVM’s TLM (Transaction Level Modeling) system. This chapter ports it, and the port is the design documents’ proudest compression: pyuvm implemented roughly thirty port/export classes; rustdv does the job with <strong>two types and six methods</strong>.</p>
+<p>Chapter 22 planted the problem: the 4.0/5.0 scoreboard calls <code>bfm.get_cmd()</code>, and whatever it takes, nobody else gets. Components need a standard way to send data to <em>each other</em> — the UVM’s TLM (Transaction Level Modeling) system. This chapter ports it, and the port is rustdv’s proudest compression: pyuvm implemented roughly thirty port/export classes; rustdv does the job with <strong>two types and six methods</strong>.</p>
 <blockquote>
 <p><strong>In Python we…</strong> connected components with TLM-1 machinery: <code>uvm_blocking_put_port</code> and its export on the far side, <code>uvm_get_port</code>, <code>uvm_nonblocking_put_port</code>, peek variants, each with <code>connect()</code> calls in <code>connect_phase</code> — and a runtime <code>UVMTLMConnectionError</code> when the wiring was wrong. <code>uvm_tlm_fifo</code> sat between a producer’s put port and a consumer’s get port.</p>
 </blockquote>
@@ -6324,7 +6347,7 @@ async fn blocking_test(_ctx: TestCtx) -&gt; Result&lt;(), TestError&gt; {
 </code></pre>
 <p>The pyuvm nonblocking ports returned a success boolean and made you check it (or forgot to); the rustdv signatures make ignoring failure a compiler warning and — the touch worth savoring — <code>TlmFull(rejected)</code> hands your item <em>back</em> on failure, so a full channel cannot eat a transaction. <code>peek</code>/<code>try_peek</code> (figure 6 in the chapter crate) round out the family: read without removing, requiring <code>T: Clone</code> because two parties will now hold the value — a bound pyuvm couldn’t state and therefore couldn’t enforce.</p>
 <h2 id="wiring-mistakes-relocated"><a class="header" href="#wiring-mistakes-relocated">Wiring mistakes, relocated</a></h2>
-<p>The Python book’s chapter ended, as TLM chapters must, with the runtime failure: connect a port to the wrong thing and <code>UVMTLMConnectionError</code> arrives during elaboration — if you’re lucky, and during a confused simulation if you’re not. The rustdv equivalent, promised since the design documents:</p>
+<p>The Python book’s chapter ended, as TLM chapters must, with the runtime failure: connect a port to the wrong thing and <code>UVMTLMConnectionError</code> arrives during elaboration — if you’re lucky, and during a confused simulation if you’re not. The rustdv equivalent:</p>
 <pre class="playground"><code class="language-rust">// Figure 8: A direction mismatch is a type error
 
 struct Driver {
@@ -6827,22 +6850,27 @@ AluCommand { a: 165, b: 117, op: Mul }
 tweaked == cmd: false
 </code></pre>
 <p>The Python book’s <code>uvm_object</code> chapter kept a table mapping UVM methods to Python dunders. Here it is with its third column, which is mostly one word:</p>
-<pre><code class="language-text"># Figure 3: The uvm_object surface, dispositioned
-
-UVM method            Python (pyuvm)            Rust (rustdv)
-----------            --------------            -------------
-clone()/do_copy()     __deepcopy__ / override   #[derive(Clone)]
-compare()/do_compare  __eq__ / override         #[derive(PartialEq)]
-convert2string()      __str__ / override        #[derive(Debug)]
-print()               print(obj)                println!("{obj:?}")
-get_name()            stored name string        std::any::type_name / none needed
-get_inst_id()         id(self)                  no identity on data (see below)
-pack()/unpack()       raised UVMNotImplemented  not ported (same cut)
-record()              stub                      not ported (same cut)
-</code></pre>
+<p><em>Figure 3: The uvm_object surface, dispositioned</em></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>UVM method</th><th>Python (pyuvm)</th><th>Rust (rustdv)</th></tr>
+</thead>
+<tbody>
+<tr><td><code>clone()</code>/<code>do_copy()</code></td><td><code>__deepcopy__</code> / override</td><td><code>#[derive(Clone)]</code></td></tr>
+<tr><td><code>compare()</code>/<code>do_compare</code></td><td><code>__eq__</code> / override</td><td><code>#[derive(PartialEq)]</code></td></tr>
+<tr><td><code>convert2string()</code></td><td><code>__str__</code> / override</td><td><code>#[derive(Debug)]</code></td></tr>
+<tr><td><code>print()</code></td><td><code>print(obj)</code></td><td><code>println!("{obj:?}")</code></td></tr>
+<tr><td><code>get_name()</code></td><td>stored name string</td><td><code>std::any::type_name</code> / none needed</td></tr>
+<tr><td><code>get_inst_id()</code></td><td><code>id(self)</code></td><td>no identity on data (see below)</td></tr>
+<tr><td><code>pack()</code>/<code>unpack()</code></td><td>raised <code>UVMNotImplemented</code></td><td>not ported (same cut)</td></tr>
+<tr><td><code>record()</code></td><td>stub</td><td>not ported (same cut)</td></tr>
+</tbody>
+</table>
+</div>
 <p>Two rows repay a closer look. The derives are not conveniences over the pyuvm way — they are the <em>same technique moved to compile time</em>. pyuvm’s <code>do_copy</code> walked <code>self.__dict__</code> at runtime to copy whatever fields it found; <code>#[derive(Clone)]</code> walks the field list at compile time and emits exactly the member-wise code you’d write by hand (Chapter 21’s derive story). Add a field to <code>AluCommand</code> and copy, compare, and print all update themselves — the field-macros problem SystemVerilog solved with <code>\</code>uvm_field_int<code> and pyuvm solved with reflection, solved a third way, with no runtime cost and no macros in *your* code. And the bottom rows record an agreement across all three books: pack, unpack, and recording were stubs in pyuvm (</code>UVMNotImplemented`), and rustdv makes the same cut on the same reasoning.</p>
 <h2 id="where-comparison-policy-went"><a class="header" href="#where-comparison-policy-went">Where comparison policy went</a></h2>
-<p>One pyuvm capability looks missing: overriding <code>do_compare</code> so that “equal” ignores some fields — a timestamp, a don’t-care flag. rustdv’s position, from the design documents: <em>comparison policy is checker policy, not data-type property</em> — bake one DUT’s notion of matching into the type and every other user of that type inherits it silently. So the scoreboard takes the policy as a value:</p>
+<p>One pyuvm capability looks missing: overriding <code>do_compare</code> so that “equal” ignores some fields — a timestamp, a don’t-care flag. rustdv’s position: <em>comparison policy is checker policy, not data-type property</em> — bake one DUT’s notion of matching into the type and every other user of that type inherits it silently. So the scoreboard takes the policy as a value:</p>
 <pre class="playground"><code class="language-rust">// Figure 4: Comparison policy lives in the checker
 
 #[derive(Clone, Debug, PartialEq)]
@@ -7265,7 +7293,7 @@ impl TestAllSeq {
     }
 }
 <span class="boring">}</span></code></pre>
-<p>Look at what <code>TestAllSeq</code> is <em>not</em>: it does not implement <code>Sequence</code>, because <code>Sequence::body</code> receives a <code>SeqCtx</code> — an item channel — and a virtual sequence has no items. It is a plain struct holding the sequencer handle it will conduct, with an ordinary <code>async fn body</code>. That structural difference is the upgrade: pyuvm policed “virtual sequences must not call <code>start_item</code>” with a runtime <code>UVMSequenceError</code>; here the misuse is <em>unwritable</em> — there is no <code>ctx</code> in scope to call <code>start_item</code> on. The design documents call this making the illegal state unrepresentable, and this is its cleanest appearance in the book.</p>
+<p>Look at what <code>TestAllSeq</code> is <em>not</em>: it does not implement <code>Sequence</code>, because <code>Sequence::body</code> receives a <code>SeqCtx</code> — an item channel — and a virtual sequence has no items. It is a plain struct holding the sequencer handle it will conduct, with an ordinary <code>async fn body</code>. That structural difference is the upgrade: pyuvm policed “virtual sequences must not call <code>start_item</code>” with a runtime <code>UVMSequenceError</code>; here the misuse is <em>unwritable</em> — there is no <code>ctx</code> in scope to call <code>start_item</code> on. This is what it means to make the illegal state unrepresentable, and this is its cleanest appearance in the book.</p>
 <p>The sequencer handle arrives as a field — where pyuvm’s virtual sequence pulled <code>"SEQR"</code> from the ConfigDB, ours is configured like everything else since Chapter 27: by construction. A virtual sequence coordinating <em>several</em> buses holds several sequencer fields, each typed to its transaction, and starting a sequence on the wrong bus is a compile error.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -7330,7 +7358,7 @@ impl TestAllParallelSeq {
     610.00ns INFO     test_all_parallel PASSED
 </code></pre>
 <p>Random and max commands alternating, exactly as pyuvm’s parallel figure showed — each sequence’s own items stay in order (the handshake guarantees it), and the interleaving <em>between</em> sequences is the sequencer’s FIFO fairness at work. (Two double-<code>?</code> lines in figure 4 deserve their gloss: awaiting a spawned task yields <code>Result&lt;_, TaskError&gt;</code> — Chapter 16 — wrapping the sequence’s own <code>Result</code>. One <code>?</code> per layer of fallibility; nothing is silently dropped, including a sub-sequence that failed.)</p>
-<p>The Python book’s chapter continued into pyuvm’s <code>fork</code>-style helpers and sequence priorities; rustdv, like pyuvm, ships FIFO arbitration only — grab/lock/priority remain unported on both sides of the language divide, a gap all the design documents record rather than hide.</p>
+<p>The Python book’s chapter continued into pyuvm’s <code>fork</code>-style helpers and sequence priorities; rustdv, like pyuvm, ships FIFO arbitration only — grab/lock/priority remain unported on both sides of the language divide, a gap both projects record rather than hide.</p>
 <h2 id="the-ladder-complete"><a class="header" href="#the-ladder-complete">The ladder, complete</a></h2>
 <p>Version 8.0 closes the climb that began with one <code>while</code> loop:</p>
 <pre><code class="language-text"># Figure 6: Ten testbenches, one DUT
@@ -7474,7 +7502,7 @@ REGRESSION: FAIL
 <p>The costs, tallied with the same honesty: the borrow checker’s apprenticeship is real, <code>Pin&lt;Box&lt;dyn Future&gt;&gt;</code> appears where Python showed nothing, drop-based cancellation demands the shutdown-message idiom where cocotb’s <code>kill()</code> sufficed, and instance-path factory overrides are honestly gone. Fair trade? This book’s forty chapters are the argument that it is; your next project is the verdict that matters.</p>
 <h2 id="the-missing-pieces"><a class="header" href="#the-missing-pieces">The missing pieces</a></h2>
 <p>An honest inventory of what rustdv-shaped stacks do not yet have, in rough order of how soon a team would hit the wall:</p>
-<p><strong>Multi-simulator support.</strong> Everything in this book ran on Icarus through VPI. The design documents’ plan — adopting cocotb’s GPI layer, with its decade of VHPI and FLI quirk-knowledge — is the bridge to commercial simulators and VHDL, and it is engineering, not research: the boundary was designed for exactly this crossing. Until it lands, Rust verification is a Verilog-simulator story.</p>
+<p><strong>Multi-simulator support.</strong> Everything in this book ran on Icarus through VPI. rustdv’s plan — adopting cocotb’s GPI layer, with its decade of VHPI and FLI quirk-knowledge — is the bridge to commercial simulators and VHDL, and it is engineering, not research: the boundary was designed for exactly this crossing. Until it lands, Rust verification is a Verilog-simulator story.</p>
 <p><strong>The register abstraction layer.</strong> pyuvm ports UVM’s RAL; nothing in this book touches it. A Rust RAL is a design opportunity more than a porting job — register maps are exactly the kind of structured, generated, compile-time-checkable data Rust digests well — but someone has to write it.</p>
 <p><strong>Constrained randomization.</strong> SystemVerilog’s <code>constraint</code> blocks and pyuvm’s reliance on plain <code>random</code> bracket the space; this book lived at the plain-<code>Rng</code> end. Rust’s ecosystem has SAT and SMT bindings, property-based-testing crates with sophisticated value generation, and a macro system that could make constraint declarations pleasant. This is the open problem with the most research flavor and possibly the most payoff.</p>
 <p><strong>Coverage infrastructure.</strong> Our <code>Coverage</code> components were hand-rolled counters. Covergroups, bins, crosses, and — critically — the merge-and-report tooling around them are table stakes for production flows.</p>

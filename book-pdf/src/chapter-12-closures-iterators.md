@@ -247,7 +247,7 @@ fn main() {
 
 The state that Python hid in a suspended stack frame is now a two-field struct you can see, and the resumption that Python performed by magic is now an ordinary method call. Notice that this iterator never returns `None` — it is *infinite*, which is fine, because it is lazy; `.take(8)` is an adapter that cuts the stream off after eight values. An infinite generator was a slightly daring trick in Python. In Rust it is Tuesday.
 
-Writing an `impl Iterator` block for every one-off stream would get old, though, and here Chapter 11's `impl Trait` makes its second appearance — this time in a return position. A function can declare that it returns *some* iterator without naming the struct, and inside, you build that iterator out of ranges and adapters. This is the closest Rust idiom to "a function with `yield` in it," and it is how this book will write value streams from here on.
+Writing an `impl Iterator` block for every one-off stream would get old, though, and here Chapter 11's `impl Trait` makes its second appearance — this time in a return position. A function can declare that it returns *some* iterator without naming the struct, and inside, you build that iterator however is clearest — with an ordinary loop, or from ranges and adapters. This is the closest Rust idiom to "a function with `yield` in it," and it is how this book will write value streams from here on.
 
 Suppose a test wants every combination of small A and B operands for the TinyALU. In Python:
 
@@ -258,10 +258,40 @@ def operand_pairs(n):
             yield (aa, bb)
 ```
 
-And in Rust, as a function returning `impl Iterator`:
+And in Rust, as a function returning `impl Iterator`. The honest first translation keeps the Python's two loops exactly, and changes only one thing:
 
 ```rust
 // Figure 9: A TinyALU operand-pair stream, replacing a generator function
+
+fn operand_pairs(n: u8) -> impl Iterator<Item = (u8, u8)> {
+    let mut pairs = Vec::new();
+    for aa in 0..n {
+        for bb in 0..n {
+            pairs.push((aa, bb));
+        }
+    }
+    pairs.into_iter()
+}
+
+fn main() {
+    for (aa, bb) in operand_pairs(3) {
+        print!("({aa},{bb}) ");
+    }
+    println!();
+}
+```
+
+```text
+--
+(0,0) (0,1) (0,2) (1,0) (1,1) (1,2) (2,0) (2,1) (2,2)
+```
+
+Line for line, the body *is* the Python: the same two loops, in the same order. Exactly one thing changed, at the end. Python's `yield` handed each pair back the instant it was made; stable Rust has no `yield`, so instead you fill a `Vec` and hand back its iterator. `pairs.into_iter()` turns the vector into a stream of the same `(u8, u8)` items the signature promised, and the caller's `for` loop cannot tell it apart from a generator. That is the whole lesson of this figure: a function that returns `impl Iterator` is how Rust writes "a function that produces a stream of values."
+
+There is one price, and paying it is the next figure. This version builds the entire vector before it returns a single pair, where Python's generator produced each pair on demand. For nine operand pairs that costs nothing — but the lazy form is worth seeing on its own, both because it is what you will meet in other people's code and because it is where the two `move` keywords from Figure 4 stop being a curiosity and start earning their keep:
+
+```rust
+// Figure 10: The operand-pair stream, built lazily from adapters
 
 fn operand_pairs(n: u8) -> impl Iterator<Item = (u8, u8)> {
     (0..n).flat_map(move |aa| (0..n).map(move |bb| (aa, bb)))
@@ -280,7 +310,7 @@ fn main() {
 (0,0) (0,1) (0,2) (1,0) (1,1) (1,2) (2,0) (2,1) (2,2)
 ```
 
-`flat_map` is the nested-loop adapter: for each `aa` it produces a whole inner stream and splices the streams end to end. And look — there are our two `move` keywords from figure 4, no longer a curiosity. The inner closure must *own* its copy of `aa`, and the outer must own `n`, because these closures ride out of the function inside the returned iterator and live on long after `operand_pairs`'s local variables are gone. The capture rules you learned through the ownership lens are what make it safe to return a paused computation from a function. Python's generators did the same thing by keeping the whole stack frame alive on the heap; Rust does it by moving exactly the values needed, and the compiler will name each one if you forget.
+The one new idea here is `flat_map`, the nested-loop adapter: for each `aa` it runs the inner closure, which produces a whole stream of `(aa, bb)` pairs, and `flat_map` splices those inner streams end to end — the outer `for aa` and the inner `for bb`, rewritten as adapters. Same nine pairs, same order, but now nothing is computed until the caller asks for the next one. And *that* laziness is what forces the two `move`s. The inner closure must own its copy of `aa`, and the outer must own `n`, because these closures ride out of the function inside the returned iterator and are called long after `operand_pairs`'s own variables are gone. The capture rules you learned through the ownership lens are exactly what make it safe to return a paused computation from a function. Python kept the whole stack frame alive on the heap to manage this; Rust moves in precisely the values the closures need, and the compiler names each one if you forget the `move`.
 
 > ² Generator syntax has been experimented with in unstable Rust for years, but stable Rust — the Rust this book teaches — does not have it, and honestly, between adapters and `impl Iterator`, you will rarely feel the gap.
 
@@ -291,7 +321,7 @@ Everything so far has passed closures *downward* — into `map`, into `filter`, 
 Because every closure has its own unwritable type, storing one takes a trait object — Chapter 10's `dyn`, boxed up: `Box<dyn Fn(u8, u8) -> u16>` is "some heap-allocated callable, taking two `u8`s, returning a `u16`; I don't know or care which one." Here is a toy checker whose *prediction function is data*:
 
 ```rust
-// Figure 10: A struct that carries its behavior as a closure
+// Figure 11: A struct that carries its behavior as a closure
 
 struct Checker {
     predict: Box<dyn Fn(u8, u8) -> u16>,
@@ -333,4 +363,4 @@ Two `Checker` values, one struct definition, two completely different behaviors 
 
 Closures are unnamed functions in variables: `|x| x + 1`, with braces for multi-line bodies and types mostly inferred. They capture surrounding variables under the ordinary ownership rules — shared borrow to read, exclusive borrow to mutate, ownership when `move`d — and the traits `Fn`, `FnMut`, and `FnOnce` name those three calling contracts in signatures. Iterator adapter chains — `filter`, `map`, `flat_map`, `fold`, `collect` — replace Python's list, set, and dictionary comprehensions part for part, and they are lazy by default, doing no work until consumed. Python's generators map to the `Iterator` trait: implement `next()` on a struct for full control, or return `impl Iterator` built from adapters for the everyday case, with `move` closures carrying the captured state out of the function. Finally, closures are values: boxed as `Box<dyn Fn(...)>`, they can live in struct fields and be swapped at construction time — the mechanism Chapter 29 will grow into rustdv's replacement for the UVM factory.
 
-That `Box` in figure 10 was the first time this book put a value on the heap on purpose, and I slipped it past you with one sentence of explanation. It deserves better — because `Box` has two siblings, `Rc` and `RefCell`, and among them they answer the question every pyuvm refugee eventually asks: *how do two components share one scoreboard?* Chapter 13 pays that debt.
+That `Box` in figure 11 was the first time this book put a value on the heap on purpose, and I slipped it past you with one sentence of explanation. It deserves better — because `Box` has two siblings, `Rc` and `RefCell`, and among them they answer the question every pyuvm refugee eventually asks: *how do two components share one scoreboard?* Chapter 13 pays that debt.

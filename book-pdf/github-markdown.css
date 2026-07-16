@@ -36,19 +36,23 @@ pre code {
     }
 
     /* --- KEEP WIDE TABLES ON THE PAGE --- */
+    /* Columns size to content (auto), prose wraps to absorb the width, and
+       code tokens stay whole. */
     .markdown-body table, table {
         width: 100% !important;
-        table-layout: fixed !important;
-        font-size: 90% !important;
+        table-layout: auto !important;
+        font-size: 85% !important;
         border-collapse: collapse !important;
     }
     .markdown-body th, .markdown-body td, th, td {
-        overflow-wrap: anywhere !important;
-        word-break: break-word !important;
+        overflow-wrap: break-word !important;   /* long prose words wrap to fit */
+        vertical-align: top !important;
     }
-    /* inline code in table cells must be allowed to break */
+    /* Code in cells wraps ONLY at spaces — never inside a token, so
+       #[derive(...)] and the like never split across lines. */
     .markdown-body td code, .markdown-body th code, td code, th code {
         white-space: normal !important;
-        word-break: break-word !important;
+        overflow-wrap: normal !important;
+        word-break: normal !important;
     }
 }

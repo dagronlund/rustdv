@@ -23,3 +23,6 @@ tmp/
 
 # Path B offline toolchain drop (large tarballs, never commit)
 toolchain-drop/
+
+# Personal/private project instructions — local only, never commit
+CLAUDE.local.md

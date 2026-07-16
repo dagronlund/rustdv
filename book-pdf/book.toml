@@ -13,5 +13,5 @@ print-background = true
 display-header-footer = true
 footer-template = "<div style='font-size:9px; width:100%; text-align:center; color:#555;'><span class='pageNumber'></span> / <span class='totalPages'></span></div>"
 header-template = "<span></span>"
-margin-bottom = "0.7in"
+margin-bottom = 0.7
 
