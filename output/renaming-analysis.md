@@ -97,7 +97,7 @@ the name.
    change (fragments have none) and no golden re-bless is needed.
 4. **Docs/infra**: root README (framework mentions + repo placeholders),
    `sim/README.md`, `docker/Dockerfile` comment, devcontainer name.
-5. **Planning docs**: `output/design-doc.md` and `output/book-outline.md`
+5. **Planning docs**: `output/.design-doc.md` and `output/book-outline.md`
    both reference rustvm throughout.
 6. **Rebuilds**: `mdbook build` and PDF regeneration after the manuscript
    edit.

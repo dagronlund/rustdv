@@ -14,7 +14,7 @@ The costs, tallied with the same honesty: the borrow checker's apprenticeship is
 
 An honest inventory of what rustdv-shaped stacks do not yet have, in rough order of how soon a team would hit the wall:
 
-**Multi-simulator support.** Everything in this book ran on Icarus through VPI. The design documents' plan — adopting cocotb's GPI layer, with its decade of VHPI and FLI quirk-knowledge — is the bridge to commercial simulators and VHDL, and it is engineering, not research: the boundary was designed for exactly this crossing. Until it lands, Rust verification is a Verilog-simulator story.
+**Multi-simulator support.** Everything in this book ran on Icarus through VPI. rustdv's plan — adopting cocotb's GPI layer, with its decade of VHPI and FLI quirk-knowledge — is the bridge to commercial simulators and VHDL, and it is engineering, not research: the boundary was designed for exactly this crossing. Until it lands, Rust verification is a Verilog-simulator story.
 
 **The register abstraction layer.** pyuvm ports UVM's RAL; nothing in this book touches it. A Rust RAL is a design opportunity more than a porting job — register maps are exactly the kind of structured, generated, compile-time-checkable data Rust digests well — but someone has to write it.
 

@@ -34,4 +34,21 @@ pre code {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
+
+    /* --- KEEP WIDE TABLES ON THE PAGE --- */
+    .markdown-body table, table {
+        width: 100% !important;
+        table-layout: fixed !important;
+        font-size: 90% !important;
+        border-collapse: collapse !important;
+    }
+    .markdown-body th, .markdown-body td, th, td {
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+    }
+    /* inline code in table cells must be allowed to break */
+    .markdown-body td code, .markdown-body th code, td code, th code {
+        white-space: normal !important;
+        word-break: break-word !important;
+    }
 }

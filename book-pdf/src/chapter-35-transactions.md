@@ -64,26 +64,24 @@ tweaked == cmd: false
 
 The Python book's `uvm_object` chapter kept a table mapping UVM methods to Python dunders. Here it is with its third column, which is mostly one word:
 
-```text
-# Figure 3: The uvm_object surface, dispositioned
+*Figure 3: The uvm_object surface, dispositioned*
 
-UVM method            Python (pyuvm)            Rust (rustdv)
-----------            --------------            -------------
-clone()/do_copy()     __deepcopy__ / override   #[derive(Clone)]
-compare()/do_compare  __eq__ / override         #[derive(PartialEq)]
-convert2string()      __str__ / override        #[derive(Debug)]
-print()               print(obj)                println!("{obj:?}")
-get_name()            stored name string        std::any::type_name / none needed
-get_inst_id()         id(self)                  no identity on data (see below)
-pack()/unpack()       raised UVMNotImplemented  not ported (same cut)
-record()              stub                      not ported (same cut)
-```
+| UVM method | Python (pyuvm) | Rust (rustdv) |
+|---|---|---|
+| `clone()`/`do_copy()` | `__deepcopy__` / override | `#[derive(Clone)]` |
+| `compare()`/`do_compare` | `__eq__` / override | `#[derive(PartialEq)]` |
+| `convert2string()` | `__str__` / override | `#[derive(Debug)]` |
+| `print()` | `print(obj)` | `println!("{obj:?}")` |
+| `get_name()` | stored name string | `std::any::type_name` / none needed |
+| `get_inst_id()` | `id(self)` | no identity on data (see below) |
+| `pack()`/`unpack()` | raised `UVMNotImplemented` | not ported (same cut) |
+| `record()` | stub | not ported (same cut) |
 
 Two rows repay a closer look. The derives are not conveniences over the pyuvm way — they are the *same technique moved to compile time*. pyuvm's `do_copy` walked `self.__dict__` at runtime to copy whatever fields it found; `#[derive(Clone)]` walks the field list at compile time and emits exactly the member-wise code you'd write by hand (Chapter 21's derive story). Add a field to `AluCommand` and copy, compare, and print all update themselves — the field-macros problem SystemVerilog solved with `\`uvm_field_int` and pyuvm solved with reflection, solved a third way, with no runtime cost and no macros in *your* code. And the bottom rows record an agreement across all three books: pack, unpack, and recording were stubs in pyuvm (`UVMNotImplemented`), and rustdv makes the same cut on the same reasoning.
 
 ## Where comparison policy went
 
-One pyuvm capability looks missing: overriding `do_compare` so that "equal" ignores some fields — a timestamp, a don't-care flag. rustdv's position, from the design documents: *comparison policy is checker policy, not data-type property* — bake one DUT's notion of matching into the type and every other user of that type inherits it silently. So the scoreboard takes the policy as a value:
+One pyuvm capability looks missing: overriding `do_compare` so that "equal" ignores some fields — a timestamp, a don't-care flag. rustdv's position: *comparison policy is checker policy, not data-type property* — bake one DUT's notion of matching into the type and every other user of that type inherits it silently. So the scoreboard takes the policy as a value:
 
 ```rust
 // Figure 4: Comparison policy lives in the checker

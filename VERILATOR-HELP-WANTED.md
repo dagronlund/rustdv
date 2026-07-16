@@ -118,7 +118,7 @@ existing work, on:
   — the safe layer on top of it
 - [`tinyalu_tb/`](https://github.com/rustdv/rustdv/tree/master/rustdv/tinyalu_tb)
   — the full working example, running on Icarus today
-- [`output/design-doc.md`](https://github.com/rustdv/rustdv/blob/master/output/design-doc.md),
+- [`output/.design-doc.md`](https://github.com/rustdv/rustdv/blob/master/output/.design-doc.md),
   Open Question OQ-2 — where we've recorded this as the highest-risk
   unresolved item in rustdv's design
 

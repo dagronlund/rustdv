@@ -1,6 +1,6 @@
 # Review Memo: Methodology vs. Mechanism in §5
 
-**Re:** Stress-test of `design-doc.md` §5 (Testbench/UVM-Analog API) before lock
+**Re:** Stress-test of `.design-doc.md` §5 (Testbench/UVM-Analog API) before lock
 **Test applied:** For each pyuvm concept — is rustdv porting the *problem UVM solves* (methodology) or the *Python/SV-OO machinery pyuvm solved it with* (mechanism)?
 **Verdict up front:** The challenge is substantially correct. Four of the six subsystems in §5 port mechanism where methodology would do, and OQ-4, OQ-9, OQ-12, and OQ-14 are all symptoms of it — three of the four dissolve entirely under the reclassification, and the fourth shrinks. Two subsystems survive the test as designed. One recommendation goes the other way: a place where the idiomatic-Rust redesign is *right* but I recommend keeping a familiar surface anyway, argued honestly in §6.
 

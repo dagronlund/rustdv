@@ -26,7 +26,7 @@ impl TestAllSeq {
 }
 ```
 
-Look at what `TestAllSeq` is *not*: it does not implement `Sequence`, because `Sequence::body` receives a `SeqCtx` — an item channel — and a virtual sequence has no items. It is a plain struct holding the sequencer handle it will conduct, with an ordinary `async fn body`. That structural difference is the upgrade: pyuvm policed "virtual sequences must not call `start_item`" with a runtime `UVMSequenceError`; here the misuse is *unwritable* — there is no `ctx` in scope to call `start_item` on. The design documents call this making the illegal state unrepresentable, and this is its cleanest appearance in the book.
+Look at what `TestAllSeq` is *not*: it does not implement `Sequence`, because `Sequence::body` receives a `SeqCtx` — an item channel — and a virtual sequence has no items. It is a plain struct holding the sequencer handle it will conduct, with an ordinary `async fn body`. That structural difference is the upgrade: pyuvm policed "virtual sequences must not call `start_item`" with a runtime `UVMSequenceError`; here the misuse is *unwritable* — there is no `ctx` in scope to call `start_item` on. This is what it means to make the illegal state unrepresentable, and this is its cleanest appearance in the book.
 
 The sequencer handle arrives as a field — where pyuvm's virtual sequence pulled `"SEQR"` from the ConfigDB, ours is configured like everything else since Chapter 27: by construction. A virtual sequence coordinating *several* buses holds several sequencer fields, each typed to its transaction, and starting a sequence on the wrong bus is a compile error.
 
@@ -101,7 +101,7 @@ impl TestAllParallelSeq {
 
 Random and max commands alternating, exactly as pyuvm's parallel figure showed — each sequence's own items stay in order (the handshake guarantees it), and the interleaving *between* sequences is the sequencer's FIFO fairness at work. (Two double-`?` lines in figure 4 deserve their gloss: awaiting a spawned task yields `Result<_, TaskError>` — Chapter 16 — wrapping the sequence's own `Result`. One `?` per layer of fallibility; nothing is silently dropped, including a sub-sequence that failed.)
 
-The Python book's chapter continued into pyuvm's `fork`-style helpers and sequence priorities; rustdv, like pyuvm, ships FIFO arbitration only — grab/lock/priority remain unported on both sides of the language divide, a gap all the design documents record rather than hide.
+The Python book's chapter continued into pyuvm's `fork`-style helpers and sequence priorities; rustdv, like pyuvm, ships FIFO arbitration only — grab/lock/priority remain unported on both sides of the language divide, a gap both projects record rather than hide.
 
 ## The ladder, complete
 

@@ -201,7 +201,7 @@ The conflict is not resolved by a precedence rule; it is rejected as a contradic
 
 ## Sharing real resources
 
-Strings made the mechanics visible; the case that matters is sharing something live — the Python book's own example was "we might have done this with a handle to the TinyAluBfm." You have been reading the rustdv answer since Chapter 25: an `Rc<TinyAluBfm>` field in the config, cloned to each component that needs the one BFM. The design-doc form, which testbench 6.0 adopts wholesale:
+Strings made the mechanics visible; the case that matters is sharing something live — the Python book's own example was "we might have done this with a handle to the TinyAluBfm." You have been reading the rustdv answer since Chapter 25: an `Rc<TinyAluBfm>` field in the config, cloned to each component that needs the one BFM. The form testbench 6.0 adopts wholesale:
 
 ```rust
 // Figure 11: The shape of a real config tree (testbench 6.0's, previewed)

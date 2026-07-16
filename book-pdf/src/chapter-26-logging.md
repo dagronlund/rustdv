@@ -53,7 +53,7 @@ Five calls, four lines — the same demonstration, the same missing line. `debug
 
 One honest deviation to flag while it is visible in figure 2: pyuvm's logger got its path *for free* — the component knew its parent, so `uvm_test_top.comp` materialized without your help. A rustdv component's logger takes the path as a constructor argument, because a struct field does not know what field name it lives in. The convention is the one you'd guess (the logger path matches the field path: the env constructs `Scoreboard::new(...)` whose logger is `"env.scoreboard"`), and the derive-macro wiring that would automate it is on rustdv's roadmap rather than in its present. One string per constructor is the current price of the feature.¹
 
-> ¹ Design-doc watchers: this is OQ-15's "logging-span wiring," deferred. The `Logger` API is shaped so the automation, when it lands, changes who *calls* `Logger::new` — not any code that logs.
+> ¹ The logging-span wiring is deferred. The `Logger` API is shaped so that when it lands, it changes who *calls* `Logger::new` — not any code that logs.
 
 ## Logging levels
 

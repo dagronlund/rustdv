@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | Companion to | *Python for RTL Verification* (Salemi, 2022) |
-| Design basis | `design-doc.md` (this repository); cocotb @ `cf833ee`; pyuvm @ `dfcd1ff` |
+| Design basis | `.design-doc.md` (this repository); cocotb @ `cf833ee`; pyuvm @ `dfcd1ff` |
 | Status | Outline + Chapter 1 draft, for review |
 
 ---

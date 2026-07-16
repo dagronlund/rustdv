@@ -1,7 +1,7 @@
 # STATUS — rustdv implementation sprint
 
 **Date:** 2026-07-11 — **COMPLETE: REGRESSION PASSES ON ICARUS**
-**Scope:** complete rustdv code base per `output/design-doc.md`, demonstrated
+**Scope:** complete rustdv code base per `output/.design-doc.md`, demonstrated
 against the TinyALU (`sim/hdl/tinyalu.sv`) on Icarus Verilog.
 **Environment:** Path B (offline toolchain drop into `toolchain-drop/`):
 rustc/cargo 1.97.0 aarch64-linux + oss-cad-suite 2026-07-11 (Icarus 14.0

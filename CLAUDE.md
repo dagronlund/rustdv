@@ -14,7 +14,7 @@
   tinyalu_tb). Runs via sim/run_rustdv.sh.
 - /book-pdf/src — the manuscript. Rebuild rendered book: `mdbook build book-pdf`.
 - /output/examples — every book figure, runnable (Part I per-figure files,
-  Parts II–V as sim chapter crates); /output/design-doc.md is the design record.
+  Parts II–V as sim chapter crates); /output/.design-doc.md is the design record.
 - /output/regression — regress.py, wired into the git pre-push hook.
 - /skills — AI verification skills (rtl-spec-analysis, rustdv-testbench,
   rustdv-verify-cover).

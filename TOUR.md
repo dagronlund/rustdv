@@ -45,7 +45,7 @@ pre-push hook:
 |---|---|
 | The framework | `/rustdv` (workspace: `rustdv-gpi-sys` → `rustdv-gpi` → `rustdv-sim` → `rustdv-uvm` → `rustdv`, plus `tinyalu_tb`) |
 | The book manuscript | `/book-pdf/src` (TOC in `SUMMARY.md`); render with `mdbook build book-pdf` |
-| Why it's designed this way | `/output/design-doc.md` — section-numbered, every decision cited to cocotb/pyuvm/the book |
+| Why it's designed this way | `/output/.design-doc.md` — section-numbered, every decision cited to cocotb/pyuvm/the book |
 | Runnable book figures | `/output/examples` (`README.md` has per-chapter run commands) |
 | The regression suite | `/output/regression/regress.py` (`--help` works; wired into pre-push) |
 | Implementation history & honest deviations | `STATUS.md` (chronological, bottom-up) |

@@ -203,7 +203,7 @@ The `?` after `nice_div(...)` means: *if this is `Ok(value)`, unwrap it and keep
 
 The Python book showed re-raising: catch an exception, print a snarky message, then `raise` to send it upward anyway. The Rust spelling of that pattern is a `match` (or an `inspect_err` call) that logs and then returns the `Err` — nothing new to learn, just values. And when the error types along the chain differ, `?` will convert between them automatically if you've told it how; that hook is a trait called `From`, and traits are the very next chapter, so we'll leave that thread hanging deliberately.
 
-One more nicety: `main` itself can return a `Result`. When it returns an `Err`, the program prints the error and exits with a failing status — the last boss in the chain has a sensible default. In Part II you'll see that rustdv tests work the same way: a test is an `async fn` returning `Result<(), TestError>`, and an `Err` fails the test *(design doc: §0.6)*. The `?` operators sprinkled through a testbench are little arrows pointing at everything that can end the test.
+One more nicety: `main` itself can return a `Result`. When it returns an `Err`, the program prints the error and exits with a failing status — the last boss in the chain has a sensible default. In Part II you'll see that rustdv tests work the same way: a test is an `async fn` returning `Result<(), TestError>`, and an `Err` fails the test. The `?` operators sprinkled through a testbench are little arrows pointing at everything that can end the test.
 
 ## Designing an error enum
 
@@ -335,7 +335,7 @@ One Python comfort has no direct Rust twin: `finally`. Rust's guarantee of "this
 
 ## The taxonomy this book will live by
 
-Everything above compresses into one convention, and it is load-bearing: the rest of this book — and the design of rustdv itself — assumes it *(design doc: §7.3, testing conventions)*.
+Everything above compresses into one convention, and it is load-bearing: the rest of this book — and the design of rustdv itself — assumes it.
 
 > **The failure taxonomy.**
 > **`Result::Err` is for checks** — the DUT did something wrong. A scoreboard comparing predicted against actual and finding a mismatch produces an `Err`. The test fails, which is the test doing its job. This is *expected fallibility*: finding these is why we come to work.

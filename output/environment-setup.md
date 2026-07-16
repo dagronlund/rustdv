@@ -65,7 +65,7 @@ Claude installs from there. No network change, fully offline in the VM.
 
 1. Create a folder `toolchain-drop/` at the root of the rustdv project
    (Claude will add it to `.gitignore`).
-2. Download these two files into it (**arm64/aarch64 builds — the VM is not
+2. Download these files into it (**arm64/aarch64 builds — the VM is not
    x86**):
    - **Rust standalone installer:**
      `https://static.rust-lang.org/dist/rust-1.89.0-aarch64-unknown-linux-gnu.tar.xz`
@@ -77,6 +77,13 @@ Claude installs from there. No network change, fully offline in the VM.
      the latest `oss-cad-suite-linux-arm64-<date>.tgz` asset from
      `https://github.com/YosysHQ/oss-cad-suite-build/releases/latest`
      (~1.5 GB).
+   - **mdbook (builds/verifies the book in `book-pdf/`):**
+     `mdbook-v0.5.4-aarch64-unknown-linux-musl.tar.gz` from
+     `https://github.com/rust-lang/mdBook/releases/latest` (~5 MB). Already
+     committed in `toolchain-drop/`. Note: this builds the book's **HTML**;
+     the PDF backend (`mdbook-pdf`) also needs a Chromium, which is not
+     installed in the VM — render the PDF on a full workstation with
+     `mdbook build book-pdf`.
 3. Tell Claude the files are there. Installation from local tarballs needs
    no network and no root; Claude handles it.
 
@@ -115,7 +122,7 @@ If all three pass, no further questions — implementation starts immediately.
 > Connect the rustdv project folder. Environment is set up per
 > `output/environment-setup.md` (Path A/B — say which). Verify the
 > toolchain, then implement the complete rustdv code base per
-> `output/design-doc.md` and demonstrate it against the TinyALU in
+> `output/.design-doc.md` and demonstrate it against the TinyALU in
 > `sim/hdl/tinyalu.sv` on Icarus: full testbench (BFM, driver, monitors,
 > scoreboard, coverage, env, sequences, tests) per design-doc §7. Work
 > autonomously; document deviations from the design doc in a STATUS.md;

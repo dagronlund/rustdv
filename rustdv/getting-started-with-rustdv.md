@@ -178,6 +178,6 @@ lives, and it's the part worth learning by hand.
   the complete TinyALU testbench end to end.
 - **`rustdv/tinyalu_tb/`**: the living reference — every pattern in the
   skills appears there in context.
-- **`output/design-doc.md`**: why rustdv is shaped the way it is, decision
+- **`output/.design-doc.md`**: why rustdv is shaped the way it is, decision
   by decision, with citations back to cocotb and pyuvm.
 - **`/STATUS.md`**: what works today, known gaps, and the roadmap.

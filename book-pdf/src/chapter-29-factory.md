@@ -88,7 +88,7 @@ impl FlexEnv {
 }
 ```
 
-Take it a piece at a time, because every piece is a Chapter 10–13 alumnus doing methodology work. `TinyLike` is the *contract of the slot*: what must be true of anything standing in this position — here, just "be a component" (real slots say more; testbench 6.0's driver slot demands the driver interface). `make_tc` is a boxed `FnOnce` closure returning a boxed trait object: a constructor, stored in a struct field, called exactly once — `(config.make_tc)()` — where pyuvm called `create()`. The `Default` impl is the factory's "no override registered" case: by default, the maker builds the original. And the child field became `Box<dyn TinyLike>` — dynamic dispatch, deliberately, because an overridable slot *is* the place where you don't know the concrete type; this is the trait-objects-versus-generics line from Chapter 10, drawn exactly where the design doc drew it.
+Take it a piece at a time, because every piece is a Chapter 10–13 alumnus doing methodology work. `TinyLike` is the *contract of the slot*: what must be true of anything standing in this position — here, just "be a component" (real slots say more; testbench 6.0's driver slot demands the driver interface). `make_tc` is a boxed `FnOnce` closure returning a boxed trait object: a constructor, stored in a struct field, called exactly once — `(config.make_tc)()` — where pyuvm called `create()`. The `Default` impl is the factory's "no override registered" case: by default, the maker builds the original. And the child field became `Box<dyn TinyLike>` — dynamic dispatch, deliberately, because an overridable slot *is* the place where you don't know the concrete type; this is the trait-objects-versus-generics line from Chapter 10, drawn exactly where rustdv's design draws it.
 
 ```text
 # Figure 5: The default maker builds the original component
@@ -131,7 +131,7 @@ And the resolution story deserves its sentence of appreciation. pyuvm's `find_ov
 
 ## The honest ledger
 
-The Python book's factory chapter closed with `uvm_factory().debug_level` printing the registry's contents. There is no registry to print, which is the cue to write down what this design deliberately does *not* do — the same ledger the rustdv design documents keep:
+The Python book's factory chapter closed with `uvm_factory().debug_level` printing the registry's contents. There is no registry to print, which is the cue to write down what this design deliberately does *not* do — the same ledger rustdv's design keeps:
 
 ```text
 # Figure 9: The factory, dispositioned
