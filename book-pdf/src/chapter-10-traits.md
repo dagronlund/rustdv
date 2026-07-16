@@ -10,7 +10,7 @@ This chapter rebuilds that material piece by piece: the animal menagerie, the `s
 
 ## Shared behavior without a base class
 
-A trait is a named list of method signatures that a type can opt into. It declares *what* a type can do; a separate `impl` block declares that a particular type does it. Teaching OOP with an animal menagerie is a tradition in this series — the Primer's lion said Roar, the Python book's dog said bow wow — and Rust will not be the book that breaks it.
+A trait is a named list of method signatures that a type can opt into. It declares *what* a type can do; a separate `impl` block declares that a particular type does it. Teaching OOP with an animal menagerie is a tradition in this series — the Primer's lion said Roar, the Python book's dog said bow bow — and Rust will not be the book that breaks it.
 
 ```rust
 // Figure 1: Shared behavior through a trait, not a base class

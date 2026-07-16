@@ -1,16 +1,16 @@
 # Chapter 5: Ownership
 
-Every chapter so far has had a Python twin. `let` had assignment, `match` had `if` chains, `u8` had the integers you already knew. This chapter has no twin, because it answers a question Python never let you hear: *when a value's time is up, who is responsible for destroying it?*
+Every chapter so far has had a twin in the languages you know. `let` had assignment, `match` had `case` and `elif` chains, `u8` had `byte`. This chapter has no twin, because it answers a question neither of your languages ever let you hear: *when a value's time is up, who is responsible for destroying it?*
 
-You have created millions of objects in Python — transactions, components, queues full of commands — and you have never once destroyed one. You didn't have to. Python's garbage collector followed you around the testbench like a diligent stagehand, watching which objects still had names pointing at them and quietly disposing of the ones that didn't.¹ It did this job so well, and so silently, that most Python programmers never learn the job exists.
+You have created millions of objects — transactions, components, queues full of commands — and you have never once destroyed one. You didn't have to. Python's garbage collector followed you around the testbench like a diligent stagehand, watching which objects still had names pointing at them and quietly disposing of the ones that didn't;¹ SystemVerilog's runtime does the same for class objects, keeping each one alive until its last handle drops. Both stagehands do the job so well, and so silently, that most programmers never learn the job exists.
 
 Rust has no garbage collector. There is no stagehand. And yet Rust programs do not leak memory, do not free things twice, and do not touch things after they're freed — the classic sins of C. Rust pulls this off with one idea, enforced by the compiler, and that idea is the hinge of the entire language: **ownership**. Chapter 1 promised that the rules behind Rust's no-runtime-cost safety would bend your brain exactly once. This is the chapter where the bending happens.
 
 > ¹ CPython's stagehand is mostly a reference counter — every object carries a count of the names and containers pointing at it, and hits the trash at zero — with a cycle-detecting garbage collector mopping up the cases where two objects point at each other and the counts never fall. The details don't matter here; the silence does.
 
-## Who frees this? Python's answer
+## Who frees this? The old answer
 
-Let's watch the stagehand work. In Python, a variable is not a box holding a value — it is a name tag stuck onto an object that lives somewhere on the heap. Assignment copies the name tag, never the object. In figure 1, `a` and `b` are two tags on one transaction-ish list, which we can prove by mutating through one name and looking through the other.
+Let's watch the stagehand work. In Python, a variable is not a box holding a value — it is a name tag stuck onto an object that lives somewhere on the heap. Assignment copies the name tag, never the object — exactly as assigning one SystemVerilog class handle to another copies the handle, never the object. In figure 1, `a` and `b` are two tags on one transaction-ish list, which we can prove by mutating through one name and looking through the other.
 
 ```python
 # Figure 1: Python assignment: two names, one object
@@ -28,9 +28,9 @@ print(a is b)
 True
 ```
 
-You knew this. The Python book leaned on it constantly — every component holding `self.bfm`, every scoreboard holding the same transaction the monitor held. The part you may never have said out loud is the lifetime question: that list stays alive as long as *any* tag points at it, and it dies whenever the last tag disappears, at a moment of the garbage collector's choosing. Nobody owns the list. Ownership is smeared across every name that ever touched it, and the runtime keeps the books.
+You knew this, in whichever spelling: every UVM component holding a handle to the BFM, every scoreboard holding the same transaction object the monitor held. The part you may never have said out loud is the lifetime question: that list stays alive as long as *any* tag points at it, and it dies whenever the last tag disappears, at a moment of the runtime's choosing. Nobody owns the list. Ownership is smeared across every name that ever touched it, and the runtime keeps the books.
 
-For testbenches this policy is comfortable right up until it isn't: the monitor that holds a stale handle to a component the test rebuilt, the two subscribers that received the "same" transaction and one of them mutated it, the `__del__` method that runs at a time no document will commit to. Python's answer to "who frees this?" is *nobody in particular, eventually*. Rust's answer is one word long.
+For testbenches this policy is comfortable right up until it isn't: the monitor that holds a stale handle to a component the test rebuilt, the two subscribers that received the "same" transaction and one of them mutated it, the destructor that runs at a time no document will commit to. The garbage-collected answer to "who frees this?" is *nobody in particular, eventually*. Rust's answer is one word long.
 
 ## Rust's answer: one owner
 
@@ -72,7 +72,7 @@ help: consider cloning the value if the performance cost is acceptable
 
 Read that error the way Chapter 2 taught you, because it is one of the best-written error messages in any compiler and it narrates the whole story. Line 2: the string was created and `a` owned it. Line 3: `value moved here` — the assignment handed ownership to `b`, and `a` stopped being a valid name for anything. Line 4: we tried to use `a` after the move, and the compiler refused to build the program.
 
-Sit with what did *not* happen. The program did not run and print something surprising. It did not crash at 2 a.m. in seed 8,441 of a regression. It never existed as a program at all. In Python, `b = a` gives you two live names and a shrug about lifetimes; in Rust, `let b = a;` is a baton pass — after it, exactly one variable is responsible for that string, and the compiler will name the exact line where responsibility changed hands. One value, one owner, at every moment, provable at compile time. That invariant is the entire trick, and everything Rust does that Python cannot — no GC, no data races, deterministic cleanup — falls out of it.
+Sit with what did *not* happen. The program did not run and print something surprising. It did not crash at 2 a.m. in seed 8,441 of a regression. It never existed as a program at all. In your old languages, `b = a` gives you two live names and a shrug about lifetimes; in Rust, `let b = a;` is a baton pass — after it, exactly one variable is responsible for that string, and the compiler will name the exact line where responsibility changed hands. One value, one owner, at every moment, provable at compile time. That invariant is the entire trick, and everything Rust does that no garbage-collected language can — no GC, no data races, deterministic cleanup — falls out of it.
 
 Notice, too, the compiler's parting suggestion: `a.clone()`. It has read your mind — or at least your options. We'll take it up on that shortly.
 
@@ -131,7 +131,7 @@ Move semantics governs everything else: `String`, the collections coming in Chap
 
 Every mechanism in this chapter has been abstract enough to shrug at. So let's make it a testbench problem — *the* testbench problem, the one you've written a dozen times: a monitor observes a transaction on the TinyALU's command bus and hands it to a scoreboard.
 
-We need a transaction type. Structs get their own chapter (Chapter 7); for today, read the first four lines of figure 5 as "a Python class with only data and no methods" — fields, types, no ceremony. The `op` field really wants to be a proper enum, and in Chapter 7 it becomes one; a `u8` stands in for now. And we need the two parties: a `scoreboard` function that takes a `Transaction` *by value*, and a `main` that plays the monitor. In pyuvm these would be components connected by an analysis port; here in our cargo playground, two functions are enough to expose the question that matters.
+We need a transaction type. Structs get their own chapter (Chapter 7); for today, read the first four lines of figure 5 as "a class with only data and no methods" — fields, types, no ceremony. The `op` field really wants to be a proper enum, and in Chapter 7 it becomes one; a `u8` stands in for now. And we need the two parties: a `scoreboard` function that takes a `Transaction` *by value*, and a `main` that plays the monitor. In the UVM these would be components connected by an analysis port; here in our cargo playground, two functions are enough to expose the question that matters.
 
 ```rust
 // Figure 5: The monitor hands off a transaction — and learns what "hands off" means
@@ -175,7 +175,7 @@ help: consider cloning the value if the performance cost is acceptable
 
 Passing a value to a function moves it, exactly as assignment did — `scoreboard(t)` is a baton pass, and line 15 is the monitor trying to run the next leg without the baton.
 
-Here is what I want you to see: **the compiler is not reporting a syntax mistake. It is asking you a design question.** When the monitor hands this transaction to the scoreboard, what *should* happen? In Python you never had to decide. The analysis port handed every subscriber the same name tag on the same object, ownership belonged to nobody, and the design question got answered by accident — which worked fine until one subscriber mutated the transaction another was still reading, a bug the Python book could only warn you about. Rust makes you answer on purpose, and there are exactly two honest answers.
+Here is what I want you to see: **the compiler is not reporting a syntax mistake. It is asking you a design question.** When the monitor hands this transaction to the scoreboard, what *should* happen? In the UVM you never had to decide. The analysis port handed every subscriber the same handle to the same object, ownership belonged to nobody, and the design question got answered by accident — which worked fine until one subscriber mutated the transaction another was still reading, a bug both earlier books could only warn you about. Rust makes you answer on purpose, and there are exactly two honest answers.
 
 **Answer one: it's a true handoff.** The monitor's job was to observe the transaction and pass it on; it has no business touching it afterward. Then the code is wrong and the compiler is right — delete line 15, and the program compiles. Ownership flows monitor → scoreboard, the scoreboard checks it, and when the scoreboard's scope ends the transaction is dropped, on time, by its one owner. The comment on `scoreboard`'s closing brace in figure 5 is the answer to this chapter's title question, sitting in plain sight.
 
@@ -214,7 +214,7 @@ monitor logging: a was 5
 
 Two transactions now exist, each with exactly one owner, each dropped at its own owner's closing brace. No sharing, no aliasing, no way for the scoreboard's copy and the monitor's original to interfere. And crucially: mutation of one can never surprise the other — the "two subscribers, one mutated object" bug is not merely discouraged, it is unrepresentable in this code.
 
-It's worth pausing on why Rust makes you *spell out* the copy, because Python's policy here was genuinely confusing and you may have stopped noticing. Python copies silently for some things and never for others: rebind an `int` and you get value-like behavior; assign a list or an object and you get an alias, and if you wanted a real copy you had to know to reach for `copy.deepcopy` — knowledge usually acquired from a bug. Rust's policy fits in one breath: trivial bit-copies (`Copy` types) are silent because they cannot matter; every copy that allocates or duplicates real state is written `.clone()`, visible in the diff, greppable in the review. When a testbench is cloning a million transactions a second, you can *find every clone* and decide whether each one earns its cost. In Python the copies — and the accidental non-copies — were invisible either way.
+It's worth pausing on why Rust makes you *spell out* the copy. Python's policy was genuinely confusing: silent copies for some things, aliases for others, and `copy.deepcopy` for the cases you usually discovered from a bug. SystemVerilog engineers are ahead here — SV never copied a class object on assignment either, and the UVM made you call `clone()` in ink. Rust agrees with that instinct and adds the enforcement: trivial bit-copies (`Copy` types) are silent because they cannot matter; every copy that allocates or duplicates real state is written `.clone()`, visible in the diff, greppable in the review. When a testbench is cloning a million transactions a second, you can *find every clone* and decide whether each one earns its cost.
 
 One more note while the handoff is fresh. When we meet channels in Part II, you'll find that sending a transaction to another component takes it by value — a send *is* a move, the monitor-to-scoreboard baton pass made into infrastructure. The decision you just made line-by-line (hand it off, or clone and keep one?) is the same decision you'll make at every analysis port in Part IV, and the compiler will hold you to your answer every time.
 
@@ -230,4 +230,4 @@ What I will do is hand you the sentence this book will use, from here to testben
 
 Every design decision ahead of us is an application of that sentence. The component hierarchy in Part IV works because parents *own* their children — responsibility flows down the tree. Channels move transactions because a handoff transfers *responsibility*. Monitors will hand scoreboards references or clones depending on whether the scoreboard needs *access* or needs to *keep* something. When you're stuck on a compiler error anywhere in this book, ask the sentence's question first: does this code need responsibility for the value, or just access to it? The answer usually types itself.
 
-You now hold half the model — the responsibility half. Chapter 6 supplies the access half: `&`, the borrow checker Chapter 1 warned you about, and the rule that lets Rust catch at compile time a race condition the Python book could only teach you to fear.
+You now hold half the model — the responsibility half. Chapter 6 supplies the access half: `&`, the borrow checker Chapter 1 warned you about, and the rule that lets Rust catch at compile time a race condition earlier testbenches could only fear.

@@ -1,9 +1,6 @@
 # Chapter 4: Conditions, Loops, and Match
 
-> **In Python we...** designated blocks with indentation, tested conditions with `if`/`elif`/`else`, and observed that `elif` "provides similar functionality to `case` and `switch` statements, but with more flexibility at the cost of more code." We wrote conditional assignments with the inline ternary — `message = "five_val" if aa == 5 else "other_val"` — and we looped with `while` and `for`, emulating a do-while with `while True:` and a well-placed `break`. Ranges came from the `range()` constructor: `range(stop)`, `range(start, stop)`, `range(start, stop, step)`.
-> — *Python for RTL Verification*, "Conditions and loops" and "Ranges"
-
-This chapter ports all of that to Rust, and then keeps going, because Rust has a construct Python never gave us: `match`. Two-thirds of this chapter is warm-up — conditions and loops transfer from Python almost without friction — and the last third introduces the construct the rest of this book leans on constantly. When we meet `Result` in Chapter 9, `Option` alongside it, and the `Ops` enum in Chapter 7, `match` is how we will take them apart. Learn it well here, in miniature, and every later chapter gets easier.
+Conditions and loops are where your old languages already agree: Python tests with `if`/`elif`/`else` and loops with `while` and `for`; SystemVerilog tests with `if`/`else` and `case` and loops with everything from `for` to `forever`. Two-thirds of this chapter is warm-up, because these constructs transfer to Rust almost without friction. The last third introduces the construct the rest of this book leans on constantly: `match` — the statement Python never had and the one SystemVerilog's `case` always wanted to be. When we meet `Result` in Chapter 9, `Option` alongside it, and the `Ops` enum in Chapter 7, `match` is how we will take them apart. Learn it well here, in miniature, and every later chapter gets easier.
 
 ## if and else
 
@@ -49,7 +46,7 @@ error[E0308]: mismatched types
 
 You will grumble about this for a week and then remember every testbench where `if dut.done:` silently tested the wrong thing — a handle instead of a value, a list instead of its contents. Rust makes you write `if nn != 0`, and the intent goes on the record.¹
 
-There is no `elif` keyword. Rust spells it `else if`, and a chain of them ports the Python book's switch replacement directly:
+There is no `elif` keyword. Rust spells it `else if`, and a chain of them stands in for a switch — for now:
 
 ```rust
 // Figure 3: else if as a switch (for now)
@@ -74,7 +71,7 @@ fn main() {
 Illegal Operation: divide
 ```
 
-The Python book called `elif` a switch replacement "at the cost of more code." Hold that thought — the cost is about to be refunded, with interest, in the `match` section.
+Python called this trade "more flexibility at the cost of more code," and SystemVerilog readers reaching for `case` should hold that reflex a few pages. The cost is about to be refunded, with interest, in the `match` section.
 
 > ¹ SystemVerilog veterans have the opposite scar: `if (sig)` on a 4-state signal, where an `X` quietly takes the false branch. Rust's answer to both languages is the same: say what you mean, and the compiler will hold you to it.
 
@@ -103,9 +100,9 @@ Python needed special ternary syntax — `x if cond else y` — because its `if`
 
 ## Three loops, one of them new
 
-Python gave us two loops, `while` and `for`. Rust gives us three: `while`, `for`, and `loop`. The first two are your old friends in new clothes; the third is the new idea.
+Python has two loops, `while` and `for`. SystemVerilog, characteristically, has five. Rust has three: `while`, `for`, and `loop`. The first two are your old friends in new clothes; the third will look familiar to exactly half of you.
 
-`while` works exactly as you expect, condition first, braces around the body. Here is the Python book's counting loop, ported:
+`while` works exactly as you expect, condition first, braces around the body. Here is a counting loop:
 
 ```rust
 // Figure 5: A while loop in action
@@ -127,7 +124,7 @@ fn main() {
 
 Two Chapter 3 details show up here: `nn` needs `mut` because we reassign it, and `print!` (without the `ln`) is how Rust says `end=" "` — it prints without the newline. `continue` and `break` exist, spelled the same and meaning the same as in Python; I will not re-teach them.
 
-Now the new one. The Python book emulated a do-while with `while True:` and a `break`. Rust looked at how often programmers write intentionally infinite loops — event loops, polling loops, driver loops that run until the test ends — and decided the pattern deserved its own keyword:
+Now the third loop. Python emulates the run-forever pattern with `while True:` and a well-placed `break`; SystemVerilog gave it a keyword, `forever`. Rust agrees with SystemVerilog — intentionally infinite loops are common enough to deserve their own construct — and then improves the idea:
 
 ```rust
 // Figure 6: loop — the intentional infinite loop
@@ -151,7 +148,7 @@ fn main() {
 
 Look closely at that `break`: it carries a value, and the whole `loop` evaluates to it — which is why we could write `let first_big_square = loop { ... }`. Like `if`, `loop` is an expression. A "run until something happens, then hand back what you found" pattern that took a flag variable and a post-loop read in Python is one construct in Rust. Only `loop` gets this privilege; `while` and `for` loops cannot `break` with a value, because their conditions mean they might never produce one.
 
-If `loop` sounds like a novelty, consider what you already know is coming: every BFM driver loop and monitor loop in the Python book was a `while True:` at heart. In Part II, those become `loop` — the language admitting what the code always meant.
+If `loop` sounds like a novelty, consider what you already know is coming: every driver loop and monitor loop you have ever written was a `forever` or a `while True:` at heart. In Part II, those become `loop` — the language admitting what the code always meant.
 
 ## Ranges
 
@@ -178,7 +175,7 @@ fn main() {
 0 1 2 3
 ```
 
-Where is `step`? Ranges are iterators (a concept that transfers straight from the Python book's sequences chapters — Chapter 12 makes it rigorous), and iterators have adapter methods. `range(1, 14, 2)` becomes:
+Where is `step`? Ranges are iterators (Chapter 12 makes that concept rigorous), and iterators have adapter methods. Python's `range(1, 14, 2)` becomes:
 
 ```rust
 // Figure 8: Stepping through a range
@@ -233,7 +230,7 @@ Read it as: compare `operation` against each *pattern* on the left of a `=>`; ru
 
 ## Exhaustiveness: the compiler counts your cases
 
-Delete the `_` arm from a `match` and something remarkable happens. Here is a `match` on a raw op code — the TinyALU's four operations, numbered 1 through 4 as they were in the Python book's `Ops` IntEnum — with no wildcard:
+Delete the `_` arm from a `match` and something remarkable happens. Here is a `match` on a raw op code — the TinyALU's four operations, numbered 1 through 4 as the spec has always numbered them — with no wildcard:
 
 ```rust
 // Figure 10: The compiler catches missing cases
@@ -261,13 +258,13 @@ error[E0004]: non-exhaustive patterns: `0_u8` and `5_u8..=u8::MAX` not covered
   = note: the matched value is of type `u8`
 ```
 
-Sit with that error message for a moment, because it is doing something no Python testbench ever got for free. The compiler enumerated every value a `u8` can hold, subtracted the four we handled, and reported precisely what we missed: zero, and everything from 5 up. An `elif` chain that forgets a case is a runtime surprise — the Python book's Figure 3 only caught its illegal `"divide"` because we remembered to write the `else`. A `match` that forgets a case *does not compile*. The fix is either a `_` arm (an explicit decision to lump the leftovers together) or arms for the missing values (an explicit decision about each) — but it is always a decision, never an oversight.
+Sit with that error message for a moment, because it is doing something neither of your testbench languages ever did for free. The compiler enumerated every value a `u8` can hold, subtracted the four we handled, and reported precisely what we missed: zero, and everything from 5 up. An `elif` chain that forgets a case is a runtime surprise — figure 3 only caught its illegal `"divide"` because we remembered to write the `else`. A SystemVerilog `case` that forgets one falls through in silence unless you wrote the `default`, and even `unique case` merely upgrades the silence to a runtime warning that waits for the right stimulus to arrive before it speaks. A `match` that forgets a case *does not compile*. The fix is either a `_` arm (an explicit decision to lump the leftovers together) or arms for the missing values (an explicit decision about each) — but it is always a decision, never an oversight.
 
 For a `u8`, exhaustiveness is a nice safety net. The reason this book teaches `match` in Chapter 4 rather than Chapter 14 is what happens when the thing being matched has a *small, meaningful* set of cases. In Chapter 7, `Ops` returns as a true Rust enum with exactly four values, and a `match` on it needs exactly four arms — no wildcard, no dead cases, and if the TinyALU ever grows a fifth operation, **every `match` in the testbench that fails to handle it becomes a compile error**. Your scoreboard, your coverage collector, your predictor: the compiler hands you the complete list of code that must learn about the new op. That is the refactoring-without-fear promise of Chapter 1, delivered by a control-flow statement.
 
 ## Patterns: ranges, tuples, and taking things apart
 
-The left side of a `match` arm is not limited to constants. Patterns can be ranges — and here the TinyALU gives us a real example. Recall from the Python book that ADD, AND, and XOR complete in one cycle while MUL takes three. With op codes 1 through 4:
+The left side of a `match` arm is not limited to constants. Patterns can be ranges — and here the TinyALU gives us a real example: ADD, AND, and XOR complete in one cycle while MUL takes three. With op codes 1 through 4:
 
 ```rust
 // Figure 11: Matching on ranges
@@ -323,12 +320,12 @@ match dut.child("clk") {
 }
 ```
 
-One construct checks which case you got *and* hands you its contents *and* forces you — at compile time — to say what happens in the failure case you would rather not think about. Python's `try`/`except` let you skip the `except` and hope; `match` on a `Result` has no such loophole. Exhaustiveness, it turns out, is not a switch-statement garnish. It is how Rust makes error handling mandatory, and Chapters 7 and 9 are where that bill comes due — in our favor.
+One construct checks which case you got *and* hands you its contents *and* forces you — at compile time — to say what happens in the failure case you would rather not think about. Python's `try`/`except` let you skip the `except` and hope; SystemVerilog mostly declined to have an error story at all; `match` on a `Result` has no such loophole. Exhaustiveness, it turns out, is not a switch-statement garnish. It is how Rust makes error handling mandatory, and Chapters 7 and 9 are where that bill comes due — in our favor.
 
 ## Summary
 
-Rust's conditions and loops are Python's with braces on: `if`/`else if`/`else` instead of `if`/`elif`/`else`, `while` and `for` behaving as you expect, `continue` and `break` unchanged. The differences all push the same direction. Conditions must be real `bool`s — no truthiness. `if` is an expression, retiring the ternary. `loop` names the intentional infinite loop and can `break` with a value. Ranges are syntax (`0..8` exclusive, `0..=8` inclusive) rather than a constructor, with iterator adapters like `step_by` covering the rest.
+Rust's conditions and loops hold no terrors: `if`/`else if`/`else` with mandatory braces and honest `bool` conditions, `while` and `for` behaving as you expect, `continue` and `break` unchanged. The differences all push the same direction. No truthiness, and no silently-tested `X`. `if` is an expression, retiring the ternary. `loop` is `forever` with a diploma — it names the intentional infinite loop and can `break` with a value. Ranges are syntax (`0..8` exclusive, `0..=8` inclusive) rather than a constructor, with iterator adapters like `step_by` covering the rest.
 
-And `match` is the construct Python never had: patterns instead of comparisons, expression instead of statement, no fallthrough, destructuring with bindings and guards — and exhaustiveness checking, the compiler's guarantee that every case is a decision and no case is an oversight. We will `match` on integers and tuples this week, on `Ops` in Chapter 7, and on `Option` and `Result` for the rest of our verification careers.
+And `match` is the construct Python never had and `case` wanted to be: patterns instead of comparisons, expression instead of statement, no fallthrough, destructuring with bindings and guards — and exhaustiveness checking, the compiler's guarantee that every case is a decision and no case is an oversight. We will `match` on integers and tuples this week, on `Ops` in Chapter 7, and on `Option` and `Result` for the rest of our verification careers.
 
-So far, every value we have used has lived and died inside `fn main` without our attention — Python habits, still serving us fine. In the next chapter, we hand a value from one variable to another and discover that Rust has been keeping track of who owns what all along. Chapter 5 is ownership: the idea with no Python-book mirror, and the hinge of the whole language.
+So far, every value we have used has lived and died inside `fn main` without our attention — garbage-collected habits, still serving us fine. In the next chapter, we hand a value from one variable to another and discover that Rust has been keeping track of who owns what all along. Chapter 5 is ownership: the idea with no mirror in either of your languages, and the hinge of the whole one you're learning.
