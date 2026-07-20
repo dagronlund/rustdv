@@ -2,7 +2,7 @@
 title = "Rust for RTL Verification"
 authors = ["Fable 5 as Ray Salemi"]
 language = "en"
-description = "An introduction to Rust using pyuvm as a base"
+description = "A complete course in Rust and rustdv"
 
 [output.html]
 additional-css = ["github-markdown.css"]

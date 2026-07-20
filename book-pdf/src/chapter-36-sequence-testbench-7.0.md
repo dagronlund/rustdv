@@ -1,12 +1,12 @@
 # Chapter 36: Sequence Testbench: 7.0
 
-Everything until now has generated stimulus *inside* the testbench — testers wired into the env, swapped by generics or makers. The UVM's crown jewel inverts that: stimulus becomes *data-generating objects* called sequences, started by tests, fed to drivers through a handshake with guaranteed ordering. Testbench 7.0 adopts the machinery whole, and this is the one place rustdv ports a pyuvm subsystem *event for event* — because the handshake's ordering semantics are methodology, not mechanism, and the book that taught you `start_item`/`finish_item` would like them to still be true.
+Everything until now has generated stimulus *inside* the testbench — testers wired into the env, swapped by generics or makers. The UVM's crown jewel inverts that: stimulus becomes *data-generating objects* called sequences, started by tests, fed to drivers through a handshake with guaranteed ordering. Testbench 7.0 adopts the machinery whole, and this is the one place rustdv ports a UVM subsystem *event for event* — because the handshake's ordering semantics are methodology, not mechanism, and whatever taught you `start_item`/`finish_item` would like them to still be true.
 
-> **In Python we...** extended `uvm_sequence` and wrote a `body()` that looped: create an `AluSeqItem`, `await self.start_item(cmd_tr)` (returns when the driver is ready), set the operands — *late generation* — then `await self.finish_item(cmd_tr)` (returns when the driver calls `item_done()`). The driver pulled with `self.seq_item_port.get_next_item()`, and the test started it all with `seq.start(self.seqr)`.
+> **In the UVM...** we extended `uvm_sequence` and wrote a `body()` that looped: create a sequence item, `start_item(cmd)` — returns when the driver is ready — fill the operands, *late generation* (SV: `assert(cmd.randomize())`; pyuvm: set them and `await` each call), then `finish_item(cmd)` — returns when the driver calls `item_done()`. The driver pulled with `seq_item_port.get_next_item()`, and the test started it all with `seq.start(seqr)`.
 
 ## The handshake, preserved event for event
 
-Before any code, the contract — the same five steps the Python book diagrammed, with the rustdv spellings:
+Before any code, the contract — the same five steps every UVM dialect guarantees, with the rustdv spellings:
 
 ```text
 # Figure 1: The sequencer handshake
@@ -25,7 +25,7 @@ Before any code, the contract — the same five steps the Python book diagrammed
      via get_response)
 ```
 
-Step 3 is the point of the whole design: the operands are filled **after** the grant, at the moment the driver is ready — *late generation*, so stimulus can depend on the freshest state of the system. Every ordering in this table is observable in pyuvm and observable here.
+Step 3 is the point of the whole design: the operands are filled **after** the grant, at the moment the driver is ready — *late generation*, so stimulus can depend on the freshest state of the system. Every ordering in this table is observable in SV-UVM, observable in pyuvm, and observable here.
 
 ## The trait and the two ports
 
@@ -66,7 +66,7 @@ impl Component for Driver {
 }
 ```
 
-Three pyuvm rules survive with upgraded enforcement. `get_next_item` twice without `item_done` — a `UVMSequenceError` in pyuvm — panics here with the same diagnosis (a testbench bug, per the taxonomy). The item arrives as a `SeqItem<AluCommand>` — Chapter 35's envelope — with the payload inside and the transaction id on the wrapper, where the driver can't lose it. And `item_done(None)` declares "no response" in its argument; a response-bearing driver writes `item_done(Some(rsp))` and the envelope tags it automatically — `set_context`, retired.
+Three UVM rules survive with upgraded enforcement. `get_next_item` twice without `item_done` — a runtime sequencer error in both earlier dialects — panics here with the same diagnosis (a testbench bug, per the taxonomy). The item arrives as a `SeqItem<AluCommand>` — Chapter 35's envelope — with the payload inside and the transaction id on the wrapper, where the driver can't lose it. And `item_done(None)` declares "no response" in its argument; a response-bearing driver writes `item_done(Some(rsp))` and the envelope tags it automatically — the `set_id_info()` chore, retired.
 
 For reference, the full surfaces of both sides:
 
@@ -137,7 +137,7 @@ impl Sequence<AluCommand> for MaxSeq {
 }
 ```
 
-The bodies read like pyuvm's figures 9 and 10 merged: the Python design used a `BaseSeq` with an overridable `set_operands()` hook; the rustdv sequences just write their operand code between `start_item` and `finish_item`, because with sequences as plain values there is no env to protect from the difference — a base-with-hook remains available if a family of sequences shares a skeleton, but two ten-line sequences don't need a hierarchy. Note `finish_item(cmd).await?` *consumes* the command — after handoff, the sequence provably cannot touch the in-flight item, closing a subtle pyuvm hazard (any holder of the item handle could fire its events).
+The bodies read like their UVM ancestors with the ceremony removed: an SV sequence filled at grant time with `assert(cmd.randomize())`, the Python design routed the fill through a `BaseSeq` with an overridable `set_operands()` hook; the rustdv sequences just write their operand code between `start_item` and `finish_item`, because with sequences as plain values there is no hierarchy to protect from the difference — a base-with-hook remains available if a family of sequences shares a skeleton, but two ten-line sequences don't need one. Note `finish_item(cmd).await?` *consumes* the command — after handoff, the sequence provably cannot touch the in-flight item, closing a hazard both earlier dialects share: anything still holding the item's handle could mutate a transaction the driver is busy driving.
 
 ## Starting sequences
 
@@ -157,7 +157,7 @@ The bodies read like pyuvm's figures 9 and 10 merged: the Python design used a `
     run_ctx.all_objections_dropped().await;
 ```
 
-The env here is the Interlude's: sequencer, `Option<Driver>` (active/passive from the config enum), monitors, scoreboard, `Option<Coverage>` — the full 6.0 architecture with the sequencer replacing the tester-to-driver channel. Three details deserve the ink. `env.sequencer()` hands the test a clonable handle, doing the job pyuvm routed through `ConfigDB().get(self, "", "SEQR")` — the handle is typed (`Sequencer<AluCommand>`), so starting a sequence of the wrong transaction type is a compile error. `start(seq).await` is `seq.start(seqr)` with the receiver flipped, returning the sequence's own `Result` — a sequence can fail, and the `?` forwards it. And `bfm.wait_idle()` finally retires the drain hack: where pyuvm waited fifty `ClockCycles` "to do last transaction" and testbench 6.0 guessed twenty, the BFM now reports when its queue is empty and the handshake is quiet. Sequences know when they're done; the testbench should too.
+The env here is the Interlude's: sequencer, `Option<Driver>` (active/passive from the config enum), monitors, scoreboard, `Option<Coverage>` — the full 6.0 architecture with the sequencer replacing the tester-to-driver channel. Three details deserve the ink. `env.sequencer()` hands the test a clonable handle, doing the job the UVM routed through the config database — fetch the sequencer handle and hope the type was right — except this handle is typed (`Sequencer<AluCommand>`), so starting a sequence of the wrong transaction type is a compile error. `start(seq).await` is `seq.start(seqr)` with the receiver flipped, returning the sequence's own `Result` — a sequence can fail, and the `?` forwards it. And `bfm.wait_idle()` finally retires the drain hack: where earlier testbenches waited out a guessed number of clock cycles for the last transaction — fifty in the Python design, twenty in testbench 6.0 — the BFM now reports when its queue is empty and the handshake is quiet. Sequences know when they're done; the testbench should too.
 
 ```text
 # Figure 8: Testbench 7.0 running
@@ -179,6 +179,6 @@ The Interlude's transcript, earned line by line: struct transactions in the moni
 
 ## Summary
 
-Testbench 7.0 adopted the sequence machinery: `Sequence<REQ, RSP>` with a boxed-future `body` (the design's one visible `Pin`), `SeqCtx::start_item`/`finish_item` preserving pyuvm's grant-then-fill ordering — late generation intact — and the driver's `get_next_item`/`item_done` loop with the double-get error preserved as a panic. Transactions travel in `SeqItem` envelopes that own identity; `finish_item` consumes the payload, ending shared-handle mutation of in-flight items; tests reach the sequencer through a typed handle and start sequences as plain values — the per-test variation the factory chapters predicted would need no machinery at all. And `wait_idle` replaced clock-count draining with actual completion knowledge.
+Testbench 7.0 adopted the sequence machinery: `Sequence<REQ, RSP>` with a boxed-future `body` (the design's one visible `Pin`), `SeqCtx::start_item`/`finish_item` preserving the UVM's grant-then-fill ordering — late generation intact — and the driver's `get_next_item`/`item_done` loop with the double-get error preserved as a panic. Transactions travel in `SeqItem` envelopes that own identity; `finish_item` consumes the payload, ending shared-handle mutation of in-flight items; tests reach the sequencer through a typed handle and start sequences as plain values — the per-test variation the factory chapters predicted would need no machinery at all. And `wait_idle` replaced clock-count draining with actual completion knowledge.
 
 The response path — `item_done(Some(...))` and `get_response` — sat unused today. Testbench 7.1 needs it: stimulus that depends on the DUT's answers, demonstrated the traditional way, by making the TinyALU compute Fibonacci numbers.

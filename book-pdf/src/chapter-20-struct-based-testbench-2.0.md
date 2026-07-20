@@ -1,12 +1,12 @@
 # Chapter 20: Struct-Based Testbench: 2.0
 
-Version 1.0 mixed everything in one loop; Chapter 19 pulled the pins out into the BFM. Version 2.0 takes the step the Python book took next: break the *testbench* functionality — stimulus, checking, coverage — into separate pieces with names, so different tests reuse them instead of copying them. In Python those pieces were classes related by inheritance. Here they are structs and a trait, and this chapter is where Part I's inheritance-versus-traits argument (Chapter 10) stops being an argument and starts being a testbench.
+Version 1.0 mixed everything in one loop; Chapter 19 pulled the pins out into the BFM. Version 2.0 takes the step both earlier books took next: break the *testbench* functionality — stimulus, checking, coverage — into separate pieces with names, so different tests reuse them instead of copying them. In SystemVerilog and Python alike, those pieces were classes related by inheritance. Here they are structs and a trait, and this chapter is where Part I's inheritance-versus-traits argument (Chapter 10) stops being an argument and starts being a testbench.
 
-> **In Python we...** drew a UML diagram: `BaseTester` defined `execute()` and left `get_operands()` undefined — an abstract class, "ask forgiveness, not permission" — while `RandomTester` and `MaxTester` extended it, each supplying one small `get_operands()`. A `Scoreboard` class gathered commands and results into lists through two tasks and checked them all in `check_results()`. An `execute_test()` coroutine wired everything and took *the tester class itself* as an argument.
+> **In the UVM...** we drew a UML diagram. A `BaseTester` defined `execute()` and left the operand supply undefined — a pure virtual method in SystemVerilog, an "ask forgiveness" abstract method in Python — while `RandomTester` and `MaxTester` extended it, each supplying one small method. A `Scoreboard` gathered commands and results into lists through two tasks and checked them all at the end. And the test wired everything together with *the tester's class itself* as the variation point.
 
 ## The Tester trait
 
-The Python book opened with a UML diagram; the Rust structure diagram is smaller, because there is no base class — only a trait and two implementors:
+Both earlier books opened this step with a UML diagram; the Rust structure diagram is smaller, because there is no base class — only a trait and two implementors:
 
 ```text
 # Figure 1: Tester structure
@@ -43,7 +43,7 @@ pub trait Tester {
 
 Chapter 10's default-method machinery, load-bearing at last: `execute` is written once, in the trait, and calls `self.get_operands()` — which every implementor is *required* to provide, checked at compile time. A tester that forgets `get_operands` does not run and fail; it does not compile. What Python called an abstract base class and enforced by runtime `AttributeError`, Rust calls a required method and enforces before the simulator starts.²
 
-Two smaller notes. `execute` takes the BFM as a parameter rather than conjuring the singleton — Chapter 19 removed the singleton, so dependencies now arrive through arguments, a small habit that Part IV will grow into a methodology. And the two dummy operations at the end are the Python book's trick, preserved: they keep the pipeline moving so the last real operation completes before the test stops generating stimulus. (Version 2.0 is honest, not elegant. Hold that thought.)
+Two smaller notes. `execute` takes the BFM as a parameter rather than conjuring the singleton — Chapter 19 removed the singleton, so dependencies now arrive through arguments, a small habit that Part IV will grow into a methodology. And the two dummy operations at the end are an old trick, preserved: they keep the pipeline moving so the last real operation completes before the test stops generating stimulus. (Version 2.0 is honest, not elegant. Hold that thought.)
 
 The concrete testers are as small as their Python originals:
 
@@ -75,11 +75,11 @@ impl Tester for MaxTester {
 
 `RandomTester` carries its own `Rng` — the seeded generator is state, and state lives in the struct, visibly. `MaxTester` has no state at all, so it is a *unit struct*, a type with no fields whose only job is to select an implementation. One thing does one thing.
 
-> ² The Python book presented `BaseTester`'s missing method as a feature of dynamic typing, and it is — the same feature, viewed from the other side, that let a typo'd override silently define a *new* method instead of overriding anything. The trait closes both doors with one key.
+> ² Python presents an abstract method's absence as a feature of dynamic typing, and it is — the same feature, viewed from the other side, that let a typo'd override silently define a *new* method instead of overriding anything. SystemVerilog's `pure virtual` closes the first door, at the price of joining a class hierarchy. The trait closes both doors with one key.
 
 ## The Scoreboard
 
-Same definition as the Python book's: a scoreboard gathers data from the DUT, predicts results, and compares. Same structure, too — two gathering tasks feeding storage, and a check function that runs after stimulus ends. The Rust version's storage types deserve a hard look, because they are this chapter's honest pain:
+Same definition as ever: a scoreboard gathers data from the DUT, predicts results, and compares. Same structure, too — two gathering tasks feeding storage, and a check function that runs after stimulus ends. The Rust version's storage types deserve a hard look, because they are this chapter's honest pain:
 
 ```rust
 // Figure 5: Initializing the Scoreboard
@@ -168,7 +168,7 @@ Python's `get_cmd`/`get_result` coroutines plus `start_tasks`, fused: each task 
 }
 ```
 
-The Python book asked why the scoreboard bothers with coverage when the tester loops over all ops, and its answer stands: the scoreboard must work with *any* tester, including future ones that don't. The scoreboard checks what happened, not what the stimulus promised.
+Why does the scoreboard bother with coverage when the tester loops over all ops? The classic answer stands: the scoreboard must work with *any* tester, including future ones that don't. The scoreboard checks what happened, not what the stimulus promised.
 
 ## execute_test(): one wiring for all tests
 
@@ -227,7 +227,7 @@ async fn max_test(ctx: TestCtx) -> Result<(), TestError> {
 }
 ```
 
-Two tests, differing in one constructed value — the classes did all the work, exactly as the Python book designed it. The transcript, both tests in one regression:
+Two tests, differing in one constructed value — the components did all the work, exactly as this testbench has always been designed. The transcript, both tests in one regression:
 
 ```text
 # Figure 13: Two tests, one testbench

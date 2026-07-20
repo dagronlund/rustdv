@@ -1,12 +1,12 @@
 # Chapter 25: uvm_env Testbench: 4.0
 
-Chapter 24 built the machinery; testbench 4.0 moves in. This version converts the 2.0 classes into real components and gathers them into an **environment** — the container that keeps a tester and its scoreboard together, because a tester without a scoreboard makes little sense. The Python book did this in three steps and so do we: componentize the testers and scoreboard, instantiate them in an environment, instantiate the environment in tests.
+Chapter 24 built the machinery; testbench 4.0 moves in. This version converts the 2.0 classes into real components and gathers them into an **environment** — the container that keeps a tester and its scoreboard together, because a tester without a scoreboard makes little sense. The earlier books did this in three steps and so do we: componentize the testers and scoreboard, instantiate them in an environment, instantiate the environment in tests.
 
-> **In Python we...** made `BaseTester` a `uvm_component` that started the BFM in `start_of_simulation_phase()` and drove stimulus in an objection-guarded `run_phase()`; the `Scoreboard` launched its gathering tasks in `start_of_simulation_phase()` and compared in `check_phase()`; `BaseEnv` built the scoreboard, `RandomEnv`/`MaxEnv` added the right tester; and `RandomTest`/`MaxTest` did nothing but build the right env.
+> **In the UVM...** we made `BaseTester` a `uvm_component` that started the BFM in `start_of_simulation_phase()` and drove stimulus in an objection-guarded `run_phase()`; the `Scoreboard` launched its gathering tasks the same way and compared in `check_phase()`; `BaseEnv` built the scoreboard, `RandomEnv`/`MaxEnv` added the right tester; and `RandomTest`/`MaxTest` did nothing but build the right env.
 
 ## The tester becomes a component
 
-The class diagram is the Python book's, with the inheritance arrows replaced by a type parameter:
+The class diagram is the traditional one, with the inheritance arrows replaced by a type parameter:
 
 ```text
 # Figure 1: The 4.0 structure
@@ -49,9 +49,9 @@ impl<T: Tester + 'static> Component for TesterComp<T> {
 
 Read this against pyuvm's `BaseTester` and notice what each piece became. `run_phase()` became `start()` spawning a task; the objection guard raised in `start` *moves into* the task and drops when stimulus completes — `raise_objection`/`drop_objection` become the guard's lifetime, and its lifetime is the work's. The `RandomTester`/`MaxTester` split is no longer inheritance at the component level at all: `TesterComp<T>` is *generic over the tester behavior*, so `TesterComp<RandomTester>` and `TesterComp<MaxTester>` are the two "subclasses," manufactured by the compiler (Chapter 11, cashing its check). The behaviors themselves are unchanged from Chapter 20 — the same `Tester` trait, the same two implementors, imported from `tinyalu_utils`.
 
-Two idioms here become Part IV furniture, so name them now. **The `Option::take` baton**: the spawned task needs to own the tester, but `start` only borrows `self` — so the tester rides in an `Option<T>`, and `start` takes it out, moving ownership into the task. Chapter 5's baton pass, exactly as the Interlude previewed. **Dependencies as constructor arguments**: pyuvm's tester conjured `TinyAluBfm()` out of the singleton air; ours receives its `Rc<TinyAluBfm>` in `new()`. The Python book's advice — "UVM components typically do not override `__init__()`" — inverts completely in rustdv: *the constructor is the build phase*, and taking dependencies there is not a violation of the methodology, it is the methodology.
+Two idioms here become Part IV furniture, so name them now. **The `Option::take` baton**: the spawned task needs to own the tester, but `start` only borrows `self` — so the tester rides in an `Option<T>`, and `start` takes it out, moving ownership into the task. Chapter 5's baton pass, exactly as the Interlude previewed. **Dependencies as constructor arguments**: the old testers conjured their BFM from a singleton or fetched a virtual interface from the config database; ours receives its `Rc<TinyAluBfm>` in `new()`. The UVM's traditional advice — components don't do real work in their constructors — inverts completely in rustdv: *the constructor is the build phase*, and taking dependencies there is not a violation of the methodology, it is the methodology.
 
-The behaviors themselves cross over with a `use`, not a rewrite — the Python book's figure 3 ("RandomTester and MaxTester don't need to change") holds verbatim:
+The behaviors themselves cross over with a `use`, not a rewrite — the old promise ("RandomTester and MaxTester don't need to change") holds verbatim:
 
 ```rust
 // Figure 3: The 2.0 testers don't need to change

@@ -2,7 +2,7 @@
 
 Channels are point-to-point: one sender, one receiver, backpressure by design. A monitor's needs are the opposite — it publishes what it saw to *whoever cares*, must never block on a slow listener, and shouldn't fail if nobody is listening at all. That is the **analysis port**, the UVM's broadcast primitive, and the piece that finally lets the 6.0 testbench give the scoreboard and coverage their own independent feeds.
 
-> **In Python we...** gave monitors a `uvm_analysis_port` and called `self.ap.write(item)`; components extending `uvm_subscriber` overrode `write()` to receive the broadcast, and `uvm_tlm_analysis_fifo` buffered the stream for components that wanted to consume it at their own pace. Forgetting to override `write()` raised `UVMFatalError` at call time.
+> **In the UVM...** monitors owned a `uvm_analysis_port` and called `ap.write(item)`; components extending `uvm_subscriber` overrode `write()` to receive the broadcast, and `uvm_tlm_analysis_fifo` buffered the stream for components that wanted to consume it at their own pace. Forgetting to override `write()` raised pyuvm's `UVMFatalError` at call time — SystemVerilog, to its credit, made `write()` pure virtual and caught the omission at compile time.
 
 ## The Subscriber trait
 

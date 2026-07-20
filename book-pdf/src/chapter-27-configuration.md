@@ -1,12 +1,12 @@
 # Chapter 27: Configuration: The ConfigDB Problem, Solved by Types
 
-Chapter 25's environment took its BFM as a constructor argument and thought nothing of it. This chapter is about why that unremarkable line is the answer to one of the UVM's most remarkable subsystems. The problem is real and permanent: *tests must parameterize components buried deep in a hierarchy the test didn't write* — messages, modes, shared resources. pyuvm's answer was the `ConfigDB()`, a runtime database of path-keyed values. rustdv's answer is a config struct. This chapter replays every ConfigDB scenario from the Python book and watches each one land.
+Chapter 25's environment took its BFM as a constructor argument and thought nothing of it. This chapter is about why that unremarkable line is the answer to one of the UVM's most remarkable subsystems. The problem is real and permanent: *tests must parameterize components buried deep in a hierarchy the test didn't write* — messages, modes, shared resources. The UVM's answer was the config database — `uvm_config_db#(T)` in SystemVerilog, `ConfigDB()` in pyuvm — a runtime store of path-keyed values. rustdv's answer is a config struct. This chapter replays the config database's classic scenarios and watches each one land.
 
-> **In Python we...** stored values with `ConfigDB().set(self, "env.loga", "MSG", "LOG A msg")` — context object plus path string plus key — and components retrieved them with `get()`. Wildcards (`"env.t*"`) configured groups; `set(None, "*", ...)` made globals; "longest path wins" resolved overlaps; and a parent and child setting the same path was settled by a precedence rule you had to memorize.
+> **In the UVM...** we stored values with `uvm_config_db#(string)::set(this, "env.loga", "MSG", ...)` or `ConfigDB().set(self, "env.loga", "MSG", "LOG A msg")` — context object plus path string plus key — and components retrieved them with `get()`. Wildcards (`"env.t*"`) configured groups; a null context made globals; "longest path wins" resolved overlaps; and a parent and child setting the same path was settled by a precedence rule you had to memorize.
 
 ## A component that needs configuration
 
-The lab animal is the Python book's `MsgLogger`: a component whose one behavior — the message it logs — comes from outside.
+The lab animal is a `MsgLogger`: a component whose one behavior — the message it logs — comes from outside.
 
 ```rust
 // Figure 1: A component that needs configuration
@@ -94,7 +94,7 @@ async fn msg_test(_ctx: TestCtx) -> Result<(), TestError> {
       0.00ns INFO     [env.logb]: LOG B msg
 ```
 
-Same output as the Python book's figure 4, and compare what stood behind it. pyuvm: two `set()` calls with paths assembled from a context object and a string, matched at build time against `get()` calls by a path-glob algorithm, any link of which could silently fail. rustdv: a struct with two fields, passed to a constructor that distributes them. The "path" is the nesting — `MsgEnvConfig` configures `MsgEnv`, whose constructor routes each field to its child. Wrong type in a field: compile error. Missing field: compile error (`E0063`, naming the field). Typo'd field name: compile error. The Python book's `UVMConfigItemNotFound` has no rustdv equivalent because *not found* is not a state a struct field can be in.
+Same output as ever, and compare what stood behind it. The config database: two `set()` calls with paths assembled from a context object and a string, matched at build time against `get()` calls by a path-glob algorithm, any link of which could silently fail. rustdv: a struct with two fields, passed to a constructor that distributes them. The "path" is the nesting — `MsgEnvConfig` configures `MsgEnv`, whose constructor routes each field to its child. Wrong type in a field: compile error. Missing field: compile error (`E0063`, naming the field). Typo'd field name: compile error. pyuvm's `UVMConfigItemNotFound` and the silent zero of a failed SV `get()` have no rustdv equivalent, because *not found* is not a state a struct field can be in.
 
 ## Wildcards become visible sharing
 
@@ -175,7 +175,7 @@ impl Default for GlobalConfig {
 
 The `..Default::default()` syntax — *struct update*, Rust calls it — is "longest path wins" with the resolution done by the reader's eyes: explicit fields win, everything else defaults. There is no algorithm because there is no ambiguity; each field is set in exactly one visible place.
 
-Which brings us to the Python book's most instructive ConfigDB scenario. A parent sets `env.loga`'s message; the env itself sets `loga`'s message; both paths resolve to `uvm_test_top.env.loga`, and pyuvm applies its rule: *the parent wins* — a precedence you memorize, and Chapter 28's debugging chapter existed substantially because people don't. Try to write that conflict in rustdv:
+Which brings us to the config database's most instructive scenario. A parent sets `env.loga`'s message; the env itself sets `loga`'s message; both paths resolve to `uvm_test_top.env.loga`, and the UVM applies its rule: *the parent wins* — a precedence you memorize, and Chapter 28's debugging chapter exists substantially because people don't. Try to write that conflict in rustdv:
 
 ```rust
 // Figure 10: The parent/child conflict has nowhere to live
@@ -201,7 +201,7 @@ The conflict is not resolved by a precedence rule; it is rejected as a contradic
 
 ## Sharing real resources
 
-Strings made the mechanics visible; the case that matters is sharing something live — the Python book's own example was "we might have done this with a handle to the TinyAluBfm." You have been reading the rustdv answer since Chapter 25: an `Rc<TinyAluBfm>` field in the config, cloned to each component that needs the one BFM. The form testbench 6.0 adopts wholesale:
+Strings made the mechanics visible; the case that matters is sharing something live — a handle to the TinyAluBfm, the job SystemVerilog's config database spends most of its life doing for virtual interfaces. You have been reading the rustdv answer since Chapter 25: an `Rc<TinyAluBfm>` field in the config, cloned to each component that needs the one BFM. The form testbench 6.0 adopts wholesale:
 
 ```rust
 // Figure 11: The shape of a real config tree (testbench 6.0's, previewed)
@@ -215,7 +215,7 @@ pub struct AluEnvConfig {
 
 Nested hierarchies nest their configs (`AluEnvConfig` holding an `AluAgentConfig`, mirroring the ownership tree), and a test configures a component three levels down by building a struct three levels deep — every level named, every field typed, the whole tree readable top to bottom in the test that built it.
 
-What of `wait_modified`, pyuvm's block-until-someone-changes-my-config? It has no direct port; the pattern it serves — a component reacting to a mid-run parameter change — is a `sim::Event` (or a channel) carried *in* the config struct, which says what it means: this value is a signal, not a setting. The Python book never used `wait_modified` in anger, and neither will we.
+What of `wait_modified`, the block-until-someone-changes-my-config? It has no direct port; the pattern it serves — a component reacting to a mid-run parameter change — is a `sim::Event` (or a channel) carried *in* the config struct, which says what it means: this value is a signal, not a setting. Nobody ever used `wait_modified` in anger, and neither will we.
 
 ## Summary
 

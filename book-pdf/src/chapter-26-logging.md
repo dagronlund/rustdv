@@ -2,7 +2,7 @@
 
 With a hierarchy to hang them on, we can tour the features that live on it, starting with the one you've been reading all book: logging. Large testbenches generate more output than humans can read, so the game is filtering and directing — per component, per subtree, per destination — and the pyuvm surface for that game ports over nearly method-for-method.
 
-> **In Python we...** logged through `self.logger`, inherited from `uvm_report_object`: six levels from DEBUG to CRITICAL, INFO as the default threshold, `set_logging_level_hier(DEBUG)` to open a whole subtree, and handlers — `StreamHandler`, `FileHandler` — to say where messages went. The path between square brackets, `[uvm_test_top.comp]`, told us who was talking.
+> **In the UVM...** we logged through the framework. SystemVerilog: `` `uvm_info(get_type_name(), "msg", UVM_MEDIUM) ``, verbosities from `UVM_NONE` to `UVM_DEBUG`, opened per subtree with `set_report_verbosity_level_hier()`. pyuvm: `self.logger`, inherited from `uvm_report_object` — six levels from DEBUG to CRITICAL, INFO the default threshold, `set_logging_level_hier(DEBUG)` for a subtree, and handlers to say where messages went. The path between square brackets, `[uvm_test_top.comp]`, told us who was talking.
 
 ## Creating log messages
 
@@ -49,7 +49,7 @@ impl Component for LogComp {
       0.00ns CRITICAL [uvm_test_top.comp]: This is critical
 ```
 
-Five calls, four lines — the same demonstration, the same missing line. `debug` ranks below the default INFO threshold and is filtered, precisely as in the Python book's figure. The output format carries the pyuvm signature into the rustdv house style: simulated time, level, `[hierarchy.path]:`, message.
+Five calls, four lines — the same demonstration, the same missing line. `debug` ranks below the default INFO threshold and is filtered, precisely as its ancestors filtered. The output format carries the familiar signature into the rustdv house style: simulated time, level, `[hierarchy.path]:`, message.
 
 One honest deviation to flag while it is visible in figure 2: pyuvm's logger got its path *for free* — the component knew its parent, so `uvm_test_top.comp` materialized without your help. A rustdv component's logger takes the path as a constructor argument, because a struct field does not know what field name it lives in. The convention is the one you'd guess (the logger path matches the field path: the env constructs `Scoreboard::new(...)` whose logger is `"env.scoreboard"`), and the derive-macro wiring that would automate it is on rustdv's roadmap rather than in its present. One string per constructor is the current price of the feature.¹
 
@@ -101,7 +101,7 @@ async fn debug_test(_ctx: TestCtx) -> Result<(), TestError> {
       0.00ns CRITICAL [uvm_test_top.comp]: This is critical
 ```
 
-`set_level_for("uvm_test_top", Level::Debug)` opens the whole tree under `uvm_test_top` — the `set_logging_level_hier(DEBUG)` of the Python book's DebugTest, called from the same moment in the schedule (after construction, before `start_all`: the lines that replaced `end_of_elaboration_phase`). Longest prefix wins, so the debugging move you will actually make on a bad day is surgical: leave the world at INFO and open one suspect:
+`set_level_for("uvm_test_top", Level::Debug)` opens the whole tree under `uvm_test_top` — `set_logging_level_hier(DEBUG)`, `set_report_verbosity_level_hier(UVM_DEBUG)`, called from the same moment in the schedule (after construction, before `start_all`: the lines that replaced `end_of_elaboration_phase`). Longest prefix wins, so the debugging move you will actually make on a bad day is surgical: leave the world at INFO and open one suspect:
 
 ```rust
 set_level_for("env.agent.driver", Level::Debug);   // just the driver chatters

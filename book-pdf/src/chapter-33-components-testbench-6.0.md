@@ -2,7 +2,7 @@
 
 Configuration, variation points, logging, channels, analysis ports — the toolbox is full, and testbench 6.0 spends it. The 6.0 principle, quoted from the Python book because it cannot be improved: each component "either creates data and writes it to a port or gets data from a port and processes it." One job each. This chapter refactors the components to that standard; Chapter 34 wires them up.
 
-> **In Python we...** split the testbench into a `BaseTester` that put command tuples into a `uvm_put_port`, a `Driver` that pulled from a `uvm_get_port` and drove the BFM, a single `Monitor` class that took a *method name* string and used `getattr` to call `get_cmd` or `get_result`, a `Coverage` class extending `uvm_analysis_export`, and a `Scoreboard` buffering two `uvm_tlm_analysis_fifo`s for the check phase.
+> **In the UVM...** we split the testbench into a `BaseTester` that put command tuples into a `uvm_put_port`, a `Driver` that pulled from a `uvm_get_port` and drove the BFM, monitors publishing on analysis ports, a `Coverage` subscriber, and a `Scoreboard` buffering two `uvm_tlm_analysis_fifo`s for the check phase. The Python version had a flourish: one `Monitor` class taking a *method name* string, with `getattr` fetching `get_cmd` or `get_result` at runtime.
 
 ## The tester: stimulus and nothing else
 
@@ -152,7 +152,7 @@ impl Component for Coverage {
 }
 ```
 
-pyuvm's `Coverage` extended `uvm_analysis_export` and did both jobs in one class; Rust splits the two *roles* into two types wearing one trench coat: the inner `CovCollector` is the `Subscriber` the analysis port talks to (via the `Rc<RefCell>` from Chapter 32), and the outer `Coverage` is the `Component` the hierarchy talks to, checking at end of test. The scoreboard's job — comparing — moved out of coverage entirely, completing the one-job-each refactor the Python book performed here.
+pyuvm's `Coverage` extended `uvm_analysis_export` and did both jobs in one class; Rust splits the two *roles* into two types wearing one trench coat: the inner `CovCollector` is the `Subscriber` the analysis port talks to (via the `Rc<RefCell>` from Chapter 32), and the outer `Coverage` is the `Component` the hierarchy talks to, checking at end of test. The scoreboard's job — comparing — moved out of coverage entirely, completing the one-job-each refactor.
 
 ## The scoreboard: FIFOs in, verdicts out
 

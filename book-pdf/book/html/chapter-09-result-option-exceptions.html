@@ -8,7 +8,7 @@
 
         <!-- Custom HTML head -->
 
-        <meta name="description" content="An introduction to Rust using pyuvm as a base">
+        <meta name="description" content="A complete course in Rust and rustdv">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
 
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a5754ff7.js";
+            window.path_to_searchindex_js = "searchindex-3dacaab8.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-30fadfdb.js"></script>
+        <script src="toc-853cbe4a.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -177,10 +177,10 @@
                     <main class="markdown-body">
                         <h1 id="chapter-9-result-option-and-the-end-of-exceptions"><a class="header" href="#chapter-9-result-option-and-the-end-of-exceptions">Chapter 9: Result, Option, and the End of Exceptions</a></h1>
 <blockquote>
-<p><strong>In Python we…</strong> reported errors with exceptions. The Python book explained them with a workplace metaphor: your boss asks you to do a task, you hit an error, and you raise it to your boss. Now it’s off your plate. Your boss raises it to their boss, and so on up the chain until somebody handles it — or nobody does, and the error “gets reported to the public” as a crash with a traceback. Exceptions travel up the call stack the same way, and we caught them with <code>try</code>/<code>except</code>/<code>finally</code>.</p>
+<p><strong>In the UVM…</strong> error handling depended on the dialect. Python reported failures with exceptions — a workplace metaphor explains them: hit an error, raise it to your boss, who raises it to their boss, up the chain until somebody handles it or it reaches the public as a crash with a traceback. We caught them with <code>try</code>/<code>except</code>/<code>finally</code>. SystemVerilog never had exceptions: a function that failed returned a sentinel value, logged a <code>uvm_error</code>, or <code>$fatal</code>ed the simulation outright.</p>
 </blockquote>
-<p>Rust does not have exceptions. Not “discourages them,” not “has them but calls them something else” — the mechanism does not exist. There is no <code>raise</code>, no <code>try</code>, no <code>except</code>, and nothing that silently unwinds through your function while it’s minding its own business.</p>
-<p>Before you mourn, remember what the boss metaphor was papering over. In Python, when you call a function, <em>nothing about that function tells you it might raise</em>. <code>nice_div()</code> looks exactly like a function that always returns a number. The fact that it can instead fling a <code>ZeroDivisionError</code> through your code is invisible — undocumented control flow that you discover at runtime, in our world usually forty minutes into a simulation. Chapter 1 promised that Rust moves discoveries like this to the compile step. This chapter is where that promise gets paid for errors.</p>
+<p>Rust does not have exceptions. Not “discourages them,” not “has them but calls them something else” — the mechanism does not exist. There is no <code>raise</code>, no <code>try</code>, no <code>except</code>, and nothing that silently unwinds through your function while it’s minding its own business. SystemVerilog engineers may feel at home here — but hold the feeling, because SV’s alternative was sentinel values nothing forced you to check and log messages nothing forced you to read. Rust’s alternative has teeth.</p>
+<p>And before Python readers mourn, remember what the boss metaphor was papering over. In Python, when you call a function, <em>nothing about that function tells you it might raise</em>. <code>nice_div()</code> looks exactly like a function that always returns a number. The fact that it can instead fling a <code>ZeroDivisionError</code> through your code is invisible — undocumented control flow that you discover at runtime, in our world usually forty minutes into a simulation. Chapter 1 promised that Rust moves discoveries like this to the compile step. This chapter is where that promise gets paid for errors.</p>
 <p>Rust’s answer is almost embarrassingly simple: <strong>errors are ordinary values, and functions that can fail say so in their return type.</strong> Two enums from the standard library do all the work:</p>
 <ul>
 <li><code>Option&lt;T&gt;</code> — a value that might not be there.</li>
@@ -188,7 +188,7 @@
 </ul>
 <p>You already have the tool for consuming both: <code>match</code>, from Chapter 4. This chapter is <code>match</code> earning its keep.</p>
 <h2 id="option-a-value-that-might-not-be-there"><a class="header" href="#option-a-value-that-might-not-be-there">Option: a value that might not be there</a></h2>
-<p>Python has one value for “nothing here”: <code>None</code>. It shows up as a return value (<code>players.get(4)</code> returns <code>None</code> when number 4 isn’t in the dictionary), as a default, and as a sentinel. And it carries a famous failure mode: <code>None</code> is a perfectly good Python object right up until you use it like the thing you expected, at which point you get an <code>AttributeError</code> — often far from the line that produced the <code>None</code>, which is what makes it such a satisfying bug to chase.¹</p>
+<p>Python has one value for “nothing here”: <code>None</code>. It shows up as a return value (<code>players.get(4)</code> returns <code>None</code> when number 4 isn’t in the dictionary), as a default, and as a sentinel. And it carries a famous failure mode: <code>None</code> is a perfectly good Python object right up until you use it like the thing you expected, at which point you get an <code>AttributeError</code> — often far from the line that produced the <code>None</code>, which is what makes it such a satisfying bug to chase.¹ SystemVerilog’s version is <code>null</code>: a handle that types like the real thing and detonates mid-simulation the first time anyone dereferences it.</p>
 <p>Rust refuses to let “maybe nothing” hide inside an ordinary type. A <code>u8</code> is always a number; a <code>String</code> is always a string. When a value might be absent, the type says so:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -198,7 +198,7 @@
 }
 <span class="boring">}</span></code></pre>
 <p>This is just an enum with a payload, exactly like the ones you built in Chapter 7 — it happens to be defined in the standard library and generic over any type <code>T</code> (generics get their full treatment in Chapter 11; for now, read <code>Option&lt;u8&gt;</code> as “maybe a <code>u8</code>”).</p>
-<p>You met <code>Option</code> briefly in Chapter 8, because <code>HashMap</code> lookups return one. Let’s port the Python book’s football-players dictionary directly. In Python, <code>players.get(4)</code> returned <code>None</code>, and <code>players.get(4, "Not in database")</code> supplied a default. Figure 1 is the same program in Rust.</p>
+<p>You met <code>Option</code> briefly in Chapter 8, because <code>HashMap</code> lookups return one. In Python, <code>players.get(4)</code> returns <code>None</code> for a missing key, and <code>players.get(4, "Not in database")</code> supplies a default. Figure 1 is the same lookup in Rust.</p>
 <pre class="playground"><code class="language-rust">// Figure 1: A HashMap lookup returns Option
 
 use std::collections::HashMap;
@@ -222,7 +222,7 @@ Number 4? Not in database
 Number 4? Not in database
 </code></pre>
 <p>The two halves of figure 1 do the same job two ways. The <code>match</code> is the fundamental move: an <code>Option</code> is an enum, so we take it apart with <code>match</code>, and the compiler <em>requires</em> both arms. You cannot forget the <code>None</code> case — leaving it out is a compile error, not a 2 a.m. discovery. The second half uses <code>unwrap_or</code>, one of a family of convenience methods on <code>Option</code> that package up the common matches; it is the exact analog of passing <code>get()</code> a default in Python.</p>
-<p>Here is the part worth slowing down for. In Python, the <code>None</code> from a failed lookup is the same shape as any other value — you can pass it along, store it in a transaction field, and only find out three function calls later. In Rust, an <code>Option&lt;&amp;str&gt;</code> <em>is not</em> a <code>&amp;str</code>. You cannot print it as a name, compare it to a name, or hand it to a function expecting a name. The compiler stops you at the line where you forgot to handle absence — which is to say, the <code>AttributeError</code>-far-from-the-bug failure mode is not merely discouraged. It doesn’t compile.</p>
+<p>Here is the part worth slowing down for. In your old languages, the nothing-value from a failed lookup is the same shape as any other value — you can pass a <code>None</code> or a <code>null</code> along, store it in a transaction field, and only find out three function calls later. In Rust, an <code>Option&lt;&amp;str&gt;</code> <em>is not</em> a <code>&amp;str</code>. You cannot print it as a name, compare it to a name, or hand it to a function expecting a name. The compiler stops you at the line where you forgot to handle absence — which is to say, the far-from-the-bug failure mode — Python’s <code>AttributeError</code>, SystemVerilog’s null-handle crash — is not merely discouraged. It doesn’t compile.</p>
 <p>When you only care about one arm, <code>if let</code> from Chapter 4 reads better than a <code>match</code> with an empty arm:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -239,7 +239,7 @@ Number 4? Not in database
     Err(E),
 }
 <span class="boring">}</span></code></pre>
-<p><code>T</code> is the type you get on success; <code>E</code> is the error type you get instead. And now we can port the Python book’s exceptions chapter scenario for scenario, starting where it started: dividing by zero.</p>
+<p><code>T</code> is the type you get on success; <code>E</code> is the error type you get instead. Let’s walk the classic failure scenarios, starting with the classic: dividing by zero.</p>
 <pre class="playground"><code class="language-rust">// Figure 2: You still can't divide by zero
 
 fn main() {
@@ -253,7 +253,7 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 </code></pre>
 <p>A word about the <code>parse</code>: it is there because it has to be. Write <code>let divisor = 0;</code> and rustc, able to <em>see</em> the zero, refuses to compile the division at all. Only a divisor the compiler cannot predict — one arriving at runtime, as bus values do — gets the chance to panic.</p>
 <p>That is a <strong>panic</strong> — Rust’s crash. We will come back to panics later in the chapter, because they have a specific job, and “report a divide by zero to the caller” is not it. When the possibility of failure is part of a function’s honest contract, the function should return it. The standard library agrees: alongside the <code>/</code> operator, integers provide <code>checked_div</code>, which returns an <code>Option</code> — <code>None</code> instead of a crash.²</p>
-<p>The Python book’s <code>nice_div()</code> caught <code>ZeroDivisionError</code> and returned <code>math.inf</code>. Our integer version can’t return infinity, but it can do something better: return a <code>Result</code> that names what went wrong. Figure 3 is <code>nice_div</code>, Rust edition.</p>
+<p>A Python <code>nice_div()</code> catches <code>ZeroDivisionError</code> and returns <code>math.inf</code>. Our integer version can’t return infinity, but it can do something better: return a <code>Result</code> that names what went wrong. Figure 3 is <code>nice_div</code>, Rust edition.</p>
 <pre class="playground"><code class="language-rust">// Figure 3: nice_div returns a Result instead of raising
 
 #[derive(Debug)]
@@ -282,10 +282,10 @@ fn main() {
 nice_div(33, 2) = 16
 You screwed up your division, human: DivideByZero
 </code></pre>
-<p>Read the signature first: <code>fn nice_div(dividend: u32, divisor: u32) -&gt; Result&lt;u32, DivError&gt;</code>. That return type is the whole philosophy in one line. In Python, <code>nice_div</code>’s ability to fail was a secret between the function body and whoever read the documentation. In Rust it is in the signature, which means the <em>compiler</em> knows, which means every caller is forced to acknowledge it. The <code>match</code> in <code>main</code> is our <code>except</code> block — except it cannot be forgotten, because you cannot get the <code>u32</code> out of a <code>Result&lt;u32, DivError&gt;</code> without going through it.</p>
+<p>Read the signature first: <code>fn nice_div(dividend: u32, divisor: u32) -&gt; Result&lt;u32, DivError&gt;</code>. That return type is the whole philosophy in one line. In Python, <code>nice_div</code>’s ability to fail was a secret between the function body and whoever read the documentation; in SystemVerilog, it was a status flag you were free to ignore. In Rust it is in the signature, which means the <em>compiler</em> knows, which means every caller is forced to acknowledge it. The <code>match</code> in <code>main</code> is our <code>except</code> block — except it cannot be forgotten, because you cannot get the <code>u32</code> out of a <code>Result&lt;u32, DivError&gt;</code> without going through it.</p>
 <p>Notice also who’s who in the port: the <code>Err</code> arm of the <code>match</code> is playing the role of Python’s <code>except ZeroDivisionError</code> block, and constructing <code>Err(DivError::DivideByZero)</code> is playing the role of <code>raise</code>. Same drama, but now the error travels as a return value, in plain sight.</p>
 <h3 id="the-exception-that-vanished"><a class="header" href="#the-exception-that-vanished">The exception that vanished</a></h3>
-<p>The Python book’s next scenario was <code>nice_div(3, "zero")</code> — dividing an <code>int</code> by a <code>str</code>, which raised a <code>TypeError</code>, which required a second <code>except</code> block to catch. Figure 4 ports that call to Rust.</p>
+<p>Python’s next classic scenario is <code>nice_div(3, "zero")</code> — dividing an <code>int</code> by a <code>str</code>, which raises a <code>TypeError</code>, which requires a second <code>except</code> block to catch. Figure 4 ports that call to Rust.</p>
 <pre class="playground"><code class="language-rust">// Figure 4: The TypeError scenario, ported to Rust
 
 fn main() {
@@ -303,7 +303,7 @@ error[E0308]: mismatched types
   |           |
   |           arguments to this function are incorrect
 </code></pre>
-<p>It doesn’t compile. Of the two failure categories the Python book needed <code>except</code> blocks for, one has simply left the building: passing the wrong <em>type</em> is not a runtime error to be caught, it is a program the compiler refuses to build. The Python chapter’s figures 4 through 6 — the uncaught <code>TypeError</code>, the second <code>except</code> block, catching two exception types on one line — have no Rust equivalents, because the bug they handle cannot occur. Keep a tally of moments like this; the book has several more coming.³</p>
+<p>It doesn’t compile. Of the two failure categories Python needed <code>except</code> blocks for, one has simply left the building: passing the wrong <em>type</em> is not a runtime error to be caught, it is a program the compiler refuses to build. The uncaught <code>TypeError</code>, the second <code>except</code> block, catching two exception types on one line — none of it has a Rust equivalent, because the bug it handles cannot occur. Keep a tally of moments like this; the book has several more coming.³</p>
 <h2 id="the--operator-propagation-you-can-see"><a class="header" href="#the--operator-propagation-you-can-see">The <code>?</code> operator: propagation you can see</a></h2>
 <p>Back to the boss metaphor. The genuinely good idea inside exceptions was <em>delegation</em>: a low-level function shouldn’t have to decide what a divide-by-zero means for the whole program. It should hand the problem upward. Python’s <code>raise</code> did that invisibly. Rust does it with one visible character.</p>
 <p>Suppose we’re writing a little TinyALU-flavored utility: compute a ratio of two accumulated counts as a percentage. It calls <code>nice_div</code>, and if the division fails, our function can’t succeed either — the error should go up to <em>our</em> caller. Written longhand, that’s a <code>match</code> where the <code>Err</code> arm just re-returns the error. Written idiomatically, it’s figure 5.</p>
@@ -328,7 +328,7 @@ percent failed: DivideByZero
 <li><strong>It’s visible at the call site.</strong> Every fallible call in a Rust function is marked with a <code>?</code> (or an explicit <code>match</code>). Scanning a function body tells you exactly where it can bail out early. A Python function body gives you no such list; any line might throw.</li>
 <li><strong>It’s visible in the signature.</strong> You can only use <code>?</code> in a function that itself returns a <code>Result</code> (the compiler enforces this, with a helpful error if you forget). So the ability to fail is contagious <em>in the types</em>: if <code>percent</code> propagates <code>nice_div</code>’s errors, then <code>percent</code>’s signature says <code>Result</code>, and its callers are on notice too. The chain of bosses is written down.</li>
 </ol>
-<p>The Python book showed re-raising: catch an exception, print a snarky message, then <code>raise</code> to send it upward anyway. The Rust spelling of that pattern is a <code>match</code> (or an <code>inspect_err</code> call) that logs and then returns the <code>Err</code> — nothing new to learn, just values. And when the error types along the chain differ, <code>?</code> will convert between them automatically if you’ve told it how; that hook is a trait called <code>From</code>, and traits are the very next chapter, so we’ll leave that thread hanging deliberately.</p>
+<p>Python’s re-raise pattern — catch an exception, print a snarky message, then <code>raise</code> it onward — becomes a <code>match</code> (or an <code>inspect_err</code> call) that logs and then returns the <code>Err</code>. Nothing new to learn, just values. And when the error types along the chain differ, <code>?</code> will convert between them automatically if you’ve told it how; that hook is a trait called <code>From</code>, and traits are the very next chapter, so we’ll leave that thread hanging deliberately.</p>
 <p>One more nicety: <code>main</code> itself can return a <code>Result</code>. When it returns an <code>Err</code>, the program prints the error and exits with a failing status — the last boss in the chain has a sensible default. In Part II you’ll see that rustdv tests work the same way: a test is an <code>async fn</code> returning <code>Result&lt;(), TestError&gt;</code>, and an <code>Err</code> fails the test. The <code>?</code> operators sprinkled through a testbench are little arrows pointing at everything that can end the test.</p>
 <h2 id="designing-an-error-enum"><a class="header" href="#designing-an-error-enum">Designing an error enum</a></h2>
 <p><code>DivError</code> had one variant, which made it a demo. Real error types earn their keep when there are several ways to fail and the caller might care which one happened — exactly the job Python’s exception <em>class hierarchy</em> did, with <code>except ZeroDivisionError</code> and <code>except TypeError</code> selecting by type. In Rust, the error type is an enum, the variants are the failure modes, payloads carry the evidence, and <code>match</code> does the selecting.</p>
@@ -380,7 +380,7 @@ decode failed: invalid ALU op code: 0x07
 <p>Walk through what each piece buys:</p>
 <ul>
 <li><strong><code>#[derive(Debug, ...)]</code></strong> gives us the <code>{err:?}</code> developer-facing printout for free — the same derive habit from Chapters 7 and 8.</li>
-<li><strong>The <code>Display</code> implementation</strong> is the human-facing message, the counterpart of the string you’d pass when raising a Python exception (<code>raise ValueError(f"invalid op: {bits}")</code>). Writing <code>impl fmt::Display for AluError</code> is our first hand-written trait implementation; Chapter 10 will explain the machinery you just used. For now: implementing <code>Display</code> is what makes <code>{err}</code> (no <code>:?</code>) work, and it’s the conventional courtesy every public error type pays.</li>
+<li><strong>The <code>Display</code> implementation</strong> is the human-facing message, the counterpart of the string you’d pass when raising a Python exception or logging a <code>uvm_error</code> (<code>raise ValueError(f"invalid op: {bits}")</code>). Writing <code>impl fmt::Display for AluError</code> is our first hand-written trait implementation; Chapter 10 will explain the machinery you just used. For now: implementing <code>Display</code> is what makes <code>{err}</code> (no <code>:?</code>) work, and it’s the conventional courtesy every public error type pays.</li>
 <li><strong>The payload on <code>InvalidOp(u8)</code></strong> carries the evidence to wherever the error is handled. Python attached this data to the exception object; we attach it to the variant. No fishing it back out of a message string.</li>
 <li><strong>Callers select with <code>match</code>.</strong> A caller who wants to retry on <code>Timeout</code> but fail hard on <code>InvalidOp</code> writes a two-arm match — the moral equivalent of two <code>except</code> blocks, checked for exhaustiveness by the compiler. Add a third variant to <code>AluError</code> next month, and every such <code>match</code> in the codebase becomes a compile error until it says what to do about the new case. Try getting <em>that</em> from an exception hierarchy.</li>
 </ul>
@@ -393,11 +393,11 @@ decode failed: invalid ALU op code: 0x07
 <span class="boring">}</span></code></pre>
 <p>The panicking family has members you will use daily:</p>
 <ul>
-<li><strong><code>assert!(condition, "message...")</code></strong> — panic if the condition is false. <code>assert_eq!(a, b)</code> panics if two values differ, and prints both.</li>
+<li><strong><code>assert!(condition, "message...")</code></strong> — panic if the condition is false. <code>assert_eq!(a, b)</code> panics if two values differ, and prints both. SystemVerilog engineers know immediate assertions well; the difference is disposition — an SV assertion failure prints and, by default, the simulation soldiers on, while a Rust <code>assert!</code> stops the program at the scene.</li>
 <li><strong><code>.unwrap()</code></strong> — on an <code>Option</code> or <code>Result</code>: give me the value, and panic if it’s <code>None</code>/<code>Err</code>.</li>
 <li><strong><code>.expect("message")</code></strong> — <code>unwrap</code> with a message you choose, which makes it strictly better in code you keep.⁴</li>
 </ul>
-<p>Figure 7 ports the Python book’s <code>assert</code> scenario — the <code>xor_bytes</code> function that rejected values that don’t fit in a byte. The port sharpens the example nicely: in Rust, <code>xor_bytes</code> takes <code>&amp;[u8]</code>, so a value over 255 can’t even reach the function (the <code>TypeError</code> disappearance, again). What still <em>can</em> go wrong is a claim about our own logic — say, this version that folds in a parity check the surrounding testbench relies on:</p>
+<p>Figure 7 puts <code>assert!</code> to work in a checksum helper, <code>xor_bytes</code>. Rust sharpens the classic example: <code>xor_bytes</code> takes <code>&amp;[u8]</code>, so a value over 255 can’t even reach the function (the <code>TypeError</code> disappearance, again). What still <em>can</em> go wrong is a claim about our own logic — say, this version that folds in a parity check the surrounding testbench relies on:</p>
 <pre class="playground"><code class="language-rust">// Figure 7: assert! guards an invariant
 
 fn xor_bytes(bytes: &amp;[u8]) -&gt; u8 {
@@ -429,7 +429,7 @@ checksum self-test failed: 0x11 ^ 0x12 != 0
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 </code></pre>
 <p>The first assertion passes silently; the second one stops the program at the line where the impossible happened, with our message. That is what you want from an invariant check: loud, early, and located.</p>
-<p>The Python book closed its <code>assert</code> discussion with a trap: <code>assert (8 &lt; 7, "Obviously false")</code> never fires, because the parentheses build a two-element tuple, and a non-empty tuple is truthy. I am pleased to report the Rust translation of that bug: <code>assert!((8 &lt; 7, "Obviously false"))</code> does not compile, because a tuple is not a <code>bool</code>, and <code>assert!</code> insists on a <code>bool</code>. The trap is not merely avoided; it is unrepresentable.</p>
+<p>Python has a famous <code>assert</code> trap: <code>assert (8 &lt; 7, "Obviously false")</code> never fires, because the parentheses build a two-element tuple, and a non-empty tuple is truthy. I am pleased to report the Rust translation of that bug: <code>assert!((8 &lt; 7, "Obviously false"))</code> does not compile, because a tuple is not a <code>bool</code>, and <code>assert!</code> insists on a <code>bool</code>. The trap is not merely avoided; it is unrepresentable.</p>
 <p>So when do you panic and when do you return <code>Err</code>? The line is intent:</p>
 <ul>
 <li><strong><code>Result::Err</code> is for failures the design expects.</strong> A signal that might not exist, an operand that might be out of range, a check that might not pass. These are outcomes, and the caller gets to decide what they mean.</li>
@@ -445,16 +445,14 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 <strong><code>panic!</code>/<code>assert!</code> are for testbench bugs</strong> — <em>we</em> did something wrong. A driver calling <code>item_done</code> twice, a queue that is empty when the protocol guarantees it can’t be, a state machine in a state the match arms say is impossible. The testbench is broken, and no result it reports can be trusted until it’s fixed.</p>
 </blockquote>
 <p>Both fail the test — rustdv catches panics at the task boundary and scores them as failures, just as cocotb caught a stray exception in any task — but the report distinguishes them, because the reader of the report must react differently: an <code>Err</code> sends you to the waveform viewer; a panic sends you to your own source code. It is the difference between the lab reporting that the chip failed and the lab reporting that the thermometer is broken.</p>
-<p>Python’s world blurred this line: an <code>AssertionError</code> from a scoreboard check and an <code>AttributeError</code> from a testbench typo were both just exceptions rising through the same machinery, distinguished only by convention and by reading the traceback. Rust gives the two categories different mechanisms, different types, and different syntax — so from Chapter 18 on, when you see a scoreboard whose check returns <code>Result</code> and a driver studded with <code>assert!</code>, you are seeing this chapter’s taxonomy at work, not a stylistic accident.</p>
+<p>Both of your languages blurred this line. In Python, an <code>AssertionError</code> from a scoreboard check and an <code>AttributeError</code> from a testbench typo were just exceptions rising through the same machinery, distinguished by reading the traceback. In SystemVerilog, <code>uvm_error</code> for DUT misbehavior versus <code>uvm_fatal</code> for testbench disasters was the right convention — but it was only a convention, nothing enforced it, and the simulation ran on either way until somebody read the log. Rust gives the two categories different mechanisms, different types, and different syntax — so from Chapter 18 on, when you see a scoreboard whose check returns <code>Result</code> and a driver studded with <code>assert!</code>, you are seeing this chapter’s taxonomy at work, not a stylistic accident.</p>
 <p>You now hold both halves of Rust’s honesty policy: types that admit absence (<code>Option</code>), and signatures that admit failure (<code>Result</code>). Along the way, you implemented your first trait — that <code>Display</code> on <code>AluError</code> — mostly on faith. Chapter 10 replaces the faith with understanding: traits are how Rust does everything Python did with inheritance and dunder methods, and they are the last big idea between you and real testbench components.</p>
 <blockquote>
-<p>¹ The Python book’s dictionaries chapter used <code>players.get(4)</code> returning <code>None</code> for a missing hockey player. The bug arrives when you then write <code>player.upper()</code> — and Python tells you <code>'NoneType' object has no attribute 'upper'</code>, three files away from the lookup.</p>
-<p>² The Python book returned <code>math.inf</code> for division by zero, on the theory that it’s the mathematically correct answer. Rust’s <em>floating-point</em> division agrees — <code>3.0 / 0.0</code> is <code>inf</code>, per IEEE 754, no panic — so on this one point the two books are in complete accord and only the integers object.</p>
-<p>³ Chapter 27 is essentially this moment stretched to a full chapter: every ConfigDB failure mode from the Python book, replayed as a compile error.</p>
+<p>¹ In Python, <code>players.get(4)</code> returns <code>None</code> for a missing player. The bug arrives when you then write <code>player.upper()</code> — and Python tells you <code>'NoneType' object has no attribute 'upper'</code>, three files away from the lookup.</p>
+<p>² Python’s <code>nice_div</code> returned <code>math.inf</code> for division by zero, on the theory that it’s the mathematically correct answer. Rust’s <em>floating-point</em> division agrees — <code>3.0 / 0.0</code> is <code>inf</code>, per IEEE 754, no panic — so on this one point the languages are in complete accord and only the integers object.</p>
+<p>³ Chapter 27 is essentially this moment stretched to a full chapter: every config-database failure mode the UVM ever taught you to debug, replayed as a compile error.</p>
 <p>⁴ A colleague of mine calls <code>.unwrap()</code> “a panic with no commit message.”</p>
 </blockquote>
-<hr>
-<p><em>End of Chapter 9 draft.</em></p>
 
                     </main>
 

@@ -1,8 +1,8 @@
 # Chapter 28: Configuration Debugging: What the Compiler Now Does for You
 
-The Python book needed a whole chapter to debug the ConfigDB, and it earned its keep: the database's failure modes were quiet, remote, and ranked among pyuvm's most common support questions. This chapter walks the same crime scenes with the rustdv config-struct design from Chapter 27 and files a report on each: where the bug went, what it looks like now, and — the honest part — what debugging *remains* when the plumbing can no longer fail.
+Both earlier books devoted a chapter to debugging the config database, and those chapters earned their keep: the database's failure modes are quiet, remote, and rank among the UVM's most common support questions in every dialect. This chapter walks the same crime scenes with the rustdv config-struct design from Chapter 27 and files a report on each: where the bug went, what it looks like now, and — the honest part — what debugging *remains* when the plumbing can no longer fail.
 
-> **In Python we...** learned the ConfigDB's classic mistakes one painful demonstration at a time: a typo'd path that matched nothing and left the component running on defaults; a `get()` called before the corresponding `set()`; a wildcard shadowing a specific path (or the reverse, depending on lengths); and a value stored with the wrong type, discovered as an explosion at the point of use, deep in the run.
+> **In the UVM...** we learned the config database's classic mistakes one painful demonstration at a time: a typo'd path that matched nothing and left the component running on defaults; a `get()` called before the corresponding `set()`; a wildcard shadowing a specific path (or the reverse, depending on lengths); and a value stored with the wrong type — a `get()` that quietly fails in SystemVerilog, an explosion at the point of use in Python, both deep in the run.
 
 ## The wrong path
 

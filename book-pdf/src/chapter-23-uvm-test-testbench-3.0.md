@@ -2,7 +2,7 @@
 
 Testbench 2.0 was modular; now we make it methodological. This chapter writes the first rustdv tests in the UVM style — and immediately meets the largest single difference between pyuvm and rustdv, which is what happened to the test *class*. Tradition first, though.
 
-> **In Python we...** wrote `HelloWorldTest(uvm_test)` with an async `run_phase()` that raised an objection, said hello, and dropped the objection; `@pyuvm.test()` told cocotb about it, and the UVM instantiated it under the name `uvm_test_top`. Then we refactored testbench 2.0: `BaseTest` carried the shared `run_phase()`, while `RandomTest` and `MaxTest` overrode `build_phase()` to pick a tester.
+> **In the UVM...** the test was a class extending `uvm_test`, with an objection-guarded `run_phase()` that raised, said hello, and dropped — `class hello_world extends uvm_test` selected by `run_test()` in SV; `HelloWorldTest(uvm_test)` marked `@pyuvm.test()` in Python — and the framework instantiated it under the name `uvm_test_top`. Then testbench 3.0 refactored 2.0: `BaseTest` carried the shared `run_phase()`, while `RandomTest` and `MaxTest` overrode `build_phase()` to pick a tester.
 
 ## Hello, world, in the methodology
 
@@ -35,7 +35,7 @@ Notice what the guard pattern deletes: the *forgot to drop the objection* bug, w
 
 ## Where uvm_test went
 
-The Python book paused here for a UML tower: `uvm_void` → `uvm_object` → `uvm_report_object` → `uvm_component` → `uvm_test`, with your tests extending the top. It is worth reprinting the tower just to watch what happens to it in Rust:
+Both earlier books paused here for the UML tower every UVM engineer has climbed: `uvm_void` → `uvm_object` → `uvm_report_object` → `uvm_component` → `uvm_test`, with your tests extending the top. It is worth reprinting the tower just to watch what happens to it in Rust:
 
 ```text
 # Figure 3: The uvm_test tower, and its rustdv equivalent

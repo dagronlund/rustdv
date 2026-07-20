@@ -8,7 +8,7 @@
 
         <!-- Custom HTML head -->
 
-        <meta name="description" content="An introduction to Rust using pyuvm as a base">
+        <meta name="description" content="A complete course in Rust and rustdv">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
 
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a5754ff7.js";
+            window.path_to_searchindex_js = "searchindex-3dacaab8.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-30fadfdb.js"></script>
+        <script src="toc-853cbe4a.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -176,11 +176,7 @@
                 <div id="mdbook-content" class="content">
                     <main class="markdown-body">
                         <h1 id="chapter-4-conditions-loops-and-match"><a class="header" href="#chapter-4-conditions-loops-and-match">Chapter 4: Conditions, Loops, and Match</a></h1>
-<blockquote>
-<p><strong>In Python we…</strong> designated blocks with indentation, tested conditions with <code>if</code>/<code>elif</code>/<code>else</code>, and observed that <code>elif</code> “provides similar functionality to <code>case</code> and <code>switch</code> statements, but with more flexibility at the cost of more code.” We wrote conditional assignments with the inline ternary — <code>message = "five_val" if aa == 5 else "other_val"</code> — and we looped with <code>while</code> and <code>for</code>, emulating a do-while with <code>while True:</code> and a well-placed <code>break</code>. Ranges came from the <code>range()</code> constructor: <code>range(stop)</code>, <code>range(start, stop)</code>, <code>range(start, stop, step)</code>.
-— <em>Python for RTL Verification</em>, “Conditions and loops” and “Ranges”</p>
-</blockquote>
-<p>This chapter ports all of that to Rust, and then keeps going, because Rust has a construct Python never gave us: <code>match</code>. Two-thirds of this chapter is warm-up — conditions and loops transfer from Python almost without friction — and the last third introduces the construct the rest of this book leans on constantly. When we meet <code>Result</code> in Chapter 9, <code>Option</code> alongside it, and the <code>Ops</code> enum in Chapter 7, <code>match</code> is how we will take them apart. Learn it well here, in miniature, and every later chapter gets easier.</p>
+<p>Conditions and loops are where your old languages already agree: Python tests with <code>if</code>/<code>elif</code>/<code>else</code> and loops with <code>while</code> and <code>for</code>; SystemVerilog tests with <code>if</code>/<code>else</code> and <code>case</code> and loops with everything from <code>for</code> to <code>forever</code>. Two-thirds of this chapter is warm-up, because these constructs transfer to Rust almost without friction. The last third introduces the construct the rest of this book leans on constantly: <code>match</code> — the statement Python never had and the one SystemVerilog’s <code>case</code> always wanted to be. When we meet <code>Result</code> in Chapter 9, <code>Option</code> alongside it, and the <code>Ops</code> enum in Chapter 7, <code>match</code> is how we will take them apart. Learn it well here, in miniature, and every later chapter gets easier.</p>
 <h2 id="if-and-else"><a class="header" href="#if-and-else">if and else</a></h2>
 <p>Rust’s <code>if</code> looks like Python’s with the punctuation swapped: braces instead of indentation, and no colon. Like Python — and unlike C and SystemVerilog — Rust does not require parentheses around the condition. Unlike everybody, Rust <em>insists</em> on the braces, even for one-line bodies.</p>
 <pre class="playground"><code class="language-rust">// Figure 1: A Rust if statement
@@ -211,7 +207,7 @@ error[E0308]: mismatched types
   |        ^^ expected `bool`, found integer
 </code></pre>
 <p>You will grumble about this for a week and then remember every testbench where <code>if dut.done:</code> silently tested the wrong thing — a handle instead of a value, a list instead of its contents. Rust makes you write <code>if nn != 0</code>, and the intent goes on the record.¹</p>
-<p>There is no <code>elif</code> keyword. Rust spells it <code>else if</code>, and a chain of them ports the Python book’s switch replacement directly:</p>
+<p>There is no <code>elif</code> keyword. Rust spells it <code>else if</code>, and a chain of them stands in for a switch — for now:</p>
 <pre class="playground"><code class="language-rust">// Figure 3: else if as a switch (for now)
 
 fn main() {
@@ -230,7 +226,7 @@ fn main() {
 <pre><code class="language-text">--
 Illegal Operation: divide
 </code></pre>
-<p>The Python book called <code>elif</code> a switch replacement “at the cost of more code.” Hold that thought — the cost is about to be refunded, with interest, in the <code>match</code> section.</p>
+<p>Python called this trade “more flexibility at the cost of more code,” and SystemVerilog readers reaching for <code>case</code> should hold that reflex a few pages. The cost is about to be refunded, with interest, in the <code>match</code> section.</p>
 <blockquote>
 <p>¹ SystemVerilog veterans have the opposite scar: <code>if (sig)</code> on a 4-state signal, where an <code>X</code> quietly takes the false branch. Rust’s answer to both languages is the same: say what you mean, and the compiler will hold you to it.</p>
 </blockquote>
@@ -251,8 +247,8 @@ five_val
 <p>² C and SystemVerilog programmers may now retire the <code>?</code> operator with full honors.</p>
 </blockquote>
 <h2 id="three-loops-one-of-them-new"><a class="header" href="#three-loops-one-of-them-new">Three loops, one of them new</a></h2>
-<p>Python gave us two loops, <code>while</code> and <code>for</code>. Rust gives us three: <code>while</code>, <code>for</code>, and <code>loop</code>. The first two are your old friends in new clothes; the third is the new idea.</p>
-<p><code>while</code> works exactly as you expect, condition first, braces around the body. Here is the Python book’s counting loop, ported:</p>
+<p>Python has two loops, <code>while</code> and <code>for</code>. SystemVerilog, characteristically, has five. Rust has three: <code>while</code>, <code>for</code>, and <code>loop</code>. The first two are your old friends in new clothes; the third will look familiar to exactly half of you.</p>
+<p><code>while</code> works exactly as you expect, condition first, braces around the body. Here is a counting loop:</p>
 <pre class="playground"><code class="language-rust">// Figure 5: A while loop in action
 
 fn main() {
@@ -267,7 +263,7 @@ fn main() {
 0 1 2 3 4 5 6 7 8 9 10 11 12 13
 </code></pre>
 <p>Two Chapter 3 details show up here: <code>nn</code> needs <code>mut</code> because we reassign it, and <code>print!</code> (without the <code>ln</code>) is how Rust says <code>end=" "</code> — it prints without the newline. <code>continue</code> and <code>break</code> exist, spelled the same and meaning the same as in Python; I will not re-teach them.</p>
-<p>Now the new one. The Python book emulated a do-while with <code>while True:</code> and a <code>break</code>. Rust looked at how often programmers write intentionally infinite loops — event loops, polling loops, driver loops that run until the test ends — and decided the pattern deserved its own keyword:</p>
+<p>Now the third loop. Python emulates the run-forever pattern with <code>while True:</code> and a well-placed <code>break</code>; SystemVerilog gave it a keyword, <code>forever</code>. Rust agrees with SystemVerilog — intentionally infinite loops are common enough to deserve their own construct — and then improves the idea:</p>
 <pre class="playground"><code class="language-rust">// Figure 6: loop — the intentional infinite loop
 
 fn main() {
@@ -284,7 +280,7 @@ fn main() {
 225
 </code></pre>
 <p>Look closely at that <code>break</code>: it carries a value, and the whole <code>loop</code> evaluates to it — which is why we could write <code>let first_big_square = loop { ... }</code>. Like <code>if</code>, <code>loop</code> is an expression. A “run until something happens, then hand back what you found” pattern that took a flag variable and a post-loop read in Python is one construct in Rust. Only <code>loop</code> gets this privilege; <code>while</code> and <code>for</code> loops cannot <code>break</code> with a value, because their conditions mean they might never produce one.</p>
-<p>If <code>loop</code> sounds like a novelty, consider what you already know is coming: every BFM driver loop and monitor loop in the Python book was a <code>while True:</code> at heart. In Part II, those become <code>loop</code> — the language admitting what the code always meant.</p>
+<p>If <code>loop</code> sounds like a novelty, consider what you already know is coming: every driver loop and monitor loop you have ever written was a <code>forever</code> or a <code>while True:</code> at heart. In Part II, those become <code>loop</code> — the language admitting what the code always meant.</p>
 <h2 id="ranges"><a class="header" href="#ranges">Ranges</a></h2>
 <p>Python’s <code>range()</code> was a constructor with three calling conventions. Rust builds ranges from operators instead:</p>
 <ul>
@@ -303,7 +299,7 @@ fn main() {
 <pre><code class="language-text">--
 0 1 2 3
 </code></pre>
-<p>Where is <code>step</code>? Ranges are iterators (a concept that transfers straight from the Python book’s sequences chapters — Chapter 12 makes it rigorous), and iterators have adapter methods. <code>range(1, 14, 2)</code> becomes:</p>
+<p>Where is <code>step</code>? Ranges are iterators (Chapter 12 makes that concept rigorous), and iterators have adapter methods. Python’s <code>range(1, 14, 2)</code> becomes:</p>
 <pre class="playground"><code class="language-rust">// Figure 8: Stepping through a range
 
 fn main() {
@@ -342,7 +338,7 @@ answer = 25
 <li><strong>The compiler checks that the patterns cover every case.</strong> This one gets its own section.</li>
 </ol>
 <h2 id="exhaustiveness-the-compiler-counts-your-cases"><a class="header" href="#exhaustiveness-the-compiler-counts-your-cases">Exhaustiveness: the compiler counts your cases</a></h2>
-<p>Delete the <code>_</code> arm from a <code>match</code> and something remarkable happens. Here is a <code>match</code> on a raw op code — the TinyALU’s four operations, numbered 1 through 4 as they were in the Python book’s <code>Ops</code> IntEnum — with no wildcard:</p>
+<p>Delete the <code>_</code> arm from a <code>match</code> and something remarkable happens. Here is a <code>match</code> on a raw op code — the TinyALU’s four operations, numbered 1 through 4 as the spec has always numbered them — with no wildcard:</p>
 <pre class="playground"><code class="language-rust">// Figure 10: The compiler catches missing cases
 
 fn main() {
@@ -364,10 +360,10 @@ error[E0004]: non-exhaustive patterns: `0_u8` and `5_u8..=u8::MAX` not covered
   |
   = note: the matched value is of type `u8`
 </code></pre>
-<p>Sit with that error message for a moment, because it is doing something no Python testbench ever got for free. The compiler enumerated every value a <code>u8</code> can hold, subtracted the four we handled, and reported precisely what we missed: zero, and everything from 5 up. An <code>elif</code> chain that forgets a case is a runtime surprise — the Python book’s Figure 3 only caught its illegal <code>"divide"</code> because we remembered to write the <code>else</code>. A <code>match</code> that forgets a case <em>does not compile</em>. The fix is either a <code>_</code> arm (an explicit decision to lump the leftovers together) or arms for the missing values (an explicit decision about each) — but it is always a decision, never an oversight.</p>
+<p>Sit with that error message for a moment, because it is doing something neither of your testbench languages ever did for free. The compiler enumerated every value a <code>u8</code> can hold, subtracted the four we handled, and reported precisely what we missed: zero, and everything from 5 up. An <code>elif</code> chain that forgets a case is a runtime surprise — figure 3 only caught its illegal <code>"divide"</code> because we remembered to write the <code>else</code>. A SystemVerilog <code>case</code> that forgets one falls through in silence unless you wrote the <code>default</code>, and even <code>unique case</code> merely upgrades the silence to a runtime warning that waits for the right stimulus to arrive before it speaks. A <code>match</code> that forgets a case <em>does not compile</em>. The fix is either a <code>_</code> arm (an explicit decision to lump the leftovers together) or arms for the missing values (an explicit decision about each) — but it is always a decision, never an oversight.</p>
 <p>For a <code>u8</code>, exhaustiveness is a nice safety net. The reason this book teaches <code>match</code> in Chapter 4 rather than Chapter 14 is what happens when the thing being matched has a <em>small, meaningful</em> set of cases. In Chapter 7, <code>Ops</code> returns as a true Rust enum with exactly four values, and a <code>match</code> on it needs exactly four arms — no wildcard, no dead cases, and if the TinyALU ever grows a fifth operation, <strong>every <code>match</code> in the testbench that fails to handle it becomes a compile error</strong>. Your scoreboard, your coverage collector, your predictor: the compiler hands you the complete list of code that must learn about the new op. That is the refactoring-without-fear promise of Chapter 1, delivered by a control-flow statement.</p>
 <h2 id="patterns-ranges-tuples-and-taking-things-apart"><a class="header" href="#patterns-ranges-tuples-and-taking-things-apart">Patterns: ranges, tuples, and taking things apart</a></h2>
-<p>The left side of a <code>match</code> arm is not limited to constants. Patterns can be ranges — and here the TinyALU gives us a real example. Recall from the Python book that ADD, AND, and XOR complete in one cycle while MUL takes three. With op codes 1 through 4:</p>
+<p>The left side of a <code>match</code> arm is not limited to constants. Patterns can be ranges — and here the TinyALU gives us a real example: ADD, AND, and XOR complete in one cycle while MUL takes three. With op codes 1 through 4:</p>
 <pre class="playground"><code class="language-rust">// Figure 11: Matching on ranges
 
 fn main() {
@@ -408,11 +404,11 @@ one operand zero
     Err(e) =&gt; { /* the signal wasn't there; e says why */ }
 }
 <span class="boring">}</span></code></pre>
-<p>One construct checks which case you got <em>and</em> hands you its contents <em>and</em> forces you — at compile time — to say what happens in the failure case you would rather not think about. Python’s <code>try</code>/<code>except</code> let you skip the <code>except</code> and hope; <code>match</code> on a <code>Result</code> has no such loophole. Exhaustiveness, it turns out, is not a switch-statement garnish. It is how Rust makes error handling mandatory, and Chapters 7 and 9 are where that bill comes due — in our favor.</p>
+<p>One construct checks which case you got <em>and</em> hands you its contents <em>and</em> forces you — at compile time — to say what happens in the failure case you would rather not think about. Python’s <code>try</code>/<code>except</code> let you skip the <code>except</code> and hope; SystemVerilog mostly declined to have an error story at all; <code>match</code> on a <code>Result</code> has no such loophole. Exhaustiveness, it turns out, is not a switch-statement garnish. It is how Rust makes error handling mandatory, and Chapters 7 and 9 are where that bill comes due — in our favor.</p>
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<p>Rust’s conditions and loops are Python’s with braces on: <code>if</code>/<code>else if</code>/<code>else</code> instead of <code>if</code>/<code>elif</code>/<code>else</code>, <code>while</code> and <code>for</code> behaving as you expect, <code>continue</code> and <code>break</code> unchanged. The differences all push the same direction. Conditions must be real <code>bool</code>s — no truthiness. <code>if</code> is an expression, retiring the ternary. <code>loop</code> names the intentional infinite loop and can <code>break</code> with a value. Ranges are syntax (<code>0..8</code> exclusive, <code>0..=8</code> inclusive) rather than a constructor, with iterator adapters like <code>step_by</code> covering the rest.</p>
-<p>And <code>match</code> is the construct Python never had: patterns instead of comparisons, expression instead of statement, no fallthrough, destructuring with bindings and guards — and exhaustiveness checking, the compiler’s guarantee that every case is a decision and no case is an oversight. We will <code>match</code> on integers and tuples this week, on <code>Ops</code> in Chapter 7, and on <code>Option</code> and <code>Result</code> for the rest of our verification careers.</p>
-<p>So far, every value we have used has lived and died inside <code>fn main</code> without our attention — Python habits, still serving us fine. In the next chapter, we hand a value from one variable to another and discover that Rust has been keeping track of who owns what all along. Chapter 5 is ownership: the idea with no Python-book mirror, and the hinge of the whole language.</p>
+<p>Rust’s conditions and loops hold no terrors: <code>if</code>/<code>else if</code>/<code>else</code> with mandatory braces and honest <code>bool</code> conditions, <code>while</code> and <code>for</code> behaving as you expect, <code>continue</code> and <code>break</code> unchanged. The differences all push the same direction. No truthiness, and no silently-tested <code>X</code>. <code>if</code> is an expression, retiring the ternary. <code>loop</code> is <code>forever</code> with a diploma — it names the intentional infinite loop and can <code>break</code> with a value. Ranges are syntax (<code>0..8</code> exclusive, <code>0..=8</code> inclusive) rather than a constructor, with iterator adapters like <code>step_by</code> covering the rest.</p>
+<p>And <code>match</code> is the construct Python never had and <code>case</code> wanted to be: patterns instead of comparisons, expression instead of statement, no fallthrough, destructuring with bindings and guards — and exhaustiveness checking, the compiler’s guarantee that every case is a decision and no case is an oversight. We will <code>match</code> on integers and tuples this week, on <code>Ops</code> in Chapter 7, and on <code>Option</code> and <code>Result</code> for the rest of our verification careers.</p>
+<p>So far, every value we have used has lived and died inside <code>fn main</code> without our attention — garbage-collected habits, still serving us fine. In the next chapter, we hand a value from one variable to another and discover that Rust has been keeping track of who owns what all along. Chapter 5 is ownership: the idea with no mirror in either of your languages, and the hinge of the whole one you’re learning.</p>
 
                     </main>
 

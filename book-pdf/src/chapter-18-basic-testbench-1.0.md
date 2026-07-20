@@ -1,10 +1,10 @@
 # Chapter 18: Basic Testbench: 1.0
 
-The TinyALU is back. From here to the end of the book we do what the Python book did: write increasingly modular and maintainable versions of one testbench, for one DUT, with the version numbers meaning the same architectural steps they meant before. This chapter is version 1.0 — a single loop, easy to follow, deliberately naive — and its private teaching agenda is watching `Result`, `?`, and `match`-hardened enums shape testbench code.
+The TinyALU is back. From here to the end of the book we do what both earlier books did: write increasingly modular and maintainable versions of one testbench, for one DUT, with the version numbers meaning the same architectural steps they have always meant. This chapter is version 1.0 — a single loop, easy to follow, deliberately naive — and its private teaching agenda is watching `Result`, `?`, and `match`-hardened enums shape testbench code.
 
-> **In Python we...** met the TinyALU: two 8-bit legs `A` and `B`, an `op` bus, a 16-bit `result`. ADD, AND, and XOR take one clock; MUL takes three. The user drives the operands and raises `start`; the DUT raises `done` with the result. And we wrote testbench 1.0 as one `while` loop on the falling clock edge, reading `start` and `done` to decide whether to send a command or check a result.
+> **In the UVM...** both earlier books began exactly here. The TinyALU: two 8-bit legs `A` and `B`, an `op` bus, a 16-bit `result`. ADD, AND, and XOR take one clock; MUL takes three. The user drives the operands and raises `start`; the DUT raises `done` with the result. `reset_n` is active-low and synchronous. And testbench 1.0 was one loop on the falling clock edge, reading `start` and `done` to decide whether to send a command or check a result.
 
-The DUT is unchanged — the same `tinyalu.sv`, the same protocol, the same timing diagram (the Python book's figures 1 and 2; keep them in reach). Its port list is the whole contract:
+The DUT is the same `tinyalu.sv` the earlier books verified — same protocol, same timing. Its port list is the whole contract:
 
 ```text
 # Figure 1: The TinyALU's interface
@@ -23,7 +23,7 @@ The rules that matter for the loop: a command is *sent* by raising `start` when 
 
 ## The Ops enumeration
 
-The Python book put `Ops` in `tinyalu_utils` as an `IntEnum`, doing double duty: naming the operations and mapping each to its opcode. The Rust `Ops` has been with us since Chapter 7, and here is its final, working form:
+Every version of this testbench has had an `Ops` enum doing double duty: naming the operations and mapping each to its opcode. The Rust `Ops` has been with us since Chapter 7, and here is its final, working form:
 
 ```rust
 // Figure 2: The operation enumeration
@@ -90,7 +90,7 @@ async fn alu_test(ctx: TestCtx) -> Result<(), TestError> {
     reset_n.set_u64(1);
 ```
 
-The shape is the Python book's exactly — `passed` flag, coverage set, reset sequence on falling edges — with Chapter 17's spellings. One newcomer: `ctx.rng()`. Python reached for the global `random` module; rustdv hands each test a seeded generator, and the runner prints the seed on every run (`RUSTDV_RANDOM_SEED=1` in this chapter's transcript), so a failure reproduces by exporting one variable. Randomness you cannot replay is a bug-report you cannot act on.
+The shape is the classic 1.0 exactly — `passed` flag, coverage set, reset sequence on falling edges — with Chapter 17's spellings. One newcomer: `ctx.rng()`. Python reached for the global `random` module, SystemVerilog for `$urandom` and a simulator seed flag; rustdv hands each test a seeded generator, and the runner prints the seed on every run (`RUSTDV_RANDOM_SEED=1` in this chapter's transcript), so a failure reproduces by exporting one variable. Randomness you cannot replay is a bug-report you cannot act on.
 
 ## Sending commands
 
@@ -223,4 +223,4 @@ Four operations, random operands, all compared against prediction, all covered �
 
 Testbench 1.0 verified the TinyALU with one loop: reset, then a falling-edge state machine that sends a random command when the bus is idle, errors if `done` fires without `start`, waits out multi-cycle operations, and predicts-and-compares when `done` arrives — with a coverage set confirming every op ran. The Rust-specific texture: `Ops` carries its opcodes in its `repr` and its completeness in the type; `alu_prediction` lost its runtime type guard to the signature and its missing-branch anxiety to `match`; DUT misbehavior returns `Err` while panics stay reserved for testbench bugs; and the run is reproducible by seed, printed on every transcript.
 
-And the Python book's closing judgment of 1.0 needs no translation: this testbench works because the TinyALU is tiny. Everything is jammed in one loop — stimulus, protocol, checking, coverage — and no team could grow it. The first step out, then as now, is to split the *signal-level* work from the *testbench-level* work. That split has a name: the Bus Functional Model, and it is Chapter 19.
+And the earlier books' closing judgment of 1.0 needs no translation: this testbench works because the TinyALU is tiny. Everything is jammed in one loop — stimulus, protocol, checking, coverage — and no team could grow it. The first step out, then as now, is to split the *signal-level* work from the *testbench-level* work. That split has a name: the Bus Functional Model, and it is Chapter 19.

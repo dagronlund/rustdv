@@ -1,8 +1,8 @@
 # Chapter 30: Variation-Point Testbench: 5.0
 
-Testbench 4.0 had a flaw the Python book flagged the moment it shipped: two tests needed two environments — `AluEnv<RandomTester>` and `AluEnv<MaxTester>` in our version, `RandomEnv` and `MaxEnv` in pyuvm's — even though the environments differed in exactly one component. Version 5.0 fixes it the way pyuvm's factory chapter promised: **one environment**, with the difference carried in from the tests. In pyuvm the carrier was a factory override; here it is Chapter 29's maker closure, doing its first day of real testbench work.
+Testbench 4.0 had a flaw both earlier books flagged the moment it shipped: two tests needed two environments — `AluEnv<RandomTester>` and `AluEnv<MaxTester>` in our version, `RandomEnv` and `MaxEnv` before — even though the environments differed in exactly one component. Version 5.0 fixes it the way the factory always promised: **one environment**, with the difference carried in from the tests. In the UVM the carrier was a factory override; here it is Chapter 29's maker closure, doing its first day of real testbench work.
 
-> **In Python we...** kept one `AluEnv` that created its tester with `BaseTester.create("tester", self)`, and each test registered an override in `build_phase`: `uvm_factory().set_type_override_by_type(BaseTester, RandomTester)` — three lines that changed what the env built without the env knowing.
+> **In the UVM...** we kept one `AluEnv` that created its tester through the factory — `base_tester::type_id::create("tester", this)`, `BaseTester.create("tester", self)` — and each test registered an override in `build_phase`: `set_type_override_by_type(BaseTester, RandomTester)`. Three lines that changed what the env built without the env knowing.
 
 ## The variation point, for real
 

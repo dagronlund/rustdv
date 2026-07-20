@@ -1,8 +1,8 @@
 # Chapter 15: async/await and the Executor
 
-Part I ended with a confession: you owned the whole Rust toolkit and still could not *wait*. No Timer, no rising edge, no way to say "pause this task until something happens in the simulation." This chapter fixes that, and it fixes it at the level the Python book never had to: by the end you will have written an event loop with your own hands, because Rust — unlike Python — hands you the syntax and lets you keep the engine.
+Part I ended with a confession: you owned the whole Rust toolkit and still could not *wait*. No timer, no rising edge, no way to say "pause this task until something happens in the simulation." This chapter fixes that, and it fixes it at a level no earlier book in this series had to: by the end you will have written an event loop with your own hands, because Rust — unlike SystemVerilog or Python — hands you the syntax and lets you keep the engine.
 
-> **In Python we...** imagined writing the old adventure game Rogue, where software waits for a keystroke and responds to it — an *event loop* blocking until an event happens. We didn't have to write that construct, because modules provided it: asyncio for I/O, and cocotb, "whose event loop works with a simulator." We defined coroutines with `async def`, marked the top one with `@cocotb.test()`, and awaited triggers like `Timer(2, units="ns")`.
+> **In the UVM...** waiting was somebody else's engine. SystemVerilog's `@(posedge clk)` and `#2ns` compiled straight into the simulator's event wheel — the process suspends, the scheduler resumes it, and no testbench author ever sees the machinery. cocotb rebuilt the same experience in Python: coroutines defined with `async def`, the top one marked `@cocotb.test()`, triggers like `Timer(2, units="ns")` awaited against an event loop the module supplied.
 
 Every word of that still applies. Rust's `async`/`await` is the same idea you already know — resumable functions parked until an event fires — and a rustdv test will look strikingly like a cocotb test. What differs is underneath, and the difference is the theme of this chapter: **Python's coroutines push, Rust's futures are pulled**, and Rust ships no event loop at all. cocotb had to write its own event loop because asyncio cannot block on simulator time. rustdv is in exactly the same position, and this time you get to see the machine.
 
@@ -38,7 +38,7 @@ The log line should feel like home: simulated time, level, message — the same 
 
 ## What `async` actually builds
 
-In the Python book we treated coroutines as resumable functions and let cocotb worry about resuming them. That was the right call then, and it would be the wrong call now, because in Rust the resuming machinery is *your* code. So let's look inside.
+In your old testbenches you treated suspendable processes as a given and let the simulator — or cocotb — worry about resuming them. That was the right call then, and it would be the wrong call now, because in Rust the resuming machinery is *your* code. So let's look inside.
 
 When the Rust compiler sees `async fn`, it does not create a function that runs your code. It creates a function that returns a **state machine** — a value implementing the `Future` trait, frozen at its starting line. The `Future` trait has one method:
 
@@ -224,7 +224,7 @@ And the drain loop's exit condition is not a detail — it is the *interface to 
 
 ## Awaiting simulated time
 
-With the engine understood, the rest of the chapter is a homecoming. The Python book grounded `await` in the languages we came from, and both figures are worth reprinting exactly, because they have not changed and neither has the point:
+With the engine understood, the rest of the chapter is a homecoming. Every language in this series has a way to say "consume simulated time," and two of them deserve reprinting exactly, because they have not changed and neither has the point:
 
 ```text
 # Figure 5: VHDL waits for 2 nanoseconds
@@ -269,10 +269,10 @@ async fn wait_2ns(_ctx: TestCtx) -> Result<(), TestError> {
 
 The test started at 0.00ns and logged at 2.00ns: two nanoseconds of *simulated* time passed, no wall-clock sleeping involved. `Timer(2, units="ns")` became `Timer::ns(2)` — a constructor per unit rather than a string argument, so `Timer::ns`, `Timer::us`, `Timer::ms` are distinct functions and a typo'd unit string is impossible rather than discovered at runtime. And you now know precisely what that innocent `.await` did: the test's future returned `Pending`, `Timer` handed its waker to the simulator with instructions for 2ns hence, the executor's queue ran dry, control went back to the simulator, simulated time advanced, the callback fired, the waker requeued the test, and the drain loop polled it awake on the far side of the await. Ten steps, all of which you have now either written or watched.
 
-One habit to carry forward: `Timer` is for *modeling time*, never for synchronization. The Python book learned that lesson with the NullTrigger race and taught "no sleeps for coordination"; the rule survives translation intact, and Chapter 16's queues and events are the right tools, exactly as cocotb's were.
+One habit to carry forward: `Timer` is for *modeling time*, never for synchronization. Every dialect has scars behind that rule — SystemVerilog testbenches paced by `#delay` guesses, cocotb's NullTrigger race — and "no sleeps for coordination" survives translation intact. Chapter 16's queues and events are the right tools, exactly as their ancestors were.
 
 ## Summary
 
-This chapter paid off the Python book's "Coroutines" chapter in a harder currency. Rust's `async fn` compiles to a state machine implementing `Future`, whose one method `poll` answers `Ready` or `Pending` — Python's push-a-trigger-out model inverted into a pull. A future that returns `Pending` owes the executor a wake-up call, delivered through the `Waker` riding in every poll — cocotb's `TriggerCallback`, standardized into the language. Rust ships no event loop, which stopped being bad news the moment we wrote one in a page: a run queue, a task arena, wake-as-requeue, and a drain loop that returns control to whoever owns the events — for us, always, the simulator. On top of that engine, the user-facing surface came home unchanged: `#[rustdv::test]` marks the top-level coroutine, `Timer::ns(2).await` consumes simulated time, and the log lines line up with the Python book's down to the column.
+This chapter opened the box every earlier dialect kept sealed. Rust's `async fn` compiles to a state machine implementing `Future`, whose one method `poll` answers `Ready` or `Pending` — the push-a-trigger-out model of cocotb and the simulator's event wheel, inverted into a pull. A future that returns `Pending` owes the executor a wake-up call, delivered through the `Waker` riding in every poll — cocotb's `TriggerCallback`, standardized into the language. Rust ships no event loop, which stopped being bad news the moment we wrote one in a page: a run queue, a task arena, wake-as-requeue, and a drain loop that returns control to whoever owns the events — for us, always, the simulator. On top of that engine, the user-facing surface came home unchanged: `#[rustdv::test]` marks the top-level coroutine, `Timer::ns(2).await` consumes simulated time, and the log reads like the log always read.
 
 What we built by hand today, `rustdv-sim` provides for keeps: a real spawner, task handles you can await and cancel, and the sim-aware queues that make producer/consumer testbenches safe. That is Chapter 16 — where The Count gets his timer back, and where we meet the one place Rust's task model genuinely diverges from cocotb's, in the matter of killing a task.
