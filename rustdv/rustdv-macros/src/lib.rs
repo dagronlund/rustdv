@@ -385,15 +385,19 @@ pub fn derive_component(input: TokenStream) -> TokenStream {
         let fname = &f.name;
         let ty = f.ty.trim_start();
         if ty.starts_with("Option") {
+            // "declared but not yet built": a child created during `build`
+            // (D6) appears here only once it is `Some`.
             visits.push_str(&format!(
-                "if let ::core::option::Option::Some(__c) = &mut self.{fname} {{ f(\"{fname}\", __c); }}\n"
+                "if let ::core::option::Option::Some(__c) = &mut self.{fname} {{ __out.push((::std::string::String::from(\"{fname}\"), __c as &mut dyn ::rustdv::ComponentNode)); }}\n"
             ));
         } else if ty.starts_with("Vec") {
             visits.push_str(&format!(
-                "for (__i, __c) in self.{fname}.iter_mut().enumerate() {{ let __n = ::std::format!(\"{fname}[{{}}]\", __i); f(&__n, __c); }}\n"
+                "for (__i, __c) in self.{fname}.iter_mut().enumerate() {{ __out.push((::std::format!(\"{fname}[{{}}]\", __i), __c as &mut dyn ::rustdv::ComponentNode)); }}\n"
             ));
         } else {
-            visits.push_str(&format!("f(\"{fname}\", &mut self.{fname});\n"));
+            visits.push_str(&format!(
+                "__out.push((::std::string::String::from(\"{fname}\"), &mut self.{fname} as &mut dyn ::rustdv::ComponentNode));\n"
+            ));
         }
     }
 
@@ -401,9 +405,10 @@ pub fn derive_component(input: TokenStream) -> TokenStream {
         r#"
 impl {impl_generics} ::rustdv::ComponentNode for {name} {type_params} {{
     fn node_name(&self) -> &'static str {{ "{name}" }}
-    fn visit_children(&mut self, f: &mut dyn FnMut(&str, &mut dyn ::rustdv::ComponentNode)) {{
-        let _ = &f;
+    fn children_mut(&mut self) -> ::std::vec::Vec<(::std::string::String, &mut dyn ::rustdv::ComponentNode)> {{
+        let mut __out: ::std::vec::Vec<(::std::string::String, &mut dyn ::rustdv::ComponentNode)> = ::std::vec::Vec::new();
         {visits}
+        __out
     }}
 }}
 "#

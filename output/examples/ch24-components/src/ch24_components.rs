@@ -4,16 +4,13 @@
 //!
 //! No DUT needed: structure is the subject.
 //!
-//! ASPIRATIONAL — this file is the *target* API for the first half of the
-//! chapter, written before the framework can compile it (D1/D2). rustdv is
-//! being changed to satisfy it. It is the port of the Python book's
-//! chapter 28 Figure 1, `PhaseTest(uvm_test)`.
-//!
 //! This is where the UVM's phase lifecycle comes back. The previous rustdv
 //! pass had **destroyed** `build` and `connect` — demoted to "constructor
 //! conventions" (review-memo R3) — leaving only five of the nine phases and
-//! driving them by hand. D5/D6 restore them as real phase methods, and the
-//! runner drives the whole sequence, exactly as pyuvm's phaser does. See
+//! driving them by hand. D5/D6 restore them as real phase methods; the
+//! runner drives the whole sequence, exactly as pyuvm's phaser does; and a
+//! parent grows its subtree in its own `build` phase (D6). Ports of the
+//! Python book's chapter 28, Figures 1 and 4-6. See
 //! `output/.design-decisions.md`.
 
 use rustdv::prelude::*;
@@ -79,11 +76,58 @@ impl Component for PhaseTest {
 // Second half — building the hierarchy (TestTop -> mc -> bc)
 // ===========================================================================
 //
-// NEXT, not yet written here. The Python book's Figures 4-6 build a
-// three-level tree where each parent *creates its children in its own
-// build phase* (`self.mc = MiddleComp("mc", self)`) and the phaser then
-// recurses into them. That is D6's two-stage construction — children as
-// `Option<T>`/`Vec<T>`, populated during `build` — and it is the real work
-// of restoring late binding. It is deliberately left for the second half so
-// the construction API is designed on purpose, not smuggled in with the
-// phase list.
+// The Python book's Figures 4-6: a three-level tree where each parent
+// *creates its children in its own build phase* and the phaser recurses
+// into them. This is D6's two-stage construction — a child is an
+// `Option<T>` field, "declared but not yet built," and `build` fills it in.
+// The ownership tree is still the component tree; `build` is where it grows.
+
+// Chapter 24, Figure 6: the bottom component. Only a run phase, which
+// objects, logs under its path (uvm_test_top.mc.bc in UVM; TestTop.mc.bc
+// here), and drops.
+#[derive(Component, Default)]
+struct BottomComp;
+
+impl Component for BottomComp {
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let _obj = ctx.raise_objection("bc run");
+        ctx.info("run phase");
+        Ok(())
+    }
+}
+
+// Chapter 24, Figure 5: the middle component builds the bottom component in
+// its own build phase, and announces itself at end of elaboration.
+#[derive(Component, Default)]
+struct MiddleComp {
+    #[component(child)]
+    bc: Option<BottomComp>,
+}
+
+impl Component for MiddleComp {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        self.bc = Some(BottomComp::default());
+    }
+    fn end_of_elaboration(&mut self, ctx: &mut RustdvCtx) {
+        ctx.info("end of elaboration phase");
+    }
+}
+
+// Chapter 24, Figure 4: the test at the top. Its build phase constructs the
+// middle component; the phaser descends into the tree that build creates.
+#[rustdv::test]
+#[derive(Component, Default)]
+struct TestTop {
+    #[component(child)]
+    mc: Option<MiddleComp>,
+}
+
+impl Component for TestTop {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        ctx.info("build phase");
+        self.mc = Some(MiddleComp::default());
+    }
+    fn final_phase(&mut self, ctx: &mut RustdvCtx) {
+        ctx.info("final phase");
+    }
+}

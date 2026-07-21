@@ -69,5 +69,7 @@ impl<T> ComponentNode for TlmFifo<T> {
     fn node_name(&self) -> &'static str {
         "TlmFifo"
     }
-    fn visit_children(&mut self, _f: &mut dyn FnMut(&str, &mut dyn ComponentNode)) {}
+    fn children_mut(&mut self) -> Vec<(String, &mut dyn ComponentNode)> {
+        Vec::new()
+    }
 }

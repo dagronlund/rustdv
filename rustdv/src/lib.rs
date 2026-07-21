@@ -49,7 +49,7 @@ pub use rustdv_sim::log;
 
 pub use rustdv_uvm::{
     build_all, channel, check_all, connect_all, end_of_elaboration_all, extract_all, final_all,
-    print_hierarchy, report_all, run_component_test, run_extract_check_report, start_all,
+    print_hierarchy, report_all, run_all, run_component_test, run_extract_check_report, start_all,
     start_of_simulation_all, Active, AnalysisFifo, AnalysisPort, CheckSink,
     Component as ComponentTrait, ComponentNode, DynPhases, ObjectionGuard, ObjectionRegistry,
     Receiver, ResponseQueue, Sender, SeqCtx, SeqError, SeqItem, SeqItemPort, Sequence, Sequencer,

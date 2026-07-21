@@ -48,7 +48,7 @@ pub use analysis::{AnalysisFifo, AnalysisPort, Subscriber};
 pub use channel::{channel, Receiver, Sender, TlmEmpty, TlmError, TlmFull};
 pub use component::{
     build_all, check_all, connect_all, end_of_elaboration_all, extract_all, final_all,
-    print_hierarchy, report_all, run_component_test, run_extract_check_report,
+    print_hierarchy, report_all, run_all, run_component_test, run_extract_check_report,
     start_all, start_of_simulation_all, Active, CheckSink, Component, ComponentNode, DynPhases,
     RustdvCtx,
 };

@@ -49,9 +49,37 @@ Phase order is pyuvm's, not SV UVM's (D34): build top-down, connect
 bottom-up, run bottom-up, the elaboration and post-run phases top-down. A
 single component does not show direction — the three-level hierarchy does.
 
-## Second half — building the hierarchy (next)
+## Second half — building the hierarchy (done)
 
-The Python book's Figures 4-6 build `TestTop -> mc -> bc`, where each parent
-**creates its children in its own build phase** and the phaser recurses into
-them. That is D6's two-stage construction (children as `Option<T>`), the
-real restoration of late binding, and it is the next increment.
+`TestTop -> mc -> bc`, each parent **creating its child in its own build
+phase** (D6's two-stage construction — a child is an `Option<T>` field,
+filled in during `build`). The phaser descends into whatever `build`
+created, so the tree grows top-down as it is walked.
+
+| Figure | Title | Where |
+|---|---|---|
+| 4 | The test builds the middle component | `src/ch24_components.rs` (`TestTop`) |
+| 5 | The middle component builds the bottom component | `MiddleComp` |
+| 6 | The bottom component's run phase | `BottomComp` |
+
+Transcript (seed 1):
+
+```
+      0.00ns INFO     running TestTop (2/2)  [ch24-components/src/ch24_components.rs:118]
+      0.00ns INFO     [TestTop]: build phase
+      0.00ns INFO     [TestTop.mc]: end of elaboration phase
+      0.00ns INFO     [TestTop.mc.bc]: run phase
+      0.00ns INFO     [TestTop]: final phase
+      0.00ns INFO     TestTop PASSED
+```
+
+The paths `[TestTop.mc]` and `[TestTop.mc.bc]` are **derived by the walk**,
+never stored (D7): `TestTop.build` creates `mc`, the phaser recurses and
+`mc.build` creates `bc`, and each logs under the path the traversal
+accumulated. Move a component in the tree and its path follows, because
+nothing hand-typed it.
+
+**Run is sequential, not concurrent.** Each component's `run` is awaited to
+completion before the next — right while run bodies raise, act, and drop
+their own objection, as here. Concurrent run phases (spawned `'static`
+tasks) are a later increment; see the design-decisions log.
