@@ -32,7 +32,7 @@ impl<T: Tester + 'static> TesterComp<T> {
 }
 
 impl<T: Tester + 'static> Component for TesterComp<T> {
-    fn start(&mut self, ctx: &mut RunCtx) {
+    fn start(&mut self, ctx: &mut RustdvCtx) {
         let bfm = self.bfm.clone();
         let mut tester = self.tester.take().expect("tester started twice");
         let obj = ctx.raise_objection("tester stimulus");
@@ -78,7 +78,7 @@ pub struct Scoreboard {
 // Figure 5: start() launches the monitoring tasks
 
 impl Component for Scoreboard {
-    fn start(&mut self, _ctx: &mut RunCtx) {
+    fn start(&mut self, _ctx: &mut RustdvCtx) {
         let (bfm, cmds) = (self.bfm.clone(), self.cmds.clone());
         spawn_named(
             async move {
@@ -180,7 +180,7 @@ There is the whole of Chapter 24, five lines at a time. Children are fields; `#[
 // Figure 9: The shared test body: build the env, run the lifecycle
 
 async fn run_env_test<T: Tester + 'static>(
-    ctx: &TestCtx,
+    ctx: &RustdvCtx,
     tester: T,
 ) -> Result<(), TestError> {
     Clock::new(&ctx.dut().signal("clk")?, SimDuration::ns(10)).start();
@@ -190,7 +190,7 @@ async fn run_env_test<T: Tester + 'static>(
 
     let mut env = AluEnv::new(bfm, tester);
 
-    let mut run_ctx = RunCtx::new();
+    let mut run_ctx = RustdvCtx::new();
     start_all(&mut env, &mut run_ctx);
     run_ctx.all_objections_dropped().await;
 
@@ -204,13 +204,13 @@ This is the testbench 4.0 skeleton that every remaining version elaborates: brin
 // Figure 10: The tests build the right environment
 
 #[rustdv::test]
-async fn random_test(ctx: TestCtx) -> Result<(), TestError> {
+async fn random_test(ctx: RustdvCtx) -> Result<(), TestError> {
     // Run with random operands
     run_env_test(&ctx, RandomTester { rng: ctx.rng() }).await
 }
 
 #[rustdv::test]
-async fn max_test(ctx: TestCtx) -> Result<(), TestError> {
+async fn max_test(ctx: RustdvCtx) -> Result<(), TestError> {
     // Run with max operands
     run_env_test(&ctx, MaxTester).await
 }

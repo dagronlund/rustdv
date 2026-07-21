@@ -230,7 +230,7 @@ Every method takes `&self` — the BFM's whole public surface is read-shaped bor
 // and starting the BFM tasks
 
 #[rustdv::test]
-async fn test_alu(ctx: TestCtx) -> Result<(), TestError> {
+async fn test_alu(ctx: RustdvCtx) -> Result<(), TestError> {
     // Test all TinyALU operations through the BFM
     let mut rng = ctx.rng();
     let mut passed = true;

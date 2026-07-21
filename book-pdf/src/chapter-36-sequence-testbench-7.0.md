@@ -49,7 +49,7 @@ The sequence talks through its `SeqCtx` — `start_item`, `finish_item`, `get_re
 // now in its final form)
 
 impl Component for Driver {
-    fn start(&mut self, _ctx: &mut RunCtx) {
+    fn start(&mut self, _ctx: &mut RustdvCtx) {
         let bfm = self.bfm.clone();
         let mut port = self.seq_item_port.take().expect("Driver started twice");
         spawn_named(
@@ -147,7 +147,7 @@ The bodies read like their UVM ancestors with the ceremony removed: an SV sequen
     let config = AluEnvConfig { bfm: bfm.clone(), is_active: Active::Active, enable_coverage: true };
     let mut env = AluEnv::new(config);
 
-    let mut run_ctx = RunCtx::new();
+    let mut run_ctx = RustdvCtx::new();
     start_all(&mut env, &mut run_ctx);
     {
         let _obj = run_ctx.raise_objection(description);

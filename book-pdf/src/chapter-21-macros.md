@@ -88,11 +88,11 @@ So: what does `#[rustdv::test]` actually emit? Here is the expansion, lightly ti
 // Figure 3: What #[rustdv::test] expands to (tidied)
 
 // 1. Your function, untouched — the attribute adds, never rewrites:
-async fn hello_world(_ctx: TestCtx) -> Result<(), TestError> { /* your body */ }
+async fn hello_world(_ctx: RustdvCtx) -> Result<(), TestError> { /* your body */ }
 
 // 2. A shim with a uniform signature, so the runner can hold
 //    every test in one list (Box<dyn Future>, Chapter 13):
-fn __rustdv_shim(ctx: TestCtx) -> Pin<Box<dyn Future<Output = Result<(), TestError>>>> {
+fn __rustdv_shim(ctx: RustdvCtx) -> Pin<Box<dyn Future<Output = Result<(), TestError>>>> {
     Box::pin(hello_world(ctx))
 }
 

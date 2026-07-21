@@ -153,7 +153,7 @@ pub struct Driver {
 }
 
 impl Component for Driver {
-    fn start(&mut self, _ctx: &mut RunCtx) {
+    fn start(&mut self, _ctx: &mut RustdvCtx) {
         let bfm = self.bfm.clone();
         let mut port = self.seq_item_port.take().expect("Driver started twice");
         spawn_named(
@@ -309,7 +309,7 @@ A test is an `async fn` returning `Result<(), TestError>`, exactly as Chapter 9 
 rustdv::vpi_bootstrap!();
 
 #[rustdv::test(timeout_time = 500, timeout_unit = "us")]
-async fn random_ops(ctx: TestCtx) -> Result<(), TestError> {
+async fn random_ops(ctx: RustdvCtx) -> Result<(), TestError> {
     let (bfm, mut env) = build_testbench(&ctx, true).await?;
     let mut seq = RandomSeq { n_per_op: 5, rng: ctx.rng() };
     run_sequence(&bfm, &mut env, &mut seq, "random_ops sequence").await?;
@@ -318,7 +318,7 @@ async fn random_ops(ctx: TestCtx) -> Result<(), TestError> {
 }
 
 #[rustdv::test(timeout_time = 500, timeout_unit = "us")]
-async fn max_ops(ctx: TestCtx) -> Result<(), TestError> {
+async fn max_ops(ctx: RustdvCtx) -> Result<(), TestError> {
     let (bfm, mut env) = build_testbench(&ctx, true).await?;
     let mut seq = MaxSeq;
     run_sequence(&bfm, &mut env, &mut seq, "max_ops sequence").await?;

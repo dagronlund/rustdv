@@ -72,7 +72,7 @@ Two whole classes of defensive code from the Python version are gone, not moved.
 // Figure 4: The start of the TinyALU test. Reset the DUT
 
 #[rustdv::test]
-async fn alu_test(ctx: TestCtx) -> Result<(), TestError> {
+async fn alu_test(ctx: RustdvCtx) -> Result<(), TestError> {
     let dut = ctx.dut();
     let mut rng = ctx.rng();
     let clk = dut.signal("clk")?;

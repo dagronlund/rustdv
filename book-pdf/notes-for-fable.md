@@ -17,7 +17,7 @@ use rustdv::prelude::*;
 ```
 
 That single line imports **about fifty identifiers**. The reader then meets
-`Clock`, `SimDuration`, `RunCtx`, `TestCtx`, `spawn_named`, `log::info` and
+`Clock`, `SimDuration`, `RustdvCtx`, `spawn_named`, `log::info` and
 the rest with no declaration site on the page and no prior introduction. A
 reader cannot tell what is standard Rust, what is rustdv, and what is the
 testbench's own code — which is a serious problem for an audience learning
@@ -57,23 +57,26 @@ Grouped as the chapter should probably group it. Taken from
 
 **Runner** (`rustdv-runner`)
 
-- `TestCtx`, `TestError`, `#[rustdv::test]`, `vpi_bootstrap!`
+- `#[rustdv::test]`, `vpi_bootstrap!`
+- *(`TestCtx` and `TestError` moved to `rustdv-uvm` in step 4 — see below.
+  Both are still reached as `rustdv::…`, so the reader never sees the move;
+  it matters only if the chapter names the crate a thing comes from.)*
 
 **UVM layer** (`rustdv-uvm`)
 
 - *Components and phases* — `Component`, `ComponentNode`,
-  `#[derive(Component)]`, `RunCtx`, `ObjectionGuard`, `print_hierarchy`,
-  `start_all`, `run_extract_check_report`, `CheckSink`
+  `#[derive(Component)]`, `RustdvCtx`, `TestError`, `ObjectionGuard`,
+  `print_hierarchy`, `start_all`, `run_extract_check_report`, `CheckSink`
 - *TLM* — `channel`, `Sender`, `Receiver`, `TlmFifo`, `AnalysisPort`,
   `AnalysisFifo`, `Subscriber`
 - *Sequences* — `Sequence`, `Sequencer`, `SeqCtx`, `SeqItem`, `SeqItemPort`,
   `SeqError`, `TxnId`, `ResponseQueue`
 - *Configuration* — `Active`
 
-This list will grow with the refactor: `BuildCtx`, `ConnectCtx`, the port
-and export types, the ConfigDB, and the factory all join it.
+This list will grow with the refactor: the port and export types, the
+ConfigDb, and the factory all join it.
 
-### The contexts need their own section
+### The context needs its own section
 
 `ctx` is the least self-explanatory thing in the book and is currently never
 explained. It deserves real treatment, because it is load-bearing:
@@ -85,13 +88,38 @@ explained. It deserves real treatment, because it is load-bearing:
 - The closest UVM analogy is the `uvm_phase phase` argument every phase
   method already receives. rustdv's context is that same parameter carrying
   more, because there is nothing global to fall back on.
-- There is one context type per phase — `BuildCtx`, `ConnectCtx`, `RunCtx` —
-  because each phase permits different operations. `build_child` does not
-  exist on `RunCtx`, so adding a component during the run phase *fails to
-  compile*. Compare UVM, which catches the analogous mistake at run time:
-  "Attempt to connect … at or after end_of_elaboration phase. Ignoring."
 - Because components have no parent pointer, `ctx` is also how a component
   learns its own hierarchical path.
+
+**There is one context type, `RustdvCtx` — this reverses what this section
+said before 2026-07-21, and the reversal must not be quietly undone.**
+
+The earlier plan was one type per phase (`BuildCtx`, `ConnectCtx`,
+`RunCtx`), so that `build_child` would not exist on the run context and
+adding a component during run would *fail to compile* — a genuine advantage
+over UVM, which catches the analogue at run time ("Attempt to connect … at
+or after end_of_elaboration phase. Ignoring."). That is decision D8 in
+`output/.design-decisions.md`, and D47 strikes it.
+
+The reason is the reader, not the compiler. Part II teaches a complete
+testbench with **no components and therefore no phases**; handing that
+reader a type named after a phase names a concept the book has not
+introduced, and the alternative naming (`BuildCtx`/`ConnectCtx`/`RustdvCtx`)
+is an incoherent family.
+
+So the book must **state the cost, not hide it**: phase-illegal operations
+in rustdv are run-time failures, exactly as in UVM. Chapter 24 was going to
+claim the compile-time check as a Rust win. It cannot. Do not write that
+claim, and do not let the surrounding argument imply it.
+
+### One more Rust cost to state plainly (D48)
+
+`Component::run` is an `async fn` in a trait, which in Rust means the trait
+is not object-safe. The framework works around it with a dyn-safe mirror
+trait (`DynPhases`) that users never write. It is invisible in every figure,
+so it does not need a chapter — but if a chapter claims traits and `dyn`
+compose freely, that claim is wrong, and the honest version is a good
+sidebar: this is a real edge Rust has not finished yet.
 
 ### Standing rule from here on
 
@@ -113,7 +141,7 @@ where the name was taught:
 |---|---|---|---|
 | `Clock` | drives a signal at a fixed period; `.start()` spawns it | sim | 17 |
 | `SimDuration` | simulation time span — `SimDuration::ns(10)` | sim | 15 |
-| `BuildCtx` | build-phase context: path, DUT, RNG, `build_child`, config, factory | uvm | 24 |
+| `RustdvCtx` | the one context: path, DUT, RNG, objections, logging, and later `build_child`, config, factory | uvm | 15 |
 | `with_timeout` | run a future, fail it after a deadline | sim | 16 |
 
 Group it the same way as the chapter, so the two mirror each other, and add
@@ -136,7 +164,7 @@ Early Part II figures should use **explicit imports** so the reader sees
 provenance:
 
 ```rust
-use rustdv::{Clock, RunCtx, SimDuration, TestError};
+use rustdv::{Clock, RustdvCtx, SimDuration, TestError};
 ```
 
 Then, once the surface has been taught, switch to `use rustdv::prelude::*`
@@ -169,10 +197,14 @@ testbench per chapter, so the crate is one coherent program and splitting it
 would obscure that.
 
 **Ordering constraint:** rustdv log lines embed `file:line`, so every book
-transcript showing a log message contains the source filename — e.g.
-Chapter 23 Figure 2 currently reads `[…/src/lib.rs:18]`. All renames must
-land *before* transcripts are regenerated, or every transcript gets touched
-twice.
+transcript showing a log message contains the source filename. All renames
+must land *before* transcripts are regenerated, or every transcript gets
+touched twice.
+
+Chapter 23 is done on both counts: the crate root is
+`src/ch23_uvm_test_testbench_3_0.rs`, and the working transcript in the
+chapter's `README.md` is real Icarus output at those paths. Take the
+transcript from the README, not from the current manuscript.
 
 ---
 
@@ -196,3 +228,47 @@ the prose pass begins.
 - **Phase directions**: rustdv follows pyuvm's traversal order, which differs
   from SV UVM for `end_of_elaboration`, `start_of_simulation`, `extract`,
   `check` and `report`. Whichever we adopt, state the divergence explicitly.
+
+---
+
+## 4. Directives from step 4 (2026-07-21) — ch23 now works
+
+The framework increment behind Chapter 23 has landed and the chapter's
+example compiles and passes on Icarus. These follow from it.
+
+- **Two front doors, both first-class (D46).** `#[rustdv::test]` annotates
+  *either* a free `async fn` *or* a struct. This is not a convenience: it is
+  the two source books made concrete — `@cocotb.test()` decorates a
+  coroutine function, `@pyuvm.test()` decorates a class. Part II's
+  function-shaped testbench is a legitimate destination, not a stepping
+  stone toward components (D38). Chapter 23 introduces the struct form
+  *without* implying the function form was training wheels.
+
+- **Chapter 23's real shape (D43).** At 3.0 the test is the only component.
+  The BFM and scoreboard are ordinary locals inside `run`; the tester is a
+  plain value, not a component (D44). Do not let the chapter introduce a
+  component tree three chapters early — that is ch24's job.
+
+- **Classes are re-shown, not imported (D45).** Chapter 23's file repeats
+  `Tester`, `RandomTester`, `MaxTester` and `Scoreboard` under "Copied from
+  testbench 2.0", as the Python book does. The prose should say why: these
+  classes *evolve* — `Tester` is a plain trait at 3.0 and a component at
+  4.0 — and re-showing them is how the reader sees the change. Factoring
+  them into a shared crate hid the very thing the book is teaching.
+
+- **Component paths are named after your test (D49).** Logs read
+  `[HelloWorldTest]`, where UVM always says `uvm_test_top`. Worth one
+  sentence as a divergence, and it is the first place `ctx.info()` earns
+  its keep over bare `log::info` — the path came from the framework, so it
+  cannot silently lie the way a hand-typed `Logger::new("env.loga")` does.
+
+- **There is no software clock (D42).** The RTL self-clocks and the BFM only
+  waits on edges. `Clock` is still taught once, as a cocotb feature, but
+  chapters must stop opening with `Clock::new(...)`. The reason is
+  emulation: a BFM that waits on edges ports to a transactor unchanged;
+  one that drives them does not.
+
+- **Open, do not guess: test naming (Q15).** Struct tests currently register
+  under the *type* name (`RandomTest`), so that is what the transcripts say.
+  pyuvm agrees; the SV Primer's snake_case `random_test` does not. Ray has
+  not decided. If it changes, it changes before transcripts are regenerated.

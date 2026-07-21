@@ -29,7 +29,7 @@ rustdv::vpi_bootstrap!();
 
 /// Common test scaffolding: clock, BFM, reset, env. Returns (bfm, env).
 async fn build_testbench(
-    ctx: &TestCtx,
+    ctx: &RustdvCtx,
     enable_coverage: bool,
 ) -> Result<(Rc<TinyAluBfm>, AluEnv), TestError> {
     let dut = ctx.dut();
@@ -45,12 +45,16 @@ async fn build_testbench(
 
 /// Run a sequence through the env, drain, then extract/check/report.
 async fn run_sequence(
+    ctx: &RustdvCtx,
     bfm: &Rc<TinyAluBfm>,
     env: &mut AluEnv,
     seq: &mut dyn Sequence<alu_item::AluCommand>,
     description: &str,
 ) -> Result<(), TestError> {
-    let mut run_ctx = RunCtx::new();
+    // Step 4 (D47): the context is the one the runner handed the test, not
+    // a second registry built here. Objections raised now are the same ones
+    // the runner waits on.
+    let mut run_ctx = ctx.clone();
     start_all(env, &mut run_ctx);
 
     {
@@ -65,19 +69,19 @@ async fn run_sequence(
 }
 
 #[rustdv::test(timeout_time = 500, timeout_unit = "us")]
-async fn random_ops(ctx: TestCtx) -> Result<(), TestError> {
+async fn random_ops(ctx: RustdvCtx) -> Result<(), TestError> {
     let (bfm, mut env) = build_testbench(&ctx, true).await?;
     let mut seq = RandomSeq { n_per_op: 5, rng: ctx.rng() };
-    run_sequence(&bfm, &mut env, &mut seq, "random_ops sequence").await?;
+    run_sequence(&ctx, &bfm, &mut env, &mut seq, "random_ops sequence").await?;
     log::info("random_ops: sequence complete");
     Ok(())
 }
 
 #[rustdv::test(timeout_time = 500, timeout_unit = "us")]
-async fn max_ops(ctx: TestCtx) -> Result<(), TestError> {
+async fn max_ops(ctx: RustdvCtx) -> Result<(), TestError> {
     let (bfm, mut env) = build_testbench(&ctx, true).await?;
     let mut seq = MaxSeq;
-    run_sequence(&bfm, &mut env, &mut seq, "max_ops sequence").await?;
+    run_sequence(&ctx, &bfm, &mut env, &mut seq, "max_ops sequence").await?;
     log::info("max_ops: sequence complete");
     Ok(())
 }

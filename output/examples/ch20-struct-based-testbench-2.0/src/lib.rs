@@ -126,7 +126,7 @@ impl Scoreboard {
 }
 
 // Chapter 20, Figure 9: The execute_test coroutine starts the tasks
-async fn execute_test(ctx: &TestCtx, tester: &mut impl Tester) -> Result<bool, TestError> {
+async fn execute_test(ctx: &RustdvCtx, tester: &mut impl Tester) -> Result<bool, TestError> {
     Clock::new(&ctx.dut().signal("clk")?, SimDuration::ns(10)).start();
     let bfm = Rc::new(TinyAluBfm::new(&ctx.dut())?);
     let mut scoreboard = Scoreboard::new(bfm.clone());
@@ -142,7 +142,7 @@ async fn execute_test(ctx: &TestCtx, tester: &mut impl Tester) -> Result<bool, T
 
 // Chapter 20, Figure 11: The tests launch execute_test with a tester
 #[rustdv::test]
-async fn random_test(ctx: TestCtx) -> Result<(), TestError> {
+async fn random_test(ctx: RustdvCtx) -> Result<(), TestError> {
     // Random operands
     let mut tester = RandomTester { rng: ctx.rng() };
     let passed = execute_test(&ctx, &mut tester).await?;
@@ -155,7 +155,7 @@ async fn random_test(ctx: TestCtx) -> Result<(), TestError> {
 
 // Chapter 20, Figure 12: The max test differs only in its tester
 #[rustdv::test]
-async fn max_test(ctx: TestCtx) -> Result<(), TestError> {
+async fn max_test(ctx: RustdvCtx) -> Result<(), TestError> {
     // Maximum operands
     let mut tester = MaxTester;
     let passed = execute_test(&ctx, &mut tester).await?;

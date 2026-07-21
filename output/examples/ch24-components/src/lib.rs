@@ -19,7 +19,7 @@ impl PhaseComp {
 }
 
 impl Component for PhaseComp {
-    fn start(&mut self, _ctx: &mut RunCtx) {
+    fn start(&mut self, _ctx: &mut RustdvCtx) {
         log::info("2 start");
     }
     fn extract(&mut self) {
@@ -45,10 +45,10 @@ impl ComponentNode for PhaseComp {
 
 // Chapter 24, Figure 3: The test drives the lifecycle in order
 #[rustdv::test]
-async fn phase_test(_ctx: TestCtx) -> Result<(), TestError> {
+async fn phase_test(_ctx: RustdvCtx) -> Result<(), TestError> {
     let mut comp = PhaseComp::new(); // build (and connect, had it children)
 
-    let mut run_ctx = RunCtx::new();
+    let mut run_ctx = RustdvCtx::new();
     start_all(&mut comp, &mut run_ctx); // spawn free-running behavior
     run_ctx.all_objections_dropped().await; // the run "phase" is objection-gated
 
@@ -59,7 +59,7 @@ async fn phase_test(_ctx: TestCtx) -> Result<(), TestError> {
 struct BottomComp;
 
 impl Component for BottomComp {
-    fn start(&mut self, ctx: &mut RunCtx) {
+    fn start(&mut self, ctx: &mut RustdvCtx) {
         let obj = ctx.raise_objection("bc run");
         spawn_named(
             async move {
@@ -100,13 +100,13 @@ impl Component for TestTop {
 
 // Chapter 24, Figure 6: Constructors are the build phase
 #[rustdv::test]
-async fn hierarchy_test(_ctx: TestCtx) -> Result<(), TestError> {
+async fn hierarchy_test(_ctx: RustdvCtx) -> Result<(), TestError> {
     // build: bottom-up, in one expression
     let mut top = TestTop { mc: MiddleComp { bc: BottomComp } };
 
     print_hierarchy(&mut top);
 
-    let mut run_ctx = RunCtx::new();
+    let mut run_ctx = RustdvCtx::new();
     start_all(&mut top, &mut run_ctx);
     run_ctx.all_objections_dropped().await;
 

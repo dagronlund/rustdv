@@ -22,7 +22,7 @@ impl LogComp {
 }
 
 impl Component for LogComp {
-    fn start(&mut self, ctx: &mut RunCtx) {
+    fn start(&mut self, ctx: &mut RustdvCtx) {
         let obj = ctx.raise_objection("logging");
         let logger = self.logger.clone();
         spawn_named(
@@ -82,11 +82,11 @@ pyuvm offered `set_logging_level` (one component) and `set_logging_level_hier` (
 // Figure 4: Setting the logging level for a hierarchy
 
 #[rustdv::test]
-async fn debug_test(_ctx: TestCtx) -> Result<(), TestError> {
+async fn debug_test(_ctx: RustdvCtx) -> Result<(), TestError> {
     let mut comp = LogComp::new("uvm_test_top.comp");
     set_level_for("uvm_test_top", Level::Debug); // ...and everything below it
 
-    let mut run_ctx = RunCtx::new();
+    let mut run_ctx = RustdvCtx::new();
     start_all(&mut comp, &mut run_ctx);
     run_ctx.all_objections_dropped().await;
 ```
@@ -117,11 +117,11 @@ pyuvm inherited Python's handler zoo and taught two: the screen (StreamHandler, 
 // Figure 6: Logging to a file
 
 #[rustdv::test]
-async fn file_test(_ctx: TestCtx) -> Result<(), TestError> {
+async fn file_test(_ctx: RustdvCtx) -> Result<(), TestError> {
     log::log_to_file("/tmp/rustdv_ch26_log.txt", false).map_err(|e| TestError(e.to_string()))?;
 
     let mut comp = LogComp::new("uvm_test_top.comp");
-    let mut run_ctx = RunCtx::new();
+    let mut run_ctx = RustdvCtx::new();
     start_all(&mut comp, &mut run_ctx);
     run_ctx.all_objections_dropped().await;
 

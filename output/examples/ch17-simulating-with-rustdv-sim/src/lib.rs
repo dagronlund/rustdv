@@ -17,7 +17,7 @@ fn get_int(signal: &LogicHandle) -> u64 {
 
 // Chapter 17, Figure 2: A typo'd signal name is an Err, not a surprise
 #[rustdv::test]
-async fn name_lookup(ctx: TestCtx) -> Result<(), TestError> {
+async fn name_lookup(ctx: RustdvCtx) -> Result<(), TestError> {
     // Show what child()/signal() return
     let dut = ctx.dut();
     let good = dut.signal("reset_n");
@@ -30,7 +30,7 @@ async fn name_lookup(ctx: TestCtx) -> Result<(), TestError> {
 // Chapter 17, Figure 4: Starting the clock, lowering reset
 // Chapter 17, Figure 5: Wait for five clocks and check the output
 #[rustdv::test]
-async fn no_count(ctx: TestCtx) -> Result<(), TestError> {
+async fn no_count(ctx: RustdvCtx) -> Result<(), TestError> {
     // Test no count if reset is 0
     let dut = ctx.dut();
     let clk = dut.signal("clk")?;
@@ -49,7 +49,7 @@ async fn no_count(ctx: TestCtx) -> Result<(), TestError> {
 
 // Chapter 17, Figure 6: Testing that the counter counts
 #[rustdv::test]
-async fn three_count(ctx: TestCtx) -> Result<(), TestError> {
+async fn three_count(ctx: RustdvCtx) -> Result<(), TestError> {
     // Test that we count up as expected
     let dut = ctx.dut();
     let clk = dut.signal("clk")?;
@@ -69,7 +69,7 @@ async fn three_count(ctx: TestCtx) -> Result<(), TestError> {
 
 // Chapter 17, Figure 7: Forgetting the await is now a compiler warning
 #[rustdv::test]
-async fn oops(ctx: TestCtx) -> Result<(), TestError> {
+async fn oops(ctx: RustdvCtx) -> Result<(), TestError> {
     // Demonstrate the coroutine mistake
     let dut = ctx.dut();
     let clk = dut.signal("clk")?;

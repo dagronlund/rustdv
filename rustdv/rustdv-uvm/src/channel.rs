@@ -1,6 +1,17 @@
 //! Channels: the TLM-1 replacement (design-doc §5.6, review-memo R6).
 //! Twelve pyuvm port classes become six methods on two types; direction
 //! lives in the type name; a mismatch is a compile error.
+//!
+//! > **Face D3 before trusting this collapse.** "Twelve classes become six
+//! > methods" is the same *make-it-static* reasoning that deleted
+//! > build/connect. R6 itself stands — channels are a legitimate TLM-1
+//! > port — but the TLM restoration (D17–D24) deliberately keeps the full
+//! > UVM surface: ports live in components, exports on FIFOs, every UVM
+//! > port name shipped (D19), and a `TlmFifo` that *encapsulates* the queue
+//! > so two components connect through it without knowing each other. A
+//! > future session extending TLM must not treat this six-method core as
+//! > the whole story or re-collapse the port zoo away. See
+//! > `output/.design-decisions.md`.
 
 use std::cell::{Cell, RefCell};
 use std::collections::VecDeque;

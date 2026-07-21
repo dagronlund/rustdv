@@ -98,7 +98,7 @@ impl TestAllParallelSeq {
 }
 
 async fn build_and_run(
-    ctx: &TestCtx,
+    ctx: &RustdvCtx,
     parallel: bool,
 ) -> Result<(), TestError> {
     Clock::new(&ctx.dut().signal("clk")?, SimDuration::ns(10)).start();
@@ -109,7 +109,7 @@ async fn build_and_run(
     let config = AluEnvConfig { bfm: bfm.clone(), is_active: Active::Active, enable_coverage: true };
     let mut env = AluEnv::new(config);
 
-    let mut run_ctx = RunCtx::new();
+    let mut run_ctx = RustdvCtx::new();
     start_all(&mut env, &mut run_ctx);
     {
         let _obj = run_ctx.raise_objection("virtual sequence");
@@ -129,11 +129,11 @@ async fn build_and_run(
 
 // Chapter 39, Figure 2: The test starts the virtual sequence
 #[rustdv::test]
-async fn test_all(ctx: TestCtx) -> Result<(), TestError> {
+async fn test_all(ctx: RustdvCtx) -> Result<(), TestError> {
     build_and_run(&ctx, false).await
 }
 
 #[rustdv::test]
-async fn test_all_parallel(ctx: TestCtx) -> Result<(), TestError> {
+async fn test_all_parallel(ctx: RustdvCtx) -> Result<(), TestError> {
     build_and_run(&ctx, true).await
 }

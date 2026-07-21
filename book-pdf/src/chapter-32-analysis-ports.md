@@ -30,7 +30,7 @@ This is `uvm_subscriber` with the enforcement moved: pyuvm's `write()` was "abst
 // Figure 2: One write, every subscriber hears it
 
 #[rustdv::test]
-async fn fan_out_test(_ctx: TestCtx) -> Result<(), TestError> {
+async fn fan_out_test(_ctx: RustdvCtx) -> Result<(), TestError> {
     let ap: AnalysisPort<Ops> = AnalysisPort::new();
 
     let coverage = Rc::new(RefCell::new(OpCounter::new()));
@@ -81,7 +81,7 @@ The `write()`-callback style suits collectors that react item by item. A scorebo
 // Figure 5: An AnalysisFifo turns broadcast into a stream
 
 #[rustdv::test]
-async fn analysis_fifo_test(_ctx: TestCtx) -> Result<(), TestError> {
+async fn analysis_fifo_test(_ctx: RustdvCtx) -> Result<(), TestError> {
     let ap: AnalysisPort<Ops> = AnalysisPort::new();
     let fifo: AnalysisFifo<Ops> = ap.connect_fifo();
 

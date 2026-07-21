@@ -49,7 +49,7 @@ Two changes from Chapter 36's sequences carry the whole story. The trait is now 
 // Figure 3: The 7.1 driver returns responses through item_done
 
 impl Component for RspDriver {
-    fn start(&mut self, _ctx: &mut RunCtx) {
+    fn start(&mut self, _ctx: &mut RustdvCtx) {
         let bfm = self.bfm.clone();
         let ap = self.result_ap.clone();
         let mut port = self.seq_item_port.take().expect("driver started twice");
@@ -85,7 +85,7 @@ The environment swaps in the response-bearing pieces — `Sequencer<AluCommand, 
 
     let mut env = FibEnv::new(bfm.clone());
 
-    let mut run_ctx = RunCtx::new();
+    let mut run_ctx = RustdvCtx::new();
     start_all(&mut env, &mut run_ctx);
     {
         let _obj = run_ctx.raise_objection("fibonacci sequence");

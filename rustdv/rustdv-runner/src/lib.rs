@@ -13,17 +13,14 @@
 //! cbStartOfSimulation callback that kicks off the regression.
 
 use std::cell::RefCell;
-use std::fmt;
 use std::future::Future;
 use std::pin::Pin;
 use std::rc::Rc;
 
 use rustdv_gpi as gpi;
 use rustdv_sim::combinators::{first2, Either};
-use rustdv_sim::executor::TaskError;
-use rustdv_sim::handle::{top_module, HierarchyHandle};
+use rustdv_sim::handle::top_module;
 use rustdv_sim::log;
-use rustdv_sim::rng::Rng;
 use rustdv_sim::time::{sim_time_ns, SimDuration};
 use rustdv_sim::triggers::Timer;
 
@@ -31,70 +28,18 @@ use rustdv_sim::triggers::Timer;
 // Public test-facing types
 // ===========================================================================
 
-/// Test failure value. `Err` fails the test (design-doc §0.6): `Result`
-/// for *checks*, panics for *testbench bugs* (§7.3 failure taxonomy).
-#[derive(Debug, Clone)]
-pub struct TestError(pub String);
+/// Test failure value — defined in `rustdv-uvm` since step 4, because
+/// `Component::run` returns it and the UVM crate sits below this one
+/// (D46/D47). Re-exported so `::rustdv::TestError` is unchanged.
+pub use rustdv_uvm::TestError;
 
-impl fmt::Display for TestError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-impl std::error::Error for TestError {}
-
-impl From<&str> for TestError {
-    fn from(s: &str) -> Self {
-        TestError(s.into())
-    }
-}
-impl From<String> for TestError {
-    fn from(s: String) -> Self {
-        TestError(s)
-    }
-}
-impl From<gpi::HandleError> for TestError {
-    fn from(e: gpi::HandleError) -> Self {
-        TestError(e.to_string())
-    }
-}
-impl From<gpi::ValueError> for TestError {
-    fn from(e: gpi::ValueError) -> Self {
-        TestError(e.to_string())
-    }
-}
-impl From<rustdv_uvm::SeqError> for TestError {
-    fn from(e: rustdv_uvm::SeqError) -> Self {
-        TestError(e.to_string())
-    }
-}
-impl From<TaskError> for TestError {
-    fn from(e: TaskError) -> Self {
-        TestError(e.to_string())
-    }
-}
-
-/// Handed to each test (design-doc §7.2 test signatures).
-pub struct TestCtx {
-    dut: HierarchyHandle,
-    seed: u64,
-}
-
-impl TestCtx {
-    pub fn dut(&self) -> HierarchyHandle {
-        self.dut
-    }
-    pub fn seed(&self) -> u64 {
-        self.seed
-    }
-    /// A deterministic RNG seeded from RUSTDV_RANDOM_SEED + test index.
-    pub fn rng(&self) -> Rng {
-        Rng::new(self.seed)
-    }
-}
+/// Handed to each test. Since step 4 this is the one universal context
+/// (D47): the old `TestCtx` and `RunCtx` merged into `RustdvCtx`, which
+/// lives in `rustdv-uvm` beside the `Component` trait that receives it.
+pub use rustdv_uvm::RustdvCtx;
 
 type TestFn =
-    fn(TestCtx) -> Pin<Box<dyn Future<Output = Result<(), TestError>>>>;
+    fn(RustdvCtx) -> Pin<Box<dyn Future<Output = Result<(), TestError>>>>;
 
 /// One registered test (design-doc §6.1: the cocotb `Test` option set).
 pub struct TestRegistration {
@@ -114,7 +59,7 @@ pub struct TestRegistration {
 // with the sentinel guaranteeing the section exists)
 // ===========================================================================
 
-fn sentinel_shim(_ctx: TestCtx) -> Pin<Box<dyn Future<Output = Result<(), TestError>>>> {
+fn sentinel_shim(_ctx: RustdvCtx) -> Pin<Box<dyn Future<Output = Result<(), TestError>>>> {
     Box::pin(async { Ok(()) })
 }
 
@@ -216,12 +161,32 @@ async fn run_one(reg: &'static TestRegistration, seed: u64) -> Outcome {
         Ok(d) => d,
         Err(e) => return Outcome::Fail(format!("no DUT: {e}")),
     };
-    let ctx = TestCtx { dut, seed };
+    // D49: the root path is the test's registered name, so `ctx.info(..)`
+    // logs `[random_test]` where UVM logs `uvm_test_top`.
+    let ctx = RustdvCtx::new(reg.name, dut, seed);
 
     let ex = rustdv_sim::executor::current();
     let watermark = ex.watermark();
 
-    let handle = ex.spawn_named((reg.run)(ctx), Some(reg.name));
+    // UVM's end-of-test consensus: the body finishes, then the test waits
+    // for every outstanding objection. The clone shares the registry, and
+    // folding the wait into the same future keeps it under the timeout.
+    // A test that never objected is not made to wait — that is the Part II
+    // front door (D46), and pyuvm's "you never objected" warning would
+    // otherwise fire on every cocotb-shaped test.
+    let body = {
+        let watcher = ctx.clone();
+        let fut = (reg.run)(ctx);
+        async move {
+            let result = fut.await;
+            if watcher.objections().ever_raised() {
+                watcher.all_objections_dropped().await;
+            }
+            result
+        }
+    };
+
+    let handle = ex.spawn_named(body, Some(reg.name));
 
     // handle.await → Result<Result<(), TestError>, TaskError>
     let raw = match reg.timeout {

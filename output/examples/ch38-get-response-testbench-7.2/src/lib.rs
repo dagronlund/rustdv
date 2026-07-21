@@ -38,7 +38,7 @@ impl RspDriver {
 }
 
 impl Component for RspDriver {
-    fn start(&mut self, _ctx: &mut RunCtx) {
+    fn start(&mut self, _ctx: &mut RustdvCtx) {
         let bfm = self.bfm.clone();
         let ap = self.result_ap.clone();
         let mut port = self.seq_item_port.take().expect("driver started twice");
@@ -121,7 +121,7 @@ impl Component for RspEnv {}
 
 // Chapter 38, Figure 3: The cherry-picking test
 #[rustdv::test]
-async fn cherry_pick_test(ctx: TestCtx) -> Result<(), TestError> {
+async fn cherry_pick_test(ctx: RustdvCtx) -> Result<(), TestError> {
     Clock::new(&ctx.dut().signal("clk")?, SimDuration::ns(10)).start();
     let bfm = Rc::new(TinyAluBfm::new(&ctx.dut())?);
     bfm.start_tasks();
@@ -129,7 +129,7 @@ async fn cherry_pick_test(ctx: TestCtx) -> Result<(), TestError> {
 
     let mut env = RspEnv::new(bfm.clone());
 
-    let mut run_ctx = RunCtx::new();
+    let mut run_ctx = RustdvCtx::new();
     start_all(&mut env, &mut run_ctx);
     {
         let _obj = run_ctx.raise_objection("cherry-pick sequence");

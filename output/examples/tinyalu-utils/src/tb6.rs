@@ -27,7 +27,7 @@ impl<T: Tester + 'static> TesterComp<T> {
 }
 
 impl<T: Tester + 'static> Component for TesterComp<T> {
-    fn start(&mut self, ctx: &mut RunCtx) {
+    fn start(&mut self, ctx: &mut RustdvCtx) {
         let tx = self.tx.clone();
         let mut tester = self.tester.take().expect("tester started twice");
         let obj = ctx.raise_objection("tester stimulus");
@@ -69,7 +69,7 @@ impl Driver {
 }
 
 impl Component for Driver {
-    fn start(&mut self, _ctx: &mut RunCtx) {
+    fn start(&mut self, _ctx: &mut RustdvCtx) {
         let bfm = self.bfm.clone();
         let rx = self.rx.take().expect("driver started twice");
         spawn_named(
@@ -107,7 +107,7 @@ impl<T: std::fmt::Debug + 'static> Monitor<T> {
 }
 
 impl<T: std::fmt::Debug + 'static> Component for Monitor<T> {
-    fn start(&mut self, _ctx: &mut RunCtx) {
+    fn start(&mut self, _ctx: &mut RustdvCtx) {
         let (name, bfm, get, ap) = (self.name, self.bfm.clone(), self.get, self.ap.clone());
         spawn_named(
             async move {

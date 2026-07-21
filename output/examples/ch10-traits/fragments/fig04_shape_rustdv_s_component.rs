@@ -3,7 +3,7 @@
 
 
 pub trait Component {
-    fn start(&mut self, ctx: &mut RunCtx) {}          // default: nothing to run
+    fn start(&mut self, ctx: &mut RustdvCtx) {}          // default: nothing to run
     fn check(&mut self, errors: &mut CheckSink) {}    // default: do nothing
     fn report(&self) {}                               // default: do nothing
 }

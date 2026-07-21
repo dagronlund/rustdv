@@ -1,6 +1,11 @@
 //! The environment: a plain struct of children — the ownership tree IS
-//! the component tree (design-doc D5.2). Constructors do build (children)
-//! and connect (channel endpoints as arguments) — review-memo R3.
+//! the component tree (design-doc D5.2, which stands).
+//!
+//! Constructors do build (children) and connect (channel endpoints as
+//! arguments) — review-memo R3, **which D5/D6 reverse.** This env still
+//! has the constructor-convention shape because it has not been converted
+//! yet; it is not the target. Real `build`/`connect` phases arrive with
+//! ch24. See `output/.design-decisions.md`.
 
 use std::rc::Rc;
 

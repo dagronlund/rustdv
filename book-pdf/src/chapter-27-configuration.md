@@ -23,7 +23,7 @@ impl MsgLogger {
 }
 
 impl Component for MsgLogger {
-    fn start(&mut self, ctx: &mut RunCtx) {
+    fn start(&mut self, ctx: &mut RustdvCtx) {
         let obj = ctx.raise_objection("logging a message");
         let (logger, msg) = (self.logger.clone(), self.msg.clone());
         spawn_named(
@@ -73,14 +73,14 @@ impl MsgEnv {
 // Figure 3: The test builds the config and hands it over
 
 #[rustdv::test]
-async fn msg_test(_ctx: TestCtx) -> Result<(), TestError> {
+async fn msg_test(_ctx: RustdvCtx) -> Result<(), TestError> {
     let config = MsgEnvConfig {
         loga_msg: "LOG A msg".to_string(),
         logb_msg: "LOG B msg".to_string(),
     };
     let mut env = MsgEnv::new(config);
 
-    let mut run_ctx = RunCtx::new();
+    let mut run_ctx = RustdvCtx::new();
     start_all(&mut env, &mut run_ctx);
     run_ctx.all_objections_dropped().await;
     run_extract_check_report(&mut env).map_err(TestError::from)

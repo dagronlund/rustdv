@@ -10,7 +10,7 @@ rustdv::vpi_bootstrap!();
 
 // Chapter 15, Figure 1: Hello world as a test
 #[rustdv::test]
-async fn hello_world(_ctx: TestCtx) -> Result<(), TestError> {
+async fn hello_world(_ctx: RustdvCtx) -> Result<(), TestError> {
     // Say hello!
     log::info("Hello, world.");
     Ok(())
@@ -18,7 +18,7 @@ async fn hello_world(_ctx: TestCtx) -> Result<(), TestError> {
 
 // Chapter 15, Figure 7: Rust waits for 2 nanoseconds
 #[rustdv::test]
-async fn wait_2ns(_ctx: TestCtx) -> Result<(), TestError> {
+async fn wait_2ns(_ctx: RustdvCtx) -> Result<(), TestError> {
     // Waits for two ns then prints
     Timer::ns(2).await;
     log::info("I am DONE waiting!");

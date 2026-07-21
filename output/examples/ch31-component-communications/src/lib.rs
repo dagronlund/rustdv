@@ -25,7 +25,7 @@ async fn blocking_consumer(rx: Receiver<u32>) {
 
 // Chapter 31, Figure 3: Blocking put/get is send/recv on a channel of size 1
 #[rustdv::test]
-async fn blocking_test(_ctx: TestCtx) -> Result<(), TestError> {
+async fn blocking_test(_ctx: RustdvCtx) -> Result<(), TestError> {
     let (tx, rx) = channel::<u32>(1);
     spawn_named(blocking_consumer(rx), "consumer");
     spawn_named(blocking_producer(tx), "producer").await.ok();
@@ -35,7 +35,7 @@ async fn blocking_test(_ctx: TestCtx) -> Result<(), TestError> {
 
 // Chapter 31, Figure 5: Nonblocking put/get: the failure is a value
 #[rustdv::test]
-async fn nonblocking_test(_ctx: TestCtx) -> Result<(), TestError> {
+async fn nonblocking_test(_ctx: RustdvCtx) -> Result<(), TestError> {
     let (tx, rx) = channel::<u32>(1);
 
     tx.try_send(1).expect("channel was empty");
@@ -56,7 +56,7 @@ async fn nonblocking_test(_ctx: TestCtx) -> Result<(), TestError> {
 
 // Chapter 31, Figure 6: peek reads without removing (needs T: Clone)
 #[rustdv::test]
-async fn peek_test(_ctx: TestCtx) -> Result<(), TestError> {
+async fn peek_test(_ctx: RustdvCtx) -> Result<(), TestError> {
     let (tx, rx) = channel::<u32>(1);
     tx.try_send(42).ok();
     let peeked = rx.peek().await.expect("sender alive");
@@ -67,7 +67,7 @@ async fn peek_test(_ctx: TestCtx) -> Result<(), TestError> {
 
 // Chapter 31, Figure 7: TlmFifo — a FIFO that lives in the hierarchy
 #[rustdv::test]
-async fn fifo_test(_ctx: TestCtx) -> Result<(), TestError> {
+async fn fifo_test(_ctx: RustdvCtx) -> Result<(), TestError> {
     let fifo: TlmFifo<u32> = TlmFifo::new(Some(2));
     log::info(&format!("size={:?} used={} empty={}", fifo.size(), fifo.used(), fifo.is_empty()));
     fifo.put(7).await;

@@ -10,8 +10,8 @@ Testbench 2.0 was modular; now we make it methodological. This chapter writes th
 // Figure 1: The basic rustdv-UVM use model in hello_world
 
 #[rustdv::test]
-async fn hello_world_test(_ctx: TestCtx) -> Result<(), TestError> {
-    let run_ctx = RunCtx::new();
+async fn hello_world_test(_ctx: RustdvCtx) -> Result<(), TestError> {
+    let run_ctx = RustdvCtx::new();
     {
         let _obj = run_ctx.raise_objection("saying hello");
         log::info("Hello, world.");
@@ -29,7 +29,7 @@ async fn hello_world_test(_ctx: TestCtx) -> Result<(), TestError> {
       0.00ns INFO     hello_world_test PASSED
 ```
 
-Set this beside the pyuvm original and take inventory. `@pyuvm.test()` on a class became `#[rustdv::test]` on a function — the same attribute we have used since Chapter 15, because in rustdv there is only one kind of test. `run_phase(self)` became the test body itself. And `raise_objection()`/`drop_objection()` became a **guard**: `raise_objection` returns an `ObjectionGuard` whose `Drop` *is* the drop call. The two new lines are the methodology showing through: `RunCtx` is the run-phase context that Part IV's components will all share, and `all_objections_dropped().await` is the UVM's end-of-run consensus — the run continues until every raised objection has been released. Here there is one objection and it dies at the closing brace, so the await returns immediately; in three chapters, when free-running drivers and monitors hold guards of their own, that await becomes the thing deciding when your test ends.
+Set this beside the pyuvm original and take inventory. `@pyuvm.test()` on a class became `#[rustdv::test]` on a function — the same attribute we have used since Chapter 15, because in rustdv there is only one kind of test. `run_phase(self)` became the test body itself. And `raise_objection()`/`drop_objection()` became a **guard**: `raise_objection` returns an `ObjectionGuard` whose `Drop` *is* the drop call. The two new lines are the methodology showing through: `RustdvCtx` is the run-phase context that Part IV's components will all share, and `all_objections_dropped().await` is the UVM's end-of-run consensus — the run continues until every raised objection has been released. Here there is one objection and it dies at the closing brace, so the await returns immediately; in three chapters, when free-running drivers and monitors hold guards of their own, that await becomes the thing deciding when your test ends.
 
 Notice what the guard pattern deletes: the *forgot to drop the objection* bug, which in pyuvm hangs the run phase until the timeout fires, is unwritable — you would have to deliberately `std::mem::forget` the guard. Scope ends, objection drops. (Chapter 16's `LockGuard`, Chapter 13's RAII, third verse.)
 
@@ -61,8 +61,8 @@ pyuvm expressed base-and-variants as `BaseTest` (abstract, providing `run_phase`
 ```rust
 // Figure 4: base_test — the shared run phase of every test
 
-async fn base_test(ctx: &TestCtx, tester: &mut impl Tester) -> Result<(), TestError> {
-    let run_ctx = RunCtx::new();
+async fn base_test(ctx: &RustdvCtx, tester: &mut impl Tester) -> Result<(), TestError> {
+    let run_ctx = RustdvCtx::new();
     let _obj = run_ctx.raise_objection("base_test stimulus");
 
     Clock::new(&ctx.dut().signal("clk")?, SimDuration::ns(10)).start();
@@ -94,13 +94,13 @@ And the two tests are exactly as thin as pyuvm's:
 // Figure 5: The tests build a tester and share base_test
 
 #[rustdv::test]
-async fn random_test(ctx: TestCtx) -> Result<(), TestError> {
+async fn random_test(ctx: RustdvCtx) -> Result<(), TestError> {
     // Run with random operations
     base_test(&ctx, &mut RandomTester { rng: ctx.rng() }).await
 }
 
 #[rustdv::test]
-async fn max_test(ctx: TestCtx) -> Result<(), TestError> {
+async fn max_test(ctx: RustdvCtx) -> Result<(), TestError> {
     // Run with maximum operations
     base_test(&ctx, &mut MaxTester).await
 }

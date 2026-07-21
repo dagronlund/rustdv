@@ -219,3 +219,65 @@ example code; both fixed, Linux sweep re-verified green:
 With these fixes the **full pre-push suite passes on macOS/arm64**
 (Ray's machine, 2026-07-13) as well as Linux — rustdv and all 20 book
 sim chapters now run on two platforms.
+
+---
+
+## 2026-07-21 — the UVM restoration, step 4: `RustdvCtx` and the test macro
+
+Branch `ch23_onwards`. Decisions and reasoning are in
+`output/.design-decisions.md` (D46–D49, which strike D8); this is the
+implementation record.
+
+**A test is now a component.** `Component` gained
+`async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError>`,
+and `#[rustdv::test]` accepts a struct or type alias as well as a free
+`async fn`. Chapter 23's aspirational example — written before the
+framework could compile it — now compiles and runs unmodified except for
+one `&`.
+
+- **`TestCtx` (runner) + `RunCtx` (uvm) → `RustdvCtx` (uvm).** One
+  universal context: `dut()`, `seed()`, `rng()`, `path()`, the objection
+  registry, and path-aware `info()`/`warning()`/… . It is `Clone` with the
+  objection registry `Rc`-shared.
+- **`TestError` moved from `rustdv-runner` to `rustdv-uvm`**
+  (`rustdv-uvm/src/error.rs`), since `Component::run` returns it and the
+  runner sits above the UVM crate. Re-exported from the runner and the
+  facade, so `::rustdv::TestError` is unchanged.
+- **Deviation — `async fn` in a trait is not dyn-compatible.** Adding `run`
+  to `Component` broke `&mut dyn ComponentNode`, whose supertrait it was.
+  The synchronous phases are therefore mirrored onto a new dyn-safe
+  `DynPhases` trait (blanket impl over every `Component`, distinct method
+  names so `component.extract()` stays unambiguous), and `ComponentNode`
+  requires that instead. Users write `Component` exactly as before.
+- **`Component::start` survives, transitionally.** ch24+ and `tinyalu_tb`
+  still use the old spawn hook; ch24 folds it into `run`.
+- **The runner** builds `RustdvCtx` with the test's registered name as the
+  root path (so logs read `[HelloWorldTest]`, not UVM's `uvm_test_top`),
+  runs the test, then awaits objection consensus — guarded on
+  `ObjectionRegistry::ever_raised()`, so a cocotb-shaped test that never
+  objects does not trigger pyuvm's "you never objected" warning.
+- **`#[derive(Component)]` learned unit structs** (`struct HelloWorldTest;`).
+- **`tinyalu_utils` is infrastructure only** (D45): `tb2`, `tb4`, `tb6`,
+  `tb7`, `env7`, `bfm7`, `alu_item` are no longer compiled. The files stay
+  in `src/` so each chapter can lift its copy into the chapter file as it
+  converts; ch23 has done so.
+- **Mechanical rename** of `TestCtx`/`RunCtx` → `RustdvCtx` across 49
+  files: examples, `tinyalu_tb`, `getting-started-with-rustdv.md`, and the
+  book chapters. No `file:line` moved, so no transcript regeneration (D31).
+
+**Verified.**
+
+- `output/examples/sim-common/run_sim.sh ch23_uvm_test_testbench_3_0 tinyalu …`
+  → 3/3 tests, `REGRESSION: PASS` (seed 1). Transcript in the chapter README.
+- `regress.py --suite book-sync` → 108/108; `--suite examples` → 96/96;
+  `--suite custom` → 6 passed, 0 failed (sim-ch15/16/17 and the new
+  sim-ch23 among them; ch18+ still quarantined).
+- `cargo build` and `cargo test` clean in the `rustdv` workspace,
+  `cargo build -p tinyalu_tb` clean.
+- `tinyalu_utils` and `ch23_uvm_test_testbench_3_0` removed from the
+  `regress.json` quarantine block.
+
+**Open, recorded rather than guessed:** struct tests register under their
+*type* name (`RandomTest`), not the snake_case `random_test` D27 wrote —
+see Q15 in the decisions log. Deciding it before ch24 is free; after ch24
+it is a transcript regeneration.

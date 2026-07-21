@@ -31,7 +31,7 @@ The test scaffolding in `lib.rs` is the two helpers the whole book has been conv
 // Figure 2: The scaffolding every test shares (tinyalu_tb/src/lib.rs)
 
 async fn build_testbench(
-    ctx: &TestCtx,
+    ctx: &RustdvCtx,
     enable_coverage: bool,
 ) -> Result<(Rc<TinyAluBfm>, AluEnv), TestError> {
     let dut = ctx.dut();
@@ -51,7 +51,7 @@ async fn run_sequence(
     seq: &mut dyn Sequence<alu_item::AluCommand>,
     description: &str,
 ) -> Result<(), TestError> {
-    let mut run_ctx = RunCtx::new();
+    let mut run_ctx = RustdvCtx::new();
     start_all(env, &mut run_ctx);
 
     {

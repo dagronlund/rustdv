@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use rustdv::prelude::*;
-use rustdv::RunCtx;
+use rustdv::RustdvCtx;
 
 use crate::alu_item::{predict, AluCommand, AluResult};
 use crate::bfm7::TinyAluBfm;
@@ -34,7 +34,7 @@ impl Driver {
 }
 
 impl Component for Driver {
-    fn start(&mut self, _ctx: &mut RunCtx) {
+    fn start(&mut self, _ctx: &mut RustdvCtx) {
         let bfm = self.bfm.clone();
         let mut port = self.seq_item_port.take().expect("Driver started twice");
         spawn_named(
@@ -67,7 +67,7 @@ impl CmdMonitor {
 }
 
 impl Component for CmdMonitor {
-    fn start(&mut self, _ctx: &mut RunCtx) {
+    fn start(&mut self, _ctx: &mut RustdvCtx) {
         let bfm = self.bfm.clone();
         let ap = self.ap.clone();
         spawn_named(
@@ -96,7 +96,7 @@ impl ResultMonitor {
 }
 
 impl Component for ResultMonitor {
-    fn start(&mut self, _ctx: &mut RunCtx) {
+    fn start(&mut self, _ctx: &mut RustdvCtx) {
         let bfm = self.bfm.clone();
         let ap = self.ap.clone();
         spawn_named(

@@ -20,7 +20,7 @@ impl TinyComponent {
 }
 
 impl Component for TinyComponent {
-    fn start(&mut self, ctx: &mut RunCtx) {
+    fn start(&mut self, ctx: &mut RustdvCtx) {
         let obj = ctx.raise_objection("tiny");
         let logger = self.logger.clone();
         spawn_named(
@@ -50,9 +50,9 @@ pub struct TinyEnv {
 impl Component for TinyEnv {}
 
 #[rustdv::test]
-async fn tiny_test(_ctx: TestCtx) -> Result<(), TestError> {
+async fn tiny_test(_ctx: RustdvCtx) -> Result<(), TestError> {
     let mut env = TinyEnv { tc: TinyComponent::new() };
-    let mut run_ctx = RunCtx::new();
+    let mut run_ctx = RustdvCtx::new();
     start_all(&mut env, &mut run_ctx);
     run_ctx.all_objections_dropped().await;
     run_extract_check_report(&mut env).map_err(TestError::from)
@@ -99,9 +99,9 @@ impl ComponentNode for FlexEnv {
 
 // Chapter 29, Figure 5: The default maker builds the original component
 #[rustdv::test]
-async fn tiny_factory_test(_ctx: TestCtx) -> Result<(), TestError> {
+async fn tiny_factory_test(_ctx: RustdvCtx) -> Result<(), TestError> {
     let mut env = FlexEnv::new(FlexEnvConfig::default());
-    let mut run_ctx = RunCtx::new();
+    let mut run_ctx = RustdvCtx::new();
     start_all(&mut env, &mut run_ctx);
     run_ctx.all_objections_dropped().await;
     run_extract_check_report(&mut env).map_err(TestError::from)
@@ -120,7 +120,7 @@ impl MediumComponent {
 }
 
 impl Component for MediumComponent {
-    fn start(&mut self, ctx: &mut RunCtx) {
+    fn start(&mut self, ctx: &mut RustdvCtx) {
         let obj = ctx.raise_objection("medium");
         let logger = self.logger.clone();
         spawn_named(
@@ -142,13 +142,13 @@ impl ComponentNode for MediumComponent {
 
 // Chapter 29, Figure 7: The override is an assignment, visible in the test
 #[rustdv::test]
-async fn medium_test(_ctx: TestCtx) -> Result<(), TestError> {
+async fn medium_test(_ctx: RustdvCtx) -> Result<(), TestError> {
     let config = FlexEnvConfig {
         make_tc: Box::new(|| Box::new(MediumComponent::new())),
     };
     let mut env = FlexEnv::new(config);
 
-    let mut run_ctx = RunCtx::new();
+    let mut run_ctx = RustdvCtx::new();
     start_all(&mut env, &mut run_ctx);
     run_ctx.all_objections_dropped().await;
     run_extract_check_report(&mut env).map_err(TestError::from)

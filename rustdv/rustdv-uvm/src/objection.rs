@@ -46,6 +46,13 @@ impl ObjectionRegistry {
         self.inner.count.get()
     }
 
+    /// Was an objection ever raised? The runner asks before awaiting
+    /// consensus, so a Part II test that never objects is not scolded by
+    /// `wait_all_dropped`'s pyuvm warning (D46: both front doors, one path).
+    pub fn ever_raised(&self) -> bool {
+        self.inner.raised_ever.get()
+    }
+
     /// Objection report for timeout diagnostics (pyuvm ObjectionHandler).
     pub fn active(&self) -> Vec<String> {
         self.inner.active.borrow().clone()

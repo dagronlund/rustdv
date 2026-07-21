@@ -44,7 +44,7 @@ fn get_int(signal: &LogicHandle) -> u64 {
 
 // Chapter 18, Figures 4–11: the whole testbench, one loop
 #[rustdv::test]
-async fn alu_test(ctx: TestCtx) -> Result<(), TestError> {
+async fn alu_test(ctx: RustdvCtx) -> Result<(), TestError> {
     // Chapter 18, Figure 4: The start of the TinyALU test. Reset the DUT
     let dut = ctx.dut();
     let mut rng = ctx.rng();

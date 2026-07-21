@@ -71,25 +71,35 @@ fn parse_test_opts(attr: TokenStream) -> Result<TestOpts, String> {
     Ok(opts)
 }
 
-/// The identifier following the `fn` keyword at top level of the item.
-fn find_fn_name(item: &TokenStream) -> Option<String> {
-    let mut saw_fn = false;
+/// Which of the two front doors this item is (D46).
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum TestForm {
+    /// `async fn tb(ctx: RustdvCtx) -> Result<(), TestError>` — the
+    /// cocotb shape, `@cocotb.test()` on a coroutine function.
+    Function,
+    /// `struct RandomTest;` or `type RandomTest = AluTest<RandomTester>;`
+    /// implementing `Component` — the pyuvm shape, `@pyuvm.test()` on a
+    /// class.
+    Component,
+}
+
+/// The item's kind and name: the first top-level `fn` / `struct` / `type`
+/// keyword and the identifier after it. Attributes (`#[derive(..)]`) are
+/// bracket groups, not top-level idents, so they are skipped for free;
+/// `pub` and `async` are idents that simply are not the keyword.
+fn find_item(item: &TokenStream) -> Option<(TestForm, String)> {
+    let mut form: Option<TestForm> = None;
     for tt in item.clone() {
-        match tt {
-            TokenTree::Ident(i) => {
-                let s = i.to_string();
-                if saw_fn {
-                    return Some(s);
-                }
-                if s == "fn" {
-                    saw_fn = true;
-                }
+        if let TokenTree::Ident(i) = tt {
+            let s = i.to_string();
+            if let Some(f) = form {
+                return Some((f, s));
             }
-            _ => {
-                if saw_fn {
-                    return None;
-                }
-            }
+            form = match s.as_str() {
+                "fn" => Some(TestForm::Function),
+                "struct" | "type" => Some(TestForm::Component),
+                _ => None,
+            };
         }
     }
     None
@@ -99,17 +109,27 @@ fn compile_error(msg: &str) -> TokenStream {
     format!("compile_error!({msg:?});").parse().unwrap()
 }
 
-/// Port of `@cocotb.test()` (design-doc §6.1). Registers the annotated
-/// `async fn name(ctx: TestCtx) -> Result<(), TestError>` at link time.
+/// Both front doors (design-doc §6.1, D46). Registers at link time either
+///
+/// - `async fn name(ctx: RustdvCtx) -> Result<(), TestError>` — the port of
+///   `@cocotb.test()`, decorating a coroutine *function*; or
+/// - `struct Name;` / `type Name = ..;` implementing `Component + Default`
+///   — the port of `@pyuvm.test()`, decorating a *class*.
+///
+/// Both expand to the same erased shim, so there is one registry and one
+/// execution path behind the two syntaxes.
 #[proc_macro_attribute]
 pub fn test(attr: TokenStream, item: TokenStream) -> TokenStream {
     let opts = match parse_test_opts(attr) {
         Ok(o) => o,
         Err(e) => return compile_error(&e),
     };
-    let Some(fn_name) = find_fn_name(&item) else {
-        return compile_error("#[rustdv::test] must be applied to an async fn");
+    let Some((form, item_name)) = find_item(&item) else {
+        return compile_error(
+            "#[rustdv::test] must be applied to an async fn, a struct, or a type alias",
+        );
     };
+    let fn_name = item_name;
     let test_name = opts.name.unwrap_or_else(|| fn_name.clone());
     let timeout = match (opts.timeout_time, opts.timeout_unit) {
         (Some(t), Some(u)) => format!("::core::option::Option::Some(({t}u64, \"{u}\"))"),
@@ -119,15 +139,28 @@ pub fn test(attr: TokenStream, item: TokenStream) -> TokenStream {
     let skip = opts.skip;
     let expect_fail = opts.expect_fail;
 
+    // The two forms differ only in this body: call the function, or build
+    // the component and call its run phase.
+    let body = match form {
+        TestForm::Function => format!("::std::boxed::Box::pin({fn_name}(ctx))"),
+        TestForm::Component => format!(
+            r#"::std::boxed::Box::pin(async move {{
+            let mut __ctx = ctx;
+            let mut __test = <{fn_name} as ::core::default::Default>::default();
+            ::rustdv::Component::run(&mut __test, &mut __ctx).await
+        }})"#
+        ),
+    };
+
     let reg = format!(
         r#"
 const _: () = {{
     fn __rustdv_shim(
-        ctx: ::rustdv::TestCtx,
+        ctx: ::rustdv::RustdvCtx,
     ) -> ::std::pin::Pin<::std::boxed::Box<
         dyn ::std::future::Future<Output = ::core::result::Result<(), ::rustdv::TestError>>,
     >> {{
-        ::std::boxed::Box::pin({fn_name}(ctx))
+        {body}
     }}
     #[used]
     #[cfg_attr(not(target_vendor = "apple"), link_section = "rustdv_tests")]
@@ -185,13 +218,21 @@ fn parse_struct(input: TokenStream) -> Result<(String, String, String, Vec<Field
     let name = struct_name.ok_or("#[derive(Component)] supports only structs")?;
 
     // Capture optional generics `<...>` (with bounds), then the brace group.
+    // A unit struct (`struct HelloWorldTest;`) has no brace group at all —
+    // ch23's tests are unit structs, since a test with no children has no
+    // fields to declare.
     let mut fields_group = None;
+    let mut unit_struct = false;
     let mut generics_tokens: Vec<TokenTree> = Vec::new();
     let mut depth = 0i32;
     for tt in iter {
         match &tt {
             TokenTree::Group(g) if g.delimiter() == Delimiter::Brace && depth == 0 => {
                 fields_group = Some(g.clone());
+                break;
+            }
+            TokenTree::Punct(p) if p.as_char() == ';' && depth == 0 => {
+                unit_struct = true;
                 break;
             }
             TokenTree::Punct(p) if p.as_char() == '<' => {
@@ -250,7 +291,11 @@ fn parse_struct(input: TokenStream) -> Result<(String, String, String, Vec<Field
         }
         if params.is_empty() { String::new() } else { format!("< {} >", params.join(" , ")) }
     };
-    let group = fields_group.ok_or("#[derive(Component)] requires named fields")?;
+    if unit_struct {
+        return Ok((name, impl_generics, type_params, Vec::new()));
+    }
+    let group = fields_group
+        .ok_or("#[derive(Component)] requires named fields, or a unit struct")?;
 
     // Split the group's tokens into fields at top-level commas.
     let mut fields = Vec::new();
@@ -323,7 +368,9 @@ fn make_field(tokens: &[TokenTree], is_child: bool) -> Result<Field, String> {
 /// Generates the `ComponentNode` impl (design-doc §6.3, revised per R2):
 /// traversal of `#[component(child)]` fields, including `Option<T>` and
 /// `Vec<T>`; names synthesized from field names. Emits **no** factory
-/// registration (R5). The impl is hand-writable; the derive is convenience.
+/// registration (R5) — but R5 is reversed: the factory returns in ch29,
+/// and this derive is where its registration will land. The impl is
+/// hand-writable; the derive is convenience.
 #[proc_macro_derive(Component, attributes(component))]
 pub fn derive_component(input: TokenStream) -> TokenStream {
     let (name, impl_generics, type_params, fields) = match parse_struct(input) {

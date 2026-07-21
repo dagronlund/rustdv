@@ -154,7 +154,7 @@ impl Scoreboard {
 struct HelloWorldTest;
 
 impl Component for HelloWorldTest {
-    async fn run(&mut self, ctx: &mut RunCtx) -> Result<(), TestError> {
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
         let _obj = ctx.raise_objection("saying hello");
         ctx.info("Hello, world.");
         Ok(())
@@ -167,10 +167,10 @@ impl Component for HelloWorldTest {
 // each test hands it a tester. The BFM and scoreboard are ordinary locals;
 // neither is a component yet.
 
-async fn alu_test(ctx: &mut RunCtx, tester: &mut impl Tester) -> Result<(), TestError> {
+async fn alu_test(ctx: &mut RustdvCtx, tester: &mut impl Tester) -> Result<(), TestError> {
     let _obj = ctx.raise_objection("alu_test stimulus");
 
-    let bfm = Rc::new(TinyAluBfm::new(ctx.dut())?);
+    let bfm = Rc::new(TinyAluBfm::new(&ctx.dut())?);
     let mut scoreboard = Scoreboard::new(bfm.clone());
 
     bfm.reset().await;
@@ -193,7 +193,7 @@ async fn alu_test(ctx: &mut RunCtx, tester: &mut impl Tester) -> Result<(), Test
 struct RandomTest;
 
 impl Component for RandomTest {
-    async fn run(&mut self, ctx: &mut RunCtx) -> Result<(), TestError> {
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
         let mut tester = RandomTester { rng: ctx.rng() };
         alu_test(ctx, &mut tester).await
     }
@@ -204,7 +204,7 @@ impl Component for RandomTest {
 struct MaxTest;
 
 impl Component for MaxTest {
-    async fn run(&mut self, ctx: &mut RunCtx) -> Result<(), TestError> {
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
         let mut tester = MaxTester;
         alu_test(ctx, &mut tester).await
     }

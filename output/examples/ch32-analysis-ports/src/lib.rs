@@ -38,7 +38,7 @@ impl Subscriber<Ops> for OpCounter {
 
 // Chapter 32, Figure 2: One write, every subscriber hears it
 #[rustdv::test]
-async fn fan_out_test(_ctx: TestCtx) -> Result<(), TestError> {
+async fn fan_out_test(_ctx: RustdvCtx) -> Result<(), TestError> {
     let ap: AnalysisPort<Ops> = AnalysisPort::new();
 
     let coverage = Rc::new(RefCell::new(OpCounter::new()));
@@ -65,7 +65,7 @@ impl Subscriber<Ops> for OpLogger {
 
 // Chapter 32, Figure 5: An AnalysisFifo turns broadcast into a stream
 #[rustdv::test]
-async fn analysis_fifo_test(_ctx: TestCtx) -> Result<(), TestError> {
+async fn analysis_fifo_test(_ctx: RustdvCtx) -> Result<(), TestError> {
     let ap: AnalysisPort<Ops> = AnalysisPort::new();
     let fifo: AnalysisFifo<Ops> = ap.connect_fifo();
 
@@ -82,7 +82,7 @@ async fn analysis_fifo_test(_ctx: TestCtx) -> Result<(), TestError> {
 
 // Chapter 32, Figure 6: Zero subscribers is not an error
 #[rustdv::test]
-async fn no_subscribers_test(_ctx: TestCtx) -> Result<(), TestError> {
+async fn no_subscribers_test(_ctx: RustdvCtx) -> Result<(), TestError> {
     let ap: AnalysisPort<Ops> = AnalysisPort::new();
     ap.write(&Ops::Add); // fire and forget: nobody listening, nobody hurt
     log::info("wrote to a port with no subscribers — fine");

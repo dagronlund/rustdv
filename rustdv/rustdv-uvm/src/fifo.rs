@@ -1,6 +1,13 @@
-//! `TlmFifo<T>`: a *component* wrapping a channel, for when the FIFO
-//! should be visible in the hierarchy with size/used/flush (design-doc
-//! §5.6; pyuvm uvm_tlm_fifo, default depth 1).
+//! `TlmFifo<T>`: the UVM `uvm_tlm_fifo` — a *component* that **encapsulates**
+//! a queue (pyuvm's Queue/Mailbox) so two components connect to the same
+//! FIFO and neither learns the other exists (design-doc §5.6, D17/D23/D24;
+//! pyuvm uvm_tlm_fifo, default depth 1).
+//!
+//! This encapsulation is the FIFO's *point*, not a nice-to-have: it is what
+//! makes the connection late-bound. Earlier framing here ("for when the
+//! FIFO should be visible in the hierarchy") understated that — hierarchy
+//! visibility is a consequence, decoupling is the reason. Do not treat the
+//! FIFO as optional plumbing.
 
 use rustdv_sim::queue::Queue;
 

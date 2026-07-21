@@ -6,13 +6,24 @@
 
 use rustdv::prelude::*;
 
-pub mod tb2;
-pub mod tb4;
-pub mod tb6;
-pub mod alu_item;
-pub mod bfm7;
-pub mod tb7;
-pub mod env7;
+// D45: infrastructure only. The promoted testbench modules — `tb2`, `tb4`,
+// `tb6`, `tb7`, `env7`, `bfm7`, `alu_item` — are no longer compiled here.
+// Every Python chapter imports only the BFM, `Ops` and `alu_prediction`
+// and *re-shows* the rest, because those classes evolve: `BaseTester` is a
+// plain class at 3.0 and a component at 4.0, and re-showing them is how
+// the reader sees the change. Factoring them out made the thing the book
+// teaches invisible.
+//
+// The files stay in `src/` so each chapter can lift its copy back into the
+// chapter file as it converts. ch23 has done so; the rest follow.
+//
+// pub mod tb2;   -> inlined into ch23
+// pub mod tb4;
+// pub mod tb6;
+// pub mod alu_item;
+// pub mod bfm7;
+// pub mod tb7;
+// pub mod env7;
 
 // Chapter 18, Figure 2: The operation enumeration
 // Legal ops for the TinyALU

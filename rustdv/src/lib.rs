@@ -13,7 +13,7 @@
 //! rustdv::vpi_bootstrap!();
 //!
 //! #[rustdv::test]
-//! async fn my_test(ctx: TestCtx) -> Result<(), TestError> {
+//! async fn my_test(ctx: RustdvCtx) -> Result<(), TestError> {
 //!     let dut = ctx.dut();
 //!     // ...
 //!     Ok(())
@@ -36,7 +36,7 @@ pub use rustdv_macros::Component;
 pub use rustdv_sim::{first, join};
 
 // --- the curated surface ----------------------------------------------------
-pub use rustdv_runner::{TestCtx, TestError, TestRegistration};
+pub use rustdv_runner::TestRegistration;
 
 pub use rustdv_sim::{
     first2, join2, next_time_step, read_only, read_write, sim_time_ns, sim_time_steps, spawn,
@@ -50,8 +50,9 @@ pub use rustdv_sim::log;
 pub use rustdv_uvm::{
     channel, check_all, extract_all, final_all, print_hierarchy, report_all, run_extract_check_report, start_all,
     Active, AnalysisFifo, AnalysisPort, CheckSink, Component as ComponentTrait, ComponentNode,
-    ObjectionGuard, ObjectionRegistry, Receiver, ResponseQueue, Sender, SeqCtx, SeqError, SeqItem,
-    SeqItemPort, Sequence, Sequencer, Subscriber, TlmEmpty, TlmError, TlmFifo, TlmFull, TxnId,
+    DynPhases, ObjectionGuard, ObjectionRegistry, Receiver, ResponseQueue, Sender, SeqCtx, SeqError,
+    SeqItem, SeqItemPort, Sequence, Sequencer, Subscriber, TestError, TlmEmpty, TlmError, TlmFifo,
+    TlmFull, TxnId,
 };
 
 // The lifecycle trait under its design-doc name, in the type namespace.
@@ -66,13 +67,16 @@ pub mod prelude {
         sim_time_ns, spawn, spawn_named, start_all, with_timeout, Active, AnalysisFifo,
         AnalysisPort, CheckSink, Clock, Component, ComponentNode, Either, Event, HandleError,
         HierarchyHandle, Lock, Logic, LogicArray, LogicHandle, NullTrigger, ObjectionGuard, Queue,
-        Receiver, Rng, RunCtx, Sender, SeqCtx, SeqError, SeqItem, SeqItemPort, Sequence, Sequencer,
-        SimDuration, Subscriber, TaskHandle, TestCtx, TestError, Timer, TlmFifo, TxnId,
+        Receiver, Rng, RustdvCtx, Sender, SeqCtx, SeqError, SeqItem, SeqItemPort, Sequence,
+        Sequencer, SimDuration, Subscriber, TaskHandle, TestError, Timer, TlmFifo, TxnId,
     };
     pub use crate::log;
 }
 
-pub use rustdv_uvm::RunCtx;
+/// The one context every testbench is handed (D47: `TestCtx` and `RunCtx`
+/// merged). Named for the framework, not for a phase, because Part II
+/// teaches testbenches that have no phases.
+pub use rustdv_uvm::RustdvCtx;
 
 /// Export the VPI entry points from the testbench cdylib. The simulator
 /// (vvp) dlopens the library and calls each routine in

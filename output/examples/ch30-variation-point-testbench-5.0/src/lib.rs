@@ -55,7 +55,7 @@ impl ComponentNode for AluEnv {
 }
 
 // Chapter 30, Figure 3: The shared test body takes a config
-async fn run_test(ctx: &TestCtx, make_tester: TesterMaker) -> Result<(), TestError> {
+async fn run_test(ctx: &RustdvCtx, make_tester: TesterMaker) -> Result<(), TestError> {
     Clock::new(&ctx.dut().signal("clk")?, SimDuration::ns(10)).start();
     let bfm = Rc::new(TinyAluBfm::new(&ctx.dut())?);
     bfm.reset().await;
@@ -63,7 +63,7 @@ async fn run_test(ctx: &TestCtx, make_tester: TesterMaker) -> Result<(), TestErr
 
     let mut env = AluEnv::new(AluEnvConfig { bfm, make_tester });
 
-    let mut run_ctx = RunCtx::new();
+    let mut run_ctx = RustdvCtx::new();
     start_all(&mut env, &mut run_ctx);
     run_ctx.all_objections_dropped().await;
     run_extract_check_report(&mut env).map_err(TestError::from)
@@ -71,7 +71,7 @@ async fn run_test(ctx: &TestCtx, make_tester: TesterMaker) -> Result<(), TestErr
 
 // Chapter 30, Figure 4: random_test picks its tester with three visible lines
 #[rustdv::test]
-async fn random_test(ctx: TestCtx) -> Result<(), TestError> {
+async fn random_test(ctx: RustdvCtx) -> Result<(), TestError> {
     // Run with random operands
     let rng = ctx.rng();
     run_test(
@@ -83,7 +83,7 @@ async fn random_test(ctx: TestCtx) -> Result<(), TestError> {
 
 // Chapter 30, Figure 5: max_test differs only in the maker it sends
 #[rustdv::test]
-async fn max_test(ctx: TestCtx) -> Result<(), TestError> {
+async fn max_test(ctx: RustdvCtx) -> Result<(), TestError> {
     // Run with maximum operands
     run_test(&ctx, Box::new(|bfm| Box::new(TesterComp::new(bfm, MaxTester)))).await
 }

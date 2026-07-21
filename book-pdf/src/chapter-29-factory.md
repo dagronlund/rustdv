@@ -22,7 +22,7 @@ impl TinyComponent {
 }
 
 impl Component for TinyComponent {
-    fn start(&mut self, ctx: &mut RunCtx) {
+    fn start(&mut self, ctx: &mut RustdvCtx) {
         let obj = ctx.raise_objection("tiny");
         let logger = self.logger.clone();
         spawn_named(
@@ -111,7 +111,7 @@ pub struct MediumComponent {
 // Figure 7: The override is an assignment, visible in the test
 
 #[rustdv::test]
-async fn medium_test(_ctx: TestCtx) -> Result<(), TestError> {
+async fn medium_test(_ctx: RustdvCtx) -> Result<(), TestError> {
     let config = FlexEnvConfig {
         make_tc: Box::new(|| Box::new(MediumComponent::new())),
     };

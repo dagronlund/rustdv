@@ -23,7 +23,7 @@ impl<T: Tester + 'static> TesterComp<T> {
 }
 
 impl<T: Tester + 'static> Component for TesterComp<T> {
-    fn start(&mut self, ctx: &mut RunCtx) {
+    fn start(&mut self, ctx: &mut RustdvCtx) {
         let bfm = self.bfm.clone();
         let mut tester = self.tester.take().expect("tester started twice");
         let obj = ctx.raise_objection("tester stimulus");
@@ -65,7 +65,7 @@ impl Scoreboard {
 
 impl Component for Scoreboard {
     // Chapter 25, Figure 5: start() launches the monitoring tasks
-    fn start(&mut self, _ctx: &mut RunCtx) {
+    fn start(&mut self, _ctx: &mut RustdvCtx) {
         let (bfm, cmds) = (self.bfm.clone(), self.cmds.clone());
         spawn_named(
             async move {

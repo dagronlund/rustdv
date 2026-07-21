@@ -49,7 +49,7 @@ async fn blocking_consumer(rx: Receiver<u32>) {
 // Figure 3: Blocking put/get is send/recv on a channel of size 1
 
 #[rustdv::test]
-async fn blocking_test(_ctx: TestCtx) -> Result<(), TestError> {
+async fn blocking_test(_ctx: RustdvCtx) -> Result<(), TestError> {
     let (tx, rx) = channel::<u32>(1);
     spawn_named(blocking_consumer(rx), "consumer");
     spawn_named(blocking_producer(tx), "producer").await.ok();

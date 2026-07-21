@@ -51,26 +51,26 @@ impl<T: Tester + 'static> AluEnv<T> {
 impl<T: Tester + 'static> Component for AluEnv<T> {}
 
 // Chapter 34, Figure 2: The test body — unchanged since 4.0
-async fn run_test<T: Tester + 'static>(ctx: &TestCtx, tester: T) -> Result<(), TestError> {
+async fn run_test<T: Tester + 'static>(ctx: &RustdvCtx, tester: T) -> Result<(), TestError> {
     Clock::new(&ctx.dut().signal("clk")?, SimDuration::ns(10)).start();
     let bfm = Rc::new(TinyAluBfm::new(&ctx.dut())?);
 
     let mut env = AluEnv::new(bfm, tester);
 
-    let mut run_ctx = RunCtx::new();
+    let mut run_ctx = RustdvCtx::new();
     start_all(&mut env, &mut run_ctx);
     run_ctx.all_objections_dropped().await;
     run_extract_check_report(&mut env).map_err(TestError::from)
 }
 
 #[rustdv::test]
-async fn random_test(ctx: TestCtx) -> Result<(), TestError> {
+async fn random_test(ctx: RustdvCtx) -> Result<(), TestError> {
     // Run with random operands
     run_test(&ctx, RandomTester { rng: ctx.rng() }).await
 }
 
 #[rustdv::test]
-async fn max_test(ctx: TestCtx) -> Result<(), TestError> {
+async fn max_test(ctx: RustdvCtx) -> Result<(), TestError> {
     // Run with maximum operands
     run_test(&ctx, MaxTester).await
 }

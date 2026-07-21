@@ -32,13 +32,13 @@ Synchronous reset: hold `reset_n` low and `count` clears on each clock; raise it
 
 ## The dut handle, without the magic
 
-A rustdv test receives a `TestCtx`, and `ctx.dut()` returns a `HierarchyHandle` to the top of the hierarchy — the counterpart of cocotb's `dut` argument. Getting at a signal is where the languages part company. In Python, `dut.reset_n` worked because `__getattr__` invented the attribute on demand by asking the simulator — pure runtime dynamism, and if you typed `dut.rst_n`, you found out via `AttributeError` deep into the run. Rust cannot invent struct fields at runtime, and honestly would not want to: rustdv's spelling is `dut.signal("reset_n")`, and it returns — you knew before you read it — a `Result`:
+A rustdv test receives a `RustdvCtx`, and `ctx.dut()` returns a `HierarchyHandle` to the top of the hierarchy — the counterpart of cocotb's `dut` argument. Getting at a signal is where the languages part company. In Python, `dut.reset_n` worked because `__getattr__` invented the attribute on demand by asking the simulator — pure runtime dynamism, and if you typed `dut.rst_n`, you found out via `AttributeError` deep into the run. Rust cannot invent struct fields at runtime, and honestly would not want to: rustdv's spelling is `dut.signal("reset_n")`, and it returns — you knew before you read it — a `Result`:
 
 ```rust
 // Figure 2: A typo'd signal name is an Err, not a surprise
 
 #[rustdv::test]
-async fn name_lookup(ctx: TestCtx) -> Result<(), TestError> {
+async fn name_lookup(ctx: RustdvCtx) -> Result<(), TestError> {
     // Show what child()/signal() return
     let dut = ctx.dut();
     let good = dut.signal("reset_n");
@@ -76,7 +76,7 @@ fn get_int(signal: &LogicHandle) -> u64 {
 // Figure 4: Starting the clock, lowering reset
 
 #[rustdv::test]
-async fn no_count(ctx: TestCtx) -> Result<(), TestError> {
+async fn no_count(ctx: RustdvCtx) -> Result<(), TestError> {
     // Test no count if reset is 0
     let dut = ctx.dut();
     let clk = dut.signal("clk")?;
@@ -116,7 +116,7 @@ Set and sample on the falling edge — the DUT works on the rising edge, so the 
 // Figure 6: Testing that the counter counts
 
 #[rustdv::test]
-async fn three_count(ctx: TestCtx) -> Result<(), TestError> {
+async fn three_count(ctx: RustdvCtx) -> Result<(), TestError> {
     // Test that we count up as expected
     let dut = ctx.dut();
     let clk = dut.signal("clk")?;
@@ -149,7 +149,7 @@ The Python chapter closed with a warning: forget the `await` on a trigger and th
 // Figure 7: Forgetting the await is now a compiler warning
 
 #[rustdv::test]
-async fn oops(ctx: TestCtx) -> Result<(), TestError> {
+async fn oops(ctx: RustdvCtx) -> Result<(), TestError> {
     // Demonstrate the coroutine mistake
     let dut = ctx.dut();
     let clk = dut.signal("clk")?;

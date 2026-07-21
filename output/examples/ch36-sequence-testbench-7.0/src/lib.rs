@@ -63,7 +63,7 @@ impl Sequence<AluCommand> for MaxSeq {
 
 // Chapter 36, Figure 7: The test starts a sequence on the sequencer
 async fn run_seq_test(
-    ctx: &TestCtx,
+    ctx: &RustdvCtx,
     seq: &mut dyn Sequence<AluCommand>,
     description: &str,
 ) -> Result<(), TestError> {
@@ -75,7 +75,7 @@ async fn run_seq_test(
     let config = AluEnvConfig { bfm: bfm.clone(), is_active: Active::Active, enable_coverage: true };
     let mut env = AluEnv::new(config);
 
-    let mut run_ctx = RunCtx::new();
+    let mut run_ctx = RustdvCtx::new();
     start_all(&mut env, &mut run_ctx);
     {
         let _obj = run_ctx.raise_objection(description);
@@ -88,14 +88,14 @@ async fn run_seq_test(
 }
 
 #[rustdv::test]
-async fn random_test(ctx: TestCtx) -> Result<(), TestError> {
+async fn random_test(ctx: RustdvCtx) -> Result<(), TestError> {
     // Run with random operands
     let mut seq = RandomSeq { n_per_op: 1, rng: ctx.rng() };
     run_seq_test(&ctx, &mut seq, "random_test sequence").await
 }
 
 #[rustdv::test]
-async fn max_test(ctx: TestCtx) -> Result<(), TestError> {
+async fn max_test(ctx: RustdvCtx) -> Result<(), TestError> {
     // Run with maximum operands
     let mut seq = MaxSeq;
     run_seq_test(&ctx, &mut seq, "max_test sequence").await

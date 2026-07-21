@@ -53,7 +53,7 @@ Compare with 4.0's env line by line. The generic parameter `<T: Tester>` is gone
 // Figure 4: random_test picks its tester with three visible lines
 
 #[rustdv::test]
-async fn random_test(ctx: TestCtx) -> Result<(), TestError> {
+async fn random_test(ctx: RustdvCtx) -> Result<(), TestError> {
     // Run with random operands
     let rng = ctx.rng();
     run_test(
@@ -68,7 +68,7 @@ async fn random_test(ctx: TestCtx) -> Result<(), TestError> {
 // Figure 5: max_test differs only in the maker it sends
 
 #[rustdv::test]
-async fn max_test(ctx: TestCtx) -> Result<(), TestError> {
+async fn max_test(ctx: RustdvCtx) -> Result<(), TestError> {
     // Run with maximum operands
     run_test(&ctx, Box::new(|bfm| Box::new(TesterComp::new(bfm, MaxTester)))).await
 }

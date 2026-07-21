@@ -18,7 +18,7 @@ use rustdv::prelude::*;
 rustdv::vpi_bootstrap!();
 
 #[rustdv::test]
-async fn hello_world(_ctx: TestCtx) -> Result<(), TestError> {
+async fn hello_world(_ctx: RustdvCtx) -> Result<(), TestError> {
     // Say hello!
     log::info("Hello, world.");
     Ok(())
@@ -32,7 +32,7 @@ async fn hello_world(_ctx: TestCtx) -> Result<(), TestError> {
       0.00ns INFO     hello_world PASSED
 ```
 
-Read it against its Python twin. `@cocotb.test()` became `#[rustdv::test]` — a decorator became an attribute, and Chapter 21 is a whole chapter about what that attribute actually does. `async def hello_world(_)` became `async fn hello_world(_ctx: TestCtx)`; the underscore convention for an unused argument survives with a type on it. The docstring became a comment, and the test *returns* `Result<(), TestError>` — Chapter 9's failure taxonomy, now load-bearing: `Ok(())` passes, `Err` fails, and no exception machinery is anywhere involved. The two lines with no Python twin are the imports' big brother `use rustdv::prelude::*;` (the sanctioned glob from Chapter 14) and `rustdv::vpi_bootstrap!()`, a macro that exports the entry points the simulator calls when it loads our compiled testbench. cocotb hid the equivalent plumbing inside its makefiles; Rust puts one visible line in the file, and Chapter 17 explains the loading story it belongs to.
+Read it against its Python twin. `@cocotb.test()` became `#[rustdv::test]` — a decorator became an attribute, and Chapter 21 is a whole chapter about what that attribute actually does. `async def hello_world(_)` became `async fn hello_world(_ctx: RustdvCtx)`; the underscore convention for an unused argument survives with a type on it. The docstring became a comment, and the test *returns* `Result<(), TestError>` — Chapter 9's failure taxonomy, now load-bearing: `Ok(())` passes, `Err` fails, and no exception machinery is anywhere involved. The two lines with no Python twin are the imports' big brother `use rustdv::prelude::*;` (the sanctioned glob from Chapter 14) and `rustdv::vpi_bootstrap!()`, a macro that exports the entry points the simulator calls when it loads our compiled testbench. cocotb hid the equivalent plumbing inside its makefiles; Rust puts one visible line in the file, and Chapter 17 explains the loading story it belongs to.
 
 The log line should feel like home: simulated time, level, message — the same format down to the column widths, on purpose.
 
@@ -252,7 +252,7 @@ A VHDL process, a SystemVerilog task, a Python coroutine — and now a Rust futu
 // Figure 7: Rust waits for 2 nanoseconds
 
 #[rustdv::test]
-async fn wait_2ns(_ctx: TestCtx) -> Result<(), TestError> {
+async fn wait_2ns(_ctx: RustdvCtx) -> Result<(), TestError> {
     // Waits for two ns then prints
     Timer::ns(2).await;
     log::info("I am DONE waiting!");
