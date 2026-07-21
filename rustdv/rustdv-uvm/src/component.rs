@@ -7,20 +7,20 @@
 //! > as arguments (`// connect:`), with only the runtime lifecycle left as
 //! > a trait.
 //! >
-//! > **D5 and D6 reverse that.** `build` (top-down) and `connect`
-//! > (bottom-up) are being restored as real phases, because the gap
-//! > between "a component exists" and "its children exist" is where all
-//! > late binding lives — path-addressed configuration, factory
-//! > overrides, TLM connection. Removing the phases removed the gap, and
-//! > with it rustdv's ability to configure or override anything the user
-//! > did not write. See `output/.design-decisions.md`; a future session
-//! > must not read R3 here and take it for the intended design.
+//! > **D5 and D6 reverse that, and the reversal has begun.** `build`
+//! > (top-down) and `connect` (bottom-up) are real phase methods again
+//! > (D51), because the gap between "a component exists" and "its children
+//! > exist" is where all late binding lives — path-addressed configuration,
+//! > factory overrides, TLM connection. The [`Component`] trait below now
+//! > carries all nine phases and [`run_component_test`] drives them.
+//! > `new(config, ...)`-style construction survives only in not-yet-
+//! > converted testbenches (`tinyalu_tb`), not as the design.
 //!
-//! **What has actually landed (step 4, D46–D49).** A test is a component:
-//! [`Component`] gained an `async fn run`, and the context it receives is
-//! the single universal [`RustdvCtx`] — the old `TestCtx` (runner) and
-//! `RunCtx` merged. `build`/`connect`, `build_child` and two-stage
-//! construction are **not here yet**; they arrive with ch24.
+//! **What has landed.** Step 4 (D46–D49): a test is a component with an
+//! `async fn run`, receiving the one universal [`RustdvCtx`]. Ch24 first
+//! half (D51/D52): the nine phases, the phaser, path-aware phase logging.
+//! Still pending — two-stage construction, a parent creating children as
+//! `Option<T>`/`Vec<T>` in its own `build` (ch24 second half).
 
 use rustdv_sim::handle::HierarchyHandle;
 use rustdv_sim::log::Logger;
@@ -99,6 +99,18 @@ impl RustdvCtx {
         RustdvCtx { dut, seed, objections: ObjectionRegistry::new(), logger: Logger::new(path) }
     }
 
+    /// A child context: same services, path extended by `name` (D9). The
+    /// phase traversals hand each child its own context so a component's
+    /// `ctx.info()` logs the path the walk derived, never a stored string.
+    pub fn child(&self, name: &str) -> RustdvCtx {
+        RustdvCtx {
+            dut: self.dut,
+            seed: self.seed,
+            objections: self.objections.clone(),
+            logger: Logger::new(&format!("{}.{}", self.logger.path(), name)),
+        }
+    }
+
     pub fn dut(&self) -> HierarchyHandle {
         self.dut
     }
@@ -168,69 +180,117 @@ impl RustdvCtx {
 // The lifecycle
 // ===========================================================================
 
-/// The runtime lifecycle (design-doc §5.3). Default empty bodies replicate
-/// pyuvm's no-op base methods — override only what you use.
+/// The UVM phase lifecycle (design-doc §5.3, D51), restored in full. Nine
+/// phases, each a method with a default no-op body — override only what you
+/// use, exactly as pyuvm's `uvm_component` does. **`build` and `connect`
+/// are real phases again**, not the "constructor conventions" R3 collapsed
+/// them into; restoring them is the point of this chapter.
+///
+/// Every phase receives the context so it can log with the component's
+/// derived path (D52/D7). The runner drives the whole sequence over the
+/// tree (see [`run_component_test`]), so a component author never calls a
+/// phase by hand.
 pub trait Component {
-    /// The test body: UVM's `run_phase`. Returning `Err` fails the test.
+    /// 1. `build` — top-down. Where a component constructs its children
+    /// (D6); the gap between "a component exists" and "its children exist"
+    /// that all late binding lives in.
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        let _ = ctx;
+    }
+    /// 2. `connect` — bottom-up. Wire children together once they exist.
+    fn connect(&mut self, ctx: &mut RustdvCtx) {
+        let _ = ctx;
+    }
+    /// 3. `end_of_elaboration` — top-down. The hierarchy is final.
+    fn end_of_elaboration(&mut self, ctx: &mut RustdvCtx) {
+        let _ = ctx;
+    }
+    /// 4. `start_of_simulation` — top-down. Last chance before time moves.
+    fn start_of_simulation(&mut self, ctx: &mut RustdvCtx) {
+        let _ = ctx;
+    }
+    /// 5. `run` — bottom-up, async, objection-gated. The test body; `Err`
+    /// fails the test.
     ///
     /// `async fn` in a trait costs dyn-compatibility, which is why the sync
-    /// phases below are mirrored onto [`DynPhases`] for traversal (D48).
+    /// phases are mirrored onto [`DynPhases`] for traversal (D48).
     #[allow(async_fn_in_trait)]
     async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
         let _ = ctx;
         Ok(())
     }
+    /// 6. `extract` — top-down, post-run.
+    fn extract(&mut self, ctx: &mut RustdvCtx) {
+        let _ = ctx;
+    }
+    /// 7. `check` — top-down. Report failures into the sink.
+    fn check(&mut self, ctx: &mut RustdvCtx, errors: &mut CheckSink) {
+        let _ = (ctx, errors);
+    }
+    /// 8. `report` — top-down.
+    fn report(&mut self, ctx: &mut RustdvCtx) {
+        let _ = ctx;
+    }
+    /// 9. `final_phase` — top-down. (`final` is a Rust keyword.)
+    fn final_phase(&mut self, ctx: &mut RustdvCtx) {
+        let _ = ctx;
+    }
 
-    /// Spawn free-running behavior (drivers, monitors); bottom-up order,
-    /// like pyuvm's run_phase spawning.
-    ///
-    /// **Transitional.** This is the pre-step-4 spawn hook, kept so the
-    /// component chapters and `tinyalu_tb` keep building while ch23 lands.
-    /// ch24 folds it into `run`.
+    /// **Transitional spawn hook**, pre-dating the restored `run`
+    /// traversal. `tinyalu_tb` and the not-yet-converted chapters still
+    /// spawn free-running behavior here; it folds into `run` as each
+    /// converts. Not part of the nine-phase lifecycle.
     fn start(&mut self, ctx: &mut RustdvCtx) {
         let _ = ctx;
     }
-    /// Top-down, post-run.
-    fn extract(&mut self) {}
-    /// Top-down.
-    fn check(&mut self, errors: &mut CheckSink) {
-        let _ = errors;
-    }
-    /// Top-down.
-    fn report(&self) {}
-    fn final_phase(&self) {}
 }
 
-/// Dyn-safe mirror of [`Component`]'s synchronous phases (D48).
+/// Dyn-safe mirror of [`Component`]'s non-async phases (D48).
 ///
 /// `Component` stopped being dyn-compatible the moment `run` became an
 /// `async fn`, and `ComponentNode` needs a dyn-safe supertrait to walk a
 /// tree of `&mut dyn` children. The blanket impl means users never write
-/// this: they override the phases on `Component` as before, and the
-/// distinct method names keep `component.extract()` unambiguous.
+/// this: they override the phases on `Component`, and the distinct method
+/// names keep `component.extract(..)` unambiguous.
 pub trait DynPhases {
+    fn dyn_build(&mut self, ctx: &mut RustdvCtx);
+    fn dyn_connect(&mut self, ctx: &mut RustdvCtx);
+    fn dyn_end_of_elaboration(&mut self, ctx: &mut RustdvCtx);
+    fn dyn_start_of_simulation(&mut self, ctx: &mut RustdvCtx);
+    fn dyn_extract(&mut self, ctx: &mut RustdvCtx);
+    fn dyn_check(&mut self, ctx: &mut RustdvCtx, errors: &mut CheckSink);
+    fn dyn_report(&mut self, ctx: &mut RustdvCtx);
+    fn dyn_final(&mut self, ctx: &mut RustdvCtx);
     fn dyn_start(&mut self, ctx: &mut RustdvCtx);
-    fn dyn_extract(&mut self);
-    fn dyn_check(&mut self, errors: &mut CheckSink);
-    fn dyn_report(&self);
-    fn dyn_final(&self);
 }
 
 impl<T: Component> DynPhases for T {
+    fn dyn_build(&mut self, ctx: &mut RustdvCtx) {
+        Component::build(self, ctx)
+    }
+    fn dyn_connect(&mut self, ctx: &mut RustdvCtx) {
+        Component::connect(self, ctx)
+    }
+    fn dyn_end_of_elaboration(&mut self, ctx: &mut RustdvCtx) {
+        Component::end_of_elaboration(self, ctx)
+    }
+    fn dyn_start_of_simulation(&mut self, ctx: &mut RustdvCtx) {
+        Component::start_of_simulation(self, ctx)
+    }
+    fn dyn_extract(&mut self, ctx: &mut RustdvCtx) {
+        Component::extract(self, ctx)
+    }
+    fn dyn_check(&mut self, ctx: &mut RustdvCtx, errors: &mut CheckSink) {
+        Component::check(self, ctx, errors)
+    }
+    fn dyn_report(&mut self, ctx: &mut RustdvCtx) {
+        Component::report(self, ctx)
+    }
+    fn dyn_final(&mut self, ctx: &mut RustdvCtx) {
+        Component::final_phase(self, ctx)
+    }
     fn dyn_start(&mut self, ctx: &mut RustdvCtx) {
         Component::start(self, ctx)
-    }
-    fn dyn_extract(&mut self) {
-        Component::extract(self)
-    }
-    fn dyn_check(&mut self, errors: &mut CheckSink) {
-        Component::check(self, errors)
-    }
-    fn dyn_report(&self) {
-        Component::report(self)
-    }
-    fn dyn_final(&self) {
-        Component::final_phase(self)
     }
 }
 
@@ -248,47 +308,149 @@ pub trait ComponentNode: DynPhases {
 }
 
 // ---------------------------------------------------------------------------
-// Traversals (pyuvm _s09 orders: run is bottom-up, the rest top-down)
+// Phase traversals (pyuvm order, D34): build top-down, connect bottom-up,
+// run bottom-up, the elaboration and post-run phases top-down.
+//
+// Each child is visited with its own context (path extended, D9), so a
+// component always logs under the path the walk gave it. Top-down = the
+// node acts, then its children; bottom-up = children first, then the node.
 // ---------------------------------------------------------------------------
 
-/// Bottom-up: children start before parents (pyuvm run_phase order).
+/// Top-down: `build` a node, then build the children it just created (D6).
+/// Visiting children *after* `build` is what lets a parent construct them in
+/// its own build phase and have the walk descend into them.
+pub fn build_all(node: &mut dyn ComponentNode, ctx: &mut RustdvCtx) {
+    node.dyn_build(ctx);
+    let parent = &*ctx;
+    node.visit_children(&mut |name, child| {
+        let mut cctx = parent.child(name);
+        build_all(child, &mut cctx);
+    });
+}
+
+/// Bottom-up: children `connect` before parents.
+pub fn connect_all(node: &mut dyn ComponentNode, ctx: &mut RustdvCtx) {
+    let parent = &*ctx;
+    node.visit_children(&mut |name, child| {
+        let mut cctx = parent.child(name);
+        connect_all(child, &mut cctx);
+    });
+    node.dyn_connect(ctx);
+}
+
+/// Top-down.
+pub fn end_of_elaboration_all(node: &mut dyn ComponentNode, ctx: &mut RustdvCtx) {
+    node.dyn_end_of_elaboration(ctx);
+    let parent = &*ctx;
+    node.visit_children(&mut |name, child| {
+        let mut cctx = parent.child(name);
+        end_of_elaboration_all(child, &mut cctx);
+    });
+}
+
+/// Top-down.
+pub fn start_of_simulation_all(node: &mut dyn ComponentNode, ctx: &mut RustdvCtx) {
+    node.dyn_start_of_simulation(ctx);
+    let parent = &*ctx;
+    node.visit_children(&mut |name, child| {
+        let mut cctx = parent.child(name);
+        start_of_simulation_all(child, &mut cctx);
+    });
+}
+
+/// Bottom-up: children start before parents (transitional spawn hook).
 pub fn start_all(node: &mut dyn ComponentNode, ctx: &mut RustdvCtx) {
-    node.visit_children(&mut |_name, child| start_all(child, ctx));
+    let parent = &*ctx;
+    node.visit_children(&mut |name, child| {
+        let mut cctx = parent.child(name);
+        start_all(child, &mut cctx);
+    });
     node.dyn_start(ctx);
 }
 
 /// Top-down.
-pub fn extract_all(node: &mut dyn ComponentNode) {
-    node.dyn_extract();
-    node.visit_children(&mut |_name, child| extract_all(child));
+pub fn extract_all(node: &mut dyn ComponentNode, ctx: &mut RustdvCtx) {
+    node.dyn_extract(ctx);
+    let parent = &*ctx;
+    node.visit_children(&mut |name, child| {
+        let mut cctx = parent.child(name);
+        extract_all(child, &mut cctx);
+    });
 }
 
 /// Top-down.
-pub fn check_all(node: &mut dyn ComponentNode, sink: &mut CheckSink) {
-    node.dyn_check(sink);
-    node.visit_children(&mut |_name, child| check_all(child, sink));
+pub fn check_all(node: &mut dyn ComponentNode, ctx: &mut RustdvCtx, sink: &mut CheckSink) {
+    node.dyn_check(ctx, sink);
+    let parent = ctx.clone();
+    node.visit_children(&mut |name, child| {
+        let mut cctx = parent.child(name);
+        check_all(child, &mut cctx, sink);
+    });
 }
 
 /// Top-down.
-pub fn report_all(node: &mut dyn ComponentNode) {
-    node.dyn_report();
-    node.visit_children(&mut |_name, child| report_all(child));
+pub fn report_all(node: &mut dyn ComponentNode, ctx: &mut RustdvCtx) {
+    node.dyn_report(ctx);
+    let parent = &*ctx;
+    node.visit_children(&mut |name, child| {
+        let mut cctx = parent.child(name);
+        report_all(child, &mut cctx);
+    });
 }
 
-pub fn final_all(node: &mut dyn ComponentNode) {
-    node.dyn_final();
-    node.visit_children(&mut |_name, child| final_all(child));
+/// Top-down.
+pub fn final_all(node: &mut dyn ComponentNode, ctx: &mut RustdvCtx) {
+    node.dyn_final(ctx);
+    let parent = &*ctx;
+    node.visit_children(&mut |name, child| {
+        let mut cctx = parent.child(name);
+        final_all(child, &mut cctx);
+    });
 }
 
 /// The standard post-run tail: extract → check → report → final, returning
 /// `Err` if any check failed (an `Err` fails the test, design-doc §0.6).
-pub fn run_extract_check_report(node: &mut dyn ComponentNode) -> Result<(), String> {
-    extract_all(node);
+pub fn run_extract_check_report(
+    node: &mut dyn ComponentNode,
+    ctx: &mut RustdvCtx,
+) -> Result<(), String> {
+    extract_all(node, ctx);
     let mut sink = CheckSink::new();
-    check_all(node, &mut sink);
-    report_all(node);
-    final_all(node);
+    check_all(node, ctx, &mut sink);
+    report_all(node, ctx);
+    final_all(node, ctx);
     sink.into_result()
+}
+
+/// The full phaser: drive every UVM phase over a component tree, in order
+/// (D51) — the analog of pyuvm handing the test class to its phaser. The
+/// runner calls this for a `#[rustdv::test]` struct, so the test body is
+/// just the phase methods; no hand-rolled `start_all`.
+///
+/// The run phase is `Component::run` on the top component (static dispatch,
+/// no boxing). A bottom-up `run` traversal over a tree of `dyn` children —
+/// where D48's boxed-future question comes due — is the second half of
+/// ch24, not here.
+pub async fn run_component_test<T: Component + ComponentNode>(
+    test: &mut T,
+    ctx: &mut RustdvCtx,
+) -> Result<(), TestError> {
+    build_all(test, ctx);
+    connect_all(test, ctx);
+    end_of_elaboration_all(test, ctx);
+    start_of_simulation_all(test, ctx);
+
+    let run_result = Component::run(test, ctx).await;
+
+    // The run phase completes when its objections drain (pyuvm), so the
+    // post-run phases wait for consensus first. A test that never objected
+    // is not made to wait (D46).
+    if ctx.objections().ever_raised() {
+        ctx.all_objections_dropped().await;
+    }
+
+    let post = run_extract_check_report(test, ctx).map_err(TestError::from);
+    run_result.and(post)
 }
 
 /// Debug printer: the `visit_children` walker serving pyuvm's hierarchy

@@ -48,11 +48,12 @@ pub use rustdv_sim::handle::top_module;
 pub use rustdv_sim::log;
 
 pub use rustdv_uvm::{
-    channel, check_all, extract_all, final_all, print_hierarchy, report_all, run_extract_check_report, start_all,
-    Active, AnalysisFifo, AnalysisPort, CheckSink, Component as ComponentTrait, ComponentNode,
-    DynPhases, ObjectionGuard, ObjectionRegistry, Receiver, ResponseQueue, Sender, SeqCtx, SeqError,
-    SeqItem, SeqItemPort, Sequence, Sequencer, Subscriber, TestError, TlmEmpty, TlmError, TlmFifo,
-    TlmFull, TxnId,
+    build_all, channel, check_all, connect_all, end_of_elaboration_all, extract_all, final_all,
+    print_hierarchy, report_all, run_component_test, run_extract_check_report, start_all,
+    start_of_simulation_all, Active, AnalysisFifo, AnalysisPort, CheckSink,
+    Component as ComponentTrait, ComponentNode, DynPhases, ObjectionGuard, ObjectionRegistry,
+    Receiver, ResponseQueue, Sender, SeqCtx, SeqError, SeqItem, SeqItemPort, Sequence, Sequencer,
+    Subscriber, TestError, TlmEmpty, TlmError, TlmFifo, TlmFull, TxnId,
 };
 
 // The lifecycle trait under its design-doc name, in the type namespace.
@@ -63,12 +64,14 @@ pub use rustdv_uvm::Component;
 /// One-line import for testbenches (the `from pyuvm import *` analog).
 pub mod prelude {
     pub use crate::{
-        channel, first2, join2, next_time_step, print_hierarchy, read_only, read_write, run_extract_check_report,
-        sim_time_ns, spawn, spawn_named, start_all, with_timeout, Active, AnalysisFifo,
-        AnalysisPort, CheckSink, Clock, Component, ComponentNode, Either, Event, HandleError,
-        HierarchyHandle, Lock, Logic, LogicArray, LogicHandle, NullTrigger, ObjectionGuard, Queue,
-        Receiver, Rng, RustdvCtx, Sender, SeqCtx, SeqError, SeqItem, SeqItemPort, Sequence,
-        Sequencer, SimDuration, Subscriber, TaskHandle, TestError, Timer, TlmFifo, TxnId,
+        build_all, channel, check_all, connect_all, end_of_elaboration_all, extract_all, final_all,
+        first2, join2, next_time_step, print_hierarchy, read_only, read_write, report_all,
+        run_component_test, run_extract_check_report, sim_time_ns, spawn, spawn_named, start_all,
+        start_of_simulation_all, with_timeout, Active, AnalysisFifo, AnalysisPort, CheckSink, Clock,
+        Component, ComponentNode, Either, Event, HandleError, HierarchyHandle, Lock, Logic,
+        LogicArray, LogicHandle, NullTrigger, ObjectionGuard, Queue, Receiver, Rng, RustdvCtx,
+        Sender, SeqCtx, SeqError, SeqItem, SeqItemPort, Sequence, Sequencer, SimDuration,
+        Subscriber, TaskHandle, TestError, Timer, TlmFifo, TxnId,
     };
     pub use crate::log;
 }

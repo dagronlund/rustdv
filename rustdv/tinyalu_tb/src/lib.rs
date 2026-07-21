@@ -65,7 +65,7 @@ async fn run_sequence(
     }
     run_ctx.all_objections_dropped().await;
 
-    run_extract_check_report(env).map_err(TestError::from)
+    run_extract_check_report(env, &mut run_ctx).map_err(TestError::from)
 }
 
 #[rustdv::test(timeout_time = 500, timeout_unit = "us")]

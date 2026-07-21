@@ -133,7 +133,7 @@ impl Scoreboard {
 }
 
 impl Component for Scoreboard {
-    fn check(&mut self, errors: &mut CheckSink) {
+    fn check(&mut self, _ctx: &mut RustdvCtx, errors: &mut CheckSink) {
         loop {
             match (self.cmd_fifo.try_get(), self.result_fifo.try_get()) {
                 (Some(cmd), Some(actual)) => {
@@ -167,7 +167,7 @@ impl Component for Scoreboard {
         }
     }
 
-    fn report(&self) {
+    fn report(&mut self, _ctx: &mut RustdvCtx) {
         log::info(&format!(
             "scoreboard: {} compared, {} mismatches",
             self.compared, self.mismatches
@@ -206,7 +206,7 @@ impl Coverage {
 }
 
 impl Component for Coverage {
-    fn check(&mut self, errors: &mut CheckSink) {
+    fn check(&mut self, _ctx: &mut RustdvCtx, errors: &mut CheckSink) {
         let seen = &self.collector.borrow().seen;
         for op in Ops::ALL {
             if !seen.contains_key(&op) {
@@ -215,7 +215,7 @@ impl Component for Coverage {
         }
     }
 
-    fn report(&self) {
+    fn report(&mut self, _ctx: &mut RustdvCtx) {
         let seen = &self.collector.borrow().seen;
         let mut parts: Vec<String> = Ops::ALL
             .iter()

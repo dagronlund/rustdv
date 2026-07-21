@@ -140,14 +140,16 @@ pub fn test(attr: TokenStream, item: TokenStream) -> TokenStream {
     let expect_fail = opts.expect_fail;
 
     // The two forms differ only in this body: call the function, or build
-    // the component and call its run phase.
+    // the component and let the phaser drive its whole lifecycle (D51). The
+    // struct form no longer calls `run` directly — `run_component_test`
+    // runs build → connect → … → run → extract → check → report → final.
     let body = match form {
         TestForm::Function => format!("::std::boxed::Box::pin({fn_name}(ctx))"),
         TestForm::Component => format!(
             r#"::std::boxed::Box::pin(async move {{
             let mut __ctx = ctx;
             let mut __test = <{fn_name} as ::core::default::Default>::default();
-            ::rustdv::Component::run(&mut __test, &mut __ctx).await
+            ::rustdv::run_component_test(&mut __test, &mut __ctx).await
         }})"#
         ),
     };
