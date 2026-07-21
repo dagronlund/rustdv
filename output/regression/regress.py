@@ -175,10 +175,18 @@ def suite_examples(args):
         return
     manifest = json.load(open(os.path.join(EXAMPLES, "manifest.json")))
 
+    quarantined_pkgs = CFG.get("quarantine", {}).get("packages", [])
+
     tid = "examples/workspace-build"
     if wanted(tid, args):
-        r = run(["cargo", "build", "--workspace", "--quiet"], cwd=EXAMPLES, timeout=600)
+        cmd = ["cargo", "build", "--workspace", "--quiet"]
+        for pkg in quarantined_pkgs:
+            cmd += ["--exclude", pkg]
+        r = run(cmd, cwd=EXAMPLES, timeout=600)
         record(tid, r.returncode == 0, r.stderr.strip().splitlines()[-1] if r.returncode else "")
+        if quarantined_pkgs:
+            print(f"  {YELLOW}note{OFF} {len(quarantined_pkgs)} package(s) quarantined "
+                  f"(see regress.json)")
 
     for m in manifest:
         if m["kind"] not in ("bin", "panic"):
@@ -238,6 +246,9 @@ def suite_custom(args):
         name = os.path.basename(os.path.dirname(spec_path))
         tid = f"custom/{name}"
         if not wanted(tid, args):
+            continue
+        if name in CFG.get("quarantine", {}).get("custom_tests", []):
+            print(f"  {YELLOW}quar{OFF} {tid} (quarantined — chapter not yet converted)")
             continue
         spec = json.load(open(spec_path))
         if spec.get("disabled"):

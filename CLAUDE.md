@@ -10,8 +10,9 @@ two finished things (see TOUR.md for the tour):
 2. **"Rust for RTL Verification"** — a complete 41-chapter book in
    /book-pdf/src (mdBook), every figure verified running.
 
-Ground truth on the Python/cocotb/pyuvm side is the cocotb + pyuvm source in
-/reference.
+Ground truth for the methodology — the cocotb, pyuvm and SystemVerilog UVM
+sources, plus the example code from the earlier books — lives outside this
+repository, so the repo carries only its own product.
 
 ## Folder map
 - /rustdv — the framework workspace (crates rustdv-gpi-sys … rustdv, plus
@@ -22,7 +23,6 @@ Ground truth on the Python/cocotb/pyuvm side is the cocotb + pyuvm source in
 - /output/regression — regress.py, wired into the git pre-push hook.
 - /skills — AI verification skills (rtl-spec-analysis, rustdv-testbench,
   rustdv-verify-cover).
-- /reference — read-only sources. Do not modify.
 - STATUS.md — authoritative implementation history and deviations log.
 - TOUR.md — orientation for new readers and new threads (start there).
 

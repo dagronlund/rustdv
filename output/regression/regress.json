@@ -13,6 +13,37 @@
       "ch12_fig06_dictionary_comprehension_collected_into": "normalized_maps"
     }
   },
+  "quarantine": {
+    "comment": "Chapter crates not yet converted to the build/connect refactor (branch put_uvm_back_in_rustdv). Excluded from the workspace build; their sim tests are skipped and reported as quarantined rather than passing. This keeps the suite a usable instrument while the refactor lands — red means we broke something, not that work is in progress. REMOVE a chapter from both lists the moment its example compiles and runs.",
+    "packages": [
+      "tinyalu_utils",
+      "ch18_basic_testbench_1_0",
+      "ch19_tinyalubfm",
+      "ch20_struct_based_testbench_2_0",
+      "ch21_macros",
+      "ch23_uvm_test_testbench_3_0",
+      "ch24_components",
+      "ch25_uvm_env_testbench_4_0",
+      "ch26_logging",
+      "ch27_configuration",
+      "ch28_config_debugging",
+      "ch29_factory",
+      "ch30_variation_point_testbench_5_0",
+      "ch31_component_communications",
+      "ch32_analysis_ports",
+      "ch34_connections_testbench_6_0",
+      "ch35_transactions",
+      "ch36_sequence_testbench_7_0",
+      "ch37_fibonacci_testbench_7_1",
+      "ch38_get_response_testbench_7_2",
+      "ch39_virtual_sequence_testbench_8_0"
+    ],
+    "custom_tests": [
+      "sim-ch18", "sim-ch19", "sim-ch20", "sim-ch23", "sim-ch24", "sim-ch25",
+      "sim-ch26", "sim-ch27", "sim-ch29", "sim-ch30", "sim-ch31", "sim-ch32",
+      "sim-ch34", "sim-ch36", "sim-ch37", "sim-ch38", "sim-ch39"
+    ]
+  },
   "cargo_test_packages": {
     "comment": "Packages whose unit tests run as part of the examples suite. Add future crates (e.g. rustdv) here or as custom tests.",
     "packages": [

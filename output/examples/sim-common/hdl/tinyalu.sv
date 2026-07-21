@@ -1,11 +1,18 @@
 module tinyalu (input [7:0] A,
 		input [7:0] B,
 		input [2:0] op,
-		input clk,
 		input reset_n,
 		input start,
 		output done,
 		output [15:0] result);
+
+   // The RTL supplies its own clock, as it does in both earlier books and as
+   // it must on an emulator, where a software-driven clock would cross the
+   // hardware boundary on every edge. rustdv generates no clock; BFMs only
+   // ever wait on edges. 10ns period at the 1ns/1ns timescale.
+   bit clk;
+   initial clk = 0;
+   always #5 clk = ~clk;
 
    wire [15:0] 		      result_aax, result_mult;
    wire 		          start_single, start_mult;

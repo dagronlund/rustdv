@@ -26,3 +26,8 @@ toolchain-drop/
 
 # Personal/private project instructions — local only, never commit
 CLAUDE.local.md
+
+# Reference sources (cocotb, pyuvm, SV UVM, the book example repos, specs)
+# live outside the repo in ../rustdv-reference. They are research material,
+# not part of the product, and some are third-party or licensed documents.
+reference/
