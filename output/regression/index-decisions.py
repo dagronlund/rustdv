@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
-"""Check (or regenerate) the decision index in output/.design-decisions.md.
+"""Enforce the ordering invariant of output/.design-decisions.md.
 
-Decisions in that log are grouped by *topic*, not by number — D51 is in
-§6b, D29 in §7 — so the index at the top is the only reliable way to find
-one. This script keeps the index honest.
+The log is organised so that **decision numbers increase as you read down**
+— D1 near the top, the newest at the bottom. That property is what makes
+`tail` show the latest thinking and makes a decision findable by scrolling.
+It is easy to break by filing a new decision into an older topical section,
+which is exactly how D62–D64 once ended up at line 687 of 958 and were
+reported missing.
 
-    index-decisions.py            # check: exit 1 if the index is stale
-    index-decisions.py --print    # print a freshly generated index table
+    index-decisions.py            # check: exit 1 if order or numbering broke
+    index-decisions.py --print    # regenerate the "Decision map" table
 
-Run it after adding a decision. It is deliberately not wired into the
-regression: the log is internal (never cited in reader-facing output), so
-a stale index should nag, not block a push.
+Deliberately not wired into the pre-push regression: the log is internal
+(never cited in reader-facing output), so a lapse should nag, not block.
 """
 import re
 import sys
@@ -18,12 +20,12 @@ from pathlib import Path
 
 LOG = Path(__file__).resolve().parents[2] / "output" / ".design-decisions.md"
 
-# Matches "**D12. Title...", "- **D54. Title...", "~~**D8. Title..."
-DECISION = re.compile(r"^(?:- )?(?:~~)?\*\*(D(\d+))\.\s*(.*)")
+# "**D12. Title", "- **D54. Title", "~~**D8. Title"
+DECISION = re.compile(r"^(?:- )?(?:~~)?\*\*D(\d+)\.")
 
 
-def parse(text):
-    """Yield (number, id, title, section, struck) for each decision."""
+def scan(text):
+    """Yield (number, section) in document order, definitions only."""
     section = ""
     seen = set()
     for line in text.split("\n"):
@@ -33,50 +35,78 @@ def parse(text):
         m = DECISION.match(line)
         if not m:
             continue
-        ident, num, rest = m.group(1), int(m.group(2)), m.group(3)
-        if ident in seen:          # a later reference, not the definition
+        n = int(m.group(1))
+        if n in seen:            # a later cross-reference, not the definition
             continue
-        seen.add(ident)
-        struck = line.lstrip("- ").startswith("~~")
-        title = re.split(r"(?<=[a-z\)`])\.\s|\*\*", rest)[0].strip().rstrip(".,")
-        yield num, ident, title, section, struck
+        seen.add(n)
+        yield n, section
+
+
+def section_rows(text):
+    parts = re.split(r"(?m)^(## .+)$", text)
+    for i in range(1, len(parts), 2):
+        head, body = parts[i][3:].strip(), parts[i + 1]
+        ds = [int(m.group(1)) for m in re.finditer(r"(?:^|\n)(?:- )?(?:~~)?\*\*D(\d+)\.", body)]
+        num, _, title = head.partition(". ")
+        rng = f"D{min(ds)}–D{max(ds)}" if len(ds) > 1 else (f"D{ds[0]}" if ds else "—")
+        yield num.strip(), (title.strip() or head), rng
 
 
 def main():
     if not LOG.exists():
         sys.exit(f"not found: {LOG}")
-    decisions = sorted(parse(LOG.read_text()))
+    text = LOG.read_text()
 
     if "--print" in sys.argv:
-        print("| # | Decision | Section |")
+        print("| § | Contents | Decisions |")
         print("|---|---|---|")
-        for _, ident, title, section, struck in decisions:
-            shown = f"~~{ident}~~" if struck else ident
-            print(f"| {shown} | {title} | {section} |")
+        for num, title, rng in section_rows(text):
+            print(f"| {num} | {title} | {rng} |")
         return
 
-    # Check mode: every decision must appear in the index table, and the
-    # numbering must have no gaps (a gap means one was dropped or misnumbered).
-    text = LOG.read_text()
-    head = text.split("## Index of decisions", 1)
-    if len(head) < 2:
-        sys.exit("no '## Index of decisions' section — run with --print and paste it in")
-    index_block = head[1].split("\n---", 1)[0]
+    found = list(scan(text))
+    nums = [n for n, _ in found]
+    if not nums:
+        sys.exit("no decisions found — has the format changed?")
 
-    missing = [i for _, i, _, _, _ in decisions if f"| {i} " not in index_block
-               and f"| ~~{i}~~ " not in index_block]
-    numbers = [n for n, _, _, _, _ in decisions]
-    gaps = [n for n in range(1, max(numbers) + 1) if n not in numbers] if numbers else []
+    problems = []
 
-    if missing:
-        print(f"index is stale — not listed: {', '.join(missing)}")
+    descents = [
+        (a, b, sa, sb)
+        for (a, sa), (b, sb) in zip(found, found[1:])
+        if b < a
+    ]
+    for a, b, sa, sb in descents:
+        problems.append(f"D{b} (§{sb}) comes after D{a} (§{sa}) — numbers must increase")
+
+    gaps = [n for n in range(1, max(nums) + 1) if n not in nums]
     if gaps:
-        print(f"gap in decision numbers: {', '.join('D%d' % n for n in gaps)}")
-    if missing or gaps:
-        print("regenerate with: index-decisions.py --print")
+        problems.append("missing: " + ", ".join(f"D{n}" for n in gaps))
+
+    dupes = {n for n in nums if nums.count(n) > 1}
+    if dupes:
+        problems.append("duplicated: " + ", ".join(f"D{n}" for n in sorted(dupes)))
+
+    if "## Decision map" not in text:
+        problems.append("no '## Decision map' section")
+    else:
+        current = text.split("## Decision map", 1)[1].split("\n\n", 2)
+        for num, title, rng in section_rows(text):
+            if rng != "—" and f"| {rng} |" not in text.split("## Decision map", 1)[1][:2000]:
+                problems.append(f"decision map is stale for §{num} ({rng})")
+                break
+
+    if problems:
+        print("design-decisions.md needs attention:")
+        for p in problems:
+            print("  -", p)
+        print("\nfix the order, then refresh the map with: index-decisions.py --print")
         sys.exit(1)
 
-    print(f"decision index OK — {len(decisions)} decisions, D1..D{max(numbers)}, no gaps")
+    print(
+        f"OK — {len(nums)} decisions, D1..D{max(nums)}, "
+        "increasing in document order, no gaps or duplicates"
+    )
 
 
 if __name__ == "__main__":
