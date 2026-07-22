@@ -5,6 +5,10 @@ edition = "2021"
 description = "The cocotb-analog core: simulator-driven async executor, tasks, triggers, typed handles, clock, sim-aware queues (design-doc §4)."
 license = "MIT OR Apache-2.0"
 
+[lib]
+# Crate root named after the crate, not lib.rs (D29).
+path = "src/rustdv_sim.rs"
+
 [dependencies]
 rustdv-gpi = { path = "../rustdv-gpi" }
 

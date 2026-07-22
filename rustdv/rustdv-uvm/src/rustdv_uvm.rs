@@ -43,6 +43,7 @@ pub mod error;
 pub mod fifo;
 pub mod objection;
 pub mod sequence;
+pub mod singleton;
 
 pub use analysis::{AnalysisFifo, AnalysisPort, Subscriber};
 pub use channel::{channel, Receiver, Sender, TlmEmpty, TlmError, TlmFull};
@@ -55,6 +56,7 @@ pub use component::{
 pub use error::TestError;
 pub use fifo::TlmFifo;
 pub use objection::{ObjectionGuard, ObjectionRegistry};
+pub use singleton::{clear_singletons, singleton, singleton_exists};
 pub use sequence::{
     ResponseQueue, SeqCtx, SeqError, SeqItem, SeqItemPort, Sequence, Sequencer, TxnId,
 };

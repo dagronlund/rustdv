@@ -4,7 +4,10 @@
 //! `sys.path` trick; in Rust it is an ordinary library crate the chapter
 //! crates list in `[dependencies]` (Chapter 14).
 
+use std::rc::Rc;
+
 use rustdv::prelude::*;
+use rustdv::top_module;
 
 // D45: infrastructure only. The promoted testbench modules — `tb2`, `tb4`,
 // `tb6`, `tb7`, `env7`, `bfm7`, `alu_item` — are no longer compiled here.
@@ -88,6 +91,24 @@ pub struct TinyAluBfm {
 }
 
 impl TinyAluBfm {
+    /// The ambient BFM — the port of `class TinyAluBfm(metaclass=Singleton)`.
+    ///
+    /// From testbench 4.0 on, the tester and the scoreboard are separate
+    /// sibling components that both need the BFM, and `build` takes no
+    /// constructor arguments (D6). Each calls `TinyAluBfm::get()` and
+    /// receives the same object, exactly as each pyuvm component calls
+    /// `TinyAluBfm()`. (SystemVerilog reaches the same place through
+    /// `uvm_config_db::set(null, "*", "bfm", bfm)`.)
+    ///
+    /// One BFM *per test*, not per process: the runner clears singletons
+    /// between tests, so no test inherits another's half-drained queues.
+    pub fn get() -> Rc<TinyAluBfm> {
+        rustdv::uvm::singleton(|| {
+            let dut = top_module().expect("TinyAluBfm::get(): no top module");
+            TinyAluBfm::new(&dut).expect("TinyAluBfm::get(): TinyALU signals not found")
+        })
+    }
+
     // Chapter 19, Figure 3: Initializing the TinyAluBfm
     pub fn new(dut: &HierarchyHandle) -> Result<TinyAluBfm, HandleError> {
         Ok(TinyAluBfm {

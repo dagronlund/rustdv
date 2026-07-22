@@ -5,4 +5,8 @@ edition = "2021"
 description = "Panicking vpi_* symbol definitions for cargo-test executables. Dev-dependency only — never linked into the simulator-loaded cdylib, where the real symbols come from the simulator."
 license = "MIT OR Apache-2.0"
 
+[lib]
+# Crate root named after the crate, not lib.rs (D29).
+path = "src/rustdv_vpi_stubs.rs"
+
 [dependencies]

@@ -27,7 +27,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 use rustdv_sim::handle::HierarchyHandle;
-use rustdv_sim::log::Logger;
+use rustdv_sim::log::{Level, Logger};
 use rustdv_sim::rng::Rng;
 
 use crate::error::TestError;
@@ -159,6 +159,38 @@ impl RustdvCtx {
     /// The logger itself, for code that wants to hold one.
     pub fn logger(&self) -> &Logger {
         &self.logger
+    }
+
+    // --- Hierarchical logging control (pyuvm's *_hier methods) ------------
+    //
+    // Each applies to this component and everything below it. Note what is
+    // *missing* from every signature: a path. pyuvm's `set_logging_level_hier`
+    // is a method on the component and knows its own name; ours knows it
+    // because the walk handed the context its path (D7). The alternative —
+    // `set_level_for("uvm_test_top.comp", ..)` typed by hand — is a string
+    // nobody checks, that silently addresses the wrong subtree the moment a
+    // component is renamed or moved.
+
+    /// Port of `set_logging_level_hier(level)`.
+    pub fn set_logging_level_hier(&self, level: Level) {
+        rustdv_sim::log::set_level_for(self.path(), level);
+    }
+
+    /// Port of `disable_logging_hier()`.
+    pub fn disable_logging_hier(&self) {
+        rustdv_sim::log::set_level_for(self.path(), Level::Off);
+    }
+
+    /// Port of `add_logging_handler_hier(logging.FileHandler(path))` —
+    /// this subtree's messages are also written to `file`.
+    pub fn add_file_handler_hier(&self, file: &str, append: bool) -> std::io::Result<()> {
+        rustdv_sim::log::add_file_for(self.path(), file, append)
+    }
+
+    /// Port of `remove_streaming_handler_hier()` — stop printing this
+    /// subtree to the console (file handlers keep receiving it).
+    pub fn remove_console_hier(&self) {
+        rustdv_sim::log::set_console_for(self.path(), false);
     }
 
     // --- Objections -------------------------------------------------------

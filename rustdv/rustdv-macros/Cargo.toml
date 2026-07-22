@@ -6,6 +6,8 @@ description = "Proc macros for rustdv: #[rustdv::test] and #[derive(Component)] 
 license = "MIT OR Apache-2.0"
 
 [lib]
+# Crate root named after the crate, not lib.rs (D29).
+path = "src/rustdv_macros.rs"
 proc-macro = true
 
 [dependencies]

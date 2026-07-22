@@ -7,18 +7,82 @@ sim-common/run_sim.sh ch25_uvm_env_testbench_4_0 tinyalu \
     sim-common/hdl/timescale.v sim-common/hdl/tinyalu.sv
 ```
 
+Testbench 4.0 is where the pieces become **components**. At 3.0 the test was
+the only component, and the tester and scoreboard were ordinary locals
+inside `run`. Here each becomes a component with its own phases, and an
+*environment* holds them — the reusable unit UVM is built around.
+
 | Figure | Title | Where |
 |---|---|---|
-| 1 | The 4.0 structure | text diagram |
-| 2 | The tester as a component — start() is its run phase | `src/lib.rs` (`TesterComp`) |
-| 3 | The 2.0 testers don't need to change | `src/lib.rs` (the `use tinyalu_utils::tb2::...` line) |
-| 4 | The Scoreboard as a component | `src/lib.rs` |
-| 5 | start() launches the monitoring tasks | `src/lib.rs` |
-| 6 | Checking results in the check phase | `src/lib.rs` |
-| 7 | pyuvm's environment tower, and its Rust replacement | text diagram |
-| 8 | The environment: a struct whose fields are the testbench | `src/lib.rs` (`AluEnv`) |
-| 9 | The shared test body: build the env, run the lifecycle | `src/lib.rs` (`run_env_test`) |
-| 10 | The tests build the right environment | `src/lib.rs` |
-| 11 | The tests running using environments | transcript |
+| 1 | What varies between testers is only the operands | `Operands` trait |
+| 2 | RandomOperands and MaxOperands | `src/ch25_uvm_env_testbench_4_0.rs` |
+| 3 | BaseTester implements the phases common to all testers | `BaseTester<T>` |
+| 4 | The two testers are type aliases over the base | `RandomTester`, `MaxTester` |
+| 5 | The Scoreboard as a component | `Scoreboard` |
+| 6 | Launching the monitoring tasks in start_of_simulation | `Scoreboard::start_of_simulation` |
+| 7 | Checking results in the check phase | `Scoreboard::check` |
+| 8 | The environment builds the scoreboard and a tester | `AluEnv<T>` |
+| 9 | RandomEnv and MaxEnv are type aliases | type aliases |
+| 10 | Each test builds the environment it wants | `RandomTest`, `MaxTest` |
 
-Both tests end `REGRESSION: PASS` (RUSTDV_RANDOM_SEED=1).
+Transcript (seed 1):
+
+```
+      0.00ns INFO     rustdv: found 2 test(s), RUSTDV_RANDOM_SEED=1
+      0.00ns INFO     running RandomTest (1/2)  [ch25-uvm-env-testbench-4.0/src/ch25_uvm_env_testbench_4_0.rs:216]
+    150.00ns INFO     [RandomTest.env.scoreboard]: PASSED: c1 Add 67 = 0128
+    150.00ns INFO     [RandomTest.env.scoreboard]: PASSED: 5e And 0b = 000a
+    150.00ns INFO     [RandomTest.env.scoreboard]: PASSED: b9 Xor 80 = 0039
+    150.00ns INFO     [RandomTest.env.scoreboard]: PASSED: a5 Mul 75 = 4b69
+    150.00ns INFO     [RandomTest.env.scoreboard]: Covered all operations
+    150.00ns INFO     RandomTest PASSED
+    150.00ns INFO     running MaxTest (2/2)  [ch25-uvm-env-testbench-4.0/src/ch25_uvm_env_testbench_4_0.rs:229]
+    300.00ns INFO     [MaxTest.env.scoreboard]: PASSED: ff Add ff = 01fe
+    300.00ns INFO     [MaxTest.env.scoreboard]: PASSED: ff And ff = 00ff
+    300.00ns INFO     [MaxTest.env.scoreboard]: PASSED: ff Xor ff = 0000
+    300.00ns INFO     [MaxTest.env.scoreboard]: PASSED: ff Mul ff = fe01
+    300.00ns INFO     [MaxTest.env.scoreboard]: Covered all operations
+    300.00ns INFO     MaxTest PASSED
+******************************************************************************
+** TEST                                       STATUS  SIM TIME (ns)      **
+******************************************************************************
+** RandomTest                                   PASS         150.00      **
+** MaxTest                                      PASS         150.00      **
+******************************************************************************
+REGRESSION: PASS
+```
+
+## Two things worth reading the code for
+
+**The BFM is ambient.** The tester and the scoreboard are siblings created
+in their parent's `build` phase, so neither can be handed the BFM through a
+constructor — `build` passes nothing (D6). Each calls `TinyAluBfm::get()`
+and receives the same object, the port of pyuvm's
+`class TinyAluBfm(metaclass=Singleton)`. SystemVerilog reaches the same
+place with `uvm_config_db#(virtual tinyalu_bfm)::set(null, "*", "bfm", bfm)`.
+Both source languages could have threaded a handle through constructors and
+neither did — D3.
+
+The singleton is scoped to **one test**: the runner clears singletons before
+each test, matching pyuvm's `run_test`, so `MaxTest` never inherits
+`RandomTest`'s half-drained queues.
+
+**Inheritance becomes one generic written once.** Python needs
+`BaseTester` + `RandomTester` + `MaxTester`, and `BaseEnv` + `RandomEnv` +
+`MaxEnv` with the subclasses calling `super().build_phase()`. rustdv writes
+`BaseTester<T: Operands>` and `AluEnv<T>` once; the four variants are type
+aliases (D28).
+
+The scoreboard's path, `[RandomTest.env.scoreboard]`, is derived by the walk
+three levels down — nothing stores it.
+
+## Verification
+
+Not vacuous: with `alu_prediction`'s XOR sabotaged to OR, both tests report
+the offending transaction and the run ends `REGRESSION: FAIL`.
+
+```
+150.00ns ERROR    FAILED: b9 Xor 80 = 0039 - predicted 00b9
+300.00ns ERROR    FAILED: ff Xor ff = 0000 - predicted 00ff
+REGRESSION: FAIL
+```

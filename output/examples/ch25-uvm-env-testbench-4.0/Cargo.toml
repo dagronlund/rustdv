@@ -5,6 +5,8 @@ edition = "2021"
 
 [lib]
 crate-type = ["cdylib"]
+# Crate root named after the crate, not lib.rs (D29).
+path = "src/ch25_uvm_env_testbench_4_0.rs"
 
 [dependencies]
 rustdv = { path = "../../../rustdv" }

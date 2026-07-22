@@ -25,6 +25,10 @@ repository = "https://github.com/raysalemi/rustdv"
 keywords = ["verification", "testbench", "rtl", "hardware", "dv"]
 categories = ["development-tools::testing", "simulation"]
 
+[lib]
+# Crate root named after the crate, not lib.rs (D29).
+path = "src/rustdv.rs"
+
 [dependencies]
 rustdv-gpi = { path = "rustdv-gpi" }
 rustdv-sim = { path = "rustdv-sim" }

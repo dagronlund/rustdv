@@ -6,6 +6,8 @@ description = "The worked example (design-doc §7): full rustdv testbench for th
 license = "MIT OR Apache-2.0"
 
 [lib]
+# Crate root named after the crate, not lib.rs (D29).
+path = "src/tinyalu_tb.rs"
 # cdylib: loaded by the simulator as a VPI module.
 # rlib: lets `cargo test` run the pure-Rust unit tests (§7.3 convention 5).
 crate-type = ["cdylib", "rlib"]
