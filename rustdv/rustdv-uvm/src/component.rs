@@ -497,7 +497,13 @@ pub async fn run_component_test<T: Component + ComponentNode>(
     test: &mut T,
     ctx: &mut RustdvCtx,
 ) -> Result<(), TestError> {
+    // Writes made during build take depth-scaled precedence, so a parent
+    // outranks a child even though build is top-down and the parent
+    // therefore writes first (D13, tier 2).
+    crate::config::set_in_build(true);
     build_all(test, ctx);
+    crate::config::set_in_build(false);
+
     connect_all(test, ctx);
     end_of_elaboration_all(test, ctx);
     start_of_simulation_all(test, ctx);

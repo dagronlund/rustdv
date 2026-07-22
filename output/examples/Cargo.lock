@@ -146,6 +146,9 @@ dependencies = [
 [[package]]
 name = "ch28_config_debugging"
 version = "0.1.0"
+dependencies = [
+ "rustdv",
+]
 
 [[package]]
 name = "ch29_factory"

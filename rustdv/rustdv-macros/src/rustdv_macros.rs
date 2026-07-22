@@ -28,6 +28,7 @@ struct TestOpts {
     timeout_unit: Option<String>,
     skip: bool,
     expect_fail: bool,
+    expect_error: Option<String>,
 }
 
 fn strip_quotes(s: &str) -> String {
@@ -65,6 +66,12 @@ fn parse_test_opts(attr: TokenStream) -> Result<TestOpts, String> {
             "timeout_unit" => opts.timeout_unit = value.map(|v| strip_quotes(&v)),
             "skip" => opts.skip = value.map(|v| v == "true").unwrap_or(true),
             "expect_fail" => opts.expect_fail = value.map(|v| v == "true").unwrap_or(true),
+            // Pass only if the test fails with this cause — the port of
+            // pyuvm's `expect_error=SomeException` (D68).
+            "expect_error" => {
+                let v = value.ok_or("expect_error needs a value, e.g. expect_error = \"config_not_found\"")?;
+                opts.expect_error = Some(strip_quotes(&v));
+            }
             other => return Err(format!("unknown #[rustdv::test] option '{other}'")),
         }
     }
@@ -138,6 +145,10 @@ pub fn test(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
     let skip = opts.skip;
     let expect_fail = opts.expect_fail;
+    let expect_error = match &opts.expect_error {
+        Some(k) => format!("::core::option::Option::Some(\"{k}\")"),
+        None => "::core::option::Option::None".to_string(),
+    };
 
     // The two forms differ only in this body: call the function, or build
     // the component and let the phaser drive its whole lifecycle (D51). The
@@ -176,6 +187,7 @@ const _: () = {{
         timeout: {timeout},
         skip: {skip},
         expect_fail: {expect_fail},
+        expect_error: {expect_error},
     }};
 }};
 "#

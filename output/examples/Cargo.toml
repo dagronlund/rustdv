@@ -41,10 +41,6 @@ members = [
     "tinyalu-utils",
 ]
 exclude = [
-    "ch27-configuration/compile-fail/fig10_the_conflict_has_nowhere_to_live",
-    "ch28-config-debugging/compile-fail/fig01_wrong_path_is_a_wrong_name",
-    "ch28-config-debugging/compile-fail/fig02_wrong_type_never_reaches_runtime",
-    "ch28-config-debugging/compile-fail/fig03_missing_config_is_a_missing_field",
     "ch31-component-communications/compile-fail/fig08_direction_mismatch",
     "ch02-rust-concepts/compile-fail/fig01_calling_undefined_method",
     "ch02-rust-concepts/compile-fail/fig03_mistake_systemverilog_would_have",

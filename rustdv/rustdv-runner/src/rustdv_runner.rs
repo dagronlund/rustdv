@@ -52,6 +52,9 @@ pub struct TestRegistration {
     pub timeout: Option<(u64, &'static str)>,
     pub skip: bool,
     pub expect_fail: bool,
+    /// Pass only if the test fails with this cause (D68). Strictly stronger
+    /// than `expect_fail`, which accepts any failure at all.
+    pub expect_error: Option<&'static str>,
 }
 
 // ===========================================================================
@@ -76,6 +79,7 @@ static SENTINEL: &TestRegistration = &TestRegistration {
     timeout: None,
     skip: true,
     expect_fail: false,
+    expect_error: None,
 };
 
 // The linker-provided section bounds. ELF defines __start_/__stop_
@@ -124,8 +128,14 @@ pub fn collect_tests() -> Vec<&'static TestRegistration> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Outcome {
     Pass,
-    Fail(String),
+    /// `kind` is the machine-readable cause, when the failure had one, so
+    /// `expect_error` can insist a test failed for the *right* reason.
+    Fail { msg: String, kind: Option<&'static str> },
     Skip,
+}
+
+fn fail(msg: impl Into<String>) -> Outcome {
+    Outcome::Fail { msg: msg.into(), kind: None }
 }
 
 struct TestResult {
@@ -162,11 +172,12 @@ async fn run_one(reg: &'static TestRegistration, seed: u64) -> Outcome {
     // previous test's BFM (with its half-drained queues) or its logging
     // configuration. D16's rule, applied beyond the ConfigDb.
     rustdv_uvm::clear_singletons();
+    rustdv_uvm::ConfigDb::clear();
     log::reset_config();
 
     let dut = match top_module() {
         Ok(d) => d,
-        Err(e) => return Outcome::Fail(format!("no DUT: {e}")),
+        Err(e) => return fail(format!("no DUT: {e}")),
     };
     // D49: the root path is the test's registered name, so `ctx.info(..)`
     // logs `[random_test]` where UVM logs `uvm_test_top`.
@@ -211,27 +222,40 @@ async fn run_one(reg: &'static TestRegistration, seed: u64) -> Outcome {
     ex.cancel_after(watermark);
 
     let mut outcome = match raw {
-        None => Outcome::Fail(format!(
+        None => fail(format!(
             "timeout after {}{}",
             reg.timeout.unwrap().0,
             reg.timeout.unwrap().1
         )),
-        Some(Err(e)) => Outcome::Fail(format!("test task: {e}")),
-        Some(Ok(Err(e))) => Outcome::Fail(e.to_string()),
+        Some(Err(e)) => fail(format!("test task: {e}")),
+        Some(Ok(Err(e))) => Outcome::Fail { msg: e.to_string(), kind: e.kind() },
         Some(Ok(Ok(()))) => Outcome::Pass,
     };
 
     // A panic in a child task fails the test even if the body passed.
     if let Some(bg) = take_background_failure() {
         if outcome == Outcome::Pass {
-            outcome = Outcome::Fail(bg);
+            outcome = fail(bg);
         }
     }
 
-    if reg.expect_fail {
+    if let Some(expected) = reg.expect_error {
         outcome = match outcome {
-            Outcome::Pass => Outcome::Fail("expected failure but test passed".into()),
-            Outcome::Fail(_) => Outcome::Pass,
+            Outcome::Pass => fail(format!("expected error '{expected}' but test passed")),
+            Outcome::Fail { msg, kind } if kind == Some(expected) => {
+                let _ = msg;
+                Outcome::Pass
+            }
+            Outcome::Fail { msg, kind } => fail(format!(
+                "expected error '{expected}', got {}: {msg}",
+                kind.unwrap_or("an unclassified failure")
+            )),
+            s => s,
+        };
+    } else if reg.expect_fail {
+        outcome = match outcome {
+            Outcome::Pass => fail("expected failure but test passed"),
+            Outcome::Fail { .. } => Outcome::Pass,
             s => s,
         };
     }
@@ -268,7 +292,7 @@ async fn regression() {
         let dt = sim_time_ns() - t0;
         match &outcome {
             Outcome::Pass => log::info(&format!("{} PASSED", reg.name)),
-            Outcome::Fail(m) => log::error(&format!("{} FAILED: {m}", reg.name)),
+            Outcome::Fail { msg, .. } => log::error(&format!("{} FAILED: {msg}", reg.name)),
             Outcome::Skip => {}
         }
         results.push(TestResult { name: reg.name, outcome, sim_ns: dt });
@@ -277,7 +301,7 @@ async fn regression() {
     print_summary(&results);
     write_xunit(&results);
 
-    let failed = results.iter().any(|r| matches!(r.outcome, Outcome::Fail(_)));
+    let failed = results.iter().any(|r| matches!(r.outcome, Outcome::Fail { .. }));
     println!("REGRESSION: {}", if failed { "FAIL" } else { "PASS" });
     gpi::finish();
 }
@@ -290,7 +314,7 @@ fn print_summary(results: &[TestResult]) {
     for r in results {
         let status = match &r.outcome {
             Outcome::Pass => "PASS",
-            Outcome::Fail(_) => "FAIL",
+            Outcome::Fail { .. } => "FAIL",
             Outcome::Skip => "SKIP",
         };
         println!("** {:<40} {:>8} {:>14.2}      **", r.name, status, r.sim_ns);
@@ -303,7 +327,7 @@ fn print_summary(results: &[TestResult]) {
 fn write_xunit(results: &[TestResult]) {
     let Ok(path) = std::env::var("RUSTDV_RESULTS_XML") else { return };
     let mut xml = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-    let failures = results.iter().filter(|r| matches!(r.outcome, Outcome::Fail(_))).count();
+    let failures = results.iter().filter(|r| matches!(r.outcome, Outcome::Fail { .. })).count();
     let skipped = results.iter().filter(|r| matches!(r.outcome, Outcome::Skip)).count();
     xml.push_str(&format!(
         "<testsuites>\n<testsuite name=\"rustdv\" tests=\"{}\" failures=\"{}\" skipped=\"{}\">\n",
@@ -319,7 +343,7 @@ fn write_xunit(results: &[TestResult]) {
         match &r.outcome {
             Outcome::Pass => xml.push_str("/>\n"),
             Outcome::Skip => xml.push_str("><skipped/></testcase>\n"),
-            Outcome::Fail(m) => xml.push_str(&format!(
+            Outcome::Fail { msg: m, .. } => xml.push_str(&format!(
                 "><failure message=\"{}\"/></testcase>\n",
                 m.replace('"', "'").replace('<', "(").replace('>', ")")
             )),

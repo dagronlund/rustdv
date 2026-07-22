@@ -39,6 +39,7 @@
 pub mod analysis;
 pub mod channel;
 pub mod component;
+pub mod config;
 pub mod error;
 pub mod fifo;
 pub mod objection;
@@ -53,6 +54,7 @@ pub use component::{
     start_all, start_of_simulation_all, Active, CheckSink, Component, ComponentNode, DynPhases,
     RustdvCtx,
 };
+pub use config::{ConfigDb, ConfigError};
 pub use error::TestError;
 pub use fifo::TlmFifo;
 pub use objection::{ObjectionGuard, ObjectionRegistry};
