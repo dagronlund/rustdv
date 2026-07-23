@@ -53,8 +53,8 @@ pub use rustdv_uvm::{
     start_of_simulation_all, Active, AnalysisFifo, AnalysisPort, CheckSink,
     Component as ComponentTrait, ComponentNode, DynPhases, ObjectionGuard, ObjectionRegistry,
     Receiver, ResponseQueue, Sender, SeqCtx, SeqError, SeqItem, SeqItemPort, Sequence, Sequencer,
-    ConfigDb, ConfigError, Subscriber, TestError, TlmEmpty, TlmError, TlmFifo, TlmFull,
-    TxnId,
+    AnyComp, ComponentReg, ConfigDb, ConfigError, Factory, Maker, Subscriber, TestError, TlmEmpty,
+    TlmError, TlmFifo, TlmFull, TxnId,
 };
 
 // The lifecycle trait under its design-doc name, in the type namespace.
@@ -69,9 +69,9 @@ pub mod prelude {
         first2, join2, next_time_step, print_hierarchy, read_only, read_write, report_all,
         run_component_test, run_extract_check_report, sim_time_ns, spawn, spawn_named, start_all,
         start_of_simulation_all, with_timeout, Active, AnalysisFifo, AnalysisPort, CheckSink, Clock,
-        Component, ComponentNode, Either, Event, HandleError, HierarchyHandle, Lock, Logic,
-        LogicArray, LogicHandle, NullTrigger, ObjectionGuard, Queue, Receiver, Rng, RustdvCtx,
-        Sender, SeqCtx, SeqError, SeqItem, SeqItemPort, Sequence, Sequencer, SimDuration,
+        AnyComp, Component, ComponentNode, Either, Event, Factory, HandleError, HierarchyHandle,
+        Lock, Logic, LogicArray, LogicHandle, NullTrigger, ObjectionGuard, Queue, Receiver, Rng,
+        RustdvCtx, Sender, SeqCtx, SeqError, SeqItem, SeqItemPort, Sequence, Sequencer, SimDuration,
         ConfigDb, Subscriber, TaskHandle, TestError, Timer, TlmFifo, TxnId,
     };
     pub use crate::log;

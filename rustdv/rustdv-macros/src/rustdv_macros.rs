@@ -208,6 +208,28 @@ struct Field {
     is_child: bool,
 }
 
+/// Does a struct-level `#[component(...)]` (before the `struct` keyword)
+/// contain `word`? Field-level attributes come after `struct`, so scanning
+/// only the leading tokens keeps them out.
+fn struct_attr_contains(input: &TokenStream, word: &str) -> bool {
+    let mut prev_hash = false;
+    for tt in input.clone() {
+        match &tt {
+            TokenTree::Ident(i) if i.to_string() == "struct" => return false,
+            TokenTree::Punct(p) if p.as_char() == '#' => prev_hash = true,
+            TokenTree::Group(g) if prev_hash && g.delimiter() == Delimiter::Bracket => {
+                let text = g.stream().to_string();
+                if text.starts_with("component") && text.contains(word) {
+                    return true;
+                }
+                prev_hash = false;
+            }
+            _ => prev_hash = false,
+        }
+    }
+    false
+}
+
 /// Parse `struct Name { ... }` from the derive input token stream.
 /// Supported: structs with named fields, including simple generics
 /// (`struct Env<T: Tester + 'static> { ... }`).
@@ -387,43 +409,92 @@ fn make_field(tokens: &[TokenTree], is_child: bool) -> Result<Field, String> {
 /// hand-writable; the derive is convenience.
 #[proc_macro_derive(Component, attributes(component))]
 pub fn derive_component(input: TokenStream) -> TokenStream {
+    // A struct-level `#[component(no_factory)]` opts out of universal factory
+    // registration — for components that are not `Default` (they take
+    // constructor arguments) and so cannot be built by name. Detected before
+    // the `struct` keyword to distinguish it from field-level attributes.
+    let no_factory = struct_attr_contains(&input, "no_factory");
+
     let (name, impl_generics, type_params, fields) = match parse_struct(input) {
         Ok(v) => v,
         Err(e) => return compile_error(&e),
     };
 
     let mut visits = String::new();
+    let mut resolves = String::new();
     for f in fields.iter().filter(|f| f.is_child) {
         let fname = &f.name;
         let ty = f.ty.trim_start();
-        if ty.starts_with("Option") {
+        if ty.starts_with("AnyComp") {
+            // A factory slot (D75): reach through to the held component if
+            // present, and let it resolve its override during the walk.
+            visits.push_str(&format!(
+                "if let ::core::option::Option::Some(__c) = self.{fname}.as_node_mut() {{ __out.push((::std::string::String::from(\"{fname}\"), __c)); }}\n"
+            ));
+            resolves.push_str(&format!("self.{fname}.resolve(__ctx, \"{fname}\");\n"));
+        } else if ty.starts_with("Option") {
             // "declared but not yet built": a child created during `build`
             // (D6) appears here only once it is `Some`.
             visits.push_str(&format!(
-                "if let ::core::option::Option::Some(__c) = &mut self.{fname} {{ __out.push((::std::string::String::from(\"{fname}\"), __c as &mut dyn ::rustdv::ComponentNode)); }}\n"
+                "if let ::core::option::Option::Some(__c) = &mut self.{fname} {{ __out.push((::std::string::String::from(\"{fname}\"), __c as &mut (dyn ::rustdv::ComponentNode + 'static))); }}\n"
             ));
         } else if ty.starts_with("Vec") {
             visits.push_str(&format!(
-                "for (__i, __c) in self.{fname}.iter_mut().enumerate() {{ __out.push((::std::format!(\"{fname}[{{}}]\", __i), __c as &mut dyn ::rustdv::ComponentNode)); }}\n"
+                "for (__i, __c) in self.{fname}.iter_mut().enumerate() {{ __out.push((::std::format!(\"{fname}[{{}}]\", __i), __c as &mut (dyn ::rustdv::ComponentNode + 'static))); }}\n"
             ));
         } else {
             visits.push_str(&format!(
-                "__out.push((::std::string::String::from(\"{fname}\"), &mut self.{fname} as &mut dyn ::rustdv::ComponentNode));\n"
+                "__out.push((::std::string::String::from(\"{fname}\"), &mut self.{fname} as &mut (dyn ::rustdv::ComponentNode + 'static)));\n"
             ));
         }
     }
+
+    // A resolver only if there is at least one factory slot.
+    let resolve_impl = if resolves.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "    fn resolve_children(&mut self, __ctx: &::rustdv::RustdvCtx) {{\n        {resolves}    }}\n"
+        )
+    };
+
+    // Universal registration (D73): enrol non-generic components by name so
+    // the factory can build them by string. Generic components are skipped —
+    // a `static` cannot be generic, and their monomorphs are not by-name
+    // targets.
+    let registration = if type_params.is_empty() && !no_factory {
+        format!(
+            r#"
+const _: () = {{
+    fn __rustdv_comp_name() -> &'static str {{ "{name}" }}
+    fn __rustdv_comp_make() -> ::std::boxed::Box<dyn ::rustdv::ComponentNode> {{
+        ::std::boxed::Box::new(<{name} as ::core::default::Default>::default())
+    }}
+    #[used]
+    #[cfg_attr(not(target_vendor = "apple"), link_section = "rustdv_components")]
+    #[cfg_attr(target_vendor = "apple", link_section = "__DATA,rustdv_components")]
+    static __RUSTDV_COMP_REG: &::rustdv::ComponentReg = &::rustdv::ComponentReg {{
+        name: __rustdv_comp_name,
+        make: __rustdv_comp_make,
+    }};
+}};
+"#
+        )
+    } else {
+        String::new()
+    };
 
     let out = format!(
         r#"
 impl {impl_generics} ::rustdv::ComponentNode for {name} {type_params} {{
     fn node_name(&self) -> &'static str {{ "{name}" }}
-    fn children_mut(&mut self) -> ::std::vec::Vec<(::std::string::String, &mut dyn ::rustdv::ComponentNode)> {{
-        let mut __out: ::std::vec::Vec<(::std::string::String, &mut dyn ::rustdv::ComponentNode)> = ::std::vec::Vec::new();
+    fn children_mut(&mut self) -> ::std::vec::Vec<(::std::string::String, &mut (dyn ::rustdv::ComponentNode + 'static))> {{
+        let mut __out: ::std::vec::Vec<(::std::string::String, &mut (dyn ::rustdv::ComponentNode + 'static))> = ::std::vec::Vec::new();
         {visits}
         __out
     }}
-}}
-"#
+{resolve_impl}}}
+{registration}"#
     );
     out.parse().expect("rustdv-macros: generated ComponentNode impl failed to parse")
 }

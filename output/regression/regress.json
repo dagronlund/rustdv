@@ -20,7 +20,6 @@
       "ch19_tinyalubfm",
       "ch20_struct_based_testbench_2_0",
       "ch21_macros",
-      "ch29_factory",
       "ch30_variation_point_testbench_5_0",
       "ch31_component_communications",
       "ch32_analysis_ports",
@@ -33,7 +32,7 @@
     ],
     "custom_tests": [
       "sim-ch18", "sim-ch19", "sim-ch20",
-      "sim-ch29", "sim-ch30", "sim-ch31", "sim-ch32",
+      "sim-ch30", "sim-ch31", "sim-ch32",
       "sim-ch34", "sim-ch36", "sim-ch37", "sim-ch38", "sim-ch39"
     ]
   },

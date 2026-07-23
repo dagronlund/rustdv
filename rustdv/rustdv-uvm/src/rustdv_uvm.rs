@@ -40,6 +40,7 @@ pub mod analysis;
 pub mod channel;
 pub mod component;
 pub mod config;
+pub mod factory;
 pub mod error;
 pub mod fifo;
 pub mod objection;
@@ -56,6 +57,7 @@ pub use component::{
 };
 pub use config::{ConfigDb, ConfigError};
 pub use error::TestError;
+pub use factory::{AnyComp, ComponentReg, Factory, Maker};
 pub use fifo::TlmFifo;
 pub use objection::{ObjectionGuard, ObjectionRegistry};
 pub use singleton::{clear_singletons, singleton, singleton_exists};

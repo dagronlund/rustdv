@@ -25,6 +25,7 @@ pub struct AluEnvConfig {
 }
 
 #[derive(rustdv::Component)]
+#[component(no_factory)]
 pub struct AluEnv {
     seqr: Sequencer<AluCommand>,
     #[component(child)]

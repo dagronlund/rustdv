@@ -21,6 +21,7 @@ use crate::alu_item::{predict, AluCommand, AluResult, Ops};
 /// type errors at the driver boundary. RSP = REQ (no response path; the
 /// result monitor observes results).
 #[derive(rustdv::Component)]
+#[component(no_factory)]
 pub struct Driver {
     bfm: Rc<TinyAluBfm>,
     seq_item_port: Option<SeqItemPort<AluCommand>>,
@@ -54,6 +55,7 @@ impl Component for Driver {
 // ===========================================================================
 
 #[derive(rustdv::Component)]
+#[component(no_factory)]
 pub struct CmdMonitor {
     bfm: Rc<TinyAluBfm>,
     ap: AnalysisPort<AluCommand>,
@@ -83,6 +85,7 @@ impl Component for CmdMonitor {
 }
 
 #[derive(rustdv::Component)]
+#[component(no_factory)]
 pub struct ResultMonitor {
     bfm: Rc<TinyAluBfm>,
     ap: AnalysisPort<AluResult>,
@@ -119,6 +122,7 @@ impl Component for ResultMonitor {
 /// Comparison policy lives here, not on the data type (review-memo R1):
 /// the default comparator is `PartialEq` against the predictor's output.
 #[derive(rustdv::Component)]
+#[component(no_factory)]
 pub struct Scoreboard {
     cmd_fifo: AnalysisFifo<AluCommand>,
     result_fifo: AnalysisFifo<AluResult>,
@@ -192,6 +196,7 @@ impl Subscriber<AluCommand> for CovCollector {
 /// Functional coverage as a Subscriber (mapping row 41; book's Coverage
 /// class): counts ops seen, errors in `check` if any op was never covered.
 #[derive(rustdv::Component)]
+#[component(no_factory)]
 pub struct Coverage {
     collector: Rc<RefCell<CovCollector>>,
 }

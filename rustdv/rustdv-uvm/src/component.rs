@@ -279,6 +279,39 @@ pub trait Component {
     fn start(&mut self, ctx: &mut RustdvCtx) {
         let _ = ctx;
     }
+
+    // --- Factory (D75) ----------------------------------------------------
+
+    /// This type's registered short name, used as the factory override key.
+    /// The last path segment of the type name (`Foo` from
+    /// `crate::mod::Foo`), which matches the name `#[derive(Component)]`
+    /// registers.
+    fn comp_name() -> &'static str
+    where
+        Self: Sized,
+    {
+        let full = std::any::type_name::<Self>();
+        full.rsplit("::").next().unwrap_or(full)
+    }
+
+    /// Build this component the normal way and drop it in an [`AnyComp`]
+    /// slot — the analogue of UVM's `new` (D75). Not overridable.
+    fn new_comp() -> crate::factory::AnyComp
+    where
+        Self: Sized + Default + ComponentNode + 'static,
+    {
+        crate::factory::AnyComp::fixed(Box::new(Self::default()))
+    }
+
+    /// Build this component through the factory — the analogue of UVM's
+    /// `create` (D75). The default is built now and the slot is flagged; the
+    /// build walk swaps in an override if one applies.
+    fn create_comp() -> crate::factory::AnyComp
+    where
+        Self: Sized + Default + ComponentNode + 'static,
+    {
+        crate::factory::AnyComp::overridable(Box::new(Self::default()), Self::comp_name())
+    }
 }
 
 /// Dyn-safe mirror of [`Component`]'s non-async phases (D48).
@@ -357,7 +390,16 @@ pub trait ComponentNode: DynPhases {
     /// cannot yield a child borrow that outlives the call, so the borrows
     /// have to come back in a value the caller holds. An `Option<T>` child
     /// created during `build` (D6) appears here only once it is `Some`.
-    fn children_mut(&mut self) -> Vec<(String, &mut dyn ComponentNode)>;
+    fn children_mut(&mut self) -> Vec<(String, &mut (dyn ComponentNode + 'static))>;
+
+    /// Resolve factory overrides for this node's `AnyComp` fields (D75).
+    /// The derive generates this to call `field.resolve(ctx, "field")` for
+    /// each `AnyComp` field; the default is a no-op for nodes with none.
+    /// Called by [`build_all`] after `build`, before descending — so a
+    /// swapped-out default's own phases never run.
+    fn resolve_children(&mut self, ctx: &RustdvCtx) {
+        let _ = ctx;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -374,6 +416,10 @@ pub trait ComponentNode: DynPhases {
 /// them in its own build phase and have the walk descend into them.
 pub fn build_all(node: &mut dyn ComponentNode, ctx: &mut RustdvCtx) {
     node.dyn_build(ctx);
+    // Swap in factory overrides for this node's `AnyComp` children now, while
+    // the node is accessible as its concrete type, and *before* descending —
+    // so a replaced default's own build never runs (D75).
+    node.resolve_children(ctx);
     for (name, child) in node.children_mut() {
         let mut cctx = ctx.child(&name);
         build_all(child, &mut cctx);

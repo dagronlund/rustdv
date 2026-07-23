@@ -127,7 +127,7 @@ impl Component for TestTop {
         ctx.info("build phase");
         self.mc = Some(MiddleComp::default());
     }
-    Fn final_phase(&mut self, ctx: &mut RustdvCtx) {
+    fn final_phase(&mut self, ctx: &mut RustdvCtx) {
         ctx.info("final phase");
     }
 }

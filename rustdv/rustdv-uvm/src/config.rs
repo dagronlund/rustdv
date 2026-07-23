@@ -324,6 +324,26 @@ impl ConfigDb {
         out
     }
 
+    /// The factory overrides in force, as `(path, from, to)` — the entries
+    /// the factory stores here under a reserved key prefix (D75). Used by
+    /// `Factory::print`.
+    pub fn factory_overrides() -> Vec<(String, String, String)> {
+        let mut out = Vec::new();
+        STORE.with(|s| {
+            for (path, fields) in s.borrow().iter() {
+                for (field, by_prec) in fields.iter() {
+                    if let Some(from) = field.strip_prefix("__factory_override__") {
+                        if let Some((_, e)) = by_prec.iter().next_back() {
+                            let to = e.rendered.trim_start_matches("-> ").to_string();
+                            out.push((path.clone(), from.to_string(), to));
+                        }
+                    }
+                }
+            }
+        });
+        out
+    }
+
     /// Drop every entry. The runner calls this between tests (D16), so a
     /// test never inherits another's configuration.
     pub fn clear() {
