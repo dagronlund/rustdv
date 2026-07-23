@@ -127,7 +127,7 @@ impl Scoreboard {
 
 // Chapter 20, Figure 9: The execute_test coroutine starts the tasks
 async fn execute_test(ctx: &RustdvCtx, tester: &mut impl Tester) -> Result<bool, TestError> {
-    Clock::new(&ctx.dut().signal("clk")?, SimDuration::ns(10)).start();
+    // The RTL self-clocks (tinyalu.sv); the BFM only waits on edges (D42).
     let bfm = Rc::new(TinyAluBfm::new(&ctx.dut())?);
     let mut scoreboard = Scoreboard::new(bfm.clone());
     bfm.reset().await;

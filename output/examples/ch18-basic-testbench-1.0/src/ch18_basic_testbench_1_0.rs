@@ -48,8 +48,8 @@ async fn alu_test(ctx: RustdvCtx) -> Result<(), TestError> {
     // Chapter 18, Figure 4: The start of the TinyALU test. Reset the DUT
     let dut = ctx.dut();
     let mut rng = ctx.rng();
+    // The RTL self-clocks (tinyalu.sv); the BFM only waits on edges (D42).
     let clk = dut.signal("clk")?;
-    Clock::new(&clk, SimDuration::ns(10)).start();
 
     let mut passed = true;
     let mut cvg: HashSet<Ops> = HashSet::new(); // functional coverage
