@@ -5,6 +5,7 @@ edition = "2021"
 
 [lib]
 crate-type = ["cdylib"]
+path = "src/ch30_variation_point_testbench_5_0.rs"
 
 [dependencies]
 rustdv = { path = "../../../rustdv" }

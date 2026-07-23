@@ -4,6 +4,15 @@ Running list of changes the manuscript needs. Written during the
 build/connect refactor, to be applied when Fable does the prose pass
 **after** the framework and examples are working.
 
+> **When (D77, 2026-07-23):** the manuscript is not touched until *all* the
+> code is finished — the whole restoration through TB 6.0–8.0 green — and then
+> a dedicated Fable thread does the entire prose pass in one go. Nothing here
+> is interleaved with the code work; this file is the backlog that thread will
+> work from, alongside the "prose still owed" notes in
+> `output/.design-decisions.md` and each chapter's example README (the
+> working code and its real transcripts are the source of truth). Until then
+> the manuscript is expected to be stale — that is the plan.
+
 ---
 
 ## 1. Undeclared resources: the `prelude::*` problem

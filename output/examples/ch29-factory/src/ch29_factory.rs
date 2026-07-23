@@ -223,13 +223,13 @@ impl Component for TwoCompEnv {
 #[derive(Component, Default)]
 struct TwoCompTest {
     #[component(child)]
-    env: Option<TwoCompEnv>,
+    env: AnyComp,
 }
 
 impl Component for TwoCompTest {
     fn build(&mut self, ctx: &mut RustdvCtx) {
         Factory::set_inst_override::<TinyComponent, MediumComponent>(ctx, "env.tc1");
-        self.env = Some(TwoCompEnv::default());
+        self.env = TwoCompEnv::new_comp();
     }
 }
 
