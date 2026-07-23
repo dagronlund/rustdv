@@ -2,8 +2,18 @@
 
 *New here — human or AI? This is the walk-around. Ten minutes, and you'll
 know what this project is, what's been proven, and where everything lives.
-Last verified 2026-07-13; everything below is checked by the regression
-suite, not aspirational.*
+Last verified 2026-07-23; the proven claims below are checked by the
+regression suite, not aspirational.*
+
+> **Active work: the UVM restoration.** A prior pass wrongly stripped the
+> UVM's dynamic build/connect process and its TLM FIFOs. Branch
+> `ch23_onwards` is restoring them, one TinyALU testbench version at a time;
+> ch23–29 are done and green (phases, env, logging, ConfigDb, factory), with
+> ch30 (TB 5.0) next. The framework and the Part II+ prose are under active
+> revision — later chapters are being rewritten from working code, not
+> settled. The authoritative decision log is `output/.design-decisions.md`
+> (its §0 is the mission and method); read it and CLAUDE.local.md before
+> proposing anything architectural.
 
 ## What this project is
 
@@ -18,7 +28,8 @@ name `rustdv` is registered on crates.io (0.0.1 placeholder).
 **"Rust for RTL Verification"** is its book — the third in Ray Salemi's
 series after [*The UVM Primer*](https://www.uvmprimer.com) (SystemVerilog)
 and [*Python for RTL Verification*](https://a.co/d/0hTKAJvh): 41 chapters,
-an interlude, and three appendices, complete in `book-pdf/src/` (mdBook).
+an interlude, and three appendices in `book-pdf/src/` (mdBook), with Part II+
+under revision as the restoration lands (see the callout above).
 The premise: the reader is a UVM verification engineer — from SystemVerilog
 or Python; neither earlier book is a prerequisite — who learns Rust chapter
 by chapter while rebuilding the TinyALU testbench, versions 1.0 through 8.0.
@@ -35,9 +46,10 @@ pre-push hook:
 - **Mutation-checked**: with the DUT's XOR deliberately corrupted to OR,
   the scoreboard flags every affected transaction and the regression
   fails; restored, it passes. The checking has teeth.
-- `output/regression/regress.py` — 107 book-figure sync checks, 95
-  example checks, and 20 sim-chapter runs, green on **both Linux and
-  macOS/arm64**.
+- `output/regression/regress.py` — book-sync 108, examples 96, and the
+  un-quarantined sim chapters (custom 12), green on **both Linux and
+  macOS/arm64**. Later sim chapters (ch18–21, ch30–39) are quarantined in
+  `regress.json` during the restoration and rejoin as each is converted.
 - `cargo test --workspace` in `/rustdv` — pure-Rust unit tests for the
   testbench logic, no simulator required.
 
@@ -47,22 +59,24 @@ pre-push hook:
 |---|---|
 | The framework | `/rustdv` (workspace: `rustdv-gpi-sys` → `rustdv-gpi` → `rustdv-sim` → `rustdv-uvm` → `rustdv`, plus `tinyalu_tb`) |
 | The book manuscript | `/book-pdf/src` (TOC in `SUMMARY.md`); render with `mdbook build book-pdf` |
-| Why it's designed this way | `/output/.design-doc.md` — section-numbered, every decision cited to cocotb/pyuvm/the book |
+| Why it's designed this way | `output/.design-decisions.md` — the restoration's authoritative decision log (§0 = mission + method). **Do not** follow `output/.design-doc.md`: it is the pre-restoration specification whose closed-world design *caused* the problems now being fixed, kept only as the record of what went wrong. |
 | Runnable book figures | `/output/examples` (`README.md` has per-chapter run commands) |
 | The regression suite | `/output/regression/regress.py` (`--help` works; wired into pre-push) |
 | Implementation history & honest deviations | `STATUS.md` (chronological, bottom-up) |
 | AI verification skills | `/skills` (spec+RTL → testbench → verified coverage report) |
-| Upstream sources | `/reference` — **read-only** (cocotb, pyuvm, the Python book) |
+| Upstream sources | `../rustdv-reference` — **read-only, outside the repo** (cocotb, pyuvm, SystemVerilog UVM, both earlier books) |
 
 ## Highlights worth your first half hour
 
 - **The Interlude** (`book-pdf/src/interlude-tinyalu-testbench.md`) — the
   complete testbench, presented before the climb. The best single answer
   to "what does rustdv code look like?"
-- **The compile-error figures** (`output/examples/*/compile-fail/`) — the
-  book's running theme is that the compiler finds testbench bugs before
-  the simulator runs: a TLM mis-connection is `E0308`, a config conflict
-  is `E0062`, a typo'd config field comes back with the fix suggested.
+- **The compile-error figures** (`output/examples/*/compile-fail/`) — Part I
+  shows the compiler catching mistakes before the simulator runs (a mis-typed
+  handle is `E0308`, and so on). *Note under the restoration:* this covers
+  data and ownership, **not** the late-binding layer — config, factory and
+  TLM resolve at run time by design, so the old "a config conflict is a
+  compile error" figures were removed (D68, and the reasoning in §0.4).
 - **Fibonacci on the TinyALU** (chapter 37) — stimulus that needs the
   DUT's answers: `Fibonacci Sequence: [0, 1, 1, 2, 3, 5, 8, 13, 21]`.
 - **The honest-gaps culture** — `STATUS.md` deviations, the design doc's
@@ -75,7 +89,8 @@ pre-push hook:
   `python3 output/regression/regress.py` before pushing.
 - Transcripts in the book and READMEs are real output and must stay in
   sync with reruns — verify claims by running things.
-- `/reference` is read-only. `/output` holds generated deliverables.
+- `../rustdv-reference` (outside the repo) is read-only. `/output` holds
+  generated deliverables.
 - Book voice, if you edit chapters: the book addresses *both* UVM
   audiences (SystemVerilog and Python) — recap blockquotes open
   "**In the UVM...**"; see `book-pdf/dual-audience-style.md` for the rules.
