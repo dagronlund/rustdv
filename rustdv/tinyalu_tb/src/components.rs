@@ -20,6 +20,17 @@ use crate::alu_item::{predict, AluCommand, AluResult, Ops};
 /// Port of uvm_driver (mapping row 40): typed transactions end runtime
 /// type errors at the driver boundary. RSP = REQ (no response path; the
 /// result monitor observes results).
+///
+/// `#[component(no_factory)]` here is **transitional, not an endorsement**
+/// (D75). It is *not* that this component cannot be factory-built; it is that
+/// it has not been converted yet. It still takes its BFM and TLM endpoints as
+/// constructor arguments (the R3 style). The conversion is: BFM via the
+/// ConfigDb (the config_db exists precisely to bridge the factory's
+/// no-argument signature, D57/D65), TLM endpoints via the connect phase
+/// (D17–D24) — after which the opt-out comes off and these register like any
+/// other component. Deferred to the TLM/sequence chapters, where the whole
+/// §7 example converts at once. The other `no_factory` marks below share
+/// this note.
 #[derive(rustdv::Component)]
 #[component(no_factory)]
 pub struct Driver {

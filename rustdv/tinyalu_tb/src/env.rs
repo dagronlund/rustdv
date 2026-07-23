@@ -24,6 +24,10 @@ pub struct AluEnvConfig {
     pub enable_coverage: bool,
 }
 
+// `#[component(no_factory)]` is transitional — see the note on `Driver` in
+// components.rs. This env is still R3-style (constructor-injected BFM and TLM
+// endpoints); it converts to config-BFM + connect-phase TLM + factory with
+// the TLM/sequence work (D75).
 #[derive(rustdv::Component)]
 #[component(no_factory)]
 pub struct AluEnv {
