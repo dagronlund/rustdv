@@ -1,6 +1,7 @@
-//! # rustdv-uvm
+//! # rustdv-methodology
 //!
-//! The UVM analog (design-doc §5, as revised by review-memo R1–R6).
+//! The verification methodology layer — rustdv's analog of the UVM's
+//! component methodology (design-doc §5, as revised by review-memo R1–R6).
 //!
 //! **Read this first: R3, R4 and R5 are being reversed.** They are what
 //! made rustdv a *closed-world* framework — one that cannot configure or

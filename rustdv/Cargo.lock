@@ -8,9 +8,9 @@ version = "0.1.0"
 dependencies = [
  "rustdv-gpi",
  "rustdv-macros",
+ "rustdv-methodology",
  "rustdv-runner",
  "rustdv-sim",
- "rustdv-uvm",
 ]
 
 [[package]]
@@ -30,12 +30,19 @@ name = "rustdv-macros"
 version = "0.1.0"
 
 [[package]]
+name = "rustdv-methodology"
+version = "0.1.0"
+dependencies = [
+ "rustdv-sim",
+]
+
+[[package]]
 name = "rustdv-runner"
 version = "0.1.0"
 dependencies = [
  "rustdv-gpi",
+ "rustdv-methodology",
  "rustdv-sim",
- "rustdv-uvm",
 ]
 
 [[package]]
@@ -44,13 +51,6 @@ version = "0.1.0"
 dependencies = [
  "rustdv-gpi",
  "rustdv-vpi-stubs",
-]
-
-[[package]]
-name = "rustdv-uvm"
-version = "0.1.0"
-dependencies = [
- "rustdv-sim",
 ]
 
 [[package]]

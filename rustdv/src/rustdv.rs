@@ -24,7 +24,10 @@
 pub use rustdv_gpi as gpi;
 pub use rustdv_runner as runner;
 pub use rustdv_sim as sim;
-pub use rustdv_uvm as uvm;
+// The methodology layer is NOT re-exported as a whole-crate module: its
+// public items are on the curated surface below and in the prelude, so
+// testbenches reach them as `rustdv::Factory`, `rustdv::singleton`, etc.
+// (No `rustdv::uvm` — rustdv is not an implementation of IEEE 1800.2.)
 
 // --- macros -----------------------------------------------------------------
 /// `#[rustdv::test]` — port of `@cocotb.test()` (design-doc §6.1).
@@ -47,10 +50,10 @@ pub use rustdv_sim::{
 pub use rustdv_sim::handle::top_module;
 pub use rustdv_sim::log;
 
-pub use rustdv_uvm::{
+pub use rustdv_methodology::{
     build_all, channel, check_all, connect_all, end_of_elaboration_all, extract_all, final_all,
-    print_hierarchy, report_all, run_all, run_component_test, run_extract_check_report, start_all,
-    start_of_simulation_all, Active, AnalysisFifo, AnalysisPort, CheckSink,
+    print_hierarchy, report_all, run_all, run_component_test, run_extract_check_report, singleton,
+    start_all, start_of_simulation_all, Active, AnalysisFifo, AnalysisPort, CheckSink,
     Component as ComponentTrait, ComponentNode, DynPhases, ObjectionGuard, ObjectionRegistry,
     Receiver, ResponseQueue, Sender, SeqCtx, SeqError, SeqItem, SeqItemPort, Sequence, Sequencer,
     AnyComp, ComponentReg, ConfigDb, ConfigError, Factory, Maker, Subscriber, TestError, TlmEmpty,
@@ -60,7 +63,7 @@ pub use rustdv_uvm::{
 // The lifecycle trait under its design-doc name, in the type namespace.
 // (The derive macro of the same name lives in the macro namespace; Rust
 // resolves them independently.)
-pub use rustdv_uvm::Component;
+pub use rustdv_methodology::Component;
 
 /// One-line import for testbenches (the `from pyuvm import *` analog).
 pub mod prelude {
@@ -80,7 +83,7 @@ pub mod prelude {
 /// The one context every testbench is handed (D47: `TestCtx` and `RunCtx`
 /// merged). Named for the framework, not for a phase, because Part II
 /// teaches testbenches that have no phases.
-pub use rustdv_uvm::RustdvCtx;
+pub use rustdv_methodology::RustdvCtx;
 
 /// Export the VPI entry points from the testbench cdylib. The simulator
 /// (vvp) dlopens the library and calls each routine in

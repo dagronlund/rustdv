@@ -22,7 +22,7 @@
 //! Port of the Python book's chapter 32.
 
 use rustdv::prelude::*;
-use rustdv::uvm::config::ConfigError;
+use rustdv::ConfigError;
 
 rustdv::vpi_bootstrap!();
 

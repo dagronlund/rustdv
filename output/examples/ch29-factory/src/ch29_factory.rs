@@ -39,7 +39,6 @@
 //! Port of the Python book's chapter 33.
 
 use rustdv::prelude::*;
-use rustdv::uvm::Factory;
 
 rustdv::vpi_bootstrap!();
 

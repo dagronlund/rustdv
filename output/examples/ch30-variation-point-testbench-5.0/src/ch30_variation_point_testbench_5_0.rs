@@ -27,7 +27,6 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 use rustdv::prelude::*;
-use rustdv::uvm::Factory;
 use tinyalu_utils::{alu_prediction, CmdTuple, Ops, TinyAluBfm};
 
 rustdv::vpi_bootstrap!();

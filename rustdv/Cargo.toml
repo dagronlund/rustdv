@@ -4,7 +4,7 @@ members = [
     "rustdv-gpi-sys",
     "rustdv-gpi",
     "rustdv-sim",
-    "rustdv-uvm",
+    "rustdv-methodology",
     "rustdv-macros",
     "rustdv-vpi-stubs",
     "rustdv-runner",
@@ -32,7 +32,7 @@ path = "src/rustdv.rs"
 [dependencies]
 rustdv-gpi = { path = "rustdv-gpi" }
 rustdv-sim = { path = "rustdv-sim" }
-rustdv-uvm = { path = "rustdv-uvm" }
+rustdv-methodology = { path = "rustdv-methodology" }
 rustdv-macros = { path = "rustdv-macros" }
 rustdv-runner = { path = "rustdv-runner" }
 

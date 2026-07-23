@@ -103,7 +103,7 @@ impl TinyAluBfm {
     /// One BFM *per test*, not per process: the runner clears singletons
     /// between tests, so no test inherits another's half-drained queues.
     pub fn get() -> Rc<TinyAluBfm> {
-        rustdv::uvm::singleton(|| {
+        rustdv::singleton(|| {
             let dut = top_module().expect("TinyAluBfm::get(): no top module");
             TinyAluBfm::new(&dut).expect("TinyAluBfm::get(): TinyALU signals not found")
         })

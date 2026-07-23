@@ -4,7 +4,7 @@
 //! *testbench bugs* (§7.3 failure taxonomy).
 //!
 //! This lived in `rustdv-runner` until step 4. `Component::run` returns it
-//! (D46/D47), and `rustdv-uvm` sits below the runner, so the type had to
+//! (D46/D47), and `rustdv-methodology` sits below the runner, so the type had to
 //! move down. `rustdv-runner` re-exports it, and `::rustdv::TestError`
 //! resolves exactly as before.
 //!

@@ -12,4 +12,4 @@ path = "src/rustdv_runner.rs"
 [dependencies]
 rustdv-gpi = { path = "../rustdv-gpi" }
 rustdv-sim = { path = "../rustdv-sim" }
-rustdv-uvm = { path = "../rustdv-uvm" }
+rustdv-methodology = { path = "../rustdv-methodology" }

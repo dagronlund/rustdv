@@ -28,15 +28,15 @@ use rustdv_sim::triggers::Timer;
 // Public test-facing types
 // ===========================================================================
 
-/// Test failure value — defined in `rustdv-uvm` since step 4, because
+/// Test failure value — defined in `rustdv-methodology` since step 4, because
 /// `Component::run` returns it and the UVM crate sits below this one
 /// (D46/D47). Re-exported so `::rustdv::TestError` is unchanged.
-pub use rustdv_uvm::TestError;
+pub use rustdv_methodology::TestError;
 
 /// Handed to each test. Since step 4 this is the one universal context
 /// (D47): the old `TestCtx` and `RunCtx` merged into `RustdvCtx`, which
-/// lives in `rustdv-uvm` beside the `Component` trait that receives it.
-pub use rustdv_uvm::RustdvCtx;
+/// lives in `rustdv-methodology` beside the `Component` trait that receives it.
+pub use rustdv_methodology::RustdvCtx;
 
 type TestFn =
     fn(RustdvCtx) -> Pin<Box<dyn Future<Output = Result<(), TestError>>>>;
@@ -171,8 +171,8 @@ async fn run_one(reg: &'static TestRegistration, seed: u64) -> Outcome {
     // resets the default logging level, so a test never inherits the
     // previous test's BFM (with its half-drained queues) or its logging
     // configuration. D16's rule, applied beyond the ConfigDb.
-    rustdv_uvm::clear_singletons();
-    rustdv_uvm::ConfigDb::clear();
+    rustdv_methodology::clear_singletons();
+    rustdv_methodology::ConfigDb::clear();
     log::reset_config();
 
     let dut = match top_module() {
