@@ -471,8 +471,8 @@ const _: () = {{
         ::std::boxed::Box::new(<{name} as ::core::default::Default>::default())
     }}
     #[used]
-    #[cfg_attr(not(target_vendor = "apple"), link_section = "rustdv_components")]
-    #[cfg_attr(target_vendor = "apple", link_section = "__DATA,rustdv_components")]
+    #[cfg_attr(not(target_vendor = "apple"), link_section = "rustdv_comps")]
+    #[cfg_attr(target_vendor = "apple", link_section = "__DATA,rustdv_comps")]
     static __RUSTDV_COMP_REG: &::rustdv::ComponentReg = &::rustdv::ComponentReg {{
         name: __rustdv_comp_name,
         make: __rustdv_comp_make,

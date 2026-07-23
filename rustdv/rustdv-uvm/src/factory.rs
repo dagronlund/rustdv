@@ -105,6 +105,12 @@ fn override_key(requested_name: &str) -> String {
 
 // ===========================================================================
 // Universal registration (D73) — a link-time section, like the test registry
+//
+// The section name `rustdv_comps` must be **≤ 16 bytes**: Mach-O caps section
+// names at 16 characters, and rustc rejects a longer one only on Apple
+// targets (ELF has no such limit, so Linux never complains). The original
+// `rustdv_components` was 17 and broke the macOS build while the Linux VM
+// stayed green. Keep any future section name short.
 // ===========================================================================
 
 /// One registered component: its name and its maker. Emitted by
@@ -124,29 +130,29 @@ fn sentinel_make() -> Box<dyn ComponentNode> {
 }
 
 #[used]
-#[cfg_attr(not(target_vendor = "apple"), link_section = "rustdv_components")]
-#[cfg_attr(target_vendor = "apple", link_section = "__DATA,rustdv_components")]
+#[cfg_attr(not(target_vendor = "apple"), link_section = "rustdv_comps")]
+#[cfg_attr(target_vendor = "apple", link_section = "__DATA,rustdv_comps")]
 static SENTINEL: &ComponentReg = &ComponentReg { name: sentinel_name, make: sentinel_make };
 
 #[cfg(not(target_vendor = "apple"))]
 extern "C" {
-    static __start_rustdv_components: u8;
-    static __stop_rustdv_components: u8;
+    static __start_rustdv_comps: u8;
+    static __stop_rustdv_comps: u8;
 }
 #[cfg(target_vendor = "apple")]
 extern "C" {
-    #[link_name = "\x01section$start$__DATA$rustdv_components"]
-    static __start_rustdv_components: u8;
-    #[link_name = "\x01section$end$__DATA$rustdv_components"]
-    static __stop_rustdv_components: u8;
+    #[link_name = "\x01section$start$__DATA$rustdv_comps"]
+    static __start_rustdv_comps: u8;
+    #[link_name = "\x01section$end$__DATA$rustdv_comps"]
+    static __stop_rustdv_comps: u8;
 }
 
 fn collect_registry() -> HashMap<&'static str, Maker> {
     std::hint::black_box(SENTINEL.name);
     let mut map = HashMap::new();
     unsafe {
-        let start = std::ptr::addr_of!(__start_rustdv_components) as usize;
-        let stop = std::ptr::addr_of!(__stop_rustdv_components) as usize;
+        let start = std::ptr::addr_of!(__start_rustdv_comps) as usize;
+        let stop = std::ptr::addr_of!(__stop_rustdv_comps) as usize;
         let step = std::mem::size_of::<&ComponentReg>();
         let base = start as *const &'static ComponentReg;
         for i in 0..((stop - start) / step) {
