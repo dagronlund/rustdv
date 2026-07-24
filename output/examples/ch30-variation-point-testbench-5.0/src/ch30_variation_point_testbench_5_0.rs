@@ -12,7 +12,7 @@
 //! it is UVM working exactly as designed — `BaseTester.create()` in the env,
 //! `set_type_override_by_type` in each test (Q16, resolved).
 //!
-//! Every child is an `AnyComp` slot, created with `new_comp()` when it is
+//! Every child is an `RustdvComp` slot, created with `new_comp()` when it is
 //! fixed and `create_comp()` when it may be overridden — the build line, not
 //! the field type, carries that choice (D75). Here the tester is the one
 //! `create_comp()`; everything else is `new_comp()`. The results match
@@ -170,7 +170,7 @@ impl Component for Scoreboard {
 
 // Chapter 30, Figure 3: The environment builds its tester through the factory.
 //
-// Every child is an `AnyComp` slot; the build line decides fixed vs
+// Every child is an `RustdvComp` slot; the build line decides fixed vs
 // overridable (D75). The scoreboard is fixed — `new_comp()`. The tester is
 // the variation point — `create_comp()`, so a test above can substitute a
 // different tester without this code being edited or even knowing (D69). At
@@ -181,9 +181,9 @@ impl Component for Scoreboard {
 #[derive(Component, Default)]
 struct AluEnv {
     #[component(child)]
-    scoreboard: AnyComp,
+    scoreboard: RustdvComp,
     #[component(child)]
-    tester: AnyComp,
+    tester: RustdvComp,
 }
 
 impl Component for AluEnv {
@@ -211,7 +211,7 @@ impl Component for AluEnv {
 #[derive(Component, Default)]
 struct RandomTest {
     #[component(child)]
-    env: AnyComp,
+    env: RustdvComp,
 }
 
 impl Component for RandomTest {
@@ -226,7 +226,7 @@ impl Component for RandomTest {
 #[derive(Component, Default)]
 struct MaxTest {
     #[component(child)]
-    env: AnyComp,
+    env: RustdvComp,
 }
 
 impl Component for MaxTest {

@@ -294,23 +294,23 @@ pub trait Component {
         full.rsplit("::").next().unwrap_or(full)
     }
 
-    /// Build this component the normal way and drop it in an [`AnyComp`]
+    /// Build this component the normal way and drop it in an [`RustdvComp`]
     /// slot — the analogue of UVM's `new` (D75). Not overridable.
-    fn new_comp() -> crate::factory::AnyComp
+    fn new_comp() -> crate::factory::RustdvComp
     where
         Self: Sized + Default + ComponentNode + 'static,
     {
-        crate::factory::AnyComp::fixed(Box::new(Self::default()))
+        crate::factory::RustdvComp::fixed(Box::new(Self::default()))
     }
 
     /// Build this component through the factory — the analogue of UVM's
     /// `create` (D75). The default is built now and the slot is flagged; the
     /// build walk swaps in an override if one applies.
-    fn create_comp() -> crate::factory::AnyComp
+    fn create_comp() -> crate::factory::RustdvComp
     where
         Self: Sized + Default + ComponentNode + 'static,
     {
-        crate::factory::AnyComp::overridable(Box::new(Self::default()), Self::comp_name())
+        crate::factory::RustdvComp::overridable(Box::new(Self::default()), Self::comp_name())
     }
 }
 
@@ -392,9 +392,9 @@ pub trait ComponentNode: DynPhases {
     /// created during `build` (D6) appears here only once it is `Some`.
     fn children_mut(&mut self) -> Vec<(String, &mut (dyn ComponentNode + 'static))>;
 
-    /// Resolve factory overrides for this node's `AnyComp` fields (D75).
+    /// Resolve factory overrides for this node's `RustdvComp` fields (D75).
     /// The derive generates this to call `field.resolve(ctx, "field")` for
-    /// each `AnyComp` field; the default is a no-op for nodes with none.
+    /// each `RustdvComp` field; the default is a no-op for nodes with none.
     /// Called by [`build_all`] after `build`, before descending — so a
     /// swapped-out default's own phases never run.
     fn resolve_children(&mut self, ctx: &RustdvCtx) {
@@ -416,7 +416,7 @@ pub trait ComponentNode: DynPhases {
 /// them in its own build phase and have the walk descend into them.
 pub fn build_all(node: &mut dyn ComponentNode, ctx: &mut RustdvCtx) {
     node.dyn_build(ctx);
-    // Swap in factory overrides for this node's `AnyComp` children now, while
+    // Swap in factory overrides for this node's `RustdvComp` children now, while
     // the node is accessible as its concrete type, and *before* descending —
     // so a replaced default's own build never runs (D75).
     node.resolve_children(ctx);

@@ -425,7 +425,7 @@ pub fn derive_component(input: TokenStream) -> TokenStream {
     for f in fields.iter().filter(|f| f.is_child) {
         let fname = &f.name;
         let ty = f.ty.trim_start();
-        if ty.starts_with("AnyComp") {
+        if ty.starts_with("RustdvComp") {
             // A factory slot (D75): reach through to the held component if
             // present, and let it resolve its override during the walk.
             visits.push_str(&format!(

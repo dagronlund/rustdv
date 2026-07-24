@@ -9,7 +9,7 @@
 //!
 //! **How a `create_comp()` slot is overridden.** It is not resolved at the
 //! call — a `create_comp()` builds the default type immediately and flags the
-//! [`AnyComp`] as factory-owned (D75). During the build walk, where the field
+//! [`RustdvComp`] as factory-owned (D75). During the build walk, where the field
 //! name and so the path are finally known, the framework asks each flagged
 //! slot for its override (instance first, then type, by ConfigDb specificity,
 //! D13) and swaps it in before descending.
@@ -26,15 +26,15 @@ use crate::config::ConfigDb;
 pub type Maker = fn() -> Box<dyn ComponentNode>;
 
 // ===========================================================================
-// AnyComp — the child slot (D75)
+// RustdvComp — the child slot (D75)
 // ===========================================================================
 
 /// A slot that holds any component. It says nothing about position in the
 /// tree and nothing about overridability; the *build line* decides that
 /// (`new_comp()` fixed, `create_comp()` overridable). Every child field a
-/// block may want to override is an `AnyComp`.
+/// block may want to override is an `RustdvComp`.
 #[derive(Default)]
-pub struct AnyComp {
+pub struct RustdvComp {
     inner: Option<Box<dyn ComponentNode>>,
     /// Set by `create_comp()`; the walk checks flagged slots for an override.
     overridable: bool,
@@ -42,16 +42,16 @@ pub struct AnyComp {
     requested: Option<&'static str>,
 }
 
-impl AnyComp {
+impl RustdvComp {
     /// A fixed slot: `new_comp()`. Never overridden.
-    pub fn fixed(node: Box<dyn ComponentNode>) -> AnyComp {
-        AnyComp { inner: Some(node), overridable: false, requested: None }
+    pub fn fixed(node: Box<dyn ComponentNode>) -> RustdvComp {
+        RustdvComp { inner: Some(node), overridable: false, requested: None }
     }
 
     /// A factory slot: `create_comp()`. The default is built now and may be
     /// swapped for an override during the walk.
-    pub fn overridable(node: Box<dyn ComponentNode>, requested: &'static str) -> AnyComp {
-        AnyComp { inner: Some(node), overridable: true, requested: Some(requested) }
+    pub fn overridable(node: Box<dyn ComponentNode>, requested: &'static str) -> RustdvComp {
+        RustdvComp { inner: Some(node), overridable: true, requested: Some(requested) }
     }
 
     /// The held component, for the traversal. `None` before it is filled.
@@ -195,14 +195,14 @@ impl Factory {
     /// like anything from the factory. A name that is not registered is a
     /// testbench bug and panics; the file-driven form (ch39) will return a
     /// `Result` instead.
-    pub fn create_by_name(name: &str) -> AnyComp {
+    pub fn create_by_name(name: &str) -> RustdvComp {
         let make = with_registry(|reg| reg.get(name).copied());
         match make {
             Some(make) => {
                 // `requested` needs a 'static name; recover the registry's
                 // key so a by-name-created component can also be overridden.
                 let stored = with_registry(|reg| reg.keys().find(|k| **k == name).copied());
-                AnyComp::overridable(make(), stored.expect("just found it"))
+                RustdvComp::overridable(make(), stored.expect("just found it"))
             }
             None => panic!("Factory::create_by_name: no component registered as \"{name}\""),
         }

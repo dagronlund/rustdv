@@ -11,7 +11,7 @@ No DUT: the subject is *which type gets built*, not what it drives.
 rustdv has a factory, and it works as the UVM factory works (D74). Two
 constructors — `Foo::new_comp()` (the normal way, fixed) and
 `Foo::create_comp()` (overridable) — plus `Factory::…` to install and inspect
-overrides. Every child field a block may want to override is an `AnyComp`.
+overrides. Every child field a block may want to override is an `RustdvComp`.
 
 | Figure | Title | Where |
 |---|---|---|
@@ -54,7 +54,7 @@ REGRESSION: PASS
 ## What to read the code for
 
 **`new_comp()` vs `create_comp()`.** Figures 2 and 4 have identical structs —
-one `AnyComp` field each — and differ in one line. `new_comp()` builds a
+one `RustdvComp` field each — and differ in one line. `new_comp()` builds a
 fixed component; `create_comp()` flags the slot, and the build walk swaps in
 an override if one is installed. Overridability is the build line, not the
 type (D75).

@@ -1,14 +1,14 @@
-# Component access vs. the `AnyComp` factory — research & recommendation
+# Component access vs. the `RustdvComp` factory — research & recommendation
 
 *Prepared 2026-07-23 (overnight research task). Question from Ray: TLM connection
 exposed that a parent cannot reach data members or methods inside a factory
-(`AnyComp`) component. Is that "one mouse of many"? Survey the book, the web, and
+(`RustdvComp`) component. Is that "one mouse of many"? Survey the book, the web, and
 UVM VIP for real end-user cases that rely on reaching into user-defined
 components, and recommend whether we must refactor the factory.*
 
 ## Verdict up front
 
-**Keep `AnyComp`. Do not refactor the factory to typed/role-trait handles.**
+**Keep `RustdvComp`. Do not refactor the factory to typed/role-trait handles.**
 
 Every real cross-component-access case falls into one of three buckets:
 
@@ -18,7 +18,7 @@ Every real cross-component-access case falls into one of three buckets:
 2. **Not a component at all** (sequences, transactions, config objects, the
    register model) — created and held as ordinary values, never erased.
 3. **The anti-pattern UVM itself tells you to avoid** (direct `a.b.c.member`
-   hierarchical references) — which `AnyComp` structurally forecloses, which is a
+   hierarchical references) — which `RustdvComp` structurally forecloses, which is a
    *feature*, not a bug.
 
 I found **no** cross-component access pattern that is (a) common, (b) unavoidable,
@@ -81,7 +81,7 @@ await seq.start(seqr)
 ```
 
 So the single most important stimulus handle in UVM is *already* registry-passed.
-Our design didn't invent this; pyuvm did. `AnyComp` is no obstacle here at all.
+Our design didn't invent this; pyuvm did. `RustdvComp` is no obstacle here at all.
 
 ### 3. Sequences, transactions, config objects, RAL — not components
 
@@ -101,7 +101,7 @@ Our design didn't invent this; pyuvm did. `AnyComp` is no obstacle here at all.
   (pyuvm implements neither RAL nor callbacks — out of scope now — but even in
   full UVM the reg model is published, not hierarchically reached.)
 
-None of these touch the `AnyComp` boundary.
+None of these touch the `RustdvComp` boundary.
 
 ### 4. `uvm_callbacks` — the one mechanism that *can* want an instance handle
 
@@ -146,13 +146,13 @@ This is the decisive framing. The expert guidance is unambiguous:
 
 So the very capability we "lost" — reaching `a.b.c.member` — is the capability UVM
 best practice tells engineers **not** to use, because it creates tight coupling and
-kills reuse. `AnyComp` makes the anti-pattern un-writable and pushes users onto the
+kills reuse. `RustdvComp` makes the anti-pattern un-writable and pushes users onto the
 config_db/registry road they were supposed to take anyway. UVM's own hierarchy API
 (`get_child`, `lookup`, `find`) is itself name/string-based and returns the *base*
 `uvm_component`, requiring a `$cast` — i.e., UVM's built-in "reach a component"
 path is already stringly-typed + runtime-checked, exactly like our registry.
 
-## Assessment — is `AnyComp` viable?
+## Assessment — is `RustdvComp` viable?
 
 Yes. Mapping every case onto the design:
 
@@ -174,7 +174,7 @@ is precisely what the ConfigDB/registry provides and what D3 says must stay dyna
 
 ## Recommendation
 
-1. **Do not refactor the factory.** `AnyComp` + universal registration (D69–D75)
+1. **Do not refactor the factory.** `RustdvComp` + universal registration (D69–D75)
    stands. The over-erasure is only a problem if you need typed cross-component
    member access, and the evidence says good testbenches don't (and shouldn't).
 
@@ -193,7 +193,7 @@ is precisely what the ConfigDB/registry provides and what D3 says must stay dyna
    - A path typo is a runtime/elaboration error, not a compile error. Mitigate with
      macro-generated name constants (`CompStruct::PUT_PORT`) so the common cases
      are typo-proof.
-   - `AnyComp` genuinely cannot do `env.agent.driver.method()`. We frame that as
+   - `RustdvComp` genuinely cannot do `env.agent.driver.method()`. We frame that as
      the intended enforcement of loose coupling, and point users to the config
      DB / control ports — exactly UVM's own advice.
 
@@ -201,7 +201,7 @@ is precisely what the ConfigDB/registry provides and what D3 says must stay dyna
    a real case ever needs a *typed* interface on a specific component, a component
    can publish a **role-trait handle** — `Rc<RefCell<dyn SomeRole>>` — into the
    registry under a path. That gives typed, dynamically-dispatched access to that
-   one interface *without* abandoning `AnyComp` or forking the factory. It is the
+   one interface *without* abandoning `RustdvComp` or forking the factory. It is the
    SV "base-class handle" idea applied surgically, on demand, not wholesale.
 
 ## What would change this recommendation (falsifiable)

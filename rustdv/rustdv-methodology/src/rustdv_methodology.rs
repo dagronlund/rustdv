@@ -58,7 +58,7 @@ pub use component::{
 };
 pub use config::{ConfigDb, ConfigError};
 pub use error::TestError;
-pub use factory::{AnyComp, ComponentReg, Factory, Maker};
+pub use factory::{RustdvComp, ComponentReg, Factory, Maker};
 pub use fifo::TlmFifo;
 pub use objection::{ObjectionGuard, ObjectionRegistry};
 pub use singleton::{clear_singletons, singleton, singleton_exists};

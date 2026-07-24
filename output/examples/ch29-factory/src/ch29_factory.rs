@@ -24,7 +24,7 @@
 //!   the normal way (fixed, like UVM's `new`), `Foo::create_comp()` goes
 //!   through the factory (overridable, like UVM's `create`). Neither takes
 //!   arguments — the name and parent come from the tree (D7), not from you.
-//! - A child field is always **`AnyComp`** — a slot that holds any
+//! - A child field is always **`RustdvComp`** — a slot that holds any
 //!   component. It says nothing about position in the tree (any component
 //!   can be a top here and a child there) and nothing about overridability.
 //!   Overridability is decided when you *fill* the slot, not by its type:
@@ -39,7 +39,6 @@
 //! Port of the Python book's chapter 33.
 
 use rustdv::prelude::*;
-use rustdv::uvm::Factory;
 
 rustdv::vpi_bootstrap!();
 
@@ -70,13 +69,13 @@ impl Component for TinyComponent {
 // way is **not** overridable: nobody upstream can swap it, because it never
 // went through the factory (D69).
 //
-// The struct is identical to Figure 4's — same `AnyComp` field. The only
+// The struct is identical to Figure 4's — same `RustdvComp` field. The only
 // difference is this one line: `new_comp()` versus `create_comp()`.
 #[rustdv::test]
 #[derive(Component, Default)]
 struct TinyTest {
     #[component(child)]
-    tc: AnyComp,
+    tc: RustdvComp,
 }
 
 impl Component for TinyTest {
@@ -95,7 +94,7 @@ impl Component for TinyTest {
 #[derive(Component, Default)]
 struct TinyFactoryTest {
     #[component(child)]
-    tc: AnyComp,
+    tc: RustdvComp,
 }
 
 impl Component for TinyFactoryTest {
@@ -114,7 +113,7 @@ impl Component for TinyFactoryTest {
 #[derive(Component, Default)]
 struct CreateByNameTest {
     #[component(child)]
-    tc: AnyComp,
+    tc: RustdvComp,
 }
 
 impl Component for CreateByNameTest {
@@ -156,7 +155,7 @@ impl Component for MediumComponent {
 #[derive(Component, Default)]
 struct MediumFactoryTest {
     #[component(child)]
-    tc: AnyComp,
+    tc: RustdvComp,
 }
 
 impl Component for MediumFactoryTest {
@@ -176,7 +175,7 @@ impl Component for MediumFactoryTest {
 #[derive(Component, Default)]
 struct MediumNameTest {
     #[component(child)]
-    tc: AnyComp,
+    tc: RustdvComp,
 }
 
 impl Component for MediumNameTest {
@@ -200,9 +199,9 @@ impl Component for MediumNameTest {
 #[derive(Component, Default)]
 struct TwoCompEnv {
     #[component(child)]
-    tc1: AnyComp,
+    tc1: RustdvComp,
     #[component(child)]
-    tc2: AnyComp,
+    tc2: RustdvComp,
 }
 
 impl Component for TwoCompEnv {
@@ -246,7 +245,7 @@ impl Component for TwoCompTest {
 #[derive(Component, Default)]
 struct PrintOverridesTest {
     #[component(child)]
-    tc: AnyComp,
+    tc: RustdvComp,
 }
 
 impl Component for PrintOverridesTest {
