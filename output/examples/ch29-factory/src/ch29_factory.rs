@@ -39,6 +39,7 @@
 //! Port of the Python book's chapter 33.
 
 use rustdv::prelude::*;
+use rustdv::uvm::Factory;
 
 rustdv::vpi_bootstrap!();
 
@@ -222,13 +223,13 @@ impl Component for TwoCompEnv {
 #[derive(Component, Default)]
 struct TwoCompTest {
     #[component(child)]
-    env: AnyComp,
+    env: Option<TwoCompEnv>,
 }
 
 impl Component for TwoCompTest {
     fn build(&mut self, ctx: &mut RustdvCtx) {
         Factory::set_inst_override::<TinyComponent, MediumComponent>(ctx, "env.tc1");
-        self.env = TwoCompEnv::new_comp();
+        self.env = Some(TwoCompEnv::default());
     }
 }
 
