@@ -41,7 +41,6 @@ members = [
     "tinyalu-utils",
 ]
 exclude = [
-    "ch31-component-communications/compile-fail/fig08_direction_mismatch",
     "ch02-rust-concepts/compile-fail/fig01_calling_undefined_method",
     "ch02-rust-concepts/compile-fail/fig03_mistake_systemverilog_would_have",
     "ch02-rust-concepts/compile-fail/fig05_compiler_proofreader",

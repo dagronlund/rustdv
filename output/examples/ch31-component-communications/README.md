@@ -15,6 +15,5 @@ sim-common/run_sim.sh ch31_component_communications playground
 | 5 | Nonblocking put/get: the failure is a value | `src/lib.rs` (`nonblocking_test`) |
 | 6 | peek reads without removing (needs T: Clone) | `src/lib.rs` (`peek_test`) |
 | 7 | TlmFifo — a FIFO that lives in the hierarchy | `src/lib.rs` (`fifo_test`) |
-| 8 | A direction mismatch is a type error | `compile-fail/fig08_direction_mismatch/` (E0308) |
 
 All 4 tests end `REGRESSION: PASS`.
