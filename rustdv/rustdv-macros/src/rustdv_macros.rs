@@ -422,6 +422,8 @@ pub fn derive_component(input: TokenStream) -> TokenStream {
 
     let mut visits = String::new();
     let mut resolves = String::new();
+    let mut takes = String::new();
+    let mut restores = String::new();
     for f in fields.iter().filter(|f| f.is_child) {
         let fname = &f.name;
         let ty = f.ty.trim_start();
@@ -432,6 +434,15 @@ pub fn derive_component(input: TokenStream) -> TokenStream {
                 "if let ::core::option::Option::Some(__c) = self.{fname}.as_node_mut() {{ __out.push((::std::string::String::from(\"{fname}\"), __c)); }}\n"
             ));
             resolves.push_str(&format!("self.{fname}.resolve(__ctx, \"{fname}\");\n"));
+            // D82b: move the box out for the run phase, and put it back after.
+            // Taken and restored in field order, so slots land where they came
+            // from.
+            takes.push_str(&format!(
+                "if let ::core::option::Option::Some(__c) = self.{fname}.take_node() {{ __out.push((::std::string::String::from(\"{fname}\"), __c)); }}\n"
+            ));
+            restores.push_str(&format!(
+                "if __name == \"{fname}\" {{ self.{fname}.put_node(__node); continue; }}\n"
+            ));
         } else if ty.starts_with("Option") {
             // "declared but not yet built": a child created during `build`
             // (D6) appears here only once it is `Some`.
@@ -455,6 +466,21 @@ pub fn derive_component(input: TokenStream) -> TokenStream {
     } else {
         format!(
             "    fn resolve_children(&mut self, __ctx: &::rustdv::RustdvCtx) {{\n        {resolves}    }}\n"
+        )
+    };
+
+    // take/restore only if there is at least one `RustdvComp` slot; otherwise
+    // the trait defaults (empty) keep the old in-place behaviour.
+    let take_impl = if takes.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "    fn take_children(&mut self) -> ::std::vec::Vec<(::std::string::String, ::std::boxed::Box<dyn ::rustdv::ComponentNode>)> {{\n        \
+             let mut __out: ::std::vec::Vec<(::std::string::String, ::std::boxed::Box<dyn ::rustdv::ComponentNode>)> = ::std::vec::Vec::new();\n        \
+             {takes}        __out\n    }}\n\
+             \n    fn restore_children(&mut self, __taken: ::std::vec::Vec<(::std::string::String, ::std::boxed::Box<dyn ::rustdv::ComponentNode>)>) {{\n        \
+             for (__name, __node) in __taken {{\n            \
+             let __name: &str = &__name;\n            {restores}        }}\n    }}\n"
         )
     };
 
@@ -493,7 +519,7 @@ impl {impl_generics} ::rustdv::ComponentNode for {name} {type_params} {{
         {visits}
         __out
     }}
-{resolve_impl}}}
+{resolve_impl}{take_impl}}}
 {registration}"#
     );
     out.parse().expect("rustdv-macros: generated ComponentNode impl failed to parse")

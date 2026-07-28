@@ -35,9 +35,11 @@
 //!
 //! The Scoreboard needs two analysis streams — commands and results. SV cannot
 //! give one class two `write` methods, so it needs the `uvm_analysis_imp_decl`
-//! macros. Rust just implements `Subscriber<CmdTuple>` *and* `Subscriber<u64>`
-//! on the same struct — two `write`s, distinguished by type. No macros, no imp
-//! classes (the point pyuvm makes with multiple inheritance, made with traits).
+//! macros; pyuvm cannot do it at all with one `write` per class. In rustdv each
+//! stream gets its own `SubscribePort` and its own sink struct, so the
+//! Scoreboard has two `write` methods and needs no macros — **and it works the
+//! same way when both streams carry the same type**, which is the case the SV
+//! macros actually exist for (D88).
 //!
 //! ## Depends on concurrent run + real objections (D56/D60)
 //!
@@ -111,8 +113,8 @@ impl Component for Driver {
 // Chapter 34, Figure 3: The command monitor watches the bus and broadcasts.
 #[derive(Component, Default)]
 struct CmdMonitor {
-    #[port(analysis)]
-    ap: AnalysisPort<CmdTuple>,
+    #[port(publish)]
+    ap: PublishPort<CmdTuple>,
 }
 
 impl Component for CmdMonitor {
@@ -128,8 +130,8 @@ impl Component for CmdMonitor {
 // Chapter 34, Figure 4: The result monitor broadcasts results.
 #[derive(Component, Default)]
 struct ResultMonitor {
-    #[port(analysis)]
-    ap: AnalysisPort<u64>,
+    #[port(publish)]
+    ap: PublishPort<u64>,
 }
 
 impl Component for ResultMonitor {
@@ -146,32 +148,56 @@ impl Component for ResultMonitor {
 //
 // Two `Subscriber` impls, one per transaction type — the multiple-analysis-input
 // pattern that needs no imp_decl macros (D20).
-#[derive(Component, Default)]
-struct Scoreboard {
-    #[port(analysis)]
-    cmd_in: AnalysisExport<CmdTuple>,
-    #[port(analysis)]
-    result_in: AnalysisExport<u64>,
+// Each stream gets its own sink struct and its own port. Two ports, two
+// `write` methods — and it would work identically if both streams carried the
+// *same* type, which is the case SV needs `uvm_analysis_imp_decl` macros for
+// and pyuvm cannot express with one `write` per class (D88).
+#[derive(Default)]
+struct CmdLog {
     cmds: Vec<CmdTuple>,
-    results: Vec<u64>,
-    cvg: HashSet<Ops>,
 }
 
-impl Subscriber<CmdTuple> for Scoreboard {
-    fn write(&mut self, cmd: &CmdTuple, _ctx: &mut RustdvCtx) {
+impl WriteSink<CmdTuple> for CmdLog {
+    fn write(&mut self, cmd: &CmdTuple) {
         self.cmds.push(*cmd);
     }
 }
 
-impl Subscriber<u64> for Scoreboard {
-    fn write(&mut self, result: &u64, _ctx: &mut RustdvCtx) {
+#[derive(Default)]
+struct ResultLog {
+    results: Vec<u64>,
+}
+
+impl WriteSink<u64> for ResultLog {
+    fn write(&mut self, result: &u64) {
         self.results.push(*result);
     }
 }
 
+#[derive(Component, Default)]
+struct Scoreboard {
+    #[port(subscribe)]
+    cmd_in: SubscribePort<CmdTuple>,
+    #[port(subscribe)]
+    result_in: SubscribePort<u64>,
+    cmd_log: RustdvShared<CmdLog>,
+    result_log: RustdvShared<ResultLog>,
+    cvg: HashSet<Ops>,
+}
+
 impl Component for Scoreboard {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        let my_cmds = self.cmd_log.clone();
+        self.cmd_in.on_write(my_cmds);
+
+        let my_results = self.result_log.clone();
+        self.result_in.on_write(my_results);
+    }
+
     fn check(&mut self, ctx: &mut RustdvCtx, errors: &mut CheckSink) {
-        for (cmd, result) in self.cmds.iter().zip(self.results.iter()) {
+        let cmd_log = self.cmd_log.get();
+        let result_log = self.result_log.get();
+        for (cmd, result) in cmd_log.cmds.iter().zip(result_log.results.iter()) {
             let (aa, bb, op_int) = *cmd;
             let op = Ops::from_u64(op_int).expect("legal op");
             self.cvg.insert(op);
@@ -194,24 +220,38 @@ impl Component for Scoreboard {
 }
 
 // Chapter 34, Figure 6: Coverage subscribes to the command stream only.
-#[derive(Component, Default)]
-struct Coverage {
-    #[port(analysis)]
-    cmd_in: AnalysisExport<CmdTuple>,
-    cvg: HashSet<Ops>,
+//
+// A second subscriber on `cmd_bus` — the scoreboard does not know it is there,
+// and the monitor does not know either. That is the decoupling the hub buys.
+#[derive(Default)]
+struct OpsSeen {
+    ops: HashSet<Ops>,
 }
 
-impl Subscriber<CmdTuple> for Coverage {
-    fn write(&mut self, cmd: &CmdTuple, _ctx: &mut RustdvCtx) {
+impl WriteSink<CmdTuple> for OpsSeen {
+    fn write(&mut self, cmd: &CmdTuple) {
         if let Some(op) = Ops::from_u64(cmd.2) {
-            self.cvg.insert(op);
+            self.ops.insert(op);
         }
     }
 }
 
+#[derive(Component, Default)]
+struct Coverage {
+    #[port(subscribe)]
+    cmd_in: SubscribePort<CmdTuple>,
+    seen: RustdvShared<OpsSeen>,
+}
+
 impl Component for Coverage {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        let my_sink = self.seen.clone();
+        self.cmd_in.on_write(my_sink);
+    }
+
     fn report(&mut self, ctx: &mut RustdvCtx) {
-        ctx.info(&format!("coverage saw {} of {} ops", self.cvg.len(), Ops::ALL.len()));
+        let seen = self.seen.get();
+        ctx.info(&format!("coverage saw {} of {} ops", seen.ops.len(), Ops::ALL.len()));
     }
 }
 

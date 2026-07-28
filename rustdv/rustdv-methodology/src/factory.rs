@@ -61,6 +61,25 @@ impl RustdvComp {
         self.inner.as_deref_mut()
     }
 
+    /// Move the held component **out** of the slot, leaving it empty (D82b).
+    ///
+    /// This is what lets a parent's `run` be concurrent with its children's.
+    /// While the box sits in the slot it is part of the parent, so `&mut
+    /// parent` and `&mut child` overlap and cannot both exist. Once moved out
+    /// it is an independent value with no borrow relationship to the parent,
+    /// so both futures can be driven together.
+    ///
+    /// The slot is empty only for the duration of the run phase;
+    /// [`put_node`] restores it before the post-run phases walk the tree.
+    pub fn take_node(&mut self) -> Option<Box<dyn ComponentNode>> {
+        self.inner.take()
+    }
+
+    /// Put a component taken by [`take_node`] back into the slot.
+    pub fn put_node(&mut self, node: Box<dyn ComponentNode>) {
+        self.inner = Some(node);
+    }
+
     /// Called by the derive-generated resolver during the build walk, with
     /// this slot's field name. If flagged and an override applies at the
     /// slot's path, swap it in. The discarded default's phases never ran —

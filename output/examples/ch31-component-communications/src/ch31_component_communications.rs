@@ -64,7 +64,7 @@ rustdv::vpi_bootstrap!();
 //
 // `#[port(put)]` registers `put_port` under this component's path + "put_port"
 // so the env can wire it without reaching in. `PutPort<u32>` offers blocking
-// `put().await` (here) and non-blocking `try_put`/`can_put` (Figure 6).
+// `put().await` (here) and non-blocking `try_put`/`can_put` (Figure 4).
 #[derive(Component, Default)]
 struct Producer {
     #[port(put)]
@@ -110,7 +110,7 @@ impl Component for Consumer {
     }
 }
 
-// Chapter 31, Figure 4: The env builds the two components and a FIFO, then wires
+// Chapter 31, Figure 3: The env builds the two components and a FIFO, then wires
 // them in `connect`.
 //
 // The producer and consumer are ordinary factory `RustdvComp` children. The FIFO
@@ -151,7 +151,7 @@ impl Component for PutGetPeekTest {
 // Non-blocking put / get
 // ===========================================================================
 
-// Chapter 31, Figure 6: A non-blocking producer never waits — `try_put` returns
+// Chapter 31, Figure 4: A non-blocking producer never waits — `try_put` returns
 // false when the FIFO is full, and the producer decides what to do (here, yield
 // and retry).
 #[derive(Component, Default)]
@@ -174,7 +174,7 @@ impl Component for NbProducer {
     }
 }
 
-// Chapter 31, Figure 7: A non-blocking consumer — `try_get` returns `None` when
+// Chapter 31, Figure 5: A non-blocking consumer — `try_get` returns `None` when
 // the FIFO is empty.
 #[derive(Component, Default)]
 struct NbConsumer {
@@ -199,7 +199,7 @@ impl Component for NbConsumer {
     }
 }
 
-// Chapter 31, Figure 8: Same wiring, non-blocking components.
+// Chapter 31, Figure 6: Same wiring, non-blocking components.
 #[rustdv::test]
 #[derive(Component, Default)]
 struct NonBlockingTest {
@@ -228,7 +228,7 @@ impl Component for NonBlockingTest {
 // The parent runs too — a three-stage pipeline
 // ===========================================================================
 
-// Chapter 31, Figure 9: A processing pipeline — y = 2x².
+// Chapter 31, Figure 7: A processing pipeline — y = 2x².
 //
 // Everything so far had a parent that only built and connected. Here the
 // **test itself is a stage**: it chooses x, sends it into the pipeline, and
@@ -256,7 +256,7 @@ impl Component for NonBlockingTest {
 // sequence while the driver waits for items), reduced to arithmetic with no
 // DUT and a self-checking answer.
 
-// Chapter 31, Figure 10: The first stage squares its input.
+// Chapter 31, Figure 8: The first stage squares its input.
 #[derive(Component, Default)]
 struct SquareIt {
     #[port(get)]
@@ -275,7 +275,7 @@ impl Component for SquareIt {
     }
 }
 
-// Chapter 31, Figure 11: The second stage doubles what the first produced.
+// Chapter 31, Figure 9: The second stage doubles what the first produced.
 #[derive(Component, Default)]
 struct TimesTwo {
     #[port(get)]
@@ -294,7 +294,7 @@ impl Component for TimesTwo {
     }
 }
 
-// Chapter 31, Figure 12: The test drives the pipeline and checks the answer.
+// Chapter 31, Figure 10: The test drives the pipeline and checks the answer.
 //
 // The test owns three FIFOs and two workers, and holds ports of its own: it
 // puts x and gets y. Its `run` is the stimulus *and* the comparison.
@@ -367,7 +367,7 @@ impl Component for MathTest {
 // Beyond the book — the checks a registry connection makes possible
 // ===========================================================================
 
-// Chapter 31, Figure 10: A port left unconnected is an elaboration error (D22).
+// Chapter 31, Figure 11: A port left unconnected is an elaboration error (D22).
 //
 // The book has no figure for this: pyuvm discovers a missing connection lazily,
 // at first use, as a Python attribute error. rustdv sweeps the registry at the
@@ -394,11 +394,47 @@ impl Component for UnconnectedTest {
 
 // Chapter 31, Figure 12: A FIFO's built-in analysis taps (D23).
 //
-// Every `TlmFifo` broadcasts each item it accepts on `put_ap` and each item it
-// releases on `get_ap` — an analysis port (Chapter 32) with no extra wiring.
-// This is how a scoreboard or coverage collector watches traffic flow through a
-// FIFO without sitting in the data path. `TapWatcher` implements `Subscriber`
-// (Chapter 32) and connects to the FIFO's `put_ap`.
+// Every `TlmFifo` publishes each item it accepts on `put_ap()` and each item it
+// releases on `get_ap()`. This is the port of `uvm_tlm_fifo`'s built-in taps,
+// and it is how a scoreboard or coverage collector watches traffic *through* a
+// FIFO without sitting in the data path.
+//
+// Note what is and is not mixed here. The FIFO's **data path** is still a queue
+// — one consumer takes each item, and the producer blocks when it is full. The
+// taps are **observation** running alongside: every subscriber sees every item,
+// nothing is consumed, and nobody is delayed. Two different jobs in one
+// component, exactly as UVM has it, and the wiring reads the same as every
+// other connection in this chapter.
+#[derive(Default)]
+struct TapLog {
+    items: Vec<u32>,
+}
+
+impl WriteSink<u32> for TapLog {
+    fn write(&mut self, item: &u32) {
+        self.items.push(*item);
+    }
+}
+
+#[derive(Component, Default)]
+struct TapWatcher {
+    #[port(subscribe)]
+    input: SubscribePort<u32>,
+    seen: RustdvShared<TapLog>,
+}
+
+impl Component for TapWatcher {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        let my_sink = self.seen.clone();
+        self.input.on_write(my_sink);
+    }
+
+    fn report(&mut self, ctx: &mut RustdvCtx) {
+        let seen = self.seen.get();
+        ctx.info(&format!("tap saw {:?}", seen.items));
+    }
+}
+
 #[rustdv::test]
 #[derive(Component, Default)]
 struct FifoTapTest {
@@ -421,26 +457,16 @@ impl Component for FifoTapTest {
     }
 
     fn connect(&mut self, _ctx: &mut RustdvCtx) {
+        // the data path: producer -> queue -> consumer
         self.fifo.put_export().connect(&self.producer, Producer::PUT_PORT);
         self.fifo.peek_export().connect(&self.consumer, Consumer::PEEK_PORT);
         self.fifo.get_export().connect(&self.consumer, Consumer::GET_PORT);
-        // The tap is an analysis port on the FIFO; a subscriber connects to it
-        // (Chapter 32's broadcast model), so the watcher sees every item put.
-        self.fifo.put_ap().connect(&self.watcher, TapWatcher::TAP_IN);
+        // the observation tap: the watcher sees every item put, and takes none
+        self.fifo.put_ap().connect(&self.watcher, TapWatcher::INPUT);
     }
 }
 
-// A subscriber that logs everything the FIFO's put tap broadcasts.
-#[derive(Component, Default)]
-struct TapWatcher {
-    #[port(analysis)]
-    tap_in: AnalysisExport<u32>,
-}
+// Expected: the producer/consumer transcript as in Figure 4, plus
+// `tap saw [0, 1, 2]` at report — the same three items, observed without
+// being consumed.
 
-impl Subscriber<u32> for TapWatcher {
-    fn write(&mut self, item: &u32, ctx: &mut RustdvCtx) {
-        ctx.info(&format!("tap saw {item}"));
-    }
-}
-
-impl Component for TapWatcher {}

@@ -17,9 +17,25 @@
 //! put/get (Chapter 31), not a mode of it — in pyuvm it is a separate class
 //! whose `connect` appends to a subscriber list and whose `write` loops it.
 //!
-//! A subscriber implements `Subscriber<T>` (one `write` method) — the port of
-//! `uvm_subscriber`. Its incoming endpoint is an `AnalysisExport<T>`, declared
-//! with `#[port(analysis)]` so it registers by path like any port.
+//! A subscriber declares a `SubscribePort<T>` with `#[port(subscribe)]`, and
+//! supplies a **sink**: a struct of its own that implements
+//! `WriteSink::write(&mut self, item)` — the port of `uvm_subscriber`'s
+//! `write()`, expressed as a trait rather than a base class.
+//!
+//! ## Why the sink is separate from the component (D87)
+//!
+//! `write()` must deliver **synchronously, in zero time**: the publisher calls
+//! it, every subscriber's handler runs, and control returns without the
+//! simulation time wheel advancing. A design that queued the item and delivered
+//! it later would let time pass in between — wrong, and the giveaway is that
+//! you have to ask *when* delivery happens.
+//!
+//! But delivery needs `&mut subscriber` while the publisher's `run` holds
+//! `&mut publisher`, and siblings cannot reach each other. The resolution: the
+//! port holds a handle to the subscriber's **state**, not to the component. The
+//! state lives in a `RustdvShared<T>` — the component keeps one handle, the
+//! port gets another, and both see the same data. `write()` is then a plain
+//! loop with no `await` anywhere.
 //!
 //! ## One connection pattern for both TLM shapes (Ray, 2026-07-24)
 //!
@@ -56,42 +72,73 @@ rustdv::vpi_bootstrap!();
 
 // Chapter 32, Figure 1: A subscriber counts what it sees.
 //
-// `Subscriber<T>` is one method, `write`. The incoming `AnalysisExport<T>` is
-// the endpoint a source connects to; `#[port(analysis)]` registers it by path.
-#[derive(Component, Default)]
-struct Counter {
-    #[port(analysis)]
-    input: AnalysisExport<u32>,
+// The state that `write` touches lives in its own struct, and that struct
+// implements `WriteSink`. The method is `write(&mut self, item)` — ordinary
+// Rust, and the same word the UVM engineer already knows.
+#[derive(Default)]
+struct ItemCount {
     count: u32,
 }
 
-impl Subscriber<u32> for Counter {
-    fn write(&mut self, _item: &u32, _ctx: &mut RustdvCtx) {
+impl WriteSink<u32> for ItemCount {
+    fn write(&mut self, _item: &u32) {
         self.count += 1;
     }
 }
 
-impl Component for Counter {
-    fn report(&mut self, ctx: &mut RustdvCtx) {
-        ctx.info(&format!("counted {} items", self.count));
-    }
-}
-
-// Chapter 32, Figure 2: A second subscriber, logging each item — proof that one
-// write reaches every listener.
 #[derive(Component, Default)]
-struct Logger {
-    #[port(analysis)]
-    input: AnalysisExport<u32>,
+struct Counter {
+    #[port(subscribe)]
+    input: SubscribePort<u32>,
+    tally: RustdvShared<ItemCount>,
 }
 
-impl Subscriber<u32> for Logger {
-    fn write(&mut self, item: &u32, ctx: &mut RustdvCtx) {
-        ctx.info(&format!("logged {item}"));
+impl Component for Counter {
+    // The component hands the port a handle to its state. `clone()` does not
+    // copy the ItemCount — it makes a second handle to the same one, so the
+    // port's writes and the component's reads land on the same data.
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        let my_sink = self.tally.clone();
+        self.input.on_write(my_sink);
+    }
+
+    fn report(&mut self, ctx: &mut RustdvCtx) {
+        let tally = self.tally.get();
+        ctx.info(&format!("counted {} items", tally.count));
     }
 }
 
-impl Component for Logger {}
+// Chapter 32, Figure 2: A second subscriber on the same stream — proof that one
+// write reaches every listener. This one keeps the values rather than counting.
+#[derive(Default)]
+struct SeenList {
+    items: Vec<u32>,
+}
+
+impl WriteSink<u32> for SeenList {
+    fn write(&mut self, item: &u32) {
+        self.items.push(*item);
+    }
+}
+
+#[derive(Component, Default)]
+struct Collector {
+    #[port(subscribe)]
+    input: SubscribePort<u32>,
+    seen: RustdvShared<SeenList>,
+}
+
+impl Component for Collector {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        let my_sink = self.seen.clone();
+        self.input.on_write(my_sink);
+    }
+
+    fn report(&mut self, ctx: &mut RustdvCtx) {
+        let seen = self.seen.get();
+        ctx.info(&format!("collected {:?}", seen.items));
+    }
+}
 
 // ===========================================================================
 // The source and the broadcast
@@ -103,8 +150,8 @@ impl Component for Logger {}
 // including none.
 #[derive(Component, Default)]
 struct NumberGen {
-    #[port(analysis)]
-    ap: AnalysisPort<u32>,
+    #[port(publish)]
+    ap: PublishPort<u32>,
 }
 
 impl Component for NumberGen {
@@ -132,7 +179,7 @@ struct BroadcastTest {
     #[component(child)]
     counter: RustdvComp,
     #[component(child)]
-    logger: RustdvComp,
+    collector: RustdvComp,
     #[component(fifo)]
     analysis_fifo: AnalysisFifo<u32>,
 }
@@ -141,14 +188,14 @@ impl Component for BroadcastTest {
     fn build(&mut self, _ctx: &mut RustdvCtx) {
         self.source = NumberGen::new_comp();
         self.counter = Counter::new_comp();
-        self.logger = Logger::new_comp();
+        self.collector = Collector::new_comp();
         self.analysis_fifo = AnalysisFifo::new();
     }
 
     fn connect(&mut self, _ctx: &mut RustdvCtx) {
         self.analysis_fifo.pub_export().connect(&self.source, NumberGen::AP);
         self.analysis_fifo.sub_export().connect(&self.counter, Counter::INPUT);
-        self.analysis_fifo.sub_export().connect(&self.logger, Logger::INPUT);
+        self.analysis_fifo.sub_export().connect(&self.collector, Collector::INPUT);
     }
 }
 
@@ -156,7 +203,7 @@ impl Component for BroadcastTest {
 // Beyond the book
 // ===========================================================================
 
-// Chapter 32, Figure 6: A hub with no subscribers is legal (D22).
+// Chapter 32, Figure 5: A hub with no subscribers is legal (D22).
 //
 // Unlike a put/get port, an analysis `sub_export()` has min cardinality 0:
 // broadcasting to nobody is a valid state, so this elaborates and runs clean.
@@ -183,7 +230,7 @@ impl Component for NoSubscribersTest {
     }
 }
 
-// Chapter 32, Figure 8: The same hub also buffers — pull instead of push.
+// Chapter 32, Figure 6: The same hub also buffers — pull instead of push.
 //
 // A subscriber that cannot keep up inside `write` (or wants to consume on its
 // own schedule) reads the hub as a *stream* instead of subscribing to it: the

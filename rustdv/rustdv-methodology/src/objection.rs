@@ -53,6 +53,24 @@ impl ObjectionRegistry {
         self.inner.raised_ever.get()
     }
 
+    /// Wait for the run phase to end by objection consensus (D82/D82b).
+    ///
+    /// Unlike [`wait_all_dropped`], this takes no shortcut: it waits on the
+    /// `drained` event, which is set only when a raised objection count falls
+    /// back to zero. That is exactly the semantics the phaser needs to *race*
+    /// against the run tree:
+    ///
+    /// - objections raised and later dropped → the event fires and the phase
+    ///   ends, cancelling responder loops that never return;
+    /// - no objection ever raised → the event never fires, so the run tree
+    ///   decides when the phase ends (D46's second front door).
+    ///
+    /// The runner cannot ask `ever_raised()` up front, because at that moment
+    /// no run body has executed and nothing has been raised yet.
+    pub async fn wait_drained_event(&self) {
+        self.inner.drained.wait().await;
+    }
+
     /// Objection report for timeout diagnostics (pyuvm ObjectionHandler).
     pub fn active(&self) -> Vec<String> {
         self.inner.active.borrow().clone()

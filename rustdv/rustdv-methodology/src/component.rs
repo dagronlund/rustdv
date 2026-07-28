@@ -400,6 +400,27 @@ pub trait ComponentNode: DynPhases {
     fn resolve_children(&mut self, ctx: &RustdvCtx) {
         let _ = ctx;
     }
+
+    /// Move this node's `RustdvComp` children **out**, for the run phase (D82b).
+    ///
+    /// Returns owned boxes with no borrow relationship to `self`, which is what
+    /// lets [`run_all`] drive a parent's own `run` concurrently with its
+    /// children's. The derive generates this for `RustdvComp` fields; other
+    /// child shapes (`Option<T>`, `Vec<T>`, plain `T`) stay in place and are
+    /// reached through [`children_mut`] as before.
+    ///
+    /// The default returns nothing, so a hand-written `ComponentNode` keeps the
+    /// old behaviour and still compiles.
+    fn take_children(&mut self) -> Vec<(String, Box<dyn ComponentNode>)> {
+        Vec::new()
+    }
+
+    /// Put back what [`take_children`] removed, in the same order.
+    /// Called unconditionally after the run phase — including on error — so the
+    /// post-run phases walk a whole tree.
+    fn restore_children(&mut self, taken: Vec<(String, Box<dyn ComponentNode>)>) {
+        let _ = taken;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -477,21 +498,35 @@ pub fn start_of_simulation_all(node: &mut dyn ComponentNode, ctx: &mut RustdvCtx
 /// children" — a parent's run future and its children's run futures cannot
 /// coexist.
 ///
-/// This covers every communicating pattern in the book, because components
-/// that talk to each other are **siblings** (producer/consumer under a test;
-/// tester/driver/monitors/scoreboard under an env), and the parents that hold
-/// them — tests and envs — have no run body of their own. A parent that needs
-/// a run body concurrent with its children's should put that work in a child
-/// component, or `spawn` it in `start_of_simulation` (D59/D61).
+/// **D82b lifts that limit for `RustdvComp` children.** A `RustdvComp` slot
+/// holds a `Box`, so the box can be *moved out* of the parent for the duration
+/// of the run phase. Once out, it has no borrow relationship to the parent, and
+/// the two futures can be driven together. The boxes go back before the
+/// post-run phases walk the tree.
+///
+/// So a node's run proceeds in two steps:
+///
+/// 1. **In-place children first** — `Option<T>`, `Vec<T>` and plain `T` fields
+///    cannot be moved out of their parent, so they keep the earlier behaviour:
+///    joined with each other, completing before the parent's own run begins.
+///    Legacy chapters (ch24, ch25, `tinyalu_tb`) are all of this shape and hold
+///    parents with no run body, so nothing changes for them.
+/// 2. **Taken children joined *with* the parent's own run** — the shape D78
+///    prescribes for all new code, and the one the sequence chapters need.
 pub fn run_all<'a>(
     node: &'a mut dyn ComponentNode,
     ctx: &'a mut RustdvCtx,
 ) -> Pin<Box<dyn Future<Output = Result<(), TestError>> + 'a>> {
     Box::pin(async move {
-        // Siblings together (SystemVerilog's fork...join). The block scopes the
-        // children's borrow of `node` so it ends before `dyn_run` reborrows.
-        // Each child's context clone carries its derived path (D9) and is moved
-        // into the future that uses it, so no borrows overlap.
+        // Step 1: move the factory children out **first**, so this node's own
+        // run can be concurrent with theirs (D82b) — and so the in-place walk
+        // below does not see them and run them to completion instead.
+        let mut taken = node.take_children();
+
+        // Step 2: in-place children (legacy shapes that cannot be moved out).
+        // The block scopes their borrow of `node` so it ends before anything
+        // below reborrows. Each child's context clone carries its derived path
+        // (D9) and is moved into the future that uses it, so no borrows overlap.
         {
             let children: Vec<Pin<Box<dyn Future<Output = Result<(), TestError>> + '_>>> = node
                 .children_mut()
@@ -506,12 +541,48 @@ pub fn run_all<'a>(
                 .collect();
 
             // First error wins; the others keep running until the join is done.
-            for r in rustdv_sim::join_all(children).await {
-                r?;
+            if !children.is_empty() {
+                for r in rustdv_sim::join_all(children).await {
+                    if r.is_err() {
+                        node.restore_children(taken);
+                        return r;
+                    }
+                }
             }
         }
 
-        node.dyn_run(ctx).await
+        // Step 3: the taken children join this node's own run.
+        if taken.is_empty() {
+            return node.dyn_run(ctx).await;
+        }
+
+        let outcome = {
+            let mut futs: Vec<Pin<Box<dyn Future<Output = Result<(), TestError>> + '_>>> =
+                Vec::new();
+            for (name, child) in taken.iter_mut() {
+                let cctx = ctx.child(name);
+                futs.push(Box::pin(async move {
+                    let mut cctx = cctx;
+                    run_all(&mut **child, &mut cctx).await
+                }));
+            }
+            // `taken` and `node` are now separate values, so the parent's own
+            // run joins its children's instead of following them.
+            futs.push(Box::pin(node.dyn_run(ctx)));
+
+            let mut first_err = Ok(());
+            for r in rustdv_sim::join_all(futs).await {
+                if first_err.is_ok() {
+                    first_err = r;
+                }
+            }
+            first_err
+        };
+
+        // Unconditional — including on error — so extract/check/report walk a
+        // whole tree.
+        node.restore_children(taken);
+        outcome
     })
 }
 
@@ -602,18 +673,18 @@ pub async fn run_component_test<T: Component + ComponentNode>(
     // A test that never objected is not made to wait for consensus (D46), so
     // in that case the run tree alone decides.
     let run_result = {
-        let objections = ctx.objections().clone();
-        let ever_raised = objections.ever_raised();
         // `ctx` is reborrowed by run_all; the consensus wait uses its own
         // handle to the (Rc-shared) registry, so the two do not conflict.
+        let objections = ctx.objections().clone();
         let runs = run_all(test, ctx);
-        if ever_raised {
-            match rustdv_sim::first2(runs, objections.wait_all_dropped()).await {
-                rustdv_sim::Either::First(r) => r,
-                rustdv_sim::Either::Second(()) => Ok(()),
-            }
-        } else {
-            runs.await
+        // The race arms unconditionally. `wait_drained_event` fires only after
+        // a raised objection count falls back to zero, so a test that never
+        // objects is decided by the run tree instead (D46) — and asking
+        // `ever_raised()` here would always say "no", since no run body has
+        // executed yet.
+        match rustdv_sim::first2(runs, objections.wait_drained_event()).await {
+            rustdv_sim::Either::First(r) => r,
+            rustdv_sim::Either::Second(()) => Ok(()),
         }
     };
 
