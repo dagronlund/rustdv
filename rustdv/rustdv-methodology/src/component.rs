@@ -457,21 +457,60 @@ pub fn start_of_simulation_all(node: &mut dyn ComponentNode, ctx: &mut RustdvCtx
 /// is boxed-recursive because `dyn_run` yields a boxed future we await, and
 /// the children's borrows are held across those awaits.
 ///
-/// **Sequential, not concurrent (recorded limitation).** Each `run` is
-/// awaited to completion before the next — correct while run bodies are
-/// self-contained (raise objection, act, drop). True concurrent run phases
-/// need spawned `'static` tasks (the `start` hook's model); the executor's
-/// `spawn` is `'static`-bound, so a borrowed-tree concurrent run is a later
-/// increment. See the design-decisions log.
+/// **Concurrent (D82).** Every component's `run` makes progress together —
+/// the analog of UVM forking each `run_phase`. The children's runs are joined
+/// (SystemVerilog's `fork...join`), and the node's own `run` joins them, so a
+/// producer that blocks on a full FIFO and a consumer that drains it can both
+/// proceed. Sequential awaiting was the earlier behaviour and deadlocked on
+/// exactly that shape.
+///
+/// The futures **borrow** the tree rather than being spawned: `spawn` is
+/// `'static`-bound and would force the component tree into `Rc`/`RefCell`,
+/// whereas this scope already owns it. `spawn` stays for work that must
+/// outlive the phase (BFM loops, monitor collectors — D59/D61).
+///
+/// **Scope: siblings are concurrent; a node's own `run` follows its subtree.**
+/// All of a node's children (and their subtrees) run joined together, then the
+/// node's own `run` body executes. That is what Rust's borrow rules allow:
+/// `Component::run` takes `&mut self`, which *includes* the child fields, so
+/// one `&mut node` cannot be split into "this node's own state" and "its
+/// children" — a parent's run future and its children's run futures cannot
+/// coexist.
+///
+/// This covers every communicating pattern in the book, because components
+/// that talk to each other are **siblings** (producer/consumer under a test;
+/// tester/driver/monitors/scoreboard under an env), and the parents that hold
+/// them — tests and envs — have no run body of their own. A parent that needs
+/// a run body concurrent with its children's should put that work in a child
+/// component, or `spawn` it in `start_of_simulation` (D59/D61).
 pub fn run_all<'a>(
     node: &'a mut dyn ComponentNode,
     ctx: &'a mut RustdvCtx,
 ) -> Pin<Box<dyn Future<Output = Result<(), TestError>> + 'a>> {
     Box::pin(async move {
-        for (name, child) in node.children_mut() {
-            let mut cctx = ctx.child(&name);
-            run_all(child, &mut cctx).await?;
+        // Siblings together (SystemVerilog's fork...join). The block scopes the
+        // children's borrow of `node` so it ends before `dyn_run` reborrows.
+        // Each child's context clone carries its derived path (D9) and is moved
+        // into the future that uses it, so no borrows overlap.
+        {
+            let children: Vec<Pin<Box<dyn Future<Output = Result<(), TestError>> + '_>>> = node
+                .children_mut()
+                .into_iter()
+                .map(|(name, child)| {
+                    let cctx = ctx.child(&name);
+                    Box::pin(async move {
+                        let mut cctx = cctx;
+                        run_all(child, &mut cctx).await
+                    }) as Pin<Box<dyn Future<Output = Result<(), TestError>> + '_>>
+                })
+                .collect();
+
+            // First error wins; the others keep running until the join is done.
+            for r in rustdv_sim::join_all(children).await {
+                r?;
+            }
         }
+
         node.dyn_run(ctx).await
     })
 }
@@ -554,14 +593,29 @@ pub async fn run_component_test<T: Component + ComponentNode>(
     end_of_elaboration_all(test, ctx);
     start_of_simulation_all(test, ctx);
 
-    let run_result = run_all(test, ctx).await;
-
-    // The run phase completes when its objections drain (pyuvm), so the
-    // post-run phases wait for consensus first. A test that never objected
-    // is not made to wait (D46).
-    if ctx.objections().ever_raised() {
-        ctx.all_objections_dropped().await;
-    }
+    // The run phase ends when the last objection drops (UVM), or when every
+    // run body has returned — whichever comes first (D82). Racing the two is
+    // what lets a responder loop (a driver or monitor that never returns) end
+    // with the phase instead of hanging the test. Unfinished runs are dropped
+    // silently, as UVM kills its forked run processes.
+    //
+    // A test that never objected is not made to wait for consensus (D46), so
+    // in that case the run tree alone decides.
+    let run_result = {
+        let objections = ctx.objections().clone();
+        let ever_raised = objections.ever_raised();
+        // `ctx` is reborrowed by run_all; the consensus wait uses its own
+        // handle to the (Rc-shared) registry, so the two do not conflict.
+        let runs = run_all(test, ctx);
+        if ever_raised {
+            match rustdv_sim::first2(runs, objections.wait_all_dropped()).await {
+                rustdv_sim::Either::First(r) => r,
+                rustdv_sim::Either::Second(()) => Ok(()),
+            }
+        } else {
+            runs.await
+        }
+    };
 
     let post = run_extract_check_report(test, ctx).map_err(TestError::from);
     run_result.and(post)

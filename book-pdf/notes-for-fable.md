@@ -217,6 +217,104 @@ transcript from the README, not from the current manuscript.
 
 ---
 
+## 2.5 REQUIRED NEW EXAMPLE — the y = 2x² pipeline (Ray, 2026-07-24)
+
+**Ray's directive: this must become an example in the book.** It is in the
+ch31 aspirational file (`output/examples/ch31-component-communications/`,
+Figures 9–12) as `SquareIt`, `TimesTwo`, and `MathTest`. Do not drop it when
+writing the chapter; it earns its place three times over.
+
+```
+MathTest(run) --put--> [x_fifo] --get--> SquareIt(run) --put--> [sq_fifo]
+                                                                    |
+MathTest(run) <--get-- [y_fifo] <--put-- TimesTwo(run) <--get-------+
+```
+
+The test picks x = 1..4, sends it into the pipeline, waits for y to come back,
+and compares against 2x² (2, 8, 18, 32). Two worker components do the
+arithmetic; each is connected only to FIFOs and neither knows the other exists.
+
+What it teaches, and why no other figure covers it:
+
+- **The parent is a stage, not just a builder.** Every other component figure
+  has a test that only builds and connects. Here the test has a `run` phase of
+  its own, and that run must be concurrent with its children's — the case that
+  drove the whole concurrency design (D82/D82a). A phaser that runs children to
+  completion first cannot execute this at all.
+- **A request/response round trip**, not a one-way stream: put x, await y. It
+  is the first figure with a closed loop through the component tree.
+- **A parent holding its own ports** — `connect((self, MathTest::X_OUT))`.
+- **Responders that never return.** The workers `loop` forever; the phase ends
+  when the test's objection drops, which is what makes objections load-bearing
+  (D60 discharged). Worth stating in the prose.
+- **It is self-checking** — a broken pipeline fails rather than passing quietly.
+
+It is also the small, DUT-free rehearsal for TB 7.0, where the test's `run`
+starts a sequence while the driver waits for items forever. If the chapter
+prose explains this figure well, ch36 gets much easier.
+
+## 2.6 The TLM chapters (ch31, ch32, ch34) — write from these decisions
+
+Settled with Ray 2026-07-24. **The aspirational example files are the spec**;
+the decisions below say *why*, which is what the prose has to carry. Read
+D83–D88 in `output/.design-decisions.md` before writing a word of these
+chapters, and D82/D82b for the concurrency they depend on.
+
+The inherited ch31/ch32/ch34 chapters argue the **destroyed** design
+("channels replace TLM-1"). They are rewritten from scratch, not edited. The
+old `compile-fail/fig08_direction_mismatch` figure has already been deleted: it
+staged a `Sender`/`Receiver` type clash and called it catching a connection
+error, which is the §0.4 overclaim in TLM form. **Do not reintroduce any claim
+that TLM connection errors are compile errors** — they are elaboration errors,
+by design (D22, D85).
+
+**The one connection idiom, taught once and reused everywhere.** A concrete
+FIFO sits between two components; the FIFO drives the connect; the endpoint is
+named by a generated constant:
+
+```rust
+self.cmd_fifo.put_export().connect(&self.tester, Tester::CMD_PORT);
+```
+
+Explain *why* it is not `tester.cmd_port.connect(...)`: the child is an erased
+`RustdvComp`, Rust has no `$cast`-to-base, and reaching into a child is the
+anti-pattern UVM's own guidelines warn against. Ports register themselves by
+path; connection is a lookup (D83). The FIFO being a concrete child is a
+deliberate carve-out from "every child is `RustdvComp`" (D84).
+
+**Two different mechanisms — do not blur them** (D86). `TlmFifo` queues data for
+a consumer to pull (blocking, consumer-paced, one taker per item). `AnalysisFifo`
+stores nothing: `write()` calls every subscriber immediately and returns
+(publisher-paced, zero time, everyone sees everything). Ray corrected a proposed
+merge of the two; the distinction is the chapter's spine, not a footnote.
+
+**The zero-time requirement is the reason for the whole subscriber design**
+(D87). A monitor must write and forget: the handlers run and control returns
+without simulation time advancing. That is why a subscriber shares its *state*
+(`RustdvShared<T>`) rather than being reached as a component — the publisher
+holds `&mut` to itself and can never be handed `&mut` to a sibling. Teach the
+sequence: state struct → `impl WriteSink` → `RustdvShared` handle → `on_write`.
+A "queue it and deliver later" design is **wrong** and worth one sentence saying
+so, because it is the obvious first idea.
+
+**Say plainly what is better and what is different.** Better: two streams of the
+*same* type into one component need two ports and two sinks — no
+`uvm_analysis_imp_decl` macros, which is a real SV pain point, and something
+pyuvm cannot do at all with one `write` per class. Different: rustdv puts a hub
+in the analysis path where UVM has none, and the subscriber implements a trait
+method rather than subclassing `uvm_subscriber`. Do not sell the differences as
+wins beyond what they are (D74's rule).
+
+**Chapter 31 must include the y = 2x² pipeline** — see §2.5 above, which is a
+standing Ray directive. It is where the parent's own `run` runs concurrently
+with its children's, and it rehearses TB 7.0.
+
+**Naming to keep consistent:** `RustdvComp`, `RustdvCtx`, `RustdvShared` — the
+`Rustdv` prefix marks the types a user holds in their own struct, so a reader
+who goes looking for them knows they are ours, not std (D88). No `uvm` in any
+symbol (D79). Never `r#in` or other raw identifiers in a figure — `input`,
+`source`, and so on read fine.
+
 ## 3. Other pending directives (stubs — expand as the refactor lands)
 
 Recorded so they survive between sessions. Each needs its own section before

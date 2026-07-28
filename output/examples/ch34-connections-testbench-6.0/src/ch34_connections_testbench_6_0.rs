@@ -14,12 +14,17 @@
 //!
 //! ```text
 //!   Tester --put--> [cmd_fifo] --get--> Driver --> BFM --> DUT
-//!                                          |
-//!   CmdMonitor  --analysis(cmd)--.         (drives pins)
-//!   ResultMonitor --analysis(result)--.
-//!                        |            |
-//!                   Scoreboard    Coverage
+//!
+//!   CmdMonitor --pub--> [cmd_bus] --sub--> Scoreboard
+//!                            \----sub----> Coverage
+//!
+//!   ResultMonitor --pub--> [result_bus] --sub--> Scoreboard
 //! ```
+//!
+//! One idiom throughout: a concrete FIFO between the two components, a named
+//! export, `connect(component, PORT_NAME)`. `TlmFifo` carries point-to-point
+//! traffic; `AnalysisFifo` brokers a broadcast — several subscribers connect
+//! to the same `sub_export()`.
 //!
 //! The Tester generates commands and *puts* them; the Driver *gets* them and
 //! drives the BFM. Two monitors watch the bus and *broadcast* what they see;
@@ -214,9 +219,11 @@ impl Component for Coverage {
 // The environment wires it all together
 // ===========================================================================
 
-// Chapter 34, Figure 7: build the components and a command FIFO; connect in one
-// place. Put/get is driven by the concrete FIFO; analysis is the symmetric
-// registry connect (Chapter 32). Every endpoint is resolved by path.
+// Chapter 34, Figure 7: build the components and the FIFOs; connect in one
+// place. **Every connection is the same shape** — a concrete FIFO, a named
+// export, and `connect(component, PORT_NAME)` — whether the traffic is
+// point-to-point (`TlmFifo`) or broadcast (`AnalysisFifo`). Nothing reaches
+// into an erased child; every endpoint resolves by path.
 #[derive(Component, Default)]
 struct AluEnv {
     #[component(child)]
@@ -233,6 +240,10 @@ struct AluEnv {
     coverage: RustdvComp,
     #[component(fifo)]
     cmd_fifo: TlmFifo<Command>,
+    #[component(fifo)]
+    cmd_bus: AnalysisFifo<CmdTuple>, // the command broadcast, two subscribers
+    #[component(fifo)]
+    result_bus: AnalysisFifo<u64>, // the result broadcast, one subscriber
 }
 
 impl Component for AluEnv {
@@ -244,17 +255,23 @@ impl Component for AluEnv {
         self.scoreboard = Scoreboard::new_comp();
         self.coverage = Coverage::new_comp();
         self.cmd_fifo = TlmFifo::new(1);
+        self.cmd_bus = AnalysisFifo::new();
+        self.result_bus = AnalysisFifo::new();
     }
 
     fn connect(&mut self, _ctx: &mut RustdvCtx) {
-        // stimulus path: Tester --put--> cmd_fifo --get--> Driver
-        self.cmd_fifo.put_export().connect((&self.tester, Tester::CMD_PORT));
-        self.cmd_fifo.get_export().connect((&self.driver, Driver::CMD_PORT));
+        // stimulus: Tester --put--> cmd_fifo --get--> Driver
+        self.cmd_fifo.put_export().connect(&self.tester, Tester::CMD_PORT);
+        self.cmd_fifo.get_export().connect(&self.driver, Driver::CMD_PORT);
 
-        // observation: monitors broadcast to their subscribers
-        Analysis::connect((&self.cmd_mon, CmdMonitor::AP), (&self.scoreboard, Scoreboard::CMD_IN));
-        Analysis::connect((&self.cmd_mon, CmdMonitor::AP), (&self.coverage, Coverage::CMD_IN));
-        Analysis::connect((&self.result_mon, ResultMonitor::AP), (&self.scoreboard, Scoreboard::RESULT_IN));
+        // commands: CmdMonitor publishes; Scoreboard and Coverage subscribe
+        self.cmd_bus.pub_export().connect(&self.cmd_mon, CmdMonitor::AP);
+        self.cmd_bus.sub_export().connect(&self.scoreboard, Scoreboard::CMD_IN);
+        self.cmd_bus.sub_export().connect(&self.coverage, Coverage::CMD_IN);
+
+        // results: ResultMonitor publishes; only the Scoreboard subscribes
+        self.result_bus.pub_export().connect(&self.result_mon, ResultMonitor::AP);
+        self.result_bus.sub_export().connect(&self.scoreboard, Scoreboard::RESULT_IN);
     }
 
     fn start_of_simulation(&mut self, _ctx: &mut RustdvCtx) {

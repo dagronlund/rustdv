@@ -21,23 +21,30 @@
 //! `uvm_subscriber`. Its incoming endpoint is an `AnalysisExport<T>`, declared
 //! with `#[port(analysis)]` so it registers by path like any port.
 //!
-//! ## Connecting analysis has no FIFO hub — DESIGN POINT to confirm
+//! ## One connection pattern for both TLM shapes (Ray, 2026-07-24)
 //!
-//! Put/get is wired by the concrete FIFO that sits between the two components
-//! (`fifo.put_export().connect((&comp, C::PORT))`). Analysis has no such
-//! intermediary: a source component's analysis port broadcasts straight to
-//! subscriber components, and *both are erased* `RustdvComp`s. So there is no
-//! concrete side to drive the call. This spec wires analysis with a registry
-//! function that resolves *both* endpoints by path:
+//! Put/get is wired by the concrete FIFO between the two components. Analysis
+//! has no such intermediary in the UVM — a source's analysis port broadcasts
+//! straight to subscribers — and since both components are erased
+//! `RustdvComp`s, neither side can drive the call.
+//!
+//! **rustdv gives analysis a hub too.** An `AnalysisFifo` is a concrete
+//! `#[component(fifo)]` child with two named export accessors:
 //!
 //! ```ignore
-//! Analysis::connect((&self.source, NumberGen::AP), (&self.counter, Counter::IN));
+//! self.analysis_fifo.pub_export().connect(&self.mon, Monitor::PUB_PORT);
+//! self.analysis_fifo.sub_export().connect(&self.sb,  Scoreboard::SUB_PORT);
 //! ```
 //!
-//! Open question for Ray: keep two connection forms (concrete-hub `connect` for
-//! put/get, symmetric `Analysis::connect` for analysis), or unify everything to
-//! the symmetric two-endpoint form? Put/get reads better with the FIFO driving;
-//! analysis cannot use that shape. Left as two forms here, flagged.
+//! `pub_export()` takes the publisher's analysis port; `sub_export()` takes a
+//! subscriber's. Several subscribers connect to the same `sub_export()` — that
+//! is what makes it broadcast. The pattern is now identical to Chapter 31's:
+//! a concrete FIFO, a named export, `connect(component, PORT_NAME)`.
+//!
+//! This is a deliberate divergence: the UVM has no analysis FIFO in the path
+//! (its `uvm_tlm_analysis_fifo` buffers a stream, it does not broker the
+//! broadcast). We are not implementing IEEE 1800.2, and one connection idiom
+//! for the reader to learn beats two.
 
 use rustdv::prelude::*;
 
@@ -111,7 +118,12 @@ impl Component for NumberGen {
     }
 }
 
-// Chapter 32, Figure 4: One port, two subscribers. Each `write` reaches both.
+// Chapter 32, Figure 4: One publisher, two subscribers, one hub.
+//
+// The `AnalysisFifo` brokers the broadcast: the publisher's port connects to
+// `pub_export()`, and every subscriber connects to the same `sub_export()`.
+// Connecting two subscribers to one `sub_export()` is what makes the write
+// fan out — and the wiring reads exactly like Chapter 31's put/get.
 #[rustdv::test]
 #[derive(Component, Default)]
 struct BroadcastTest {
@@ -121,6 +133,8 @@ struct BroadcastTest {
     counter: RustdvComp,
     #[component(child)]
     logger: RustdvComp,
+    #[component(fifo)]
+    analysis_fifo: AnalysisFifo<u32>,
 }
 
 impl Component for BroadcastTest {
@@ -128,12 +142,13 @@ impl Component for BroadcastTest {
         self.source = NumberGen::new_comp();
         self.counter = Counter::new_comp();
         self.logger = Logger::new_comp();
+        self.analysis_fifo = AnalysisFifo::new();
     }
 
     fn connect(&mut self, _ctx: &mut RustdvCtx) {
-        // one source port -> many subscribers, wired by path (no FIFO hub)
-        Analysis::connect((&self.source, NumberGen::AP), (&self.counter, Counter::INPUT));
-        Analysis::connect((&self.source, NumberGen::AP), (&self.logger, Logger::INPUT));
+        self.analysis_fifo.pub_export().connect(&self.source, NumberGen::AP);
+        self.analysis_fifo.sub_export().connect(&self.counter, Counter::INPUT);
+        self.analysis_fifo.sub_export().connect(&self.logger, Logger::INPUT);
     }
 }
 
@@ -141,33 +156,41 @@ impl Component for BroadcastTest {
 // Beyond the book
 // ===========================================================================
 
-// Chapter 32, Figure 6: An analysis port with no subscribers is legal (D22).
+// Chapter 32, Figure 6: A hub with no subscribers is legal (D22).
 //
-// Unlike a put/get port (min cardinality 1 — Chapter 31, Figure 10), an
-// analysis port has min cardinality 0: broadcasting to nobody is a valid state,
-// so this test elaborates and runs clean. The source writes into the void.
+// Unlike a put/get port, an analysis `sub_export()` has min cardinality 0:
+// broadcasting to nobody is a valid state, so this elaborates and runs clean.
+// The publisher writes into the void. (`pub_export()` is still connected —
+// a hub with no publisher would be a wiring mistake.)
 #[rustdv::test]
 #[derive(Component, Default)]
 struct NoSubscribersTest {
     #[component(child)]
     source: RustdvComp,
+    #[component(fifo)]
+    analysis_fifo: AnalysisFifo<u32>,
 }
 
 impl Component for NoSubscribersTest {
     fn build(&mut self, _ctx: &mut RustdvCtx) {
         self.source = NumberGen::new_comp();
+        self.analysis_fifo = AnalysisFifo::new();
     }
-    // No `connect` — and that is fine for analysis, unlike put/get.
+
+    fn connect(&mut self, _ctx: &mut RustdvCtx) {
+        self.analysis_fifo.pub_export().connect(&self.source, NumberGen::AP);
+        // no sub_export() connection — legal for analysis
+    }
 }
 
-// Chapter 32, Figure 8: An AnalysisFifo turns a broadcast into a pull stream.
+// Chapter 32, Figure 8: The same hub also buffers — pull instead of push.
 //
-// A subscriber that cannot keep up in `write` (or wants to consume on its own
-// schedule) buffers the broadcast in an `AnalysisFifo` and `get`s from it — the
-// port of `uvm_tlm_analysis_fifo`. This is how a scoreboard collects a command
-// stream while comparing at its own pace. The AnalysisFifo is a concrete hub
-// (like a `TlmFifo`), so it drives the connect: its analysis endpoint subscribes
-// to the source's port, and its `get_export` feeds the consumer.
+// A subscriber that cannot keep up inside `write` (or wants to consume on its
+// own schedule) reads the hub as a *stream* instead of subscribing to it: the
+// same `AnalysisFifo` offers `get_export()`, so a component with a `GetPort`
+// pulls items at its own pace. This is the port of `uvm_tlm_analysis_fifo`, and
+// it is how a scoreboard collects a command stream while comparing at leisure.
+// One hub, three accessors: `pub_export()`, `sub_export()`, `get_export()`.
 #[rustdv::test]
 #[derive(Component, Default)]
 struct BufferedTest {
@@ -187,10 +210,9 @@ impl Component for BufferedTest {
     }
 
     fn connect(&mut self, _ctx: &mut RustdvCtx) {
-        // source port -> the fifo's analysis endpoint (fifo drives, by path)
-        self.afifo.analysis_export().connect((&self.source, NumberGen::AP));
-        // the fifo's get side -> the drainer's get port
-        self.afifo.get_export().connect((&self.drainer, Drainer::GET_PORT));
+        self.afifo.pub_export().connect(&self.source, NumberGen::AP);
+        // pulled, not pushed: the drainer gets from the hub on its own schedule
+        self.afifo.get_export().connect(&self.drainer, Drainer::GET_PORT);
     }
 }
 
