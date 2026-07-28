@@ -1,5 +1,17 @@
 # Notes for Fable — directives for the book pass
 
+> **Read `book-pdf/fable-brief.md` first.** It is the shape of the job — reading
+> order, the rules that matter, the overclaims to hunt down, the verification
+> mechanics. *This* file is the running list of specific directives that brief
+> refers to.
+>
+> **⛔ Fable changes no code — ever.** Only `book-pdf/src/*.md`. Not `rustdv/`,
+> not `output/examples/`, not `output/regression/`. When the code and a chapter
+> disagree, **the code wins** — the examples are verified running, the manuscript
+> is the stale thing. If a figure looks wrong or is missing, stop and report it
+> to Ray; do not edit the example to match the prose. Transcripts are copied
+> verbatim from the chapter READMEs, never composed or regenerated.
+
 Running list of changes the manuscript needs. Written during the
 build/connect refactor, to be applied when Fable does the prose pass
 **after** the framework and examples are working.
