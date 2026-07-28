@@ -151,9 +151,14 @@ impl Component for PutGetPeekTest {
 // Non-blocking put / get
 // ===========================================================================
 
-// Chapter 31, Figure 4: A non-blocking producer never waits — `try_put` returns
-// false when the FIFO is full, and the producer decides what to do (here, yield
-// and retry).
+// Chapter 31, Figure 4: A non-blocking producer never waits — `try_put` fails
+// when the FIFO is full, and the producer decides what to do (here, yield and
+// retry).
+//
+// The UVM's `try_put` returns a bit; rustdv's returns `Result<(), T>`, and the
+// difference is ownership. `put` takes the item, so a `try_put` that could only
+// say "no" would have eaten it. The `Err` hands it back, which is why the retry
+// below can use `n` again.
 #[derive(Component, Default)]
 struct NbProducer {
     #[port(put)]
@@ -164,7 +169,7 @@ impl Component for NbProducer {
     async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
         let _obj = ctx.raise_objection("producing (nb)");
         for n in 0..3 {
-            while !self.put_port.try_put(n) {
+            while self.put_port.try_put(n).is_err() {
                 ctx.info("FIFO full, retrying");
                 Timer::ns(1).await;
             }

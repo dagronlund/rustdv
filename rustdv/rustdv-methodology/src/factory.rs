@@ -20,6 +20,7 @@ use std::fmt;
 
 use crate::component::{Component, ComponentNode, RustdvCtx};
 use crate::config::ConfigDb;
+use crate::port::PortOwner;
 
 /// A maker: builds a component with no arguments (its name and parent come
 /// from the tree, D7). Non-capturing, so it is an ordinary `fn` pointer.
@@ -52,6 +53,12 @@ impl RustdvComp {
     /// swapped for an override during the walk.
     pub fn overridable(node: Box<dyn ComponentNode>, requested: &'static str) -> RustdvComp {
         RustdvComp { inner: Some(node), overridable: true, requested: Some(requested) }
+    }
+
+    /// The held component, shared, for asking it things — chiefly for one of
+    /// its ports during `connect`. `None` before the slot is built.
+    pub fn as_node(&self) -> Option<&(dyn ComponentNode + 'static)> {
+        self.inner.as_deref()
     }
 
     /// The held component, for the traversal. `None` before it is filled.
@@ -98,6 +105,25 @@ impl RustdvComp {
             self.inner = Some((ov.make)());
         }
         self.overridable = false;
+    }
+}
+
+/// A slot is a [`PortOwner`], so `connect(&self.producer, ..)` works on an
+/// erased child exactly as `connect(self, ..)` works on the connecting
+/// component. Both questions are answered by a `ComponentNode` method, which
+/// is reachable through `dyn` — no cast to the child's concrete type, which
+/// Rust would not allow anyway.
+impl PortOwner for RustdvComp {
+    fn owner_port_slot(&self, name: &str) -> Option<std::rc::Rc<dyn std::any::Any>> {
+        self.as_node()?.port_slot(name)
+    }
+    fn owner_label(&self) -> &'static str {
+        match self.as_node() {
+            Some(n) => n.node_name(),
+            // An empty slot: the build phase never created this child. Say so
+            // rather than reporting a missing port on a nameless component.
+            None => "an unbuilt child slot",
+        }
     }
 }
 

@@ -81,9 +81,17 @@ impl Component for Tester {
         for op in Ops::ALL {
             self.cmd_port.put((rng.u8(), rng.u8(), op)).await;
         }
-        // two dummy ops flush the pipeline so the last real result lands
-        self.cmd_port.put((0, 0, Ops::Add)).await;
-        self.cmd_port.put((0, 0, Ops::Add)).await;
+        // `put` returns as soon as the FIFO takes the command, not when the
+        // DUT has answered it — so dropping the objection here would end the
+        // phase with commands still in the pipeline and results in flight, and
+        // the scoreboard would silently check fewer results than it saw
+        // commands. Hold the objection for a flush, as the Python testbench
+        // does. It waits ten clocks; this waits twenty, because the multiply
+        // is the last operation and takes the longest to come back.
+        let bfm = TinyAluBfm::get();
+        for _ in 0..20 {
+            bfm.clk().falling_edge().await;
+        }
         Ok(())
     }
 }

@@ -111,7 +111,9 @@ impl RustdvCtx {
             dut: self.dut,
             seed: self.seed,
             objections: self.objections.clone(),
-            logger: Logger::new(&format!("{}.{}", self.logger.path(), name)),
+            // Segment extension, not string concatenation: the child's path is
+            // the parent's plus one name, so it cannot be malformed (D7).
+            logger: Logger::at(self.logger.rustdv_path().child(name)),
         }
     }
 
@@ -132,6 +134,12 @@ impl RustdvCtx {
     /// component itself (D7).
     pub fn path(&self) -> &str {
         self.logger.path()
+    }
+
+    /// This component's path as segments. The connection registry (D83)
+    /// addresses components by this, so a port key cannot be hand-typed.
+    pub fn rustdv_path(&self) -> &rustdv_sim::RustdvPath {
+        self.logger.rustdv_path()
     }
 
     // --- Path-aware logging (D7's first real appearance) ------------------
@@ -392,6 +400,24 @@ pub trait ComponentNode: DynPhases {
     /// created during `build` (D6) appears here only once it is `Some`.
     fn children_mut(&mut self) -> Vec<(String, &mut (dyn ComponentNode + 'static))>;
 
+    /// This node's port binding cell of the given name, erased (D83).
+    ///
+    /// **This method is the cast Rust does not have.** A parent holds its
+    /// children as `dyn ComponentNode` and cannot recover their concrete
+    /// types, but it does not need to: it needs one port, by name, and a trait
+    /// method reaches through erasure by definition. `#[derive(Component)]`
+    /// generates the match arm for each `#[port(..)]` field; the default is
+    /// `None`, for components that declare no ports.
+    fn port_slot(&self, name: &str) -> Option<std::rc::Rc<dyn std::any::Any>> {
+        let _ = name;
+        None
+    }
+
+    /// Every port this node declares, for the elaboration report.
+    fn port_infos(&self) -> Vec<crate::port::PortInfo> {
+        Vec::new()
+    }
+
     /// Resolve factory overrides for this node's `RustdvComp` fields (D75).
     /// The derive generates this to call `field.resolve(ctx, "field")` for
     /// each `RustdvComp` field; the default is a no-op for nodes with none.
@@ -456,6 +482,47 @@ pub fn connect_all(node: &mut dyn ComponentNode, ctx: &mut RustdvCtx) {
     node.dyn_connect(ctx);
 }
 
+/// Every required port in the tree that nobody connected, as
+/// `path.name (kind)`.
+///
+/// The whole tree is swept and **all** the misses are reported at once (D85),
+/// which is the point of declaring ports rather than reaching for handles:
+/// pyuvm discovers a missing connection lazily, at first use, as an attribute
+/// error deep inside a run phase. Analysis ports are exempt — a monitor that
+/// nobody subscribes to is a legitimate testbench.
+pub fn unconnected_ports(node: &mut dyn ComponentNode, ctx: &mut RustdvCtx) -> Vec<String> {
+    let mut out = Vec::new();
+    let path = ctx.path().to_string();
+    for info in node.port_infos() {
+        if info.required && !info.connected {
+            let owner = if path.is_empty() { String::from("(top)") } else { path.clone() };
+            out.push(format!("{owner}.{} ({})", info.name, info.kind));
+        }
+    }
+    for (name, child) in node.children_mut() {
+        let mut cctx = ctx.child(&name);
+        out.extend(unconnected_ports(child, &mut cctx));
+    }
+    out
+}
+
+/// Run the connection sweep and turn any misses into one error listing them
+/// all. Called by the runner between `connect` and `end_of_elaboration`.
+pub fn check_connections(node: &mut dyn ComponentNode, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+    let missing = unconnected_ports(node, ctx);
+    if missing.is_empty() {
+        return Ok(());
+    }
+    let mut msg = String::from("these TLM ports were declared but never connected:");
+    for m in &missing {
+        msg.push_str("\n  ");
+        msg.push_str(m);
+    }
+    // A classified failure, so a test can assert it failed for *this* reason:
+    // `#[rustdv::test(expect_error = "tlm_unconnected_port")]`.
+    Err(TestError::with_kind(msg, "tlm_unconnected_port"))
+}
+
 /// Top-down.
 pub fn end_of_elaboration_all(node: &mut dyn ComponentNode, ctx: &mut RustdvCtx) {
     node.dyn_end_of_elaboration(ctx);
@@ -513,6 +580,33 @@ pub fn start_of_simulation_all(node: &mut dyn ComponentNode, ctx: &mut RustdvCtx
 ///    parents with no run body, so nothing changes for them.
 /// 2. **Taken children joined *with* the parent's own run** — the shape D78
 ///    prescribes for all new code, and the one the sequence chapters need.
+/// One component's own `run`, ended by the objection consensus.
+///
+/// **Every run body races the drained event here, at the leaf, rather than the
+/// whole tree racing it at the top.** The difference matters because losing a
+/// race means being *dropped*: a top-level race drops the entire `run_all`
+/// future, and with it the children [`take_children`] moved out — so
+/// extract/check/report would walk a tree whose components had been destroyed
+/// mid-phase, silently, and a scoreboard's `check` would never run. Racing per
+/// component instead lets every level of the walk return normally and put its
+/// children back.
+///
+/// A run body that loops forever (a driver, a monitor) is dropped when the
+/// consensus is reached, which is what UVM does to its forked `run_phase`
+/// processes.
+async fn run_one<'a>(
+    node: &'a mut dyn ComponentNode,
+    ctx: &'a mut RustdvCtx,
+) -> Result<(), TestError> {
+    let objections = ctx.objections().clone();
+    match rustdv_sim::first2(node.dyn_run(ctx), objections.wait_drained_event()).await {
+        rustdv_sim::Either::First(r) => r,
+        // The consensus ended the phase: this component's run did not fail,
+        // it was stopped.
+        rustdv_sim::Either::Second(()) => Ok(()),
+    }
+}
+
 pub fn run_all<'a>(
     node: &'a mut dyn ComponentNode,
     ctx: &'a mut RustdvCtx,
@@ -553,7 +647,7 @@ pub fn run_all<'a>(
 
         // Step 3: the taken children join this node's own run.
         if taken.is_empty() {
-            return node.dyn_run(ctx).await;
+            return run_one(node, ctx).await;
         }
 
         let outcome = {
@@ -568,7 +662,7 @@ pub fn run_all<'a>(
             }
             // `taken` and `node` are now separate values, so the parent's own
             // run joins its children's instead of following them.
-            futs.push(Box::pin(node.dyn_run(ctx)));
+            futs.push(Box::pin(run_one(node, ctx)));
 
             let mut first_err = Ok(());
             for r in rustdv_sim::join_all(futs).await {
@@ -661,6 +755,12 @@ pub async fn run_component_test<T: Component + ComponentNode>(
     crate::config::set_in_build(false);
 
     connect_all(test, ctx);
+
+    // Elaboration check: every declared port must be wired before anything
+    // runs (D22/D85). The whole tree is swept and every miss is named at once,
+    // where pyuvm finds the first one lazily, at use, deep inside a run phase.
+    check_connections(test, ctx)?;
+
     end_of_elaboration_all(test, ctx);
     start_of_simulation_all(test, ctx);
 
@@ -672,21 +772,12 @@ pub async fn run_component_test<T: Component + ComponentNode>(
     //
     // A test that never objected is not made to wait for consensus (D46), so
     // in that case the run tree alone decides.
-    let run_result = {
-        // `ctx` is reborrowed by run_all; the consensus wait uses its own
-        // handle to the (Rc-shared) registry, so the two do not conflict.
-        let objections = ctx.objections().clone();
-        let runs = run_all(test, ctx);
-        // The race arms unconditionally. `wait_drained_event` fires only after
-        // a raised objection count falls back to zero, so a test that never
-        // objects is decided by the run tree instead (D46) — and asking
-        // `ever_raised()` here would always say "no", since no run body has
-        // executed yet.
-        match rustdv_sim::first2(runs, objections.wait_drained_event()).await {
-            rustdv_sim::Either::First(r) => r,
-            rustdv_sim::Either::Second(()) => Ok(()),
-        }
-    };
+    // The run phase ends when the objection consensus is reached or when every
+    // run body has returned, whichever comes first — but the race is run *per
+    // component*, inside `run_all` (see `run_one`), not around the whole tree.
+    // Racing the whole tree here would drop it mid-phase and destroy the
+    // components before extract/check/report could walk them.
+    let run_result = run_all(test, ctx).await;
 
     let post = run_extract_check_report(test, ctx).map_err(TestError::from);
     run_result.and(post)

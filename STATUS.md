@@ -281,3 +281,75 @@ one `&`.
 *type* name (`RandomTest`), not the snake_case `random_test` D27 wrote —
 see Q15 in the decisions log. Deciding it before ch24 is free; after ch24
 it is a transcript regeneration.
+
+## 2026-07-28 — TLM lands: ports, exports, analysis, and ch31/32/34 un-quarantined
+
+The TLM layer is built and three chapters came out of quarantine. Full
+regression: **223 passed, 0 failed** (book-sync + examples + custom, with
+ch36–ch39 still quarantined); `cargo test --workspace` clean.
+
+**Connection is a trait method, not a registry (D83b).** The path-keyed port
+registry designed on 2026-07-24 was built, and then struck the same week: it
+could address a child but not the connecting component itself, because a
+component does not know its own path (D7). Ray's correction — *"I guess you now
+see why `uvm_test` is a `uvm_component`"* — is that the UVM's uniformity is
+load-bearing. `ComponentNode::port_slot(name) -> Option<Rc<dyn Any>>`, generated
+by the derive, is reachable through `dyn` and so answers for an erased child and
+a concrete `self` alike. The registry, the thread-local store, the per-test
+clear and the walk-time path stamping all went away with it; `RustdvPath`
+(D83a) stays, since the logger uses it.
+
+**What is new in the framework**
+
+- `rustdv-methodology/src/port.rs` — `PutIf`/`GetIf`/`PeekIf`/`PublishIf`,
+  `Port<I>` with the `PutPort`/`GetPort`/`PeekPort`/`PublishPort`/
+  `SubscribePort` aliases, `PortName<I>` (carries the *interface*, so a `get`
+  export aimed at a `put` port is a compile error), `PortOwner`, `PortField`.
+- `rustdv-methodology/src/fifo.rs` — `TlmFifo` rebuilt on a shared inner:
+  `put_export()`, `get_export()`, `peek_export()`, and the D23 analysis taps
+  `put_ap()`/`get_ap()`. `TlmFifo::new(usize)` replaced `new(Option<usize>)`;
+  `unbounded()` is the other constructor.
+- `rustdv-methodology/src/analysis.rs` — `AnalysisFifo` is now the broadcast
+  hub: `pub_export()`, `sub_export()`, `get_export()`. The pre-hub
+  `AnalysisPort`/`Subscriber` stay for the Part IV testbenches not yet rebuilt.
+- `rustdv-methodology/src/shared.rs` — `RustdvShared<T>`, the state a
+  subscriber shares with its port so `write` can be synchronous (D87/D88).
+- `rustdv-sim/src/queue.rs` — `peek`/`try_peek` (need `T: Clone`),
+  `has_space`, and `wait_for_space` (the FIFO taps need the wait and the
+  handover separated, since `try_put` takes ownership).
+- `#[derive(Component)]` — `#[port(put|get|peek|publish|subscribe)]` fields
+  generate the port lookup, the elaboration report, a typed `PORT_NAME`
+  constant, and a `PortOwner` impl. `#[component(fifo)]` is recognised as a
+  child.
+- Elaboration sweeps the tree and reports **every** unconnected required port
+  at once, classified `tlm_unconnected_port` so a test can assert on it.
+
+**A silent bug this work exposed (D82c).** `run_component_test` raced the whole
+`run_all` future against the objection-drained event. Losing a race means being
+dropped — so at consensus the entire tree's future was dropped, taking with it
+the children D82b moves *out* of their slots, and extract/check/report then
+walked a tree whose components had been destroyed. ch34 "passed" with its
+scoreboard never running. Each component now races the drained event
+individually (`run_one`), so every level returns normally and restores its
+children.
+
+**Chapters un-quarantined** (all `REGRESSION: PASS` on Icarus, seed 1;
+transcripts in each README):
+
+- **ch31** — 5 tests, including the y = 2x² pipeline (a parent's `run`
+  concurrent with its children's) and the FIFO taps.
+- **ch32** — 3 tests; the whole broadcast transcript is at `0.00ns`, which is
+  the point.
+- **ch34 / TB 6.0** — the TinyALU testbench wired with `TlmFifo` and two
+  `AnalysisFifo` buses; scoreboard checks all four ops, coverage sees 4 of 4.
+
+**Deviations recorded rather than hidden.**
+
+- `PutPort::try_put` returns `Result<(), T>`, not the UVM's bit: `put` takes
+  ownership, so a bool would eat the item on failure. The ch31 figure says so.
+- ch34's Tester holds its objection for twenty clocks after its last `put`,
+  where the Python testbench waits ten — the multiply is last and takes longest
+  to come back. Without the wait the scoreboard silently checks fewer results
+  than it saw commands.
+- `AnalysisFifo` buffers only once `get_export()` (or `get()`) is asked for. A
+  hub used purely for broadcast would otherwise grow a queue nobody drains.

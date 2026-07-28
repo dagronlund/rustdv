@@ -45,21 +45,29 @@ pub mod factory;
 pub mod error;
 pub mod fifo;
 pub mod objection;
+pub mod port;
 pub mod sequence;
+pub mod shared;
 pub mod singleton;
 
-pub use analysis::{AnalysisFifo, AnalysisPort, Subscriber};
+pub use analysis::{AnalysisFifo, AnalysisPort, PublishExport, Subscriber, SubscribeExport};
+pub use shared::RustdvShared;
 pub use channel::{channel, Receiver, Sender, TlmEmpty, TlmError, TlmFull};
 pub use component::{
     build_all, check_all, connect_all, end_of_elaboration_all, extract_all, final_all,
-    print_hierarchy, report_all, run_all, run_component_test, run_extract_check_report,
+    check_connections, print_hierarchy, report_all, run_all, run_component_test,
+    run_extract_check_report, unconnected_ports,
     start_all, start_of_simulation_all, Active, CheckSink, Component, ComponentNode, DynPhases,
     RustdvCtx,
 };
 pub use config::{ConfigDb, ConfigError};
 pub use error::TestError;
 pub use factory::{RustdvComp, ComponentReg, Factory, Maker};
-pub use fifo::TlmFifo;
+pub use fifo::{GetExport, PeekExport, PutExport, TapExport, TlmFifo};
+pub use port::{
+    bind, ConnectError, GetIf, GetPort, PeekIf, PeekPort, Port, PortField, PortInfo, PortName,
+    PortOwner, PublishIf, PublishPort, PutIf, PutPort, SinkHandle, SubscribePort, WriteSink,
+};
 pub use objection::{ObjectionGuard, ObjectionRegistry};
 pub use singleton::{clear_singletons, singleton, singleton_exists};
 pub use sequence::{

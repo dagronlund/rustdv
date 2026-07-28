@@ -69,6 +69,12 @@ impl<T> Queue<T> {
         self.inner.buf.borrow().is_empty()
     }
 
+    /// Is there room right now? (Zero time; the answer can go stale as soon
+    /// as another task runs.)
+    pub fn has_space(&self) -> bool {
+        self.inner.has_space()
+    }
+
     pub fn try_put(&self, item: T) -> Result<(), T> {
         if self.inner.has_space() {
             self.inner.buf.borrow_mut().push_back(item);
@@ -93,6 +99,74 @@ impl<T> Queue<T> {
 
     pub fn get(&self) -> Get<T> {
         Get { inner: self.inner.clone() }
+    }
+
+    /// Wait until the queue has room, **without** handing over an item.
+    ///
+    /// For callers that must do something with the item at the instant it is
+    /// accepted — a TLM FIFO's analysis tap, which broadcasts each item as it
+    /// goes in. `put` takes ownership, so by the time it returns there is
+    /// nothing left to show anyone; this splits the wait from the handover:
+    ///
+    /// ```ignore
+    /// q.wait_for_space().await;
+    /// tap(&item);            // no await between these two lines, so no
+    /// let _ = q.try_put(item); // other task can take the space first
+    /// ```
+    pub fn wait_for_space(&self) -> Space<T> {
+        Space { inner: self.inner.clone() }
+    }
+}
+
+/// Resolves when the queue has room. See [`Queue::wait_for_space`].
+pub struct Space<T> {
+    inner: Rc<QInner<T>>,
+}
+
+impl<T> Future for Space<T> {
+    type Output = ();
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+        if self.inner.has_space() {
+            Poll::Ready(())
+        } else {
+            self.inner.put_waiters.borrow_mut().push(cx.waker().clone());
+            Poll::Pending
+        }
+    }
+}
+
+impl<T: Clone> Queue<T> {
+    /// The front item **without removing it** (TLM `peek`).
+    ///
+    /// A copy, so the item stays in the queue for whoever gets it next. That
+    /// is why `peek` needs `T: Clone` and `get` does not: `get` hands over
+    /// ownership, `peek` cannot.
+    pub fn try_peek(&self) -> Option<T> {
+        self.inner.buf.borrow().front().cloned()
+    }
+
+    /// Block until there is something to peek at, then copy it.
+    pub fn peek(&self) -> Peek<T> {
+        Peek { inner: self.inner.clone() }
+    }
+}
+
+pub struct Peek<T> {
+    inner: Rc<QInner<T>>,
+}
+
+impl<T: Clone> Future for Peek<T> {
+    type Output = T;
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
+        let item = self.inner.buf.borrow().front().cloned();
+        match item {
+            // No `wake_putters`: nothing left the queue, so no space opened up.
+            Some(v) => Poll::Ready(v),
+            None => {
+                self.inner.get_waiters.borrow_mut().push(cx.waker().clone());
+                Poll::Pending
+            }
+        }
     }
 }
 

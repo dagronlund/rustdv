@@ -76,7 +76,7 @@ use std::rc::Rc;
 /// Does `path` name this component or one below it? `"a.b"` is under
 /// `"a"`, but `"ab"` is not — the dot matters.
 fn under(path: &str, prefix: &str) -> bool {
-    path == prefix || path.starts_with(&format!("{prefix}."))
+    crate::path::str_is_under(path, prefix)
 }
 
 thread_local! {
@@ -206,15 +206,38 @@ fn emit(line: &str) {
 /// component moves.
 #[derive(Clone)]
 pub struct Logger {
-    path: String,
+    /// The component's position in the tree, as segments (D7). A type rather
+    /// than a `String` so it cannot be fabricated by hand — see
+    /// [`crate::path::RustdvPath`].
+    path: crate::path::RustdvPath,
 }
 
 impl Logger {
+    /// Build a logger from a dotted path. Retained for the framework's own
+    /// use and for the free-function logging path; component contexts derive
+    /// their loggers with [`Logger::at`] instead.
     pub fn new(path: &str) -> Logger {
-        Logger { path: path.to_string() }
+        let mut p = crate::path::RustdvPath::empty();
+        if !path.is_empty() {
+            for seg in path.split('.') {
+                p = p.child(seg);
+            }
+        }
+        Logger { path: p }
+    }
+
+    /// Build a logger at a path the walk derived.
+    pub fn at(path: crate::path::RustdvPath) -> Logger {
+        Logger { path }
     }
 
     pub fn path(&self) -> &str {
+        self.path.as_str()
+    }
+
+    /// This logger's path as segments — what the walk and the connection
+    /// registry address components by.
+    pub fn rustdv_path(&self) -> &crate::path::RustdvPath {
         &self.path
     }
 
@@ -222,7 +245,7 @@ impl Logger {
         let per_target = TARGET_LEVELS.with(|t| {
             t.borrow()
                 .iter()
-                .filter(|(p, _)| under(&self.path, p))
+                .filter(|(p, _)| under(self.path.as_str(), p))
                 .max_by_key(|(p, _)| p.len())
                 .map(|(_, l)| *l)
         });
@@ -235,7 +258,7 @@ impl Logger {
     pub fn log(&self, level: Level, msg: &str) {
         if self.enabled(level) {
             emit_for(
-                &self.path,
+                self.path.as_str(),
                 &format!(
                     "{:>10.2}ns {:<8} [{}]: {}",
                     sim_time_ns(),

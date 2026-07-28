@@ -14,12 +14,9 @@
     }
   },
   "quarantine": {
-    "comment": "Chapter sim crates not yet converted to the UVM restoration (branch ch23_onwards). The remaining ones are the TLM and sequence chapters (ch31-39). Their sim tests are skipped and reported as quarantined rather than passing, so red means we broke something, not that work is in progress. REMOVE a chapter from both lists the moment its example compiles and runs. (ch18-20 converted and un-quarantined 2026-07-23; ch21 is a macros demo with no sim test.)",
+    "comment": "Chapter sim crates not yet converted to the UVM restoration (branch ch23_onwards). The remaining ones are the TLM and sequence chapters (ch31-39). Their sim tests are skipped and reported as quarantined rather than passing, so red means we broke something, not that work is in progress. REMOVE a chapter from both lists the moment its example compiles and runs. (ch18-20 converted and un-quarantined 2026-07-23; ch31/ch32/ch34 converted and un-quarantined 2026-07-28; ch21 is a macros demo with no sim test.)",
     "packages": [
       "ch21_macros",
-      "ch31_component_communications",
-      "ch32_analysis_ports",
-      "ch34_connections_testbench_6_0",
       "ch35_transactions",
       "ch36_sequence_testbench_7_0",
       "ch37_fibonacci_testbench_7_1",
@@ -27,8 +24,7 @@
       "ch39_virtual_sequence_testbench_8_0"
     ],
     "custom_tests": [
-      "sim-ch31", "sim-ch32",
-      "sim-ch34", "sim-ch36", "sim-ch37", "sim-ch38", "sim-ch39"
+      "sim-ch36", "sim-ch37", "sim-ch38", "sim-ch39"
     ]
   },
   "cargo_test_packages": {

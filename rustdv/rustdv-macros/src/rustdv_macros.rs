@@ -206,6 +206,9 @@ struct Field {
     name: String,
     ty: String,
     is_child: bool,
+    /// `Some("put")` for `#[port(put)]`, etc. A port field is never a child:
+    /// it is a request for an interface, not a component in the tree.
+    port: Option<String>,
 }
 
 /// Does a struct-level `#[component(...)]` (before the `struct` keyword)
@@ -336,6 +339,7 @@ fn parse_struct(input: TokenStream) -> Result<(String, String, String, Vec<Field
     // Split the group's tokens into fields at top-level commas.
     let mut fields = Vec::new();
     let mut pending_child = false;
+    let mut pending_port: Option<String> = None;
     let mut current: Vec<TokenTree> = Vec::new();
 
     let mut toks = group.stream().into_iter().peekable();
@@ -349,8 +353,17 @@ fn parse_struct(input: TokenStream) -> Result<(String, String, String, Vec<Field
                 if let Some(TokenTree::Group(g)) = toks.peek() {
                     if g.delimiter() == Delimiter::Bracket {
                         let text = g.stream().to_string();
-                        if text.starts_with("component") && text.contains("child") {
+                        if text.starts_with("component")
+                            && (text.contains("child") || text.contains("fifo"))
+                        {
+                            // A `#[component(fifo)]` FIFO is a child like any
+                            // other — it is a component, and it belongs in the
+                            // hierarchy. The separate spelling says *what* it
+                            // is at the declaration, where the reader is.
                             pending_child = true;
+                        }
+                        if text.starts_with("port") {
+                            pending_port = attr_arg(&text);
                         }
                         toks.next(); // consume the bracket group
                         continue;
@@ -359,7 +372,7 @@ fn parse_struct(input: TokenStream) -> Result<(String, String, String, Vec<Field
             }
             TokenTree::Punct(p) if p.as_char() == ',' && angle_depth == 0 => {
                 if !current.is_empty() {
-                    fields.push(make_field(&current, pending_child)?);
+                    fields.push(make_field(&current, pending_child, pending_port.take())?);
                     current.clear();
                     pending_child = false;
                 }
@@ -370,14 +383,30 @@ fn parse_struct(input: TokenStream) -> Result<(String, String, String, Vec<Field
         current.push(tt);
     }
     if !current.is_empty() {
-        fields.push(make_field(&current, pending_child)?);
+        fields.push(make_field(&current, pending_child, pending_port.take())?);
     }
 
     Ok((name, impl_generics, type_params, fields))
 }
 
 /// From tokens like `pub name : Type ...` extract name and type text.
-fn make_field(tokens: &[TokenTree], is_child: bool) -> Result<Field, String> {
+/// The single argument of an attribute like `port (put)`, if there is one.
+fn attr_arg(text: &str) -> Option<String> {
+    let open = text.find('(')?;
+    let close = text.rfind(')')?;
+    let arg = text[open + 1..close].trim();
+    if arg.is_empty() {
+        None
+    } else {
+        Some(arg.to_string())
+    }
+}
+
+fn make_field(
+    tokens: &[TokenTree],
+    is_child: bool,
+    port: Option<String>,
+) -> Result<Field, String> {
     let mut name = None;
     let mut colon_at = None;
     for (i, tt) in tokens.iter().enumerate() {
@@ -398,7 +427,7 @@ fn make_field(tokens: &[TokenTree], is_child: bool) -> Result<Field, String> {
     }
     let name = name.ok_or("could not find field name")?;
     let ty: String = tokens[colon + 1..].iter().map(|t| t.to_string()).collect::<Vec<_>>().join(" ");
-    Ok(Field { name, ty, is_child })
+    Ok(Field { name, ty, is_child, port })
 }
 
 /// Generates the `ComponentNode` impl (design-doc §6.3, revised per R2):
@@ -407,7 +436,7 @@ fn make_field(tokens: &[TokenTree], is_child: bool) -> Result<Field, String> {
 /// registration (R5) — but R5 is reversed: the factory returns in ch29,
 /// and this derive is where its registration will land. The impl is
 /// hand-writable; the derive is convenience.
-#[proc_macro_derive(Component, attributes(component))]
+#[proc_macro_derive(Component, attributes(component, port))]
 pub fn derive_component(input: TokenStream) -> TokenStream {
     // A struct-level `#[component(no_factory)]` opts out of universal factory
     // registration — for components that are not `Default` (they take
@@ -459,6 +488,69 @@ pub fn derive_component(input: TokenStream) -> TokenStream {
             ));
         }
     }
+
+    // ----- ports (D83) -------------------------------------------------
+    //
+    // Each `#[port(kind)]` field contributes three things: a match arm so the
+    // port can be reached by name through `dyn ComponentNode` (the cast Rust
+    // does not have), a line in the elaboration report, and a typed constant
+    // so the parent names the port without spelling a string.
+    let mut port_arms = String::new();
+    let mut port_items = String::new();
+    let mut port_consts = String::new();
+    for f in fields.iter() {
+        let Some(kind) = f.port.as_deref() else { continue };
+        if !matches!(kind, "put" | "get" | "peek" | "publish" | "subscribe") {
+            return compile_error(&format!(
+                "#[port({kind})]: expected put, get, peek, publish or subscribe"
+            ));
+        }
+        // An analysis port may be left unconnected — a monitor nobody listens
+        // to is a legitimate testbench (D85). Every other port must be wired.
+        let required = !matches!(kind, "publish" | "subscribe");
+        let fname = &f.name;
+        let ty = f.ty.trim();
+        let konst = fname.to_uppercase();
+        port_arms.push_str(&format!(
+            "\"{fname}\" => ::core::option::Option::Some(::rustdv::PortField::slot_any(&self.{fname})),\n            "
+        ));
+        port_items.push_str(&format!(
+            "::rustdv::PortInfo {{ name: \"{fname}\", kind: \"{kind}\", required: {required}, connected: ::rustdv::PortField::bound(&self.{fname}) }},\n            "
+        ));
+        port_consts.push_str(&format!(
+            "    /// The `{fname}` port, for `connect`.\n    pub const {konst}: ::rustdv::PortName<<{ty} as ::rustdv::PortField>::Iface> = ::rustdv::PortName::new(\"{fname}\");\n"
+        ));
+    }
+
+    let port_impl = if port_arms.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "    fn port_slot(&self, __name: &str) -> ::core::option::Option<::std::rc::Rc<dyn ::std::any::Any>> {{\n        \
+             match __name {{\n            {port_arms}_ => ::core::option::Option::None,\n        }}\n    }}\n\
+             \n    fn port_infos(&self) -> ::std::vec::Vec<::rustdv::PortInfo> {{\n        \
+             ::std::vec![\n            {port_items}]\n    }}\n"
+        )
+    };
+
+    // Every component is a `PortOwner`, ports or not: that uniformity is what
+    // lets `connect(self, ..)` and `connect(&self.child, ..)` be one call.
+    let owner_impl = format!(
+        r#"
+impl {impl_generics} ::rustdv::PortOwner for {name} {type_params} {{
+    fn owner_port_slot(&self, __name: &str) -> ::core::option::Option<::std::rc::Rc<dyn ::std::any::Any>> {{
+        ::rustdv::ComponentNode::port_slot(self, __name)
+    }}
+    fn owner_label(&self) -> &'static str {{ "{name}" }}
+}}
+"#
+    );
+
+    let const_impl = if port_consts.is_empty() {
+        String::new()
+    } else {
+        format!("\nimpl {impl_generics} {name} {type_params} {{\n{port_consts}}}\n")
+    };
 
     // A resolver only if there is at least one factory slot.
     let resolve_impl = if resolves.is_empty() {
@@ -519,8 +611,8 @@ impl {impl_generics} ::rustdv::ComponentNode for {name} {type_params} {{
         {visits}
         __out
     }}
-{resolve_impl}{take_impl}}}
-{registration}"#
+{port_impl}{resolve_impl}{take_impl}}}
+{owner_impl}{const_impl}{registration}"#
     );
     out.parse().expect("rustdv-macros: generated ComponentNode impl failed to parse")
 }
