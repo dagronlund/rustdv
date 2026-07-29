@@ -46,10 +46,15 @@ pre-push hook:
 - **Mutation-checked**: with the DUT's XOR deliberately corrupted to OR,
   the scoreboard flags every affected transaction and the regression
   fails; restored, it passes. The checking has teeth.
-- `output/regression/regress.py` — book-sync 108, examples 96, and the
-  un-quarantined sim chapters (custom 12), green on **both Linux and
-  macOS/arm64**. Later sim chapters (ch18–21, ch30–39) are quarantined in
-  `regress.json` during the restoration and rejoin as each is converted.
+- `output/regression/regress.py` — **223 passed, 0 failed** (book-sync 108,
+  examples 96, custom 19), green on **both Linux and macOS/arm64**. The
+  remaining sim chapters (ch35–ch39, the transaction and sequence chapters,
+  plus ch21 which has no sim test) are quarantined in `regress.json` during
+  the restoration and rejoin as each is converted.
+- **The TLM layer, as of 2026-07-28** — ch31 (put/get/peek, the y = 2x²
+  pipeline, FIFO analysis taps), ch32 (broadcast, and a slow subscriber that
+  buffers for itself), and ch34 / TB 6.0 (the TinyALU testbench wired with
+  `TlmFifo` and two `AnalysisFifo` buses) all run on Icarus.
 - `cargo test --workspace` in `/rustdv` — pure-Rust unit tests for the
   testbench logic, no simulator required.
 
@@ -111,6 +116,49 @@ or similar) and to nobody else:
   (extract from a `/tmp` copy — extracting off the mount is ~15× slower).
   mdBook is **not** installed in the VM; rendering happens on Ray's Mac.
 - Long shell commands: the VM kills background processes between calls
-  and each call has a ~45 s budget — chunk accordingly.
+  and each call has a ~45 s budget — chunk accordingly. `regress.py` takes
+  a few minutes from cold, so pre-build the example workspace first
+  (`cargo build --workspace --exclude` each quarantined crate) and then run it.
+- **Disk fills up.** The VM has ~9.6 GB and the two `CARGO_TARGET_DIR`s reach
+  ~1.5 GB together; a full disk shows up as `regress.py` failures reading
+  `No space left on device`, which looks like a real regression and is not.
+  `rm -rf /tmp/*-target/debug/incremental` reclaims ~600 MB.
 - `CLAUDE.md` has the standing rules; persistent memory notes point here.
   Deeper history: `STATUS.md` bottom-to-top.
+
+### Where the work stands (2026-07-28) — read this before proposing anything
+
+Branch `ch23_onwards`. The restoration has reached the end of the TLM work:
+**ch23–ch34 are converted, run on Icarus, and are out of quarantine.**
+
+The three things a new thread most needs to know, all in
+`output/.design-decisions.md`:
+
+- **D83b — connection is a trait method, not a registry.** A parent reaches an
+  erased child's port through `ComponentNode::port_slot`, which works through
+  `dyn` and therefore answers for a child slot and for `self` alike. A path-keyed
+  registry was built first and struck: it could address a child but not the
+  connecting component itself. If a mechanism works for a child but needs a
+  second spelling for `self`, it has broken the UVM's uniformity — that is the
+  tell.
+- **D82b/D82c — concurrency and cancellation.** `RustdvComp` children are moved
+  *out* of the parent for the run phase so a parent's `run` is concurrent with
+  theirs, and each component races the objection-drained event *individually*.
+  Racing the whole tree drops it mid-phase and destroys the components before
+  extract/check/report can walk them — which showed up as a test passing with
+  its scoreboard never running.
+- **D90 — the analysis hub holds nothing.** `AnalysisFifo` is a subscriber list;
+  `write` calls each subscriber and returns, and a datum broadcast to nobody is
+  gone. Storage belongs to the subscriber.
+
+**Next up:** ch35 (transactions) and the sequence chapters ch36–ch39 / TB
+7.0–8.0, which need D80's sequence factory (a second registry for non-component
+objects). `tinyalu_tb` still runs on the pre-restoration `AnalysisPort` and is
+the D75 retrofit. Two naming questions are parked for Ray and should not be
+settled silently: **Q18** (caption code listings "Example N" rather than
+"Figure N") and **Q19** (`AnalysisFifo` names storage on a thing that has none).
+
+**The manuscript waits (D77).** Part II+ prose is written from working code by a
+separate Fable pass; its instructions are `book-pdf/fable-brief.md`, and Fable
+is forbidden from changing any code. Figure numbers therefore live in code
+comments and are final on the code side.

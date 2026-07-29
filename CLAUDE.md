@@ -21,6 +21,15 @@ before proposing anything architectural. Do **not** follow the older
 `output/.design-doc.md` — it is the pre-restoration spec whose closed-world
 design caused the problems now being fixed.
 
+**Where it stands (2026-07-28):** ch23–ch34 are converted and out of
+quarantine — phases, ConfigDb, factory, and now the whole TLM layer (ports,
+exports, the analysis hub, FIFO taps). Next is ch35 and the sequence chapters
+ch36–ch39 / TB 7.0–8.0. TOUR.md's "Where the work stands" section is the
+orientation for a new thread; the decisions that most shape new code are D83b
+(connection is a trait method, not a registry), D82b/D82c (children move out for
+the run phase; each component races the objection event, never the whole tree),
+and D90 (the analysis hub stores nothing — the subscriber owns its storage).
+
 Ground truth for the methodology — the cocotb, pyuvm and SystemVerilog UVM
 sources, plus the example code from the earlier books — lives outside this
 repository at ../rustdv-reference, so the repo carries only its own product.
