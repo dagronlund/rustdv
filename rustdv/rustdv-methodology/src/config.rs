@@ -368,3 +368,153 @@ fn depth_of(path: &str) -> i32 {
 pub(crate) fn set_in_build(active: bool) {
     IN_BUILD.with(|b| b.set(active));
 }
+
+// ===========================================================================
+// Tests — no simulator. The ConfigDb is a path-keyed map; nothing here waits.
+// ===========================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::component::RustdvCtx;
+
+    fn fresh() {
+        ConfigDb::clear();
+    }
+
+    #[test]
+    fn set_and_get_round_trip() {
+        fresh();
+        ConfigDb::set(None, "env.tester", "COUNT", 7u32);
+        let ctx = RustdvCtx::for_test("env.tester");
+        assert_eq!(ConfigDb::get::<u32>(Some(&ctx), "", "COUNT").unwrap(), 7);
+    }
+
+    /// D14, and the reason `get` returns a `Result` at all: SystemVerilog's
+    /// `get()` collapses never-set, path mismatch, field typo and type
+    /// mismatch into a silent `return 0`, and you find out much later.
+    #[test]
+    fn a_miss_is_an_error_not_a_default() {
+        fresh();
+        let ctx = RustdvCtx::for_test("env");
+        let got = ConfigDb::get::<u32>(Some(&ctx), "", "NOPE");
+        match got {
+            Err(ConfigError::NotFound { field, .. }) => assert_eq!(field, "NOPE"),
+            other => panic!("expected NotFound, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_wrong_type_names_both_types() {
+        fresh();
+        ConfigDb::set(None, "env", "N", 1u32);
+        let ctx = RustdvCtx::for_test("env");
+        match ConfigDb::get::<String>(Some(&ctx), "", "N") {
+            Err(ConfigError::TypeMismatch { stored, requested, .. }) => {
+                assert!(stored.contains("u32"), "stored type named: {stored}");
+                assert!(requested.contains("String"), "requested type named: {requested}");
+            }
+            other => panic!("expected TypeMismatch, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_wildcard_reaches_every_component_below() {
+        fresh();
+        ConfigDb::set(None, "*", "BFM", 99u32);
+        for path in ["env", "env.tester", "env.agent.driver"] {
+            let ctx = RustdvCtx::for_test(path);
+            assert_eq!(
+                ConfigDb::get::<u32>(Some(&ctx), "", "BFM").unwrap(),
+                99,
+                "`*` should reach {path}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_more_specific_path_wins_over_a_wildcard() {
+        fresh();
+        ConfigDb::set(None, "*", "MSG", String::from("everyone"));
+        ConfigDb::set(None, "env.loga", "MSG", String::from("just me"));
+        let loga = RustdvCtx::for_test("env.loga");
+        let logb = RustdvCtx::for_test("env.logb");
+        assert_eq!(ConfigDb::get::<String>(Some(&loga), "", "MSG").unwrap(), "just me");
+        assert_eq!(ConfigDb::get::<String>(Some(&logb), "", "MSG").unwrap(), "everyone");
+    }
+
+    /// The `ab`-under-`a` case: a glob must not match a longer sibling name.
+    #[test]
+    fn a_prefix_glob_does_not_match_a_longer_sibling() {
+        fresh();
+        ConfigDb::set(None, "env.t*", "MSG", String::from("t-things"));
+        let tester = RustdvCtx::for_test("env.tester");
+        let logger = RustdvCtx::for_test("env.logger");
+        assert!(ConfigDb::get::<String>(Some(&tester), "", "MSG").is_ok());
+        assert!(
+            ConfigDb::get::<String>(Some(&logger), "", "MSG").is_err(),
+            "env.t* must not reach env.logger"
+        );
+    }
+
+    #[test]
+    fn the_most_recent_write_wins_at_equal_precedence() {
+        fresh();
+        ConfigDb::set(None, "env", "N", 1u32);
+        ConfigDb::set(None, "env", "N", 2u32);
+        let ctx = RustdvCtx::for_test("env");
+        assert_eq!(ConfigDb::get::<u32>(Some(&ctx), "", "N").unwrap(), 2);
+    }
+
+    #[test]
+    fn an_offset_resolves_against_the_context() {
+        fresh();
+        ConfigDb::set(None, "env.loga", "MSG", String::from("hello"));
+        let env = RustdvCtx::for_test("env");
+        // The env asks what its child will see.
+        assert_eq!(ConfigDb::get::<String>(Some(&env), "loga", "MSG").unwrap(), "hello");
+    }
+
+    #[test]
+    fn a_null_context_addresses_from_the_top() {
+        fresh();
+        ConfigDb::set(None, "env.loga", "MSG", String::from("hello"));
+        assert_eq!(ConfigDb::get::<String>(None, "env.loga", "MSG").unwrap(), "hello");
+    }
+
+    /// The per-test guarantee the runner relies on — and, since D101, the one
+    /// that keeps a test from inheriting the previous test's BFM.
+    #[test]
+    fn clear_empties_it() {
+        fresh();
+        ConfigDb::set(None, "env", "N", 1u32);
+        ConfigDb::clear();
+        let ctx = RustdvCtx::for_test("env");
+        assert!(ConfigDb::get::<u32>(Some(&ctx), "", "N").is_err());
+    }
+
+    /// D101: the ConfigDb holds *handles* now, not just config values.
+    #[test]
+    fn it_holds_a_shared_handle() {
+        use std::rc::Rc;
+        fresh();
+        #[derive(Debug)]
+        struct Bfm(u32);
+        let bfm = Rc::new(Bfm(7));
+        ConfigDb::set(None, "*", "BFM", bfm.clone());
+        let ctx = RustdvCtx::for_test("env.driver");
+        let got: Rc<Bfm> = ConfigDb::get(Some(&ctx), "", "BFM").unwrap();
+        assert_eq!(got.0, 7);
+        assert!(Rc::ptr_eq(&got, &bfm), "the same object, not a copy");
+    }
+
+    #[test]
+    fn dump_renders_every_entry() {
+        fresh();
+        ConfigDb::set(None, "env", "A", 1u32);
+        ConfigDb::set(None, "env.x", "B", String::from("two"));
+        let dumped = ConfigDb::dump();
+        assert!(dumped.contains("env"), "dump names the paths: {dumped}");
+        assert!(dumped.contains('A') && dumped.contains('B'), "and the fields");
+    }
+}

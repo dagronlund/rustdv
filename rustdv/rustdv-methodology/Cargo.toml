@@ -11,3 +11,6 @@ path = "src/rustdv_methodology.rs"
 
 [dependencies]
 rustdv-sim = { path = "../rustdv-sim" }
+
+[dev-dependencies]
+rustdv-vpi-stubs = { path = "../rustdv-vpi-stubs" }

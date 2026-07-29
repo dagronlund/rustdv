@@ -72,6 +72,40 @@ def run(cmd, cwd=None, timeout=120):
     except subprocess.TimeoutExpired:
         return Missing(f"timed out after {timeout}s")
 
+# ---------------------------------------------------------------- unit
+def suite_unit(args):
+    """`cargo test` over the framework: everything that needs no simulator.
+
+    Most of a verification framework is not about time. The ConfigDb, the
+    factory, port binding, the analysis broadcast and the whole sequencer
+    handshake are pure logic or async-without-time, so they run here in
+    seconds rather than under Icarus in minutes. A rule that breaks should
+    fail *here*, with the rule's name on it — not four minutes later as
+    "sim-ch27 went red".
+
+    A test that awaits `Timer` or touches a signal fails loudly in
+    `rustdv_sim::testing::block_on` and belongs in `custom` instead.
+    """
+    print("== suite: unit ==")
+    tid = "unit/cargo-test"
+    if not wanted(tid, args):
+        return
+    try:
+        r = run(["cargo", "test", "--workspace", "--quiet"],
+                cwd=os.path.join(ROOT, "rustdv"), timeout=600)
+    except Exception as e:
+        record(tid, False, str(e))
+        return
+    if r.returncode != 0:
+        tail = (r.stdout + r.stderr).strip().splitlines()[-25:]
+        record(tid, False, "cargo test failed:\n    " + "\n    ".join(tail))
+        return
+    # Report the count so a silent drop to zero tests is visible.
+    passed = sum(int(m) for m in re.findall(r"(\d+) passed", r.stdout + r.stderr))
+    record(tid, passed > 0, f"cargo test reported {passed} passing")
+    print(f"       {passed} framework unit tests")
+
+
 # ---------------------------------------------------------------- book-sync
 def parse_book():
     # book-sync covers Part I (chapters 1-14), whose figures are extracted
@@ -320,7 +354,7 @@ def install_hook():
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--suite", choices=["book-sync", "examples", "custom"],
+    ap.add_argument("--suite", choices=["unit", "book-sync", "examples", "custom"],
                     help="run one suite instead of all")
     ap.add_argument("--filter", help="only run tests whose id contains this string")
     ap.add_argument("--bless", action="store_true",
@@ -335,6 +369,7 @@ def main():
         return
 
     if args.list:
+        print("unit/cargo-test")
         figs = parse_book()
         manifest = json.load(open(os.path.join(EXAMPLES, "manifest.json")))
         print("book-sync/coverage\nbook-sync/titles")
@@ -348,7 +383,10 @@ def main():
             print(f"custom/{os.path.basename(os.path.dirname(s))}")
         return
 
-    suites = {"book-sync": suite_book_sync,
+    # `unit` runs first on purpose: it is seconds, and a broken framework
+    # rule should be named before four minutes of simulation say so vaguely.
+    suites = {"unit": suite_unit,
+              "book-sync": suite_book_sync,
               "examples": suite_examples,
               "custom": suite_custom}
     for name, fn in suites.items():

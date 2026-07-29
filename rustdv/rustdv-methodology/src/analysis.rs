@@ -262,3 +262,167 @@ impl<T: 'static> ComponentNode for AnalysisBus<T> {
         Vec::new()
     }
 }
+
+// ===========================================================================
+// Tests — no simulator. The broadcast is synchronous by design (D87).
+// ===========================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::port::{PortField, PortName, PortOwner, PublishPort, SinkHandle, SubscribePort, WriteSink};
+    use crate::shared::RustdvShared;
+    use std::any::Any;
+
+    #[derive(Default)]
+    struct Tally {
+        seen: Vec<u8>,
+    }
+    impl WriteSink<u8> for Tally {
+        fn write(&mut self, item: &u8) {
+            self.seen.push(*item);
+        }
+    }
+
+    struct Source {
+        ap: PublishPort<u8>,
+    }
+    impl Source {
+        const AP: PortName<dyn PublishIf<u8>> = PortName::new("ap");
+    }
+    impl PortOwner for Source {
+        fn owner_port_slot(&self, name: &str) -> Option<Rc<dyn Any>> {
+            (name == "ap").then(|| self.ap.slot_any())
+        }
+        fn owner_label(&self) -> &'static str {
+            "Source"
+        }
+    }
+
+    struct Listener {
+        input: SubscribePort<u8>,
+        tally: RustdvShared<Tally>,
+    }
+    impl Listener {
+        const INPUT: PortName<dyn SinkHandle<u8>> = PortName::new("input");
+        fn new() -> Listener {
+            let l = Listener { input: SubscribePort::default(), tally: RustdvShared::default() };
+            l.input.on_write(l.tally.clone());
+            l
+        }
+    }
+    impl PortOwner for Listener {
+        fn owner_port_slot(&self, name: &str) -> Option<Rc<dyn Any>> {
+            (name == "input").then(|| self.input.slot_any())
+        }
+        fn owner_label(&self) -> &'static str {
+            "Listener"
+        }
+    }
+
+    #[test]
+    fn one_write_reaches_every_subscriber() {
+        let bus: AnalysisBus<u8> = AnalysisBus::new();
+        let src = Source { ap: PublishPort::default() };
+        let a = Listener::new();
+        let b = Listener::new();
+
+        bus.pub_export().connect(&src, Source::AP);
+        bus.sub_export().connect(&a, Listener::INPUT);
+        bus.sub_export().connect(&b, Listener::INPUT);
+        assert_eq!(bus.subscriber_count(), 2);
+
+        src.ap.write(&7);
+        assert_eq!(a.tally.get().seen, vec![7]);
+        assert_eq!(b.tally.get().seen, vec![7], "several subscribers is what makes it a broadcast");
+    }
+
+    #[test]
+    fn subscribers_are_called_in_connection_order() {
+        let bus: AnalysisBus<u8> = AnalysisBus::new();
+        let src = Source { ap: PublishPort::default() };
+        let first = Listener::new();
+        let second = Listener::new();
+        bus.pub_export().connect(&src, Source::AP);
+        bus.sub_export().connect(&first, Listener::INPUT);
+        bus.sub_export().connect(&second, Listener::INPUT);
+
+        for n in 1..=3u8 {
+            src.ap.write(&n);
+        }
+        assert_eq!(first.tally.get().seen, vec![1, 2, 3]);
+        assert_eq!(second.tally.get().seen, vec![1, 2, 3]);
+    }
+
+    /// D90: the hub holds nothing. A datum broadcast to nobody is gone, and a
+    /// subscriber connected afterwards does not receive it.
+    #[test]
+    fn the_bus_stores_nothing() {
+        let bus: AnalysisBus<u8> = AnalysisBus::new();
+        let src = Source { ap: PublishPort::default() };
+        bus.pub_export().connect(&src, Source::AP);
+
+        src.ap.write(&1); // nobody is listening
+        src.ap.write(&2);
+
+        let late = Listener::new();
+        bus.sub_export().connect(&late, Listener::INPUT);
+        assert!(late.tally.get().seen.is_empty(), "nothing was buffered for a late subscriber");
+
+        src.ap.write(&3);
+        assert_eq!(late.tally.get().seen, vec![3], "only what arrives after it connects");
+    }
+
+    /// D85: analysis has min cardinality 0 — a monitor nobody listens to is a
+    /// legitimate testbench, and `write` on an unconnected port is legal.
+    #[test]
+    fn writing_with_no_subscribers_is_legal() {
+        let bus: AnalysisBus<u8> = AnalysisBus::new();
+        let src = Source { ap: PublishPort::default() };
+        bus.pub_export().connect(&src, Source::AP);
+        assert_eq!(bus.subscriber_count(), 0);
+        src.ap.write(&1); // must not panic
+    }
+
+    #[test]
+    fn an_unconnected_publish_port_does_not_panic() {
+        let src = Source { ap: PublishPort::default() };
+        assert!(!src.ap.has_subscribers());
+        src.ap.write(&1); // a source nobody wired is still a valid testbench
+    }
+
+    /// D87: delivery is synchronous — the handler has already run by the time
+    /// `write` returns, with no `await` anywhere in the path.
+    #[test]
+    fn delivery_happens_before_write_returns() {
+        let bus: AnalysisBus<u8> = AnalysisBus::new();
+        let src = Source { ap: PublishPort::default() };
+        let sub = Listener::new();
+        bus.pub_export().connect(&src, Source::AP);
+        bus.sub_export().connect(&sub, Listener::INPUT);
+
+        src.ap.write(&5);
+        assert_eq!(sub.tally.get().seen, vec![5], "already delivered, no scheduling in between");
+    }
+
+    /// A subscriber that never called `on_write` has no sink, and connecting
+    /// it says so by name rather than dropping items silently.
+    #[test]
+    #[should_panic(expected = "has no sink")]
+    fn connecting_a_subscriber_with_no_sink_is_a_named_error() {
+        let bus: AnalysisBus<u8> = AnalysisBus::new();
+        let bare = Listener { input: SubscribePort::default(), tally: RustdvShared::default() };
+        bus.sub_export().connect(&bare, Listener::INPUT);
+    }
+
+    #[test]
+    fn a_clone_is_the_same_bus() {
+        let bus: AnalysisBus<u8> = AnalysisBus::new();
+        let other = bus.clone();
+        let sub = Listener::new();
+        other.sub_export().connect(&sub, Listener::INPUT);
+        assert_eq!(bus.subscriber_count(), 1, "two handles, one subscriber list");
+        bus.write(&4);
+        assert_eq!(sub.tally.get().seen, vec![4]);
+    }
+}

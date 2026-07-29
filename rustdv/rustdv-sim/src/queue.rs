@@ -214,3 +214,172 @@ impl<T> Future for Get<T> {
         }
     }
 }
+
+// ===========================================================================
+// Tests — no simulator: a Queue is pure async, with no `gpi::` anywhere.
+// ===========================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testing::{assert_pending, block_on};
+
+    #[test]
+    fn put_get_round_trips_in_order() {
+        block_on(async {
+            let q: Queue<u8> = Queue::unbounded();
+            for n in 0..5 {
+                q.put(n).await;
+            }
+            for n in 0..5 {
+                assert_eq!(q.get().await, n, "a queue is FIFO");
+            }
+        });
+    }
+
+    /// D89: a refused `try_put` hands the item **back**. A bare "no" would
+    /// swallow a transaction that was never delivered.
+    #[test]
+    fn try_put_on_a_full_queue_returns_the_item() {
+        block_on(async {
+            let q: Queue<String> = Queue::new(Some(1));
+            assert!(q.try_put(String::from("first")).is_ok());
+            match q.try_put(String::from("second")) {
+                Err(back) => assert_eq!(back, "second", "the item comes home"),
+                Ok(()) => panic!("a depth-1 queue accepted a second item"),
+            }
+        });
+    }
+
+    #[test]
+    fn try_get_on_an_empty_queue_is_none() {
+        block_on(async {
+            let q: Queue<u8> = Queue::unbounded();
+            assert!(q.try_get().is_none());
+            q.put(1).await;
+            assert_eq!(q.try_get(), Some(1));
+            assert!(q.try_get().is_none(), "and it was consumed");
+        });
+    }
+
+    #[test]
+    fn a_blocked_get_wakes_on_a_put() {
+        block_on(async {
+            let q: Queue<u8> = Queue::unbounded();
+            let producer = q.clone();
+            crate::executor::spawn(async move {
+                producer.put(42).await;
+            });
+            assert_eq!(q.get().await, 42, "the get was waiting before the put");
+        });
+    }
+
+    #[test]
+    fn a_blocked_put_wakes_when_space_appears() {
+        block_on(async {
+            let q: Queue<u8> = Queue::new(Some(1));
+            q.put(1).await;
+            let consumer = q.clone();
+            crate::executor::spawn(async move {
+                let _ = consumer.get().await;
+            });
+            q.put(2).await; // blocks until the spawned get drains the first
+            assert_eq!(q.len(), 1);
+        });
+    }
+
+    #[test]
+    fn a_get_on_an_empty_queue_waits() {
+        let q: Queue<u8> = Queue::unbounded();
+        assert_pending(async move { q.get().await });
+    }
+
+    /// Peek copies and leaves the item, which is why it needs `T: Clone`
+    /// where `get` does not.
+    #[test]
+    fn peek_does_not_consume() {
+        block_on(async {
+            let q: Queue<u8> = Queue::unbounded();
+            q.put(9).await;
+            assert_eq!(q.peek().await, 9);
+            assert_eq!(q.len(), 1, "peek left it there");
+            assert_eq!(q.get().await, 9, "and get takes the same item");
+        });
+    }
+
+    #[test]
+    fn try_peek_is_none_when_empty() {
+        block_on(async {
+            let q: Queue<u8> = Queue::unbounded();
+            assert!(q.try_peek().is_none());
+            q.put(3).await;
+            assert_eq!(q.try_peek(), Some(3));
+            assert_eq!(q.len(), 1);
+        });
+    }
+
+    #[test]
+    fn has_space_agrees_with_len() {
+        block_on(async {
+            let q: Queue<u8> = Queue::new(Some(2));
+            assert!(q.has_space());
+            q.put(1).await;
+            assert!(q.has_space());
+            q.put(2).await;
+            assert!(!q.has_space(), "full at its declared depth");
+            assert_eq!(q.len(), 2);
+        });
+    }
+
+    #[test]
+    fn wait_for_space_returns_when_drained() {
+        block_on(async {
+            let q: Queue<u8> = Queue::new(Some(1));
+            q.put(1).await;
+            let consumer = q.clone();
+            crate::executor::spawn(async move {
+                let _ = consumer.get().await;
+            });
+            q.wait_for_space().await;
+            assert!(q.has_space());
+        });
+    }
+
+    #[test]
+    fn unbounded_never_blocks_a_put() {
+        block_on(async {
+            let q: Queue<u32> = Queue::unbounded();
+            for n in 0..1000 {
+                assert!(q.try_put(n).is_ok(), "an unbounded queue always has room");
+            }
+            assert_eq!(q.len(), 1000);
+        });
+    }
+
+    #[test]
+    fn is_empty_tracks_contents() {
+        block_on(async {
+            let q: Queue<u8> = Queue::unbounded();
+            assert!(q.is_empty());
+            q.put(1).await;
+            assert!(!q.is_empty());
+            let _ = q.get().await;
+            assert!(q.is_empty());
+        });
+    }
+
+    /// A dropped `get` future must not have consumed an item — otherwise
+    /// losing a race (D82c) would silently eat a transaction.
+    #[test]
+    fn a_dropped_get_consumes_nothing() {
+        block_on(async {
+            let q: Queue<u8> = Queue::unbounded();
+            {
+                let pending = q.get();
+                drop(pending);
+            }
+            q.put(5).await;
+            assert_eq!(q.get().await, 5, "the item survived the dropped get");
+        });
+    }
+}

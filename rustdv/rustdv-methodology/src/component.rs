@@ -97,6 +97,20 @@ pub struct RustdvCtx {
 }
 
 impl RustdvCtx {
+    /// A context with a path and no simulator, for unit tests.
+    ///
+    /// `dut()` will panic if called, which is the point: a test that reaches
+    /// for the DUT needs a simulator and belongs in a `sim-*` case.
+    #[cfg(test)]
+    pub(crate) fn for_test(path: &str) -> RustdvCtx {
+        RustdvCtx {
+            dut: HierarchyHandle::null_for_test(),
+            seed: 1,
+            objections: ObjectionRegistry::new(),
+            logger: Logger::new(path),
+        }
+    }
+
     /// Built by the runner, once per test, with `path` the test's
     /// registered name (D49 — UVM's fixed `uvm_test_top` is not ported).
     pub fn new(path: &str, dut: HierarchyHandle, seed: u64) -> RustdvCtx {
@@ -794,4 +808,261 @@ pub fn print_hierarchy(node: &mut dyn ComponentNode) {
         }
     }
     rec(node, "top");
+}
+
+// ===========================================================================
+// Tests — no simulator. The walk is ordinary tree traversal; only `run`
+// awaits, and these run bodies return immediately.
+// ===========================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::factory::RustdvComp;
+    use rustdv_sim::testing::block_on;
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    type Trace = Rc<RefCell<Vec<String>>>;
+
+    thread_local! {
+        static TRACE: Trace = Rc::new(RefCell::new(Vec::new()));
+    }
+
+    fn note(s: String) {
+        TRACE.with(|t| t.borrow_mut().push(s));
+    }
+    fn trace() -> Vec<String> {
+        TRACE.with(|t| t.borrow().clone())
+    }
+    fn reset() {
+        TRACE.with(|t| t.borrow_mut().clear());
+    }
+
+    /// A leaf that records every phase it is given, with its own path — so
+    /// the test can assert both the order *and* that the path was derived by
+    /// the walk (D7) rather than stored.
+    #[derive(Default)]
+    struct Leaf;
+
+    impl Component for Leaf {
+        fn build(&mut self, ctx: &mut RustdvCtx) {
+            note(format!("build {}", ctx.path()));
+        }
+        fn connect(&mut self, ctx: &mut RustdvCtx) {
+            note(format!("connect {}", ctx.path()));
+        }
+        fn check(&mut self, ctx: &mut RustdvCtx, _e: &mut CheckSink) {
+            note(format!("check {}", ctx.path()));
+        }
+        async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+            note(format!("run {}", ctx.path()));
+            Ok(())
+        }
+    }
+
+    impl ComponentNode for Leaf {
+        fn node_name(&self) -> &'static str {
+            "Leaf"
+        }
+        fn children_mut(&mut self) -> Vec<(String, &mut (dyn ComponentNode + 'static))> {
+            Vec::new()
+        }
+    }
+
+    /// A parent that creates its children in `build` — two-stage construction
+    /// (D6). The walk must descend into what build just made.
+    #[derive(Default)]
+    struct Parent {
+        first: Option<Leaf>,
+        second: Option<Leaf>,
+    }
+
+    impl Component for Parent {
+        fn build(&mut self, ctx: &mut RustdvCtx) {
+            note(format!("build {}", ctx.path()));
+            self.first = Some(Leaf);
+            self.second = Some(Leaf);
+        }
+        fn connect(&mut self, ctx: &mut RustdvCtx) {
+            note(format!("connect {}", ctx.path()));
+        }
+    }
+
+    impl ComponentNode for Parent {
+        fn node_name(&self) -> &'static str {
+            "Parent"
+        }
+        fn children_mut(&mut self) -> Vec<(String, &mut (dyn ComponentNode + 'static))> {
+            let mut out: Vec<(String, &mut (dyn ComponentNode + 'static))> = Vec::new();
+            if let Some(c) = self.first.as_mut() {
+                out.push((String::from("first"), c));
+            }
+            if let Some(c) = self.second.as_mut() {
+                out.push((String::from("second"), c));
+            }
+            out
+        }
+    }
+
+    /// Build is **top-down**: a parent acts, then the children it just made.
+    /// That gap is where every late-binding mechanism lives (D5).
+    #[test]
+    fn build_is_top_down_and_descends_into_what_it_created() {
+        reset();
+        let mut root = Parent::default();
+        let mut ctx = RustdvCtx::for_test("top");
+        build_all(&mut root, &mut ctx);
+        assert_eq!(
+            trace(),
+            vec!["build top", "build top.first", "build top.second"],
+            "parent first, then the children it created in its own build"
+        );
+    }
+
+    /// Connect is **bottom-up**: children are wired before their parent.
+    #[test]
+    fn connect_is_bottom_up() {
+        reset();
+        let mut root = Parent::default();
+        let mut ctx = RustdvCtx::for_test("top");
+        build_all(&mut root, &mut ctx);
+        reset();
+        connect_all(&mut root, &mut ctx);
+        assert_eq!(trace(), vec!["connect top.first", "connect top.second", "connect top"]);
+    }
+
+    /// D7: the path comes from the field name via the walk. Rename the field
+    /// and the path follows — which a hand-typed `Logger::new("top.first")`
+    /// would not.
+    #[test]
+    fn paths_are_derived_from_field_names() {
+        reset();
+        let mut root = Parent::default();
+        let mut ctx = RustdvCtx::for_test("alu_test");
+        build_all(&mut root, &mut ctx);
+        assert!(trace().contains(&String::from("build alu_test.first")));
+        assert!(trace().contains(&String::from("build alu_test.second")));
+    }
+
+    #[test]
+    fn an_option_child_appears_only_once_some() {
+        let mut root = Parent::default();
+        assert!(root.children_mut().is_empty(), "declared but not yet built (D6)");
+        let mut ctx = RustdvCtx::for_test("top");
+        build_all(&mut root, &mut ctx);
+        assert_eq!(root.children_mut().len(), 2);
+    }
+
+    #[test]
+    fn every_component_runs() {
+        reset();
+        block_on(async {
+            let mut root = Parent::default();
+            let mut ctx = RustdvCtx::for_test("top");
+            build_all(&mut root, &mut ctx);
+            reset();
+            run_all(&mut root, &mut ctx).await.unwrap();
+        });
+        let t = trace();
+        assert!(t.contains(&String::from("run top.first")));
+        assert!(t.contains(&String::from("run top.second")));
+    }
+
+    #[test]
+    fn check_visits_the_whole_tree() {
+        reset();
+        let mut root = Parent::default();
+        let mut ctx = RustdvCtx::for_test("top");
+        build_all(&mut root, &mut ctx);
+        reset();
+        let mut sink = CheckSink::new();
+        check_all(&mut root, &mut ctx, &mut sink);
+        assert_eq!(trace().len(), 2, "both leaves were checked");
+        assert!(sink.is_ok());
+    }
+
+    // --- D82b: children move out for the run phase, and come back ---------
+
+    #[derive(Default)]
+    struct FactoryParent {
+        child: RustdvComp,
+    }
+
+    impl Component for FactoryParent {}
+
+    impl ComponentNode for FactoryParent {
+        fn node_name(&self) -> &'static str {
+            "FactoryParent"
+        }
+        fn children_mut(&mut self) -> Vec<(String, &mut (dyn ComponentNode + 'static))> {
+            let mut out: Vec<(String, &mut (dyn ComponentNode + 'static))> = Vec::new();
+            if let Some(n) = self.child.as_node_mut() {
+                out.push((String::from("child"), n));
+            }
+            out
+        }
+        fn take_children(&mut self) -> Vec<(String, Box<dyn ComponentNode>)> {
+            let mut out = Vec::new();
+            if let Some(n) = self.child.take_node() {
+                out.push((String::from("child"), n));
+            }
+            out
+        }
+        fn restore_children(&mut self, taken: Vec<(String, Box<dyn ComponentNode>)>) {
+            for (_, node) in taken {
+                self.child.put_node(node);
+            }
+        }
+    }
+
+    #[test]
+    fn take_children_empties_the_slot_and_restore_refills_it() {
+        let mut p = FactoryParent { child: RustdvComp::fixed(Box::new(Leaf)) };
+        let taken = p.take_children();
+        assert_eq!(taken.len(), 1);
+        assert!(p.children_mut().is_empty(), "the slot is empty during the run phase");
+        p.restore_children(taken);
+        assert_eq!(p.children_mut().len(), 1, "and full again for check/report");
+    }
+
+    /// D82c: restoration is unconditional, so the post-run phases always walk
+    /// a whole tree — including when a run returned an error. A tree missing
+    /// its children is how a scoreboard silently never runs.
+    #[test]
+    fn children_are_restored_even_when_a_run_fails() {
+        #[derive(Default)]
+        struct Failing;
+        impl Component for Failing {
+            async fn run(&mut self, _c: &mut RustdvCtx) -> Result<(), TestError> {
+                Err(TestError::from(String::from("deliberate")))
+            }
+        }
+        impl ComponentNode for Failing {
+            fn node_name(&self) -> &'static str {
+                "Failing"
+            }
+            fn children_mut(&mut self) -> Vec<(String, &mut (dyn ComponentNode + 'static))> {
+                Vec::new()
+            }
+        }
+
+        block_on(async {
+            let mut p = FactoryParent { child: RustdvComp::fixed(Box::new(Failing)) };
+            let mut ctx = RustdvCtx::for_test("top");
+            let outcome = run_all(&mut p, &mut ctx).await;
+            assert!(outcome.is_err(), "the child's run failed");
+            assert_eq!(p.children_mut().len(), 1, "and its child came back anyway");
+        });
+    }
+
+    #[test]
+    fn a_component_with_no_children_walks_cleanly() {
+        reset();
+        let mut leaf = Leaf;
+        let mut ctx = RustdvCtx::for_test("solo");
+        build_all(&mut leaf, &mut ctx);
+        connect_all(&mut leaf, &mut ctx);
+        assert_eq!(trace(), vec!["build solo", "connect solo"]);
+    }
 }

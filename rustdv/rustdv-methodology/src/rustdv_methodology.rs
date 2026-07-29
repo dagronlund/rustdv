@@ -39,6 +39,9 @@
 
 pub mod analysis;
 pub mod channel;
+#[cfg(test)]
+use rustdv_vpi_stubs as _;
+
 pub mod component;
 pub mod config;
 pub mod factory;

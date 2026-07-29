@@ -170,6 +170,14 @@ pub struct HierarchyHandle {
 }
 
 impl HierarchyHandle {
+    /// A handle to nothing, for unit tests that need a `RustdvCtx` but never
+    /// touch the DUT. Any VPI call through it goes to `rustdv-vpi-stubs`,
+    /// which panics — so a test that *does* touch the DUT fails loudly
+    /// instead of reading garbage.
+    pub fn null_for_test() -> HierarchyHandle {
+        HierarchyHandle { h: ObjHandle(std::ptr::null_mut()) }
+    }
+
     /// Dynamic child lookup: `dut.child("clk")?` (design-doc OQ-6 lean).
     pub fn child(&self, name: &str) -> Result<AnyHandle, HandleError> {
         let cname = CString::new(name).expect("NUL in signal name");

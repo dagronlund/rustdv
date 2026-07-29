@@ -306,6 +306,13 @@ impl<T: 'static> TlmFifo<T> {
         self.inner.tap_get(item)
     }
 
+    /// The put interface itself, for tests that exercise `bind` directly
+    /// rather than through an export.
+    #[cfg(test)]
+    pub(crate) fn put_iface_for_test(&self) -> Rc<dyn PutIf<T>> {
+        self.inner.clone()
+    }
+
     /// A second handle to the *same* FIFO (for wiring at construction).
     pub fn handle(&self) -> TlmFifo<T> {
         TlmFifo { inner: self.inner.clone() }
@@ -338,4 +345,232 @@ impl<T: 'static> ComponentNode for TlmFifo<T> {
     fn children_mut(&mut self) -> Vec<(String, &mut (dyn ComponentNode + 'static))> {
         Vec::new()
     }
+}
+
+// ===========================================================================
+// Tests — no simulator.
+// ===========================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::port::{
+        GetPort, PeekPort, PortField, PortName, PortOwner, PutPort, SubscribePort, WriteSink,
+    };
+    use crate::shared::RustdvShared;
+    use rustdv_sim::testing::block_on;
+    use std::any::Any;
+    use std::cell::RefCell;
+
+    /// A hand-written `PortOwner`: the derive is convenience, not requirement
+    /// (OQ-15), and a test should not need it.
+    struct Holder {
+        put: PutPort<u8>,
+        get: GetPort<u8>,
+        peek: PeekPort<u8>,
+        sub: SubscribePort<u8>,
+    }
+
+    impl Holder {
+        fn new() -> Holder {
+            Holder {
+                put: PutPort::default(),
+                get: GetPort::default(),
+                peek: PeekPort::default(),
+                sub: SubscribePort::default(),
+            }
+        }
+        const PUT: PortName<dyn PutIf<u8>> = PortName::new("put");
+        const GET: PortName<dyn GetIf<u8>> = PortName::new("get");
+        const PEEK: PortName<dyn PeekIf<u8>> = PortName::new("peek");
+        const SUB: PortName<dyn SinkHandle<u8>> = PortName::new("sub");
+    }
+
+    impl PortOwner for Holder {
+        fn owner_port_slot(&self, name: &str) -> Option<Rc<dyn Any>> {
+            match name {
+                "put" => Some(self.put.slot_any()),
+                "get" => Some(self.get.slot_any()),
+                "peek" => Some(self.peek.slot_any()),
+                "sub" => Some(self.sub.slot_any()),
+                _ => None,
+            }
+        }
+        fn owner_label(&self) -> &'static str {
+            "Holder"
+        }
+    }
+
+    #[test]
+    fn a_port_is_unbound_until_connected() {
+        let h = Holder::new();
+        assert!(!h.put.bound());
+        let fifo: TlmFifo<u8> = TlmFifo::new(1);
+        fifo.put_export().connect(&h, Holder::PUT);
+        assert!(h.put.bound());
+    }
+
+    #[test]
+    fn put_and_get_through_a_fifo() {
+        block_on(async {
+            let h = Holder::new();
+            let fifo: TlmFifo<u8> = TlmFifo::new(2);
+            fifo.put_export().connect(&h, Holder::PUT);
+            fifo.get_export().connect(&h, Holder::GET);
+
+            h.put.put(1).await;
+            h.put.put(2).await;
+            assert_eq!(h.get.get().await, 1, "FIFO order through the ports");
+            assert_eq!(h.get.get().await, 2);
+        });
+    }
+
+    #[test]
+    fn peek_leaves_the_item_for_get() {
+        block_on(async {
+            let h = Holder::new();
+            let fifo: TlmFifo<u8> = TlmFifo::new(1);
+            fifo.put_export().connect(&h, Holder::PUT);
+            fifo.peek_export().connect(&h, Holder::PEEK);
+            fifo.get_export().connect(&h, Holder::GET);
+
+            h.put.put(9).await;
+            assert_eq!(h.peek.peek().await, 9);
+            assert_eq!(h.get.get().await, 9, "peek did not consume it");
+        });
+    }
+
+    /// D89 through the port, not just the queue.
+    #[test]
+    fn try_put_hands_a_refused_item_back() {
+        block_on(async {
+            let h = Holder::new();
+            let fifo: TlmFifo<u8> = TlmFifo::new(1);
+            fifo.put_export().connect(&h, Holder::PUT);
+            assert!(h.put.try_put(1).is_ok());
+            assert_eq!(h.put.try_put(2), Err(2), "the item comes home");
+        });
+    }
+
+    #[test]
+    fn can_put_and_can_get_track_the_fifo() {
+        block_on(async {
+            let h = Holder::new();
+            let fifo: TlmFifo<u8> = TlmFifo::new(1);
+            fifo.put_export().connect(&h, Holder::PUT);
+            fifo.get_export().connect(&h, Holder::GET);
+            assert!(h.put.can_put());
+            assert!(!h.get.can_get());
+            h.put.put(1).await;
+            assert!(!h.put.can_put());
+            assert!(h.get.can_get());
+        });
+    }
+
+    #[test]
+    fn a_bad_port_name_is_a_named_error() {
+        let h = Holder::new();
+        let nope: PortName<dyn PutIf<u8>> = PortName::new("no_such_port");
+        let fifo: TlmFifo<u8> = TlmFifo::new(1);
+        match crate::port::bind(&h, nope, fifo.put_iface_for_test()) {
+            Err(crate::port::ConnectError::NoSuchPort { owner, name }) => {
+                assert_eq!(owner, "Holder");
+                assert_eq!(name, "no_such_port");
+            }
+            other => panic!("expected NoSuchPort, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn fifo_size_used_and_flush() {
+        block_on(async {
+            let fifo: TlmFifo<u8> = TlmFifo::new(3);
+            assert_eq!(fifo.size(), Some(3));
+            assert!(fifo.is_empty());
+            fifo.put(1).await;
+            fifo.put(2).await;
+            assert_eq!(fifo.used(), 2);
+            fifo.flush();
+            assert!(fifo.is_empty(), "flush empties it");
+        });
+    }
+
+    #[test]
+    fn unbounded_is_never_full() {
+        block_on(async {
+            let fifo: TlmFifo<u8> = TlmFifo::unbounded();
+            assert_eq!(fifo.size(), None);
+            for n in 0..100 {
+                assert!(fifo.try_put(n).is_ok());
+            }
+            assert!(!fifo.is_full());
+        });
+    }
+
+    /// D23: the taps observe without joining the data path — every item seen,
+    /// none consumed, nobody delayed.
+    #[test]
+    fn the_put_tap_sees_every_item_and_consumes_none() {
+        #[derive(Default)]
+        struct Log {
+            seen: Vec<u8>,
+        }
+        impl WriteSink<u8> for Log {
+            fn write(&mut self, item: &u8) {
+                self.seen.push(*item);
+            }
+        }
+
+        block_on(async {
+            let h = Holder::new();
+            let log: RustdvShared<Log> = RustdvShared::default();
+            h.sub.on_write(log.clone());
+
+            let fifo: TlmFifo<u8> = TlmFifo::unbounded();
+            fifo.put_ap().connect(&h, Holder::SUB);
+
+            for n in 1..=3u8 {
+                fifo.put(n).await;
+            }
+            assert_eq!(log.get().seen, vec![1, 2, 3], "the tap saw all three");
+            assert_eq!(fifo.used(), 3, "and took none of them");
+        });
+    }
+
+    #[test]
+    fn the_get_tap_fires_as_items_leave() {
+        #[derive(Default)]
+        struct Log {
+            seen: Vec<u8>,
+        }
+        impl WriteSink<u8> for Log {
+            fn write(&mut self, item: &u8) {
+                self.seen.push(*item);
+            }
+        }
+
+        block_on(async {
+            let h = Holder::new();
+            let log: RustdvShared<Log> = RustdvShared::default();
+            h.sub.on_write(log.clone());
+
+            let fifo: TlmFifo<u8> = TlmFifo::unbounded();
+            fifo.get_ap().connect(&h, Holder::SUB);
+            fifo.put(7).await;
+            assert!(log.get().seen.is_empty(), "nothing has left yet");
+            let _ = fifo.get().await;
+            assert_eq!(log.get().seen, vec![7]);
+        });
+    }
+
+    #[test]
+    fn a_handle_is_the_same_fifo() {
+        block_on(async {
+            let fifo: TlmFifo<u8> = TlmFifo::unbounded();
+            let other = fifo.handle();
+            fifo.put(1).await;
+            assert_eq!(other.used(), 1, "two handles, one FIFO");
+        });
+    }
+
 }

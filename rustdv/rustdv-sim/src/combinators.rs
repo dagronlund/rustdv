@@ -172,3 +172,91 @@ macro_rules! join {
         $crate::combinators::join2($a, $crate::join!($b, $($rest),+))
     };
 }
+
+// ===========================================================================
+// Tests — no simulator.
+// ===========================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testing::block_on;
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    #[test]
+    fn join2_yields_both() {
+        block_on(async {
+            let (a, b) = join2(async { 1u8 }, async { "two" }).await;
+            assert_eq!(a, 1);
+            assert_eq!(b, "two");
+        });
+    }
+
+    #[test]
+    fn join_all_preserves_input_order() {
+        block_on(async {
+            let futs: Vec<Pin<Box<dyn Future<Output = u8>>>> =
+                vec![Box::pin(async { 1 }), Box::pin(async { 2 }), Box::pin(async { 3 })];
+            assert_eq!(join_all(futs).await, vec![1, 2, 3]);
+        });
+    }
+
+    #[test]
+    fn first2_returns_the_winner() {
+        block_on(async {
+            let ev = crate::sync::Event::new();
+            let waiter = ev.clone();
+            crate::executor::spawn(async move {
+                ev.set();
+            });
+            match first2(async { 7u8 }, async move { waiter.wait().await }).await {
+                Either::First(v) => assert_eq!(v, 7),
+                Either::Second(()) => panic!("the ready future should have won"),
+            }
+        });
+    }
+
+    /// D82c in miniature: **losing a race means being dropped.** Racing the
+    /// whole run tree instead of each component dropped the tree mid-phase
+    /// and a test passed with its scoreboard never running.
+    #[test]
+    fn first2_drops_the_loser() {
+        struct Tattle(Rc<RefCell<bool>>);
+        impl Drop for Tattle {
+            fn drop(&mut self) {
+                *self.0.borrow_mut() = true;
+            }
+        }
+
+        let dropped = Rc::new(RefCell::new(false));
+        let flag = dropped.clone();
+        block_on(async move {
+            let never = crate::sync::Event::new();
+            // The tattle is moved *into* the future from outside, so it is
+            // dropped when the future is dropped — whether or not the future
+            // ever got polled.
+            let tattle = Tattle(flag);
+            let loser = async move {
+                let _t = tattle;
+                never.wait().await;
+            };
+            let _ = first2(async { 1u8 }, loser).await;
+        });
+        assert!(*dropped.borrow(), "the losing future was dropped, not left running");
+    }
+
+    /// The whole point of D82: a joined future may **borrow**, so a
+    /// sub-sequence can use its parent's state. If this stops compiling, the
+    /// combinators have regained a `'static` bound.
+    #[test]
+    fn joined_futures_may_borrow() {
+        block_on(async {
+            let owned = vec![1u8, 2, 3];
+            let borrow_a = async { owned.len() };
+            let borrow_b = async { owned[0] as usize };
+            let (a, b) = join2(borrow_a, borrow_b).await;
+            assert_eq!((a, b), (3, 1));
+        });
+    }
+}

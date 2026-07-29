@@ -313,3 +313,236 @@ impl Factory {
         }
     }
 }
+
+// ===========================================================================
+// Tests — no simulator.
+// ===========================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::component::{Component, RustdvCtx};
+    use crate::config::ConfigDb;
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    thread_local! {
+        static BUILT: RefCell<Vec<&'static str>> = const { RefCell::new(Vec::new()) };
+    }
+
+    fn record(name: &'static str) {
+        BUILT.with(|b| b.borrow_mut().push(name));
+    }
+
+    #[derive(Default)]
+    struct Base;
+    impl Component for Base {
+        fn build(&mut self, _ctx: &mut RustdvCtx) {
+            record("Base");
+        }
+    }
+    impl ComponentNode for Base {
+        fn node_name(&self) -> &'static str {
+            "Base"
+        }
+        fn children_mut(&mut self) -> Vec<(String, &mut (dyn ComponentNode + 'static))> {
+            Vec::new()
+        }
+    }
+
+    #[derive(Default)]
+    struct Derived;
+    impl Component for Derived {
+        fn build(&mut self, _ctx: &mut RustdvCtx) {
+            record("Derived");
+        }
+    }
+    impl ComponentNode for Derived {
+        fn node_name(&self) -> &'static str {
+            "Derived"
+        }
+        fn children_mut(&mut self) -> Vec<(String, &mut (dyn ComponentNode + 'static))> {
+            Vec::new()
+        }
+    }
+
+    fn fresh() {
+        ConfigDb::clear();
+        BUILT.with(|b| b.borrow_mut().clear());
+    }
+
+    #[test]
+    fn a_fixed_slot_holds_what_it_was_given() {
+        fresh();
+        let slot = RustdvComp::fixed(Box::new(Base));
+        assert_eq!(slot.as_node().unwrap().node_name(), "Base");
+    }
+
+    #[test]
+    fn an_empty_slot_reports_itself_by_name() {
+        fresh();
+        let slot = RustdvComp::default();
+        assert!(slot.as_node().is_none());
+        assert_eq!(slot.owner_label(), "an unbuilt child slot");
+    }
+
+    /// D75: `new_comp()` is fixed and `create_comp()` is overridable, and the
+    /// *build line* carries that choice — not the field type.
+    #[test]
+    fn a_type_override_swaps_a_create_slot_and_not_a_new_slot() {
+        fresh();
+        Factory::set_type_override::<Base, Derived>();
+        let ctx = RustdvCtx::for_test("env");
+
+        let mut overridable = RustdvComp::overridable(Box::new(Base), "Base");
+        overridable.resolve(&ctx, "tester");
+        assert_eq!(overridable.as_node().unwrap().node_name(), "Derived");
+
+        let mut fixed = RustdvComp::fixed(Box::new(Base));
+        fixed.resolve(&ctx, "scoreboard");
+        assert_eq!(fixed.as_node().unwrap().node_name(), "Base", "new_comp is never swapped");
+    }
+
+    #[test]
+    fn no_override_leaves_the_requested_type() {
+        fresh();
+        let ctx = RustdvCtx::for_test("env");
+        let mut slot = RustdvComp::overridable(Box::new(Base), "Base");
+        slot.resolve(&ctx, "tester");
+        assert_eq!(slot.as_node().unwrap().node_name(), "Base");
+    }
+
+    /// D13's precedence, applied to the factory: an instance override beats a
+    /// type override at the same path.
+    #[test]
+    fn an_instance_override_beats_a_type_override() {
+        fresh();
+        let ctx = RustdvCtx::for_test("env");
+        Factory::set_type_override::<Base, Base>();
+        Factory::set_inst_override::<Base, Derived>(&ctx, "tester");
+        let mut slot = RustdvComp::overridable(Box::new(Base), "Base");
+        slot.resolve(&ctx, "tester");
+        assert_eq!(slot.as_node().unwrap().node_name(), "Derived");
+    }
+
+    #[test]
+    fn an_instance_override_applies_only_at_its_path() {
+        fresh();
+        let ctx = RustdvCtx::for_test("env");
+        Factory::set_inst_override::<Base, Derived>(&ctx, "tester");
+
+        let mut here = RustdvComp::overridable(Box::new(Base), "Base");
+        here.resolve(&ctx, "tester");
+        assert_eq!(here.as_node().unwrap().node_name(), "Derived");
+
+        let mut elsewhere = RustdvComp::overridable(Box::new(Base), "Base");
+        elsewhere.resolve(&ctx, "other");
+        assert_eq!(elsewhere.as_node().unwrap().node_name(), "Base");
+    }
+
+    /// D75's guarantee: resolution happens before the walk descends, so the
+    /// discarded default's own phases never run.
+    #[test]
+    fn the_discarded_default_never_built() {
+        fresh();
+        Factory::set_type_override::<Base, Derived>();
+        let ctx = RustdvCtx::for_test("env");
+        let mut slot = RustdvComp::overridable(Box::new(Base), "Base");
+        slot.resolve(&ctx, "tester");
+        // Neither has been built yet — but the point is that the *Base* we
+        // threw away is gone before any walk could reach it.
+        assert_eq!(BUILT.with(|b| b.borrow().len()), 0);
+        assert_eq!(slot.as_node().unwrap().node_name(), "Derived");
+    }
+
+    /// Resolving twice must not re-apply: the slot is no longer overridable
+    /// once the walk has passed it.
+    #[test]
+    fn a_slot_resolves_once() {
+        fresh();
+        let ctx = RustdvCtx::for_test("env");
+        let mut slot = RustdvComp::overridable(Box::new(Base), "Base");
+        slot.resolve(&ctx, "tester");
+        Factory::set_type_override::<Base, Derived>(); // installed too late
+        slot.resolve(&ctx, "tester");
+        assert_eq!(
+            slot.as_node().unwrap().node_name(),
+            "Base",
+            "an override installed after the walk passed does not apply"
+        );
+    }
+
+    #[test]
+    fn take_and_put_move_the_box_out_and_back() {
+        fresh();
+        let mut slot = RustdvComp::fixed(Box::new(Base));
+        let node = slot.take_node().expect("something to take");
+        assert!(slot.as_node().is_none(), "the slot is empty during the run phase");
+        slot.put_node(node);
+        assert_eq!(slot.as_node().unwrap().node_name(), "Base", "and restored after");
+    }
+
+    // --- the sequence half of the factory (D80/D96) ----------------------
+
+    use crate::sequence::{clear_seq_overrides, create_seq, set_seq_override, SeqCtx, SeqError, Sequence};
+
+    #[derive(Default)]
+    struct BaseSeq;
+    #[derive(Default)]
+    struct RandomSeq;
+
+    impl Sequence for BaseSeq {
+        type Req = u8;
+        type Rsp = u8;
+        async fn body(&mut self, _c: &mut SeqCtx<u8, u8>) -> Result<(), SeqError> {
+            Ok(())
+        }
+        fn seq_name(&self) -> &'static str {
+            "BaseSeq"
+        }
+    }
+    impl Sequence for RandomSeq {
+        type Req = u8;
+        type Rsp = u8;
+        async fn body(&mut self, _c: &mut SeqCtx<u8, u8>) -> Result<(), SeqError> {
+            Ok(())
+        }
+        fn seq_name(&self) -> &'static str {
+            "RandomSeq"
+        }
+    }
+
+    #[test]
+    fn create_seq_builds_the_requested_type_by_default() {
+        clear_seq_overrides();
+        let seq = create_seq::<BaseSeq>();
+        assert_eq!(seq.name(), "BaseSeq");
+    }
+
+    #[test]
+    fn a_sequence_override_swaps_the_type() {
+        clear_seq_overrides();
+        set_seq_override::<BaseSeq, RandomSeq>();
+        let seq = create_seq::<BaseSeq>();
+        assert_eq!(seq.name(), "RandomSeq", "the test asked for Base and got Random");
+    }
+
+    #[test]
+    fn clearing_sequence_overrides_restores_the_default() {
+        clear_seq_overrides();
+        set_seq_override::<BaseSeq, RandomSeq>();
+        clear_seq_overrides();
+        assert_eq!(create_seq::<BaseSeq>().name(), "BaseSeq");
+    }
+
+    #[test]
+    fn an_override_on_one_sequence_leaves_others_alone() {
+        clear_seq_overrides();
+        set_seq_override::<BaseSeq, RandomSeq>();
+        assert_eq!(create_seq::<RandomSeq>().name(), "RandomSeq");
+    }
+
+    // Unused-import guard: `Rc` is here for future handle tests.
+    #[allow(dead_code)]
+    fn _rc_in_scope(_: Rc<u8>) {}
+}

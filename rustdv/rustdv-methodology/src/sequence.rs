@@ -598,6 +598,11 @@ impl<REQ: 'static, RSP: 'static> RustdvSeq<REQ, RSP> {
         RustdvSeq { inner: Some(seq) }
     }
 
+    /// What this slot holds, by name (D98). `"<empty>"` before it is filled.
+    pub fn name(&self) -> &'static str {
+        self.inner.as_ref().map(|s| s.dyn_name()).unwrap_or("<empty>")
+    }
+
     fn get(&mut self) -> Result<&mut Box<dyn DynSequence<REQ, RSP>>, SeqError> {
         self.inner.as_mut().ok_or_else(|| SeqError("an empty sequence slot".into()))
     }
@@ -667,5 +672,380 @@ where
             RustdvSeq::new(*boxed)
         }
         None => RustdvSeq::new(Box::new(S::default())),
+    }
+}
+
+// ===========================================================================
+// Tests — no simulator.
+//
+// pyuvm needs `cocotb_tests/t14_15_sequences` for this, under Icarus. rustdv
+// does not: the handshake is built from `Event`s and a `Queue`, and never
+// awaits simulated time. This is the clearest win of the unit/sim split.
+// ===========================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rustdv_sim::executor;
+    use rustdv_sim::testing::{assert_pending, block_on};
+
+    #[derive(Clone, Debug, PartialEq, Eq, Default)]
+    struct Cmd {
+        a: u8,
+        tag: &'static str,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq, Default)]
+    struct Rsp {
+        v: u8,
+    }
+
+    /// A driver that takes one item and answers it.
+    fn spawn_one_shot_driver(seqr: &Sequencer<Cmd, Rsp>, answer: u8) {
+        let port = seqr.seq_item_export();
+        let inner = seqr.inner.clone();
+        let _ = port; // the export is the public path; the test drives `inner`
+        executor::spawn(async move {
+            let item = SeqItemIf::get_next_item(&*inner).await;
+            let v = item.payload().a.wrapping_add(answer);
+            SeqItemIf::item_done(&*inner, Some(Rsp { v }));
+        });
+    }
+
+    #[test]
+    fn start_item_blocks_until_the_driver_asks() {
+        let seqr: Sequencer<Cmd, Rsp> = Sequencer::new();
+        let inner = seqr.inner.clone();
+        // Nobody ever calls get_next_item, so the grant never comes.
+        assert_pending(async move {
+            let mut ctx = SeqCtx::new(Some(inner), "T", 1);
+            let mut cmd = Cmd::default();
+            ctx.start_item(&mut cmd).await.unwrap();
+        });
+    }
+
+    /// **The gap is the point (D3).** Whatever the sequence writes *between*
+    /// `start_item` and `finish_item` is what the driver receives — that is
+    /// late stimulus setting, and it is why there are two calls and not one.
+    #[test]
+    fn the_driver_sees_what_was_written_after_the_grant() {
+        block_on(async {
+            let seqr: Sequencer<Cmd, Rsp> = Sequencer::new();
+            let inner = seqr.inner.clone();
+            let seen = Rc::new(RefCell::new(None));
+            let seen2 = seen.clone();
+            let d = inner.clone();
+            executor::spawn(async move {
+                let item = SeqItemIf::get_next_item(&*d).await;
+                *seen2.borrow_mut() = Some(item.payload().clone());
+                SeqItemIf::item_done(&*d, None);
+            });
+
+            let mut ctx = SeqCtx::new(Some(inner), "T", 1);
+            let mut cmd = Cmd { a: 0, tag: "before" };
+            ctx.start_item(&mut cmd).await.unwrap();
+            // The driver is committed and waiting. Decide the stimulus now.
+            cmd.a = 42;
+            cmd.tag = "after the grant";
+            ctx.finish_item(cmd).await.unwrap();
+
+            let got = seen.borrow().clone().expect("the driver got an item");
+            assert_eq!(got.a, 42, "the late value reached the driver");
+            assert_eq!(got.tag, "after the grant");
+        });
+    }
+
+    #[test]
+    fn finish_item_returns_the_ticket_and_waits_for_item_done() {
+        block_on(async {
+            let seqr: Sequencer<Cmd, Rsp> = Sequencer::new();
+            spawn_one_shot_driver(&seqr, 1);
+            let mut ctx = SeqCtx::new(Some(seqr.inner.clone()), "T", 1);
+            let mut cmd = Cmd { a: 10, tag: "x" };
+            ctx.start_item(&mut cmd).await.unwrap();
+            let ticket = ctx.finish_item(cmd).await.unwrap();
+            assert_eq!(ticket, TxnId(1), "tickets start at 1");
+        });
+    }
+
+    #[test]
+    fn tickets_are_unique_and_ascending() {
+        block_on(async {
+            let seqr: Sequencer<Cmd, Rsp> = Sequencer::new();
+            let inner = seqr.inner.clone();
+            let d = inner.clone();
+            executor::spawn(async move {
+                for _ in 0..3 {
+                    let _item = SeqItemIf::get_next_item(&*d).await;
+                    SeqItemIf::item_done(&*d, None);
+                }
+            });
+            let mut ctx = SeqCtx::new(Some(inner), "T", 1);
+            let mut tickets = Vec::new();
+            for a in 0..3u8 {
+                let mut cmd = Cmd { a, tag: "" };
+                ctx.start_item(&mut cmd).await.unwrap();
+                tickets.push(ctx.finish_item(cmd).await.unwrap());
+            }
+            assert_eq!(tickets, vec![TxnId(1), TxnId(2), TxnId(3)]);
+        });
+    }
+
+    /// pyuvm raises `UVMSequenceError` for this; we panic, which is the same
+    /// rule under the framework's failure taxonomy — a testbench bug.
+    #[test]
+    #[should_panic(expected = "get_next_item called twice without item_done")]
+    fn two_get_next_items_without_item_done_is_a_bug() {
+        block_on(async {
+            let seqr: Sequencer<Cmd, Rsp> = Sequencer::new();
+            let inner = seqr.inner.clone();
+            // A sequence supplies one item.
+            let s = inner.clone();
+            executor::spawn(async move {
+                let mut ctx = SeqCtx::new(Some(s), "T", 1);
+                let mut cmd = Cmd::default();
+                ctx.start_item(&mut cmd).await.unwrap();
+                ctx.finish_item(cmd).await.unwrap();
+            });
+            // The driver takes it and then asks again without releasing. The
+            // second call is polled by the test itself, so the panic lands
+            // here rather than inside a task.
+            let _a = SeqItemIf::get_next_item(&*inner).await;
+            let _b = SeqItemIf::get_next_item(&*inner).await;
+        });
+    }
+
+    #[test]
+    fn start_item_twice_without_finish_is_an_error() {
+        block_on(async {
+            let seqr: Sequencer<Cmd, Rsp> = Sequencer::new();
+            let inner = seqr.inner.clone();
+            let d = inner.clone();
+            executor::spawn(async move {
+                let _ = SeqItemIf::get_next_item(&*d).await;
+            });
+            let mut ctx = SeqCtx::new(Some(inner), "T", 1);
+            let mut a = Cmd::default();
+            ctx.start_item(&mut a).await.unwrap();
+            let mut b = Cmd::default();
+            let err = ctx.start_item(&mut b).await;
+            assert!(err.is_err(), "a second start_item without finish_item");
+        });
+    }
+
+    /// The UVM's `try_next_item` (clause 15.2.1.2.2). pyuvm has no equivalent.
+    #[test]
+    fn try_next_item_is_none_on_an_empty_sequencer() {
+        block_on(async {
+            let seqr: Sequencer<Cmd, Rsp> = Sequencer::new();
+            assert!(SeqItemIf::try_next_item(&*seqr.inner).is_none());
+        });
+    }
+
+    #[test]
+    fn try_next_item_takes_a_waiting_item() {
+        block_on(async {
+            let seqr: Sequencer<Cmd, Rsp> = Sequencer::new();
+            let inner = seqr.inner.clone();
+            let s = inner.clone();
+            executor::spawn(async move {
+                let mut ctx = SeqCtx::new(Some(s), "T", 1);
+                let mut cmd = Cmd { a: 5, tag: "" };
+                ctx.start_item(&mut cmd).await.unwrap();
+                ctx.finish_item(cmd).await.unwrap();
+            });
+            // First poll grants but the payload is not filled yet; the second
+            // finds it. That two-step is why the desk polls each clock edge.
+            let mut got = None;
+            for _ in 0..8 {
+                executor::current().run_until_idle();
+                if let Some(item) = SeqItemIf::try_next_item(&*inner) {
+                    got = Some(item.payload().a);
+                    SeqItemIf::item_done(&*inner, None);
+                    break;
+                }
+            }
+            assert_eq!(got, Some(5));
+        });
+    }
+
+    #[test]
+    fn item_done_with_a_response_reaches_get_response() {
+        block_on(async {
+            let seqr: Sequencer<Cmd, Rsp> = Sequencer::new();
+            spawn_one_shot_driver(&seqr, 100);
+            let mut ctx = SeqCtx::new(Some(seqr.inner.clone()), "T", 1);
+            let mut cmd = Cmd { a: 1, tag: "" };
+            ctx.start_item(&mut cmd).await.unwrap();
+            let ticket = ctx.finish_item(cmd).await.unwrap();
+            let rsp = ctx.get_response(Some(ticket)).await;
+            assert_eq!(rsp.v, 101);
+        });
+    }
+
+    /// The pipelined path: the driver releases the sequencer at `item_done`
+    /// and answers later. This is what lets several requests be outstanding.
+    #[test]
+    fn put_response_answers_after_item_done() {
+        block_on(async {
+            let seqr: Sequencer<Cmd, Rsp> = Sequencer::new();
+            let inner = seqr.inner.clone();
+            let d = inner.clone();
+            executor::spawn(async move {
+                let item = SeqItemIf::get_next_item(&*d).await;
+                let id = item.txn_id();
+                SeqItemIf::item_done(&*d, None); // released, no answer yet
+                SeqItemIf::put_response(&*d, id, Rsp { v: 77 });
+            });
+            let mut ctx = SeqCtx::new(Some(inner), "T", 1);
+            let mut cmd = Cmd::default();
+            ctx.start_item(&mut cmd).await.unwrap();
+            let ticket = ctx.finish_item(cmd).await.unwrap();
+            assert_eq!(ctx.get_response(Some(ticket)).await.v, 77);
+        });
+    }
+
+    /// The repair desk's whole point: answers arrive out of order and each
+    /// sequence still gets the one it asked for.
+    #[test]
+    fn get_response_picks_its_ticket_out_of_order() {
+        block_on(async {
+            let seqr: Sequencer<Cmd, Rsp> = Sequencer::new();
+            let inner = seqr.inner.clone();
+            // Answer ticket 2 before ticket 1.
+            inner.responses.push(TxnId(2), Rsp { v: 22 });
+            inner.responses.push(TxnId(1), Rsp { v: 11 });
+            let mut ctx = SeqCtx::new(Some(inner), "T", 1);
+            assert_eq!(ctx.get_response(Some(TxnId(1))).await.v, 11);
+            assert_eq!(ctx.get_response(Some(TxnId(2))).await.v, 22);
+        });
+    }
+
+    #[test]
+    fn get_response_none_takes_the_oldest() {
+        block_on(async {
+            let seqr: Sequencer<Cmd, Rsp> = Sequencer::new();
+            let inner = seqr.inner.clone();
+            inner.responses.push(TxnId(5), Rsp { v: 50 });
+            inner.responses.push(TxnId(6), Rsp { v: 60 });
+            let mut ctx = SeqCtx::new(Some(inner), "T", 1);
+            assert_eq!(ctx.get_response(None).await.v, 50, "oldest first");
+            assert_eq!(ctx.get_response(None).await.v, 60);
+        });
+    }
+
+    #[test]
+    fn try_get_response_does_not_wait() {
+        block_on(async {
+            let seqr: Sequencer<Cmd, Rsp> = Sequencer::new();
+            let inner = seqr.inner.clone();
+            let mut ctx = SeqCtx::new(Some(inner.clone()), "T", 1);
+            assert!(ctx.try_get_response(Some(TxnId(1))).is_none(), "nothing yet");
+            inner.responses.push(TxnId(1), Rsp { v: 9 });
+            assert_eq!(ctx.try_get_response(Some(TxnId(1))).unwrap().v, 9);
+            assert!(ctx.try_get_response(Some(TxnId(1))).is_none(), "and it was taken");
+        });
+    }
+
+    #[test]
+    fn a_response_that_never_comes_waits_forever() {
+        let seqr: Sequencer<Cmd, Rsp> = Sequencer::new();
+        let inner = seqr.inner.clone();
+        assert_pending(async move {
+            let mut ctx = SeqCtx::new(Some(inner), "T", 1);
+            ctx.get_response(Some(TxnId(1043))).await
+        });
+    }
+
+    /// pyuvm's `test_base_virtual_sequence`: a sequence started without a
+    /// sequencer cannot send items, and says so by name.
+    #[test]
+    fn start_item_in_a_virtual_sequence_is_an_error() {
+        block_on(async {
+            let mut ctx: SeqCtx<Cmd, Rsp> = SeqCtx::new(None, "MyVirtualSeq", 1);
+            let mut cmd = Cmd::default();
+            match ctx.start_item(&mut cmd).await {
+                Err(SeqError(msg)) => {
+                    assert!(msg.contains("virtual"), "the error explains: {msg}");
+                    assert!(msg.contains("MyVirtualSeq"), "and names the sequence: {msg}");
+                }
+                Ok(()) => panic!("start_item should fail without a sequencer"),
+            }
+        });
+    }
+
+    /// FIFO arbitration (D97): two sequences on one sequencer take turns.
+    #[test]
+    fn two_sequences_interleave_one_item_each() {
+        block_on(async {
+            let seqr: Sequencer<Cmd, Rsp> = Sequencer::new();
+            let inner = seqr.inner.clone();
+            let order = Rc::new(RefCell::new(Vec::new()));
+
+            for tag in ["A", "B"] {
+                let s = inner.clone();
+                executor::spawn(async move {
+                    let mut ctx = SeqCtx::new(Some(s), tag, 1);
+                    for a in 0..2u8 {
+                        let mut cmd = Cmd { a, tag };
+                        ctx.start_item(&mut cmd).await.unwrap();
+                        ctx.finish_item(cmd).await.unwrap();
+                    }
+                });
+            }
+
+            let d = inner.clone();
+            let seen = order.clone();
+            executor::spawn(async move {
+                for _ in 0..4 {
+                    let item = SeqItemIf::get_next_item(&*d).await;
+                    seen.borrow_mut().push(item.payload().tag);
+                    SeqItemIf::item_done(&*d, None);
+                }
+            });
+
+            for _ in 0..64 {
+                executor::current().run_until_idle();
+            }
+            let got = order.borrow().clone();
+            assert_eq!(got.len(), 4, "all four items were driven");
+            assert_eq!(got, vec!["A", "B", "A", "B"], "one item each, in turn");
+        });
+    }
+
+    /// D98: the name defaults to the type name, so nobody has to invent one.
+    #[test]
+    fn a_sequence_name_defaults_to_its_type() {
+        #[derive(Default)]
+        struct MyFancySeq;
+        impl Sequence for MyFancySeq {
+            type Req = Cmd;
+            type Rsp = Rsp;
+            async fn body(&mut self, _ctx: &mut SeqCtx<Cmd, Rsp>) -> Result<(), SeqError> {
+                Ok(())
+            }
+        }
+        assert_eq!(MyFancySeq.seq_name(), "MyFancySeq");
+    }
+
+    #[test]
+    fn a_virtual_sequence_runs_its_body() {
+        #[derive(Default)]
+        struct VSeq {
+            ran: bool,
+        }
+        impl Sequence for VSeq {
+            type Req = Cmd;
+            type Rsp = Rsp;
+            async fn body(&mut self, _ctx: &mut SeqCtx<Cmd, Rsp>) -> Result<(), SeqError> {
+                self.ran = true;
+                Ok(())
+            }
+        }
+        block_on(async {
+            let mut s = VSeq::default();
+            s.start_virtual().await.unwrap();
+            assert!(s.ran);
+        });
     }
 }

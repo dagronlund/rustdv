@@ -187,3 +187,96 @@ impl Drop for LockGuard {
         self.inner.release();
     }
 }
+
+// ===========================================================================
+// Tests — no simulator.
+// ===========================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::executor;
+    use crate::testing::{assert_pending, block_on};
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    #[test]
+    fn wait_before_set_wakes() {
+        block_on(async {
+            let ev = Event::new();
+            let setter = ev.clone();
+            executor::spawn(async move {
+                setter.set();
+            });
+            ev.wait().await; // returns only because the spawned task set it
+        });
+    }
+
+    /// Events are **level**-triggered with an explicit `clear`, not edge:
+    /// `is_set` is sticky, so a `set` that happens before anyone waits is
+    /// still there when they arrive. This is what makes the sequencer
+    /// handshake safe — a driver may grant an item before the sequence gets
+    /// round to waiting for the grant, and the sequence still proceeds.
+    #[test]
+    fn set_latches_until_cleared() {
+        block_on(async {
+            let ev = Event::new();
+            ev.set();
+            ev.wait().await; // returns at once: the set is remembered
+            assert!(ev.is_set());
+        });
+    }
+
+    #[test]
+    fn clear_makes_a_later_wait_block_again() {
+        let ev = Event::new();
+        ev.set();
+        ev.clear();
+        assert!(!ev.is_set());
+        assert_pending(async move { ev.wait().await });
+    }
+
+    #[test]
+    fn one_set_wakes_every_waiter() {
+        block_on(async {
+            let ev = Event::new();
+            let woken = Rc::new(RefCell::new(0));
+            for _ in 0..3 {
+                let (e, w) = (ev.clone(), woken.clone());
+                executor::spawn(async move {
+                    e.wait().await;
+                    *w.borrow_mut() += 1;
+                });
+            }
+            // Let the three waiters register before firing.
+            crate::executor::current().run_until_idle();
+            ev.set();
+            crate::executor::current().run_until_idle();
+            assert_eq!(*woken.borrow(), 3, "all three saw one set");
+        });
+    }
+
+    #[test]
+    fn lock_is_fifo_fair() {
+        block_on(async {
+            let lock = Lock::new();
+            let order = Rc::new(RefCell::new(Vec::new()));
+
+            let held = lock.acquire().await; // the test holds it first
+
+            for who in 1..=3 {
+                let (l, o) = (lock.clone(), order.clone());
+                executor::spawn(async move {
+                    let _g = l.acquire().await;
+                    o.borrow_mut().push(who);
+                });
+                // Each spawn runs far enough to queue for the lock, in order.
+                crate::executor::current().run_until_idle();
+            }
+
+            drop(held);
+            crate::executor::current().run_until_idle();
+            assert_eq!(*order.borrow(), vec![1, 2, 3], "granted in request order");
+        });
+    }
+}

@@ -14,6 +14,17 @@ use crate::triggers::{Edge, EdgeKind};
 pub struct HierarchyHandle {
     raw: gpi::HierarchyHandle,
 }
+impl HierarchyHandle {
+    /// A handle to nothing, for unit tests that need a `RustdvCtx` but never
+    /// touch the DUT. Any VPI call through it reaches `rustdv-vpi-stubs`,
+    /// which panics — so a test that *does* touch the DUT fails loudly rather
+    /// than reading garbage, and its author learns it belongs in a `sim-*`
+    /// case instead.
+    pub fn null_for_test() -> HierarchyHandle {
+        HierarchyHandle { raw: gpi::HierarchyHandle::null_for_test() }
+    }
+}
+
 
 impl HierarchyHandle {
     pub fn child(&self, name: &str) -> Result<AnyHandle, HandleError> {

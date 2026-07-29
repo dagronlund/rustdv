@@ -111,3 +111,63 @@ impl Drop for ObjectionGuard {
         }
     }
 }
+
+// ===========================================================================
+// Tests — no simulator.
+// ===========================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rustdv_sim::testing::{assert_pending, block_on};
+
+    #[test]
+    fn a_guard_raises_and_dropping_it_drops() {
+        let reg = ObjectionRegistry::new();
+        assert_eq!(reg.count(), 0);
+        {
+            let _g = reg.raise("stimulus");
+            assert_eq!(reg.count(), 1);
+        }
+        assert_eq!(reg.count(), 0, "the guard dropped it");
+    }
+
+    #[test]
+    fn nested_objections_end_only_at_the_last_drop() {
+        let reg = ObjectionRegistry::new();
+        let a = reg.raise("a");
+        let b = reg.raise("b");
+        assert_eq!(reg.count(), 2);
+        drop(a);
+        assert_eq!(reg.count(), 1, "one left");
+        drop(b);
+        assert_eq!(reg.count(), 0);
+    }
+
+    #[test]
+    fn drained_fires_when_a_raised_count_returns_to_zero() {
+        block_on(async {
+            let reg = ObjectionRegistry::new();
+            let g = reg.raise("work");
+            let waiter = reg.clone();
+            rustdv_sim::executor::spawn(async move {
+                waiter.wait_drained_event().await;
+            });
+            drop(g);
+            // The waiter completes; if it did not, block_on would time out.
+            reg.wait_drained_event().await;
+        });
+    }
+
+    /// The D82b bug, as a regression test. Arming the race on "has anything
+    /// ever objected?" answered `false` before any run body had executed, so
+    /// the race was never armed and every responder-style testbench hung.
+    /// The event's own semantics carry D46's rule instead: never objecting
+    /// simply never fires.
+    #[test]
+    fn never_objecting_never_fires_the_drained_event() {
+        let reg = ObjectionRegistry::new();
+        assert_eq!(reg.count(), 0);
+        assert_pending(async move { reg.wait_drained_event().await });
+    }
+}
