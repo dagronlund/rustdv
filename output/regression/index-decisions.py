@@ -90,9 +90,14 @@ def main():
     if "## Decision map" not in text:
         problems.append("no '## Decision map' section")
     else:
-        current = text.split("## Decision map", 1)[1].split("\n\n", 2)
+        # The map is the table right after the heading, however long it has
+        # grown. An earlier version read a fixed first 2000 characters, which
+        # silently started reporting every new section as stale once the table
+        # outgrew the window (D109's row was the one that tripped it).
+        after = text.split("## Decision map", 1)[1]
+        table = after.split("\n---", 1)[0]
         for num, title, rng in section_rows(text):
-            if rng != "—" and f"| {rng} |" not in text.split("## Decision map", 1)[1][:2000]:
+            if rng != "—" and f"| {rng} |" not in table:
                 problems.append(f"decision map is stale for §{num} ({rng})")
                 break
 

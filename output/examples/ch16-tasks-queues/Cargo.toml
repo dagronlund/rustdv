@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
+path = "src/ch16_tasks_queues.rs"
 crate-type = ["cdylib"]
 
 [dependencies]

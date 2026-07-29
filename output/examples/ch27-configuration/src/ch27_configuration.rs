@@ -5,9 +5,6 @@
 //! No DUT: the subject is how a value reaches a component that nobody
 //! passed it to.
 //!
-//! ASPIRATIONAL — this file is the *target* API, written before the
-//! framework can compile it (D1/D2). rustdv is being changed to satisfy it.
-//!
 //! This is the chapter the previous rustdv pass argued *against*. Its
 //! Chapter 27 was titled "Configuration: The ConfigDB Problem, Solved by
 //! Types" — the config DB replaced by typed structs passed to constructors.

@@ -1,16 +1,20 @@
-//! TinyALU testbench (design-doc §7): the worked example, end to end.
+//! The TinyALU testbench — the worked example, end to end.
 //!
-//! Body shape (§7.2): build config (sequence + variation choices) →
-//! construct env → start lifecycle → await sequence → drain → check.
-//! `max_ops` differs from `random_ops` only in the sequence it starts —
-//! the variation-point pattern replacing the factory override.
+//! Two tests, one testbench, no new components between them. The structure
+//! holds still and the **program** changes: each test overrides which sequence
+//! `BaseSeq` builds and then runs it. That is what sequences bought — in the
+//! factory chapter a new stimulus pattern meant a new *component*.
+//!
+//! A test is a component like any other, so it gets the whole nine-phase
+//! lifecycle and the runner drives it: `build` files the BFM and creates the
+//! env, and `run` starts the stimulus. There is no hand-rolled phasing here.
 
 use std::rc::Rc;
 
 use rustdv::prelude::*;
 
-// Test executables need vpi_* symbol definitions (the simulator provides
-// them for the real cdylib) — see rustdv-vpi-stubs.
+// Test executables need vpi_* symbol definitions (the simulator provides them
+// for the real cdylib) — see rustdv-vpi-stubs.
 #[cfg(test)]
 use rustdv_vpi_stubs as _;
 
@@ -21,71 +25,92 @@ pub mod env;
 pub mod sequences;
 
 use alu_bfm::TinyAluBfm;
-use env::{AluEnv, AluEnvConfig};
-use sequences::{MaxSeq, RandomSeq};
+use env::AluEnv;
+use sequences::{BaseSeq, MaxSeq, RandomSeq};
 
 // Export the VPI entry points from this cdylib.
 rustdv::vpi_bootstrap!();
 
-/// Common test scaffolding: clock, BFM, reset, env. Returns (bfm, env).
-async fn build_testbench(
-    ctx: &RustdvCtx,
-    enable_coverage: bool,
-) -> Result<(Rc<TinyAluBfm>, AluEnv), TestError> {
-    let dut = ctx.dut();
-    let bfm = Rc::new(TinyAluBfm::new(&dut)?);
-    Clock::new(bfm.clk(), SimDuration::ns(10)).start();
-    bfm.start_tasks();
-    bfm.reset().await;
-
-    let config = AluEnvConfig { bfm: bfm.clone(), is_active: Active::Active, enable_coverage };
-    let env = AluEnv::new(config);
-    Ok((bfm, env))
+/// Everything both tests share: file the BFM where any component can find it,
+/// build the env, then run whichever sequence the factory has been told to
+/// build for `BaseSeq`.
+///
+/// The clock comes from the RTL, not from here — the BFM only ever waits on
+/// edges, which is what lets the same testbench run on an emulator (D42).
+#[derive(Component, Default)]
+pub struct BaseTest {
+    #[component(child)]
+    env: RustdvComp,
 }
 
-/// Run a sequence through the env, drain, then extract/check/report.
-async fn run_sequence<S>(
-    ctx: &RustdvCtx,
-    bfm: &Rc<TinyAluBfm>,
-    env: &mut AluEnv,
-    seq: &mut S,
-    description: &str,
-) -> Result<(), TestError>
-where
-    S: Sequence<Req = alu_item::AluCommand, Rsp = alu_item::AluCommand>,
-{
-    // Step 4 (D47): the context is the one the runner handed the test, not
-    // a second registry built here. Objections raised now are the same ones
-    // the runner waits on.
-    let mut run_ctx = ctx.clone();
-    start_all(env, &mut run_ctx);
-
-    {
-        // Every stimulus task holds an objection guard (§7.3 convention 2).
-        let _obj = run_ctx.raise_objection(description);
-        let seqr = env.sequencer();
-        seq.start(&seqr).await?;
-        bfm.wait_idle().await;
+impl Component for BaseTest {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        let bfm = TinyAluBfm::new(&ctx.dut()).expect("TinyALU signals");
+        ConfigDb::set(None, "*", "BFM", Rc::new(bfm));
+        self.env = AluEnv::new_comp();
     }
-    run_ctx.all_objections_dropped().await;
 
-    run_extract_check_report(env, &mut run_ctx).map_err(TestError::from)
+    fn start_of_simulation(&mut self, ctx: &mut RustdvCtx) {
+        // This testbench drives `clk` itself, because `sim/hdl/tinyalu.sv` is the
+        // bare DUT and takes a clock in. The book's copy of the design
+        // self-clocks, so its chapters do not do this and say why: a BFM that
+        // only ever *waits* on edges ports to an emulator unchanged, while one
+        // that drives them does not. Everything above this line is that kind of
+        // BFM — the clock is the one place the testbench is talking to a
+        // simulator rather than to a design.
+        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM").expect("build filed the BFM");
+        Clock::new(bfm.clk(), SimDuration::ns(10)).start();
+    }
+
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let _obj = ctx.raise_objection("stimulus");
+
+        let seqr: Sequencer<alu_item::AluCommand, alu_item::AluResult> =
+            ConfigDb::get(Some(ctx), "", "SEQR")?;
+
+        // Built through the factory, so the test above chose what this is.
+        let mut seq = create_seq::<BaseSeq>();
+        seq.start(&seqr).await?;
+
+        // `finish_item` returns when the driver has taken the command, not when
+        // the DUT has answered it. Dropping the objection here would end the run
+        // phase with results still in flight, and the scoreboard would silently
+        // compare fewer results than it saw commands. Wait for the DUT to go
+        // quiet first.
+        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM")?;
+        bfm.wait_idle().await;
+
+        ctx.info("sequence complete");
+        Ok(())
+    }
 }
 
+/// Random operands across every operation, five times each.
 #[rustdv::test(timeout_time = 500, timeout_unit = "us")]
-async fn random_ops(ctx: RustdvCtx) -> Result<(), TestError> {
-    let (bfm, mut env) = build_testbench(&ctx, true).await?;
-    let mut seq = RandomSeq { n_per_op: 5, rng: ctx.rng() };
-    run_sequence(&ctx, &bfm, &mut env, &mut seq, "random_ops sequence").await?;
-    log::info("random_ops: sequence complete");
-    Ok(())
+#[derive(Component, Default)]
+struct RandomTest {
+    #[component(child)]
+    inner: RustdvComp,
 }
 
+impl Component for RandomTest {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        set_seq_override::<BaseSeq, RandomSeq>();
+        self.inner = BaseTest::new_comp();
+    }
+}
+
+/// The `0xff op 0xff` corner, once per operation.
 #[rustdv::test(timeout_time = 500, timeout_unit = "us")]
-async fn max_ops(ctx: RustdvCtx) -> Result<(), TestError> {
-    let (bfm, mut env) = build_testbench(&ctx, true).await?;
-    let mut seq = MaxSeq;
-    run_sequence(&ctx, &bfm, &mut env, &mut seq, "max_ops sequence").await?;
-    log::info("max_ops: sequence complete");
-    Ok(())
+#[derive(Component, Default)]
+struct MaxTest {
+    #[component(child)]
+    inner: RustdvComp,
+}
+
+impl Component for MaxTest {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        set_seq_override::<BaseSeq, MaxSeq>();
+        self.inner = BaseTest::new_comp();
+    }
 }

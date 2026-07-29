@@ -24,6 +24,17 @@ pub struct TinyAluBfm {
     result_q: Queue<AluResult>,
 }
 
+/// The BFM lives in the ConfigDb, and a ConfigDb value must be `Debug` so
+/// `ConfigDb::dump()` can name it. Hand-written, because a field-by-field dump
+/// of eight signal handles and three queues would be noise: whoever reads a
+/// config dump wants to know *which object* is filed there, not what is inside
+/// it.
+impl std::fmt::Debug for TinyAluBfm {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("TinyAluBfm")
+    }
+}
+
 impl TinyAluBfm {
     pub fn new(dut: &HierarchyHandle) -> Result<TinyAluBfm, HandleError> {
         Ok(TinyAluBfm {

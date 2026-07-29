@@ -2,9 +2,6 @@
 //!
 //!     sim-common/run_sim.sh ch28_config_debugging playground
 //!
-//! ASPIRATIONAL — the *target* API, written before the framework can
-//! compile it (D1/D2).
-//!
 //! Chapter 27 showed configuration working. This one shows it *failing*,
 //! which is the more useful skill: a path that matches nothing, a key
 //! spelled two ways, and a parent and child fighting over the same

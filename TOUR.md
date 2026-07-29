@@ -8,16 +8,15 @@ regression suite, not aspirational.*
 > **Active work: the UVM restoration.** A prior pass wrongly stripped the
 > UVM's dynamic build/connect process and its TLM FIFOs. Branch
 > `ch23_onwards` restored them, one TinyALU testbench version at a time, and
-> **its code is done: ch23–ch39 are green** (phases, env, logging, ConfigDb,
-> factory, the whole TLM layer, transactions, and all four sequence
-> testbenches). The test suite is built on top of it. Next is the TinyALU
-> refactor — the last known technical debt. The framework and the Part II+
-> prose are under active
-> revision — later chapters are being rewritten from working code, not
-> settled. The authoritative decision log is `output/.design-decisions.md`
-> (its §0 is the mission and method); read it and CLAUDE.local.md before
-> proposing anything architectural. **"Where the work stands", at the bottom
-> of this file, is the live status; this callout is the one-line version.**
+> **the code is done: ch23–ch39 are green, the test suite is built on top, and
+> the TinyALU refactor has landed — no known technical debt is left.** What
+> remains is D108's two runner fixes and the prose. The Part II+ manuscript is
+> stale by design and is rewritten from the working code by a separate pass
+> (`book-pdf/FABLE.md`).
+>
+> **"Where the work stands", at the bottom of this file, is the live status.**
+> `output/.design-decisions.md` is the decision log — read its §0 and
+> CLAUDE.local.md before proposing anything architectural.
 
 ## What this project is
 
@@ -45,22 +44,24 @@ Icarus output.
 All of this is reproducible from this tree and enforced by the git
 pre-push hook:
 
-- `sim/run_rustdv.sh` — the TinyALU regression ends `REGRESSION: PASS`
-  (random_ops: 20 compared, 0 mismatches, full op coverage; max_ops: 4/0).
+- `sim/run_rustdv.sh` — the shipped TinyALU testbench ends `REGRESSION: PASS`
+  (RandomTest: 20 compared, 0 mismatches, every op covered; MaxTest: 4/0). It
+  runs in the suite as `custom/sim-tinyalu-tb`, which asserts those counts.
 - **Mutation-checked**: with the DUT's XOR deliberately corrupted to OR,
   the scoreboard flags every affected transaction and the regression
   fails; restored, it passes. The checking has teeth.
-- `output/regression/regress.py` — **223 passed, 0 failed** (book-sync 108,
-  examples 96, custom 19), green on **both Linux and macOS/arm64**. The
-  remaining sim chapters (ch35–ch39, the transaction and sequence chapters,
-  plus ch21 which has no sim test) are quarantined in `regress.json` during
-  the restoration and rejoin as each is converted.
-- **The TLM layer, as of 2026-07-28** — ch31 (put/get/peek, the y = 2x²
-  pipeline, FIFO analysis taps), ch32 (broadcast, and a slow subscriber that
-  buffers for itself), and ch34 / TB 6.0 (the TinyALU testbench wired with
-  `TlmFifo` and two `AnalysisBus` buses) all run on Icarus.
-- `cargo test --workspace` in `/rustdv` — pure-Rust unit tests for the
-  testbench logic, no simulator required.
+- `output/regression/regress.py` — **237 entries, 0 failed**, green on **both
+  Linux and macOS/arm64**. One package is quarantined in `regress.json`:
+  `ch21_macros`, a macro demonstration with no simulator test, which never
+  comes off the list. Every chapter crate ch15–ch39 runs.
+- **Three tiers of framework test under the 21 chapter runs** — 110
+  no-simulator tests (`--suite unit`, ~2 s), 38 targeted simulator tests in
+  `rustdv/framework-tests/` plus `sim-mutation`, and 5 compile-fail cases each
+  asserting its `error[E….]`. `output/regression/TESTING.md` is the operating
+  manual.
+- `cargo test --workspace` in `/rustdv` — the whole methodology layer
+  (ConfigDb, factory, ports, FIFO, analysis bus, objections, the phase walk,
+  the sequencer handshake), no simulator required.
 
 ## Where everything lives
 
@@ -72,6 +73,7 @@ pre-push hook:
 | Runnable book figures | `/output/examples` (`README.md` has per-chapter run commands) |
 | The regression suite | `/output/regression/regress.py` (`--help` works; wired into pre-push) |
 | Implementation history & honest deviations | `STATUS.md` (chronological, bottom-up) |
+| The book's prose pass | `book-pdf/FABLE.md` (the rules) and `book-pdf/chapter-notes.md` (one row per chapter). These supersede the older `fable-brief.md`, `notes-for-fable.md` and `dual-audience-style.md`. |
 | AI verification skills | `/skills` (spec+RTL → testbench → verified coverage report) |
 | Upstream sources | `../rustdv-reference` — **read-only, outside the repo** (cocotb, pyuvm, SystemVerilog UVM, both earlier books) |
 
@@ -86,7 +88,7 @@ pre-push hook:
   data and ownership, **not** the late-binding layer — config, factory and
   TLM resolve at run time by design, so the old "a config conflict is a
   compile error" figures were removed (D68, and the reasoning in §0.4).
-- **Fibonacci on the TinyALU** (chapter 37) — stimulus that needs the
+- **Fibonacci on the TinyALU** (chapter 38 — TB 7.2) — stimulus that needs the
   DUT's answers: `Fibonacci Sequence: [0, 1, 1, 2, 3, 5, 8, 13, 21]`.
 - **The honest-gaps culture** — `STATUS.md` deviations, the design doc's
   Open Questions, chapter 41's missing-pieces inventory. What this
@@ -100,11 +102,13 @@ pre-push hook:
   sync with reruns — verify claims by running things.
 - `../rustdv-reference` (outside the repo) is read-only. `/output` holds
   generated deliverables.
-- Book voice, if you edit chapters: the book addresses *both* UVM
-  audiences (SystemVerilog and Python) — recap blockquotes open
-  "**In the UVM...**"; see `book-pdf/dual-audience-style.md` for the rules.
-  `// Figure N:` captions, output after `--`, and the chapter READMEs in
-  `output/examples` map every figure to its runnable code.
+- **Do not edit `book-pdf/src` from a code thread.** The manuscript is stale by
+  design and is rewritten in one dedicated prose pass; its rules are
+  `book-pdf/FABLE.md`, and that pass changes no code. A code thread records
+  what the prose will need — in `chapter-notes.md` — and moves on.
+- Figure conventions belong to the code side: `// Chapter N, Figure M:`
+  captions, output after `--`, and the chapter READMEs in `output/examples` map
+  every figure to its runnable code.
 
 ---
 
@@ -164,7 +168,7 @@ reasoning; its §8 records where the built suite differs). Three tiers under the
 | targeted simulator | `rustdv/framework-tests/` | 38 tests in six named groups, plus `sim-mutation` |
 | compile-fail | `rustdv/framework-tests/compile-fail/` | 5 cases, each asserting its `error[E….]` |
 
-Regression: **236 entries, green**, and the pre-push hook runs all of it.
+Regression: **237 entries, green**, and the pre-push hook runs all of it.
 `output/regression/TESTING.md` is the operating manual, including the two
 runner behaviours a simulator test has to know about (the phase survives a
 test; vvp exits on an empty event queue).
@@ -189,28 +193,35 @@ The three things a new thread most needs to know, all in
   `write` calls each subscriber and returns, and a datum broadcast to nobody is
   gone. Storage belongs to the subscriber.
 
+**Done 2026-07-29: the TinyALU refactor (D109).** `tinyalu_tb` was the last
+thing running on the pre-restoration shape and now runs on phases, the ConfigDb,
+the factory, `AnalysisBus` and a sequencer like every chapter, with two struct
+tests that swap stimulus through the sequence factory. Behaviour is unchanged —
+same counts, same simulated times, same log text, only the component path added.
+It is now in the suite as `custom/sim-tinyalu-tb`, which it was not before.
+
 **Next up, in the order Ray set:**
 
-1. **The TinyALU refactor.** `tinyalu_tb` still runs on the pre-restoration
-   `AnalysisPort` and on `new(config, ..)`-style construction rather than the
-   restored phases. It is the last known technical debt, and it was deferred to
-   the end on purpose — Ray's rule is that the library ships with none.
-2. **Two runner behaviours** the new simulator tests had to work around, both
-   written up in `output/test-plan.md` §8 and at the bottom of `STATUS.md`:
-   the simulator phase survives a test (so a test can pass or fail on what ran
-   before it), and a `Clock`'s write can land inside a ReadOnly callback via
-   the await-an-edge-then-`read_only` pattern the book teaches. Neither was
-   fixed unilaterally; both want a decision.
-3. **Q18**, the one open question left in `output/.design-decisions.md` §16:
-   whether to caption code listings "Example N" rather than "Figure N". Ray is
-   asking Fable for a recommendation and will come back to Opus to make the
-   change. Do not settle it silently.
-4. **The directory names `ch37-fibonacci-testbench-7.1` and
-   `ch38-get-response-testbench-7.2`** still carry the old chapter assignment;
-   the crate roots inside them are already correct (ch37 is the repair desk,
-   ch38 is Fibonacci). A rename, not a rework.
+1. **The two runner behaviours — both now decided as bugs to fix (D108).** The
+   simulator phase must stop surviving a test (the fix goes in `run_one`'s
+   per-test reset, and `fresh_phase()` then goes away), and a `Clock` must stop
+   writing inside a ReadOnly callback — the pattern that provokes it is the
+   monitor pattern the book teaches. The second is the deeper one: writes
+   scheduled from inside a ReadOnly callback have to be deferred to a region
+   that permits them. Both land before release.
+2. **Q18**, the one open question left in `output/.design-decisions.md` §16:
+   whether to caption code listings "Example N" rather than "Figure N". The
+   process is set: the prose pass maps the book and hands Ray a renumbering
+   request (`book-pdf/figure-plan.md`), Ray has the code captions renumbered,
+   and only then does the prose land. Do not settle it silently.
+3. **`#[component(fifo)]` names a type, not a role.** A child exempt from factory
+   override gets its own attribute per type — `fifo`, then `sequencer` — and
+   `AnalysisBus` is declared `#[component(fifo)]` while being no such thing. One
+   role word for all of them, or per-type spellings recorded as the design.
+   Ray's call, deferred to whoever next touches those declarations (D106's tail).
 
 **The manuscript waits (D77).** Part II+ prose is written from working code by a
-separate Fable pass; its instructions are `book-pdf/fable-brief.md`, and Fable
-is forbidden from changing any code. Figure numbers therefore live in code
-comments and are final on the code side.
+separate prose pass that **changes no code**; its instructions are
+`book-pdf/FABLE.md` plus `book-pdf/chapter-notes.md`. Figure numbers live in
+code comments and are final on the code side, which is why Q18 runs as a
+request-then-rename rather than an edit.

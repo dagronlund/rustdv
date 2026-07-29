@@ -3,14 +3,11 @@
 //!     sim-common/run_sim.sh ch23_uvm_test_testbench_3_0 tinyalu \
 //!         sim-common/hdl/timescale.v sim-common/hdl/tinyalu.sv
 //!
-//! ASPIRATIONAL — this file is the *target* API, written before the
-//! framework can compile it. rustdv is being changed to satisfy it, not
-//! the other way around.
-//!
-//! A test is a **component**: `#[rustdv::test]` registers it under its name
-//! so the runner can `run_test("random_test")` — the UVM's `run_test()`
-//! restored. At 3.0 the test is the *only* component; components proper
-//! arrive in Chapter 24 and the environment in Chapter 25.
+//! A test is a **component**: `#[rustdv::test]` registers it under its type
+//! name, verbatim — `RandomTest`, not `random_test` (D102) — so the runner can
+//! find it, which is the UVM's `run_test()` restored. At 3.0 the test is the
+//! *only* component; components proper arrive in Chapter 24 and the
+//! environment in Chapter 25.
 //!
 //! Only infrastructure is imported — the BFM, `Ops`, `alu_prediction`.
 //! Everything this chapter teaches is written here, even where it repeats

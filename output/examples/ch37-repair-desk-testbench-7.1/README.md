@@ -3,7 +3,7 @@
 Run with:
 
 ```
-sim-common/run_sim.sh ch37_fibonacci_testbench_7_1 tinyalu \
+sim-common/run_sim.sh ch37_repair_desk_testbench_7_1 tinyalu \
     sim-common/hdl/timescale.v sim-common/hdl/tinyalu.sv
 ```
 

@@ -3,11 +3,6 @@
 //!     sim-common/run_sim.sh ch39_virtual_sequence_testbench_8_0 tinyalu \
 //!         sim-common/hdl/timescale.v sim-common/hdl/tinyalu.sv
 //!
-//! ============================================================================
-//! ASPIRATIONAL — the target API (D1/D2), written before the framework can
-//! compile it. What it asks for beyond Chapter 36 is at the bottom.
-//! ============================================================================
-//!
 //! A **virtual sequence** is started without a sequencer. It sends no items of
 //! its own; it starts other sequences. That is the whole of the idea, and it is
 //! what lets a test be assembled from stimulus that already exists rather than

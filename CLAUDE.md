@@ -26,9 +26,12 @@ are converted and out of quarantine — phases, ConfigDb, factory, the whole TLM
 layer, transactions, and all four sequence testbenches (TB 7.0–8.0). The test
 suite is built on top: 110 no-simulator tests, 38 targeted simulator tests in
 `rustdv/framework-tests/`, 5 compile-fail cases, and `sim-mutation`; the
-regression is 236 and the pre-push hook runs all of it
-(`output/regression/TESTING.md`). Next is the **TinyALU refactor**, the last
-known technical debt. TOUR.md's "Where the work stands" section is the
+regression is 237 and the pre-push hook runs all of it
+(`output/regression/TESTING.md`). **The TinyALU refactor is done too (D109),
+so there is no known technical debt left** — `tinyalu_tb` runs on phases, the
+ConfigDb, the factory and `AnalysisBus` like every chapter, and it is in the
+suite as `custom/sim-tinyalu-tb`. What remains is D108's two runner fixes and
+the book's prose pass. TOUR.md's "Where the work stands" section is the
 orientation for a new thread; the decisions that most shape new code are D83b
 (connection is a trait method, not a registry), D82b/D82c (children move out for
 the run phase; each component races the objection event, never the whole tree),

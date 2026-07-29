@@ -35,8 +35,8 @@ members = [
     "ch34-connections-testbench-6.0",
     "ch35-transactions",
     "ch36-sequence-testbench-7.0",
-    "ch37-fibonacci-testbench-7.1",
-    "ch38-get-response-testbench-7.2",
+    "ch37-repair-desk-testbench-7.1",
+    "ch38-fibonacci-testbench-7.2",
     "ch39-virtual-sequence-testbench-8.0",
     "tinyalu-utils",
 ]

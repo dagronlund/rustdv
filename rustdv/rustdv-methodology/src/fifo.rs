@@ -360,7 +360,6 @@ mod tests {
     use crate::shared::RustdvShared;
     use rustdv_sim::testing::block_on;
     use std::any::Any;
-    use std::cell::RefCell;
 
     /// A hand-written `PortOwner`: the derive is convenience, not requirement
     /// (OQ-15), and a test should not need it.

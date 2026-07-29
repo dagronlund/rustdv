@@ -426,3 +426,63 @@ Recorded rather than fixed — both want a decision (test-plan §8).
   variable 'clk' during a read-only synch callback". A diagnostic, not a
   failure — but the pattern that provokes it is await-an-edge-then-`read_only`,
   which is the monitor pattern the book teaches.
+
+## 2026-07-29 — the TinyALU refactor: the last technical debt is gone
+
+`rustdv/tinyalu_tb` was the one thing left running on the pre-restoration
+shape — `AluEnv::new(config)` with the BFM and every TLM endpoint injected
+through constructors, `#[component(no_factory)]` on all five components, the
+legacy `AnalysisPort`, work started from `start` as spawned tasks, and a
+hand-rolled `start_all` + `run_extract_check_report` in place of the phaser. It
+is now the same testbench the book's chapters teach (D109):
+
+- **Phases.** `AluEnv::build` creates the children and `AluEnv::connect` wires
+  them; the tests are `#[rustdv::test]` **structs**, so the runner's phaser
+  drives them and there is no hand-rolled phasing anywhere in the crate.
+- **The BFM comes from the ConfigDb** (D101), filed once by `BaseTest::build`.
+  `TinyAluBfm` gained a hand-written `Debug` for `ConfigDb::dump`.
+- **Every component is factory-built** with no constructor arguments —
+  `Driver::create_comp()` and friends — so all five `no_factory` opt-outs came
+  off. The children are `RustdvComp` slots.
+- **TLM through `port_slot`** (D83b): one `AnalysisBus` per stream, a
+  `#[component(sequencer)]` sequencer, and connect lines with the same shape as
+  ch34's.
+- **The subscriber owns the storage** (D90). The scoreboard holds two
+  `RustdvShared` logs behind two `SubscribePort`s and two `WriteSink` impls;
+  coverage is a third subscriber on the command bus. No `AnalysisPort`, no
+  `connect_fifo`.
+- **Work happens in `run`**, concurrently (D82), instead of in tasks spawned
+  from `start`. `spawn` is left where it belongs: the BFM's own collector loops,
+  started in the env's `start_of_simulation`.
+- **Stimulus is a program, swapped by the factory.** Two tests, `RandomTest` and
+  `MaxTest`, each `set_seq_override::<BaseSeq, _>()` and then share one
+  `BaseTest` body that runs `create_seq::<BaseSeq>()`. The old `random_ops` /
+  `max_ops` free functions are gone; a struct test registers under its type name
+  (D102), which is why the transcript now says `RandomTest`.
+
+**Behaviour is unchanged, and that was the check.** Same counts, same simulated
+times, and the log text of every line is the same: RandomTest 20 compared / 0
+mismatches with `Add=5 And=5 Mul=5 Xor=5`, at 635.00ns; MaxTest 4 / 0 with
+`Add=1 And=1 Mul=1 Xor=1`, at 195.00ns. The only difference in the transcript is
+that each line now carries the component's path — `[RandomTest.inner.env.scoreboard]`
+— because the framework supplies it instead of the component hand-typing a label
+into the message (D49/D62).
+
+**Two things found while doing it.**
+
+- **The scoreboard still has teeth.** Corrupting the XOR to an OR in
+  `sim/hdl/tinyalu.sv` makes it report five mismatches and fail the test. Worth
+  recording because the storage moved (hub → subscriber) and a scoreboard that
+  quietly stopped receiving would have looked identical to one that passed.
+- **`sim/hdl/tinyalu.sv` is the bare DUT and takes `clk` in**, unlike the book's
+  copy under `output/examples/sim-common/hdl/`, which self-clocks. So this
+  testbench drives the clock and the chapters do not (D42). It is in
+  `BaseTest::start_of_simulation` with the reason written next to it.
+
+**The shipped testbench is now in the regression** as `custom/sim-tinyalu-tb`.
+Until today nothing in the suite ran it: `cargo test --workspace` proved it
+compiled, and "the TinyALU regression passes" rested on a human running
+`sim/run_rustdv.sh`. The entry asserts `REGRESSION: PASS` plus the three counts
+above, so a scoreboard that stopped comparing fails instead of passing quietly.
+Regression: **237 entries** (unit 1, book-sync 108, examples 96, custom 32),
+green, `MUTATION: CAUGHT`.

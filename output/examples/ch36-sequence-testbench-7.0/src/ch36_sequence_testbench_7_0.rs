@@ -3,11 +3,6 @@
 //!     sim-common/run_sim.sh ch36_sequence_testbench_7_0 tinyalu \
 //!         sim-common/hdl/timescale.v sim-common/hdl/tinyalu.sv
 //!
-//! ============================================================================
-//! ASPIRATIONAL — the target API (D1/D2), written before the framework can
-//! compile it. What it asks for is listed at the bottom of this comment.
-//! ============================================================================
-//!
 //! Testbench 6.0 made a new stimulus pattern mean a new *component*. Here the
 //! structure holds still and the **program** changes: one env, one driver, and
 //! a sequence chosen per test. The Primer puts it best — overriding the tester

@@ -1,14 +1,21 @@
-//! Testbench components (design-doc §7.2, per the book's 6.0
-//! architecture): the driver pulls from its typed SeqItemPort; monitors
-//! publish on analysis ports; the scoreboard subscribes and checks in the
-//! check phase; coverage is a Subscriber.
+//! Testbench components, on the restored framework.
+//!
+//! Every component here is factory-buildable and takes **no constructor
+//! arguments**: the BFM arrives from the ConfigDb (D101) and every TLM endpoint
+//! is wired in the env's `connect` phase through `ComponentNode::port_slot`
+//! (D83b). Nothing reaches into a sibling, and nothing is handed a handle at
+//! construction — which is what makes the whole tree overridable.
+//!
+//! Work happens in `run`, not in a task spawned from `start`. The four run
+//! phases here are concurrent (D82): the driver blocks on an empty sequencer
+//! until a sequence sends something, and both monitors sit on the BFM's queues
+//! at the same time. Each races the objection-drained event individually
+//! (D82c), so a monitor that loops forever still gets checked.
 
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
 use rustdv::prelude::*;
-use rustdv::RustdvCtx;
 
 use crate::alu_bfm::TinyAluBfm;
 use crate::alu_item::{predict, AluCommand, AluResult, Ops};
@@ -17,49 +24,27 @@ use crate::alu_item::{predict, AluCommand, AluResult, Ops};
 // Driver
 // ===========================================================================
 
-/// Port of uvm_driver (mapping row 40): typed transactions end runtime
-/// type errors at the driver boundary. RSP = REQ (no response path; the
-/// result monitor observes results).
+/// Port of `uvm_driver`: pulls items from the sequencer and drives the BFM.
 ///
-/// `#[component(no_factory)]` here is **transitional, not an endorsement**
-/// (D75). It is *not* that this component cannot be factory-built; it is that
-/// it has not been converted yet. It still takes its BFM and TLM endpoints as
-/// constructor arguments (the R3 style). The conversion is: BFM via the
-/// ConfigDb (the config_db exists precisely to bridge the factory's
-/// no-argument signature, D57/D65), TLM endpoints via the connect phase
-/// (D17–D24) — after which the opt-out comes off and these register like any
-/// other component. Deferred to the TLM/sequence chapters, where the whole
-/// §7 example converts at once. The other `no_factory` marks below share
-/// this note.
-#[derive(rustdv::Component)]
-#[component(no_factory)]
+/// `get_next_item` returns only when a sequence has an item ready *and* the
+/// driver asked for it — a rendezvous, not a queue. The answer travels back as
+/// an RSP where a chapter needs one; this testbench compares the two observed
+/// streams instead, so it releases the sequence with `item_done(None)`.
+#[derive(Component, Default)]
 pub struct Driver {
-    bfm: Rc<TinyAluBfm>,
-    seq_item_port: SeqItemPort<AluCommand>,
-}
-
-impl Driver {
-    pub fn new(bfm: Rc<TinyAluBfm>, export: SeqItemExport<AluCommand, AluCommand>) -> Driver {
-        let seq_item_port = SeqItemPort::default();
-        export.connect_port(&seq_item_port);
-        Driver { bfm, seq_item_port }
-    }
+    #[port(seq_item)]
+    seq_item_port: SeqItemPort<AluCommand, AluResult>,
 }
 
 impl Component for Driver {
-    fn start(&mut self, _ctx: &mut RustdvCtx) {
-        let bfm = self.bfm.clone();
-        let port = self.seq_item_port.clone();
-        spawn_named(
-            async move {
-                loop {
-                    let item = port.get_next_item().await;
-                    bfm.send_op(item.payload().clone()).await;
-                    port.item_done(None);
-                }
-            },
-            "driver",
-        );
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM")?;
+        bfm.reset().await;
+        loop {
+            let item = self.seq_item_port.get_next_item().await;
+            bfm.send_op(item.payload().clone()).await;
+            self.seq_item_port.item_done(None);
+        }
     }
 }
 
@@ -67,63 +52,41 @@ impl Component for Driver {
 // Monitors
 // ===========================================================================
 
-#[derive(rustdv::Component)]
-#[component(no_factory)]
+/// Watches the command bus and broadcasts what it sees. It knows nothing about
+/// who is listening — the scoreboard and the coverage collector both subscribe
+/// to the same bus, and neither is visible from here.
+#[derive(Component, Default)]
 pub struct CmdMonitor {
-    bfm: Rc<TinyAluBfm>,
-    ap: AnalysisPort<AluCommand>,
-}
-
-impl CmdMonitor {
-    pub fn new(bfm: Rc<TinyAluBfm>, ap: AnalysisPort<AluCommand>) -> CmdMonitor {
-        CmdMonitor { bfm, ap }
-    }
+    #[port(publish)]
+    ap: PublishPort<AluCommand>,
 }
 
 impl Component for CmdMonitor {
-    fn start(&mut self, _ctx: &mut RustdvCtx) {
-        let bfm = self.bfm.clone();
-        let ap = self.ap.clone();
-        spawn_named(
-            async move {
-                loop {
-                    let cmd = bfm.get_cmd().await;
-                    log::info(&format!("cmd_monitor: {cmd:?}"));
-                    ap.write(&cmd);
-                }
-            },
-            "cmd_monitor",
-        );
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM")?;
+        loop {
+            let cmd = bfm.get_cmd().await;
+            ctx.info(&format!("cmd_monitor: {cmd:?}"));
+            self.ap.write(&cmd);
+        }
     }
 }
 
-#[derive(rustdv::Component)]
-#[component(no_factory)]
+/// The same shape for results.
+#[derive(Component, Default)]
 pub struct ResultMonitor {
-    bfm: Rc<TinyAluBfm>,
-    ap: AnalysisPort<AluResult>,
-}
-
-impl ResultMonitor {
-    pub fn new(bfm: Rc<TinyAluBfm>, ap: AnalysisPort<AluResult>) -> ResultMonitor {
-        ResultMonitor { bfm, ap }
-    }
+    #[port(publish)]
+    ap: PublishPort<AluResult>,
 }
 
 impl Component for ResultMonitor {
-    fn start(&mut self, _ctx: &mut RustdvCtx) {
-        let bfm = self.bfm.clone();
-        let ap = self.ap.clone();
-        spawn_named(
-            async move {
-                loop {
-                    let res = bfm.get_result().await;
-                    log::info(&format!("result_monitor: {res:?}"));
-                    ap.write(&res);
-                }
-            },
-            "result_monitor",
-        );
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM")?;
+        loop {
+            let res = bfm.get_result().await;
+            ctx.info(&format!("result_monitor: {res:?}"));
+            self.ap.write(&res);
+        }
     }
 }
 
@@ -131,63 +94,96 @@ impl Component for ResultMonitor {
 // Scoreboard
 // ===========================================================================
 
-/// Scoreboards check in `check`, report in `report` (§7.3 convention 3).
-/// Comparison policy lives here, not on the data type (review-memo R1):
-/// the default comparator is `PartialEq` against the predictor's output.
-#[derive(rustdv::Component)]
-#[component(no_factory)]
+// The subscriber owns the storage (D90). An `AnalysisBus` holds nothing: it
+// calls every subscriber and returns, so *where the traffic goes* is the
+// subscriber's decision. This scoreboard wants both streams in order, so it
+// keeps a `Vec` of each and compares them in `check`.
+//
+// Two streams, two ports, two `write` methods — and no macros. SystemVerilog
+// needs `uvm_analysis_imp_decl` to mint a second differently-named `write`, and
+// pyuvm cannot do it at all with one `write` per class (D20/D88).
+
+#[derive(Default)]
+struct CmdLog {
+    cmds: Vec<AluCommand>,
+}
+
+impl WriteSink<AluCommand> for CmdLog {
+    fn write(&mut self, cmd: &AluCommand) {
+        self.cmds.push(cmd.clone());
+    }
+}
+
+#[derive(Default)]
+struct ResultLog {
+    results: Vec<AluResult>,
+}
+
+impl WriteSink<AluResult> for ResultLog {
+    fn write(&mut self, res: &AluResult) {
+        self.results.push(res.clone());
+    }
+}
+
+/// Scoreboards check in `check` and report in `report`. Comparison policy lives
+/// on the transaction — `PartialEq` against the predictor's output — which is
+/// where `do_compare()` puts it.
+#[derive(Component, Default)]
 pub struct Scoreboard {
-    // Unbounded `TlmFifo`s, handed over by `AnalysisPort::connect_fifo()`.
-    // The broadcast keeps nothing (D90) — the subscriber owns the storage.
-    cmd_fifo: TlmFifo<AluCommand>,
-    result_fifo: TlmFifo<AluResult>,
+    #[port(subscribe)]
+    cmd_in: SubscribePort<AluCommand>,
+    #[port(subscribe)]
+    result_in: SubscribePort<AluResult>,
+    cmd_log: RustdvShared<CmdLog>,
+    result_log: RustdvShared<ResultLog>,
     compared: usize,
     mismatches: usize,
 }
 
-impl Scoreboard {
-    pub fn new(cmd_fifo: TlmFifo<AluCommand>, result_fifo: TlmFifo<AluResult>) -> Scoreboard {
-        Scoreboard { cmd_fifo, result_fifo, compared: 0, mismatches: 0 }
-    }
-}
-
 impl Component for Scoreboard {
-    fn check(&mut self, _ctx: &mut RustdvCtx, errors: &mut CheckSink) {
-        loop {
-            match (self.cmd_fifo.try_get(), self.result_fifo.try_get()) {
-                (Some(cmd), Some(actual)) => {
-                    let expected = predict(&cmd);
-                    self.compared += 1;
-                    if expected != actual {
-                        self.mismatches += 1;
-                        log::info(&format!(
-                            "scoreboard: in={cmd:?} out={actual:?} expected={expected:?} check=FAIL"
-                        ));
-                        errors.error(format!(
-                            "scoreboard mismatch: {cmd:?} -> got {actual:?}, expected {expected:?}"
-                        ));
-                    } else {
-                        log::info(&format!(
-                            "scoreboard: in={cmd:?} out={actual:?} expected={expected:?} check=PASS"
-                        ));
-                    }
-                }
-                (None, None) => break,
-                (Some(cmd), None) => {
-                    errors.error(format!("scoreboard: command {cmd:?} has no result"));
-                }
-                (None, Some(res)) => {
-                    errors.error(format!("scoreboard: result {res:?} has no command"));
-                }
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        self.cmd_in.on_write(self.cmd_log.clone());
+        self.result_in.on_write(self.result_log.clone());
+    }
+
+    fn check(&mut self, ctx: &mut RustdvCtx, errors: &mut CheckSink) {
+        let cmd_log = self.cmd_log.get();
+        let result_log = self.result_log.get();
+
+        for (cmd, actual) in cmd_log.cmds.iter().zip(result_log.results.iter()) {
+            let expected = predict(cmd);
+            self.compared += 1;
+            if expected != *actual {
+                self.mismatches += 1;
+                ctx.info(&format!(
+                    "scoreboard: in={cmd:?} out={actual:?} expected={expected:?} check=FAIL"
+                ));
+                errors.error(format!(
+                    "scoreboard mismatch: {cmd:?} -> got {actual:?}, expected {expected:?}"
+                ));
+            } else {
+                ctx.info(&format!(
+                    "scoreboard: in={cmd:?} out={actual:?} expected={expected:?} check=PASS"
+                ));
             }
         }
+
+        // A command with no result is a real failure and the zip would hide it:
+        // the shorter stream simply ends the comparison. Say so explicitly.
+        if cmd_log.cmds.len() != result_log.results.len() {
+            errors.error(format!(
+                "scoreboard: saw {} commands and {} results",
+                cmd_log.cmds.len(),
+                result_log.results.len()
+            ));
+        }
         if self.compared == 0 {
-            errors.error("scoreboard: nothing was compared");
+            errors.error("scoreboard: nothing was compared".to_string());
         }
     }
 
-    fn report(&mut self, _ctx: &mut RustdvCtx) {
-        log::info(&format!(
+    fn report(&mut self, ctx: &mut RustdvCtx) {
+        ctx.info(&format!(
             "scoreboard: {} compared, {} mismatches",
             self.compared, self.mismatches
         ));
@@ -198,36 +194,34 @@ impl Component for Scoreboard {
 // Coverage
 // ===========================================================================
 
+#[derive(Default)]
 struct CovCollector {
     seen: HashMap<Ops, usize>,
 }
 
-impl Subscriber<AluCommand> for CovCollector {
-    fn write(&mut self, item: &AluCommand) {
-        *self.seen.entry(item.op).or_insert(0) += 1;
+impl WriteSink<AluCommand> for CovCollector {
+    fn write(&mut self, cmd: &AluCommand) {
+        *self.seen.entry(cmd.op).or_insert(0) += 1;
     }
 }
 
-/// Functional coverage as a Subscriber (mapping row 41; book's Coverage
-/// class): counts ops seen, errors in `check` if any op was never covered.
-#[derive(rustdv::Component)]
-#[component(no_factory)]
+/// Functional coverage as a second subscriber on the command bus: it counts the
+/// ops it saw and errors in `check` if any was never exercised. The command
+/// monitor does not know it exists, and neither does the scoreboard.
+#[derive(Component, Default)]
 pub struct Coverage {
-    collector: Rc<RefCell<CovCollector>>,
-}
-
-impl Coverage {
-    /// `// connect:` subscribes to the command analysis port.
-    pub fn new(cmd_ap: &AnalysisPort<AluCommand>) -> Coverage {
-        let collector = Rc::new(RefCell::new(CovCollector { seen: HashMap::new() }));
-        cmd_ap.connect(collector.clone());
-        Coverage { collector }
-    }
+    #[port(subscribe)]
+    cmd_in: SubscribePort<AluCommand>,
+    collector: RustdvShared<CovCollector>,
 }
 
 impl Component for Coverage {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        self.cmd_in.on_write(self.collector.clone());
+    }
+
     fn check(&mut self, _ctx: &mut RustdvCtx, errors: &mut CheckSink) {
-        let seen = &self.collector.borrow().seen;
+        let seen = &self.collector.get().seen;
         for op in Ops::ALL {
             if !seen.contains_key(&op) {
                 errors.error(format!("coverage: op {op:?} was never exercised"));
@@ -235,13 +229,13 @@ impl Component for Coverage {
         }
     }
 
-    fn report(&mut self, _ctx: &mut RustdvCtx) {
-        let seen = &self.collector.borrow().seen;
+    fn report(&mut self, ctx: &mut RustdvCtx) {
+        let seen = &self.collector.get().seen;
         let mut parts: Vec<String> = Ops::ALL
             .iter()
             .map(|op| format!("{op:?}={}", seen.get(op).copied().unwrap_or(0)))
             .collect();
         parts.sort();
-        log::info(&format!("coverage: {}", parts.join(" ")));
+        ctx.info(&format!("coverage: {}", parts.join(" ")));
     }
 }

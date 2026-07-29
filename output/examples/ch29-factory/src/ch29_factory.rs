@@ -4,9 +4,6 @@
 //!
 //! No DUT: the subject is *which type gets built*, not what it drives.
 //!
-//! ASPIRATIONAL — the *target* API, written before the framework can compile
-//! it (D1/D2). rustdv is being changed to satisfy it.
-//!
 //! rustdv has a factory, and it works the way the UVM factory works: you
 //! build a component through it, and code above you can substitute a
 //! different type without touching the code that built it. From where you

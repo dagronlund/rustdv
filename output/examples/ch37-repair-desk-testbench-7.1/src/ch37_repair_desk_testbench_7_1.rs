@@ -3,11 +3,6 @@
 //!
 //!     sim-common/run_sim.sh ch37_repair_desk_testbench_7_1 playground
 //!
-//! ============================================================================
-//! ASPIRATIONAL — the target API (D1/D2), written before the framework can
-//! compile it. What it asks for is listed at the bottom of this comment.
-//! ============================================================================
-//!
 //! ## The problem this chapter exists for
 //!
 //! In 7.0 a sequence sent commands and never heard back. Real stimulus often

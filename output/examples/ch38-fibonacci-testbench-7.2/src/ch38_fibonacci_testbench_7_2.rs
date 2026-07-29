@@ -3,12 +3,6 @@
 //!     sim-common/run_sim.sh ch38_fibonacci_testbench_7_2 tinyalu \
 //!         sim-common/hdl/timescale.v sim-common/hdl/tinyalu.sv
 //!
-//! ============================================================================
-//! ASPIRATIONAL — the target API (D1/D2), written before the framework can
-//! compile it. It asks for nothing Chapters 36 and 37 have not already asked
-//! for.
-//! ============================================================================
-//!
 //! Chapter 37 taught the mechanism on a device that did nothing but wait.
 //! Here it does real work on the real DUT: **the TinyALU computes the Fibonacci
 //! numbers**, and it cannot be told the next pair until it has answered the
