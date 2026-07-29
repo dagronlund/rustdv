@@ -226,10 +226,13 @@ no GC is the *emulation* argument (D36) — throughput, not correctness.
   manuscript. Log lines embed `file:line`, so **renames must precede transcript
   regeneration** (D31).
 - **Verification:** `python3 output/regression/regress.py` — the `book-sync`
-  suite checks that book figures match the example files. It is wired into the
-  git pre-push hook. **Caution: book-sync green does not mean the prose is
-  right** — Part II+ chapters are checked against example *files* only, so a
-  chapter can keep arguing a superseded design with the suite none the wiser.
+  suite checks that book figures match the example files, wired into the git
+  pre-push hook. **It covers chapters 1–14 only.** `parse_book()` skips
+  everything above that, so **no Part II+ figure is compared against its code
+  by anything** (D92). The `sim-ch*` tests prove the example crates compile and
+  run; nothing relates the manuscript's figure text to them. Copy figures
+  verbatim from the example files, and never read a green suite as
+  confirmation that a chapter's figures — or its argument — are right.
 - **Two writing debts already known:** the `prelude::*` problem (notes §1 — ~50
   identifiers arrive undeclared; needs a catalogue chapter plus "Appendix D:
   What rustdv Provides", with a book-sync check that every prelude export
@@ -239,12 +242,25 @@ no GC is the *emulation* argument (D36) — throughput, not correctness.
 
 ## Open questions Fable must not silently settle
 
-- **Q15** — do struct tests register as `RandomTest` or `random_test`? Currently
-  the type name; transcripts show that. If it changes it must change *before*
-  regeneration (D31).
-- Anything in §16 of the decision log. If the prose needs an answer, ask Ray;
-  do not invent one and write it as settled — that is exactly how the original
-  design failed (OQ-9, D4).
+As of 2026-07-29 there is **one**: **Q18** — whether code listings become
+"Example N" so that "Figure N" is free for actual drawings. Ray is asking Fable
+for a *recommendation*; the rename itself is a code-side change Fable may not
+perform. The question behind it is whether Part II+ wants drawings at all —
+ch31's pipeline, ch34's architecture and the sequencer handshake currently live
+as ASCII art inside code comments, which is the symptom of having no word for a
+picture. If the answer is yes, the split lands **before** the prose pass, or
+every chapter gets edited twice.
+
+Q15 (test naming) is settled — see D102 and §5 of `notes-for-fable.md`.
+
+Anything else in §16 of the decision log: if the prose needs an answer, ask
+Ray; do not invent one and write it as settled — that is exactly how the
+original design failed (OQ-9, D4).
+
+**Read `notes-for-fable.md` §5 before starting.** It lists the places where a
+Part II+ chapter currently asserts something the code no longer does — ch35
+rebuilt, the BFM out of the singleton, ch33/ch34 sharing a crate, and two
+specific claims in ch35's text that must not survive.
 
 ---
 

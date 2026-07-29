@@ -387,7 +387,100 @@ example compiles and passes on Icarus. These follow from it.
   emulation: a BFM that waits on edges ports to a transactor unchanged;
   one that drives them does not.
 
-- **Open, do not guess: test naming (Q15).** Struct tests currently register
-  under the *type* name (`RandomTest`), so that is what the transcripts say.
-  pyuvm agrees; the SV Primer's snake_case `random_test` does not. Ray has
-  not decided. If it changes, it changes before transcripts are regenerated.
+- **Settled: test naming (D102, was Q15).** Struct tests register under the
+  *type* name, verbatim — `RandomTest`, not `random_test` — and the
+  transcripts say so. pyuvm agrees; the Primer's snake_case is an artifact of
+  SystemVerilog *class* naming, not a decision about tests. No longer open.
+
+
+---
+
+## 5. Corrections from the 2026-07-29 pass — the manuscript is wrong about these
+
+Everything below is a place where a Part II+ chapter currently asserts
+something the code no longer does. **The code wins (D77).** These are listed so
+they are not re-derived from stale prose.
+
+### 5.1 ch35 was rebuilt from the Python chapter — read the new figures
+
+The old chapter had five figures, two of them marked "fragment" (printed in
+the book with nothing runnable behind them). It now has **seven, all
+runnable**, and its structure follows the Python book's *uvm_object in Python*:
+a `PersonRecord`, then a `StudentRecord` that owns a list of grades, walked
+through the four transaction operations. The grades list is the point — it is
+the field that makes shallow-versus-deep visible, and three scalars cannot show
+it. The TinyALU transactions arrive **last**, as the payoff.
+
+Figure numbering changed completely. Take the map from
+`output/examples/ch35-transactions/README.md`, not from the old manuscript.
+
+**Two claims in the current ch35 text must not survive.**
+
+1. **`Debug` is *not* `convert2string()`.** The manuscript says so three
+   times — in a figure comment, in the prose, and in the summary. `Debug` is
+   the developer field-dump (`{:?}`) and comes free with the derive;
+   `convert2string()` / `__str__()` is **`Display`** (`{}`), and `Display` is
+   **not derivable** — you write it, because only the author knows which
+   fields are worth reading. Figure 1 now teaches both forms.
+
+2. **Comparison policy does *not* move to the checker.** The current summary
+   says policy "moved out of the data type and into the scoreboard as a
+   closure." That figure existed, and Ray cut it: *"This is too fancy and not
+   in keeping with UVM... This code will confuse the new reader who is likely
+   learning both Rust and UVM at the same time."* The UVM does not pass
+   behaviour around for equality and neither does `__eq__`. **Equality lives on
+   the transaction**, exactly where `do_compare()` puts it — derived when every
+   field counts, hand-written when "the same" means something narrower
+   (Figure 2, Batman and Bruce Wayne).
+
+New material worth prose: `PartialEq` versus `Eq` (Figure 3). The reason there
+are two traits is that `PartialEq` does not promise `a == a` — IEEE 754 says
+NaN equals nothing — and `Eq` adds that promise. It bites a verification
+engineer in one specific place: `HashSet` requires `Eq`, so a transaction
+carrying a *measured* value (a float delay) cannot be a coverage key.
+
+### 5.2 The BFM lives in the ConfigDb from ch25, not in a singleton (D101)
+
+ch25's text describes an ambient singleton and `TinyAluBfm::get()`. That is
+gone — the machinery is deleted from the framework, not merely unused. From
+ch25 on, the test files the BFM with `ConfigDb::set(None, "*", "BFM", ...)` and
+components ask for it by name. **ch25 introduces the ConfigDb briefly** —
+enough to read the two lines — and ch27 stays the full treatment.
+
+ch25 owes the reader one honest sentence on *why* it is not a singleton: a
+singleton asserts there is exactly one BFM, which is false for any testbench
+with two interfaces. The case that would prove it — two DUTs, two agents — is
+not a testbench this book builds, so state the reason; do not claim to have
+shown it.
+
+Consequence: the book now teaches no singleton anywhere. `singleton.rs` is
+deleted, so do not describe it as available.
+
+### 5.3 ch33 and ch34 share one crate, and the captions carry the chapter (D91)
+
+ch33 ("Components in Testbench 6.0") has no crate of its own. Its six figures
+are the component definitions inside
+`output/examples/ch34-connections-testbench-6.0/`, captioned
+`// Chapter 33, Figure N:`; ch34 owns Figures 1–2 there, the env and the test.
+Each chapter's README maps its own figures. This is not an oversight — D45
+forbids the cross-chapter import that a separate ch33 crate would need.
+
+### 5.4 `AnalysisFifo` is now `AnalysisBus` (D103)
+
+Renamed everywhere, including in the four manuscript files that mentioned it.
+The old name was borrowed from `uvm_tlm_analysis_fifo`, which is a
+*subscriber-side buffer* — a class rustdv deliberately does not have (D90) —
+while the type it named is the broadcast hub, which the UVM has no counterpart
+for at all. If prose explains the name, that is the reason.
+
+### 5.5 Part II+ figures are checked by **nothing** (D92)
+
+`fable-brief.md` and D77 both say Part II+ chapters are "sync-checked only
+against the example files." That overstates it. `regress.py` skips every
+chapter above 14, so **no Part II+ figure has ever been compared against its
+code**. The `sim-ch*` tests prove the example crates compile and run; nothing
+relates the manuscript's figure text to them.
+
+So: copy figures verbatim from the example files, and do not read a green
+regression as confirmation that a chapter's figures are right. It is not
+checking them.
