@@ -44,13 +44,16 @@ async fn build_testbench(
 }
 
 /// Run a sequence through the env, drain, then extract/check/report.
-async fn run_sequence(
+async fn run_sequence<S>(
     ctx: &RustdvCtx,
     bfm: &Rc<TinyAluBfm>,
     env: &mut AluEnv,
-    seq: &mut dyn Sequence<alu_item::AluCommand>,
+    seq: &mut S,
     description: &str,
-) -> Result<(), TestError> {
+) -> Result<(), TestError>
+where
+    S: Sequence<Req = alu_item::AluCommand, Rsp = alu_item::AluCommand>,
+{
     // Step 4 (D47): the context is the one the runner handed the test, not
     // a second registry built here. Objections raised now are the same ones
     // the runner waits on.
@@ -60,7 +63,8 @@ async fn run_sequence(
     {
         // Every stimulus task holds an objection guard (§7.3 convention 2).
         let _obj = run_ctx.raise_objection(description);
-        env.sequencer().start(seq).await?;
+        let seqr = env.sequencer();
+        seq.start(&seqr).await?;
         bfm.wait_idle().await;
     }
     run_ctx.all_objections_dropped().await;

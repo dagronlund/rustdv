@@ -16,18 +16,9 @@
   "quarantine": {
     "comment": "Chapter sim crates not yet converted to the UVM restoration (branch ch23_onwards). The remaining ones are the sequence chapters (ch36-ch39). Their sim tests are skipped and reported as quarantined rather than passing, so red means we broke something, not that work is in progress. REMOVE a chapter from both lists the moment its example compiles and runs. (ch18-20 converted and un-quarantined 2026-07-23; ch31/ch32/ch34 converted and un-quarantined 2026-07-28.) NOTE: ch21_macros is listed for a different reason - it is a macros demo with no sim test at all, so it is not pending conversion and never comes off this list. See no_sim_test below. (ch35_transactions un-quarantined 2026-07-29: rewritten from the Python book's chapter, eight runnable figures, no simulator needed.)",
     "packages": [
-      "ch21_macros",
-      "ch36_sequence_testbench_7_0",
-      "ch37_fibonacci_testbench_7_1",
-      "ch38_get_response_testbench_7_2",
-      "ch39_virtual_sequence_testbench_8_0"
+      "ch21_macros"
     ],
-    "custom_tests": [
-      "sim-ch36",
-      "sim-ch37",
-      "sim-ch38",
-      "sim-ch39"
-    ],
+    "custom_tests": [],
     "no_sim_test": [
       "ch21_macros"
     ]

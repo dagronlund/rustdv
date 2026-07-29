@@ -35,19 +35,21 @@ use crate::alu_item::{predict, AluCommand, AluResult, Ops};
 #[component(no_factory)]
 pub struct Driver {
     bfm: Rc<TinyAluBfm>,
-    seq_item_port: Option<SeqItemPort<AluCommand>>,
+    seq_item_port: SeqItemPort<AluCommand>,
 }
 
 impl Driver {
-    pub fn new(bfm: Rc<TinyAluBfm>, seq_item_port: SeqItemPort<AluCommand>) -> Driver {
-        Driver { bfm, seq_item_port: Some(seq_item_port) }
+    pub fn new(bfm: Rc<TinyAluBfm>, export: SeqItemExport<AluCommand, AluCommand>) -> Driver {
+        let seq_item_port = SeqItemPort::default();
+        export.connect_port(&seq_item_port);
+        Driver { bfm, seq_item_port }
     }
 }
 
 impl Component for Driver {
     fn start(&mut self, _ctx: &mut RustdvCtx) {
         let bfm = self.bfm.clone();
-        let mut port = self.seq_item_port.take().expect("Driver started twice");
+        let port = self.seq_item_port.clone();
         spawn_named(
             async move {
                 loop {

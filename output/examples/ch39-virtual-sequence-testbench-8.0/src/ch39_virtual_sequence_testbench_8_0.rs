@@ -55,9 +55,25 @@
 use std::rc::Rc;
 
 use rustdv::prelude::*;
-use tinyalu_utils::{alu_prediction, AluCommand, AluResult, CmdTuple, Ops, TinyAluBfm};
+use tinyalu_utils::{alu_prediction, CmdTuple, Ops, TinyAluBfm};
 
 rustdv::vpi_bootstrap!();
+
+// Chapter 35 defined these; D45 says a chapter example is self-contained, so
+// they are re-shown rather than imported. Plain structs with derives — no base
+// class, nothing to extend.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AluCommand {
+    pub a: u8,
+    pub b: u8,
+    pub op: Ops,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct AluResult {
+    pub result: u16,
+}
+
 
 // ===========================================================================
 // Chapter 36's sequences, unchanged
@@ -81,7 +97,7 @@ async fn all_ops<S: Operands>(
     Ok(())
 }
 
-#[derive(Sequence, Default)]
+#[derive(Default)]
 struct RandomSeq;
 
 impl Operands for RandomSeq {
@@ -91,13 +107,16 @@ impl Operands for RandomSeq {
     }
 }
 
-impl Sequence<AluCommand, AluResult> for RandomSeq {
+impl Sequence for RandomSeq {
+    type Req = AluCommand;
+    type Rsp = AluResult;
+
     async fn body(&mut self, ctx: &mut SeqCtx<AluCommand, AluResult>) -> Result<(), SeqError> {
         all_ops(self, ctx).await
     }
 }
 
-#[derive(Sequence, Default)]
+#[derive(Default)]
 struct MaxSeq;
 
 impl Operands for MaxSeq {
@@ -107,7 +126,10 @@ impl Operands for MaxSeq {
     }
 }
 
-impl Sequence<AluCommand, AluResult> for MaxSeq {
+impl Sequence for MaxSeq {
+    type Req = AluCommand;
+    type Rsp = AluResult;
+
     async fn body(&mut self, ctx: &mut SeqCtx<AluCommand, AluResult>) -> Result<(), SeqError> {
         all_ops(self, ctx).await
     }
@@ -122,10 +144,13 @@ impl Sequence<AluCommand, AluResult> for MaxSeq {
 // It finds a sequencer the same way the test does — in the ConfigDb — and then
 // its body reads like a program, because that is what it is. No `start_item`,
 // no `finish_item`: there is no item context to call them on.
-#[derive(Sequence, Default)]
+#[derive(Default)]
 struct TestAllSeq;
 
-impl Sequence<AluCommand, AluResult> for TestAllSeq {
+impl Sequence for TestAllSeq {
+    type Req = AluCommand;
+    type Rsp = AluResult;
+
     async fn body(&mut self, ctx: &mut SeqCtx<AluCommand, AluResult>) -> Result<(), SeqError> {
         let seqr: Sequencer<AluCommand, AluResult> = ConfigDb::get(None, "", "SEQR")?;
         RandomSeq::default().start(&seqr).await?;
@@ -145,10 +170,13 @@ impl Sequence<AluCommand, AluResult> for TestAllSeq {
 // The reason this is `join2` and not `spawn`: a spawned future must be
 // `'static`, and a sub-sequence that borrows the parent sequence's state cannot
 // be. Composing futures in place costs nothing and keeps that door open (D82).
-#[derive(Sequence, Default)]
+#[derive(Default)]
 struct TestAllParallelSeq;
 
-impl Sequence<AluCommand, AluResult> for TestAllParallelSeq {
+impl Sequence for TestAllParallelSeq {
+    type Req = AluCommand;
+    type Rsp = AluResult;
+
     async fn body(&mut self, ctx: &mut SeqCtx<AluCommand, AluResult>) -> Result<(), SeqError> {
         let seqr: Sequencer<AluCommand, AluResult> = ConfigDb::get(None, "", "SEQR")?;
         let mut random = RandomSeq::default();
@@ -178,7 +206,10 @@ struct OpSeq {
     result: Option<u16>,
 }
 
-impl Sequence<AluCommand, AluResult> for OpSeq {
+impl Sequence for OpSeq {
+    type Req = AluCommand;
+    type Rsp = AluResult;
+
     async fn body(&mut self, ctx: &mut SeqCtx<AluCommand, AluResult>) -> Result<(), SeqError> {
         let mut cmd = AluCommand { a: self.a, b: self.b, op: self.op };
         ctx.start_item(&mut cmd).await?;
@@ -211,12 +242,15 @@ async fn do_op(
 async fn do_add(seqr: &Sequencer<AluCommand, AluResult>, a: u8, b: u8) -> Result<u16, SeqError> {
     do_op(seqr, a, b, Ops::Add).await
 }
+#[allow(dead_code)]
 async fn do_and(seqr: &Sequencer<AluCommand, AluResult>, a: u8, b: u8) -> Result<u16, SeqError> {
     do_op(seqr, a, b, Ops::And).await
 }
+#[allow(dead_code)]
 async fn do_xor(seqr: &Sequencer<AluCommand, AluResult>, a: u8, b: u8) -> Result<u16, SeqError> {
     do_op(seqr, a, b, Ops::Xor).await
 }
+#[allow(dead_code)]
 async fn do_mul(seqr: &Sequencer<AluCommand, AluResult>, a: u8, b: u8) -> Result<u16, SeqError> {
     do_op(seqr, a, b, Ops::Mul).await
 }
@@ -226,10 +260,13 @@ async fn do_mul(seqr: &Sequencer<AluCommand, AluResult>, a: u8, b: u8) -> Result
 // The same computation as Chapter 38, with no sequence machinery visible at
 // all. Compare the two side by side: this is what a programming interface is
 // for, and why a team that writes tests but not testbenches wants one.
-#[derive(Sequence, Default)]
+#[derive(Default)]
 struct FibonacciProgramSeq;
 
-impl Sequence<AluCommand, AluResult> for FibonacciProgramSeq {
+impl Sequence for FibonacciProgramSeq {
+    type Req = AluCommand;
+    type Rsp = AluResult;
+
     async fn body(&mut self, ctx: &mut SeqCtx<AluCommand, AluResult>) -> Result<(), SeqError> {
         let seqr: Sequencer<AluCommand, AluResult> = ConfigDb::get(None, "", "SEQR")?;
         let mut prev: u8 = 0;
@@ -256,6 +293,11 @@ impl Sequence<AluCommand, AluResult> for FibonacciProgramSeq {
 struct Driver {
     #[port(seq_item)]
     seq_item_port: SeqItemPort<AluCommand, AluResult>,
+    // The driver already waits for each answer, so it is the one that has it.
+    // A separate ResultMonitor would be drawing from the same BFM queue and the
+    // two would take turns stealing results from each other.
+    #[port(publish)]
+    result_ap: PublishPort<u64>,
 }
 
 impl Component for Driver {
@@ -267,6 +309,7 @@ impl Component for Driver {
             let cmd = item.payload();
             bfm.send_op(cmd.a, cmd.b, cmd.op).await;
             let result = bfm.get_result().await;
+            self.result_ap.write(&result);
             self.seq_item_port
                 .item_done(Some(AluResult { result: result as u16 }));
         }
@@ -285,22 +328,6 @@ impl Component for CmdMonitor {
         loop {
             let cmd = bfm.get_cmd().await;
             self.ap.write(&cmd);
-        }
-    }
-}
-
-#[derive(Component, Default)]
-struct ResultMonitor {
-    #[port(publish)]
-    ap: PublishPort<u64>,
-}
-
-impl Component for ResultMonitor {
-    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
-        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM")?;
-        loop {
-            let result = bfm.get_result().await;
-            self.ap.write(&result);
         }
     }
 }
@@ -359,10 +386,13 @@ impl Component for Scoreboard {
                 ));
             }
         }
-        if Ops::ALL.iter().any(|op| !self.cvg.contains(op)) {
+        let want_full: bool = ConfigDb::get(Some(ctx), "", "CHECK_COVERAGE").unwrap_or(true);
+        if want_full && Ops::ALL.iter().any(|op| !self.cvg.contains(op)) {
             errors.error("Functional coverage error: missed operations".to_string());
-        } else {
+        } else if want_full {
             ctx.info("Covered all operations");
+        } else {
+            ctx.info(&format!("saw {} of {} ops (coverage not required)", self.cvg.len(), Ops::ALL.len()));
         }
     }
 }
@@ -376,8 +406,6 @@ struct AluEnv {
     #[component(child)]
     cmd_mon: RustdvComp,
     #[component(child)]
-    result_mon: RustdvComp,
-    #[component(child)]
     scoreboard: RustdvComp,
     #[component(fifo)]
     cmd_bus: AnalysisBus<CmdTuple>,
@@ -386,12 +414,11 @@ struct AluEnv {
 }
 
 impl Component for AluEnv {
-    fn build(&mut self, ctx: &mut RustdvCtx) {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
         self.seqr = Sequencer::new();
-        ConfigDb::set(Some(ctx), "*", "SEQR", self.seqr.handle());
+        ConfigDb::set(None, "*", "SEQR", self.seqr.handle());
         self.driver = Driver::new_comp();
         self.cmd_mon = CmdMonitor::new_comp();
-        self.result_mon = ResultMonitor::new_comp();
         self.scoreboard = Scoreboard::new_comp();
         self.cmd_bus = AnalysisBus::new();
         self.result_bus = AnalysisBus::new();
@@ -401,7 +428,7 @@ impl Component for AluEnv {
         self.seqr.seq_item_export().connect(&self.driver, Driver::SEQ_ITEM_PORT);
         self.cmd_bus.pub_export().connect(&self.cmd_mon, CmdMonitor::AP);
         self.cmd_bus.sub_export().connect(&self.scoreboard, Scoreboard::CMD_IN);
-        self.result_bus.pub_export().connect(&self.result_mon, ResultMonitor::AP);
+        self.result_bus.pub_export().connect(&self.driver, Driver::RESULT_AP);
         self.result_bus.sub_export().connect(&self.scoreboard, Scoreboard::RESULT_IN);
     }
 
@@ -431,7 +458,7 @@ impl Component for AluTest {
 
     async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
         let _obj = ctx.raise_objection("running the virtual sequence");
-        TestAllSeq::create_seq().start_virtual().await?;
+        create_seq::<TestAllSeq>().start_virtual().await?;
         Ok(())
     }
 }
@@ -468,6 +495,8 @@ impl Component for FibonacciProgramTest {
     fn build(&mut self, ctx: &mut RustdvCtx) {
         let bfm = TinyAluBfm::new(&ctx.dut()).expect("TinyALU signals");
         ConfigDb::set(None, "*", "BFM", Rc::new(bfm));
+        // This program only adds, so full coverage is not the goal here.
+        ConfigDb::set(None, "*", "CHECK_COVERAGE", false);
         self.env = AluEnv::new_comp();
     }
 

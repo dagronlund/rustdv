@@ -199,6 +199,13 @@ pub type PublishPort<T> = Port<dyn PublishIf<T>>;
 /// connect time. Broadcast runs the other way, so the wiring does too.
 pub type SubscribePort<T> = Port<dyn SinkHandle<T>>;
 
+impl<I: ?Sized + 'static> Clone for Port<I> {
+    /// Another handle to the *same* binding, not a second port.
+    fn clone(&self) -> Self {
+        Port { slot: self.slot.clone() }
+    }
+}
+
 impl<I: ?Sized + 'static> Default for Port<I> {
     fn default() -> Self {
         Port { slot: Rc::new(RefCell::new(None)) }
@@ -328,6 +335,33 @@ pub(crate) fn sink_of<T: 'static>(
         .map_err(|_| ConnectError::WrongInterface { owner: label, name: name.as_str() })?;
     let sink = slot.borrow().clone();
     sink.ok_or(ConnectError::NoSink { owner: label, name: name.as_str() })
+}
+
+impl<REQ: 'static, RSP: 'static> Port<dyn crate::sequence::SeqItemIf<REQ, RSP>> {
+    /// Block until a sequence has an item ready for this driver.
+    pub async fn get_next_item(&self) -> crate::sequence::SeqItem<REQ> {
+        let iface = self.iface();
+        iface.get_next_item().await
+    }
+    /// Take an item **only if one is waiting** (the UVM's `try_next_item`).
+    /// A driver that must also do something else this clock edge cannot
+    /// afford the blocking form.
+    pub fn try_next_item(&self) -> Option<crate::sequence::SeqItem<REQ>> {
+        self.iface().try_next_item()
+    }
+    /// Release the sequence, optionally with its answer.
+    pub fn item_done(&self, rsp: Option<RSP>) {
+        self.iface().item_done(rsp)
+    }
+    /// Answer a request that was released earlier — the pipelined case.
+    pub fn put_response(&self, id: crate::sequence::TxnId, rsp: RSP) {
+        self.iface().put_response(id, rsp)
+    }
+    /// Bind this port directly, for a component that is handed its export at
+    /// construction rather than wired in a `connect` phase.
+    pub fn bind_iface(&self, iface: Rc<dyn crate::sequence::SeqItemIf<REQ, RSP>>) {
+        *self.slot.borrow_mut() = Some(iface);
+    }
 }
 
 // ===========================================================================

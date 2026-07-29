@@ -69,5 +69,7 @@ pub use port::{
 };
 pub use objection::{ObjectionGuard, ObjectionRegistry};
 pub use sequence::{
-    ResponseQueue, SeqCtx, SeqError, SeqItem, SeqItemPort, Sequence, Sequencer, TxnId,
+    clear_seq_overrides, create_seq, set_seq_override, set_sequence_seed, DynSequence,
+    ResponseQueue, RustdvSeq, SeqCtx, SeqError, SeqItem, SeqItemExport, SeqItemIf, SeqItemPort,
+    Sequence, Sequencer, TxnId,
 };

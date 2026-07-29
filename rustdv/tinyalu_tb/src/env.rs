@@ -60,7 +60,7 @@ impl AluEnv {
         let coverage = config.enable_coverage.then(|| Coverage::new(&cmd_ap));
 
         let driver = match config.is_active {
-            Active::Active => Some(Driver::new(config.bfm.clone(), seqr.seq_item_port())),
+            Active::Active => Some(Driver::new(config.bfm.clone(), seqr.seq_item_export())),
             Active::Passive => None,
         };
 

@@ -354,9 +354,10 @@ fn parse_struct(input: TokenStream) -> Result<(String, String, String, Vec<Field
                     if g.delimiter() == Delimiter::Bracket {
                         let text = g.stream().to_string();
                         if text.starts_with("component")
-                            && (text.contains("child") || text.contains("fifo"))
+                            && (text.contains("child") || text.contains("fifo") || text.contains("sequencer"))
                         {
-                            // A `#[component(fifo)]` FIFO is a child like any
+                            // A `#[component(fifo)]` FIFO or `#[component(sequencer)]`
+                            // sequencer is a child like any
                             // other — it is a component, and it belongs in the
                             // hierarchy. The separate spelling says *what* it
                             // is at the declaration, where the reader is.
@@ -500,9 +501,9 @@ pub fn derive_component(input: TokenStream) -> TokenStream {
     let mut port_consts = String::new();
     for f in fields.iter() {
         let Some(kind) = f.port.as_deref() else { continue };
-        if !matches!(kind, "put" | "get" | "peek" | "publish" | "subscribe") {
+        if !matches!(kind, "put" | "get" | "peek" | "publish" | "subscribe" | "seq_item") {
             return compile_error(&format!(
-                "#[port({kind})]: expected put, get, peek, publish or subscribe"
+                "#[port({kind})]: expected put, get, peek, peek, publish, subscribe or seq_item"
             ));
         }
         // An analysis port may be left unconnected — a monitor nobody listens

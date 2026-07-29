@@ -61,9 +61,25 @@
 use std::rc::Rc;
 
 use rustdv::prelude::*;
-use tinyalu_utils::{alu_prediction, AluCommand, AluResult, CmdTuple, Ops, TinyAluBfm};
+use tinyalu_utils::{alu_prediction, CmdTuple, Ops, TinyAluBfm};
 
 rustdv::vpi_bootstrap!();
+
+// Chapter 35 defined these; D45 says a chapter example is self-contained, so
+// they are re-shown rather than imported. Plain structs with derives — no base
+// class, nothing to extend.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AluCommand {
+    pub a: u8,
+    pub b: u8,
+    pub op: Ops,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct AluResult {
+    pub result: u16,
+}
+
 
 // ===========================================================================
 // The driver
@@ -134,11 +150,11 @@ async fn all_ops<S: Operands>(
 
 // Chapter 36, Figure 3: The base sequence sends zeros.
 //
-// `#[derive(Sequence)]` registers this type with the factory so a test can
+// `create_seq::<BaseSeq>()` asks the factory for this type, so a test can
 // substitute another sequence for it — the same mechanism as Chapter 29's
 // component factory, in a second registry, because a sequence is not a
 // `ComponentNode` and cannot ride the first one (D80).
-#[derive(Sequence, Default)]
+#[derive(Default)]
 struct BaseSeq;
 
 impl Operands for BaseSeq {
@@ -147,7 +163,10 @@ impl Operands for BaseSeq {
     }
 }
 
-impl Sequence<AluCommand, AluResult> for BaseSeq {
+impl Sequence for BaseSeq {
+    type Req = AluCommand;
+    type Rsp = AluResult;
+
     async fn body(&mut self, ctx: &mut SeqCtx<AluCommand, AluResult>) -> Result<(), SeqError> {
         all_ops(self, ctx).await
     }
@@ -158,7 +177,7 @@ impl Sequence<AluCommand, AluResult> for BaseSeq {
 // The RNG comes from the context, so a run reproduces from its seed the way
 // every other part of the testbench does. pyuvm's sequences reach for the
 // global `random` module and do not.
-#[derive(Sequence, Default)]
+#[derive(Default)]
 struct RandomSeq;
 
 impl Operands for RandomSeq {
@@ -168,13 +187,16 @@ impl Operands for RandomSeq {
     }
 }
 
-impl Sequence<AluCommand, AluResult> for RandomSeq {
+impl Sequence for RandomSeq {
+    type Req = AluCommand;
+    type Rsp = AluResult;
+
     async fn body(&mut self, ctx: &mut SeqCtx<AluCommand, AluResult>) -> Result<(), SeqError> {
         all_ops(self, ctx).await
     }
 }
 
-#[derive(Sequence, Default)]
+#[derive(Default)]
 struct MaxSeq;
 
 impl Operands for MaxSeq {
@@ -184,7 +206,10 @@ impl Operands for MaxSeq {
     }
 }
 
-impl Sequence<AluCommand, AluResult> for MaxSeq {
+impl Sequence for MaxSeq {
+    type Req = AluCommand;
+    type Rsp = AluResult;
+
     async fn body(&mut self, ctx: &mut SeqCtx<AluCommand, AluResult>) -> Result<(), SeqError> {
         all_ops(self, ctx).await
     }
@@ -320,9 +345,9 @@ struct AluEnv {
 }
 
 impl Component for AluEnv {
-    fn build(&mut self, ctx: &mut RustdvCtx) {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
         self.seqr = Sequencer::new();
-        ConfigDb::set(Some(ctx), "*", "SEQR", self.seqr.handle());
+        ConfigDb::set(None, "*", "SEQR", self.seqr.handle());
 
         self.driver = Driver::new_comp();
         self.cmd_mon = CmdMonitor::new_comp();
@@ -382,7 +407,7 @@ impl Component for BaseTest {
 
         // Created through the factory, so a test can override which sequence
         // this line actually builds (Figure 7).
-        let mut seq = BaseSeq::create_seq();
+        let mut seq = create_seq::<BaseSeq>();
         seq.start(&seqr).await?;
 
         // `put` returns when the sequencer accepts the command, not when the
@@ -412,7 +437,7 @@ struct RandomTest {
 
 impl Component for RandomTest {
     fn build(&mut self, _ctx: &mut RustdvCtx) {
-        Factory::set_seq_override::<BaseSeq, RandomSeq>();
+        set_seq_override::<BaseSeq, RandomSeq>();
         self.inner = BaseTest::new_comp();
     }
 }
@@ -426,7 +451,7 @@ struct MaxTest {
 
 impl Component for MaxTest {
     fn build(&mut self, _ctx: &mut RustdvCtx) {
-        Factory::set_seq_override::<BaseSeq, MaxSeq>();
+        set_seq_override::<BaseSeq, MaxSeq>();
         self.inner = BaseTest::new_comp();
     }
 }

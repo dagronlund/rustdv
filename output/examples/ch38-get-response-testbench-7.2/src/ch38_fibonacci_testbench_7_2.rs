@@ -46,9 +46,25 @@
 use std::rc::Rc;
 
 use rustdv::prelude::*;
-use tinyalu_utils::{AluCommand, AluResult, Ops, TinyAluBfm};
+use tinyalu_utils::{Ops, TinyAluBfm};
 
 rustdv::vpi_bootstrap!();
+
+// Chapter 35 defined these; D45 says a chapter example is self-contained, so
+// they are re-shown rather than imported. Plain structs with derives — no base
+// class, nothing to extend.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AluCommand {
+    pub a: u8,
+    pub b: u8,
+    pub op: Ops,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct AluResult {
+    pub result: u16,
+}
+
 
 // ===========================================================================
 // A driver that waits for the answer
@@ -96,10 +112,13 @@ impl Component for Driver {
 // use for it, so nothing is cloned. A sequence that *did* want to keep the
 // command it sent would write `finish_item(cmd.clone())`, and the compiler
 // would say so if it forgot.
-#[derive(Sequence, Default)]
+#[derive(Default)]
 struct FibonacciSeq;
 
-impl Sequence<AluCommand, AluResult> for FibonacciSeq {
+impl Sequence for FibonacciSeq {
+    type Req = AluCommand;
+    type Rsp = AluResult;
+
     async fn body(&mut self, ctx: &mut SeqCtx<AluCommand, AluResult>) -> Result<(), SeqError> {
         let mut prev: u8 = 0;
         let mut cur: u8 = 1;
@@ -149,9 +168,9 @@ struct FibEnv {
 }
 
 impl Component for FibEnv {
-    fn build(&mut self, ctx: &mut RustdvCtx) {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
         self.seqr = Sequencer::new();
-        ConfigDb::set(Some(ctx), "*", "SEQR", self.seqr.handle());
+        ConfigDb::set(None, "*", "SEQR", self.seqr.handle());
         self.driver = Driver::new_comp();
         self.result_bus = AnalysisBus::new();
         self.watcher = ResultWatcher::new_comp();

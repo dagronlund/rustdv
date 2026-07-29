@@ -29,6 +29,13 @@
 //! | asking whether 1043 is done | `get_response(Some(id))` |
 //! | a ticket for a repair the shop never does | a response that never comes — you wait forever |
 //!
+//! **The desk releases you at the counter, not when your machine is fixed.**
+//! `item_done` ends the handshake as soon as the job is accepted, so the
+//! customer can hand in the next machine; the receipt comes back later through
+//! `put_response`, under the job's ticket. Hold the handshake open until the
+//! work is done and only one job is ever in the shop — and then there is
+//! nothing for a ticket to disambiguate.
+//!
 //! This is the first chapter where the transaction id earns its keep.
 //! Everywhere before it, one item is in flight at a time and `get_response`
 //! would find the right answer without being told which one to look for.
@@ -44,7 +51,9 @@
 //! is *in the driver*: it takes a job, decides how long that job will take, and
 //! gets on with the next one. A one-operation-at-a-time DUT could not show a
 //! response arriving out of order, and inventing a second DUT for one chapter
-//! would teach less than this does.
+//! would teach less than this does. `playground` is an empty module, so the
+//! desk's tick is simulated time — a driver on a real bus would use the two
+//! edges of its clock.
 //!
 //! ## What this asks the framework for
 //!
@@ -90,15 +99,17 @@ struct RepairDone {
 
 // Chapter 37, Figure 2: A driver that takes work in and gives it back later.
 //
-// The loop does one thing on each clock edge, and that is what keeps it simple:
+// The loop does one thing in each half of a tick, and that is what keeps it
+// simple:
 //
-//   rising edge  — take a job if one is waiting, and decide its latency
-//   falling edge — age every job in the shop; finish the ones that are due
+//   first half  — take a job if one is waiting, and decide its latency
+//   second half — age every job in the shop; finish the ones that are due
 //
-// Splitting the two across edges is what removes the concurrency problem. A
-// driver that tried to wait for a job *and* count clocks at the same time
-// would need two loops and a shared list; here one sequential loop does both,
-// and nothing races.
+// Splitting the two is what removes the concurrency problem. A driver that
+// tried to wait for a job *and* count time at the same time would need two
+// loops and a shared list; here one sequential loop does both, and nothing
+// races. A driver on a real bus would use the two clock edges; this DUT is
+// an empty module, so the tick is simulated time and nothing else.
 //
 // **`try_next_item` is why this compiles.** `get_next_item()` blocks. On a
 // rising edge with an empty sequencer, a blocking accept would sit there and
@@ -116,38 +127,45 @@ struct RepairDesk {
 
 impl Component for RepairDesk {
     async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
-        let clk = ctx.dut().signal("clk")?;
         let mut rng = ctx.rng();
 
         loop {
             // --- take in whatever is waiting -----------------------------
-            clk.rising_edge().await;
+            Timer::ns(5).await;
             if let Some(job) = self.seq_item_port.try_next_item() {
                 // Nobody knows how long it will take. Not even the desk, until
                 // it looks at the machine.
                 let clocks = 1 + (rng.u8() % 5) as u32;
                 ctx.info(&format!(
-                    "took in {} (ticket {}), {} clocks",
+                    "took in {} ({}), {} clocks",
                     job.payload().machine,
                     job.txn_id(),
                     clocks
                 ));
+                // **Release the customer now.** `item_done` ends the handshake,
+                // which is what lets them hand in the next machine instead of
+                // standing at the counter. The receipt comes later, through
+                // `put_response`. Hold the handshake open until the work is
+                // finished and only one job is ever in the shop — which is the
+                // whole thing this chapter is about.
+                self.seq_item_port.item_done(None);
                 self.bench.push((job, clocks));
             }
 
             // --- age the shop, and hand back anything that is done --------
-            clk.falling_edge().await;
+            Timer::ns(5).await;
             let mut still_working = Vec::new();
             for (job, left) in self.bench.drain(..) {
                 if left > 1 {
                     still_working.push((job, left - 1));
                 } else {
                     let machine = job.payload().machine;
-                    ctx.info(&format!("ready: {} (ticket {})", machine, job.txn_id()));
-                    // `item_done` tags the receipt with this job's ticket, so
-                    // the customer who asks for 1043 gets 1043.
+                    ctx.info(&format!("ready: {} ({})", machine, job.txn_id()));
+                    // The receipt goes back under the job's own ticket, so the
+                    // customer who asks for 1043 gets 1043 however many others
+                    // were finished first.
                     self.seq_item_port
-                        .item_done(Some(RepairDone { machine, clocks: 0 }));
+                        .put_response(job.txn_id(), RepairDone { machine, clocks: 0 });
                 }
             }
             self.bench = still_working;
@@ -168,10 +186,13 @@ impl Component for RepairDesk {
 // `finish_item` returns the ticket. `get_response(Some(ticket))` asks for that
 // job's receipt specifically, and waits until it is ready however many other
 // receipts come out first.
-#[derive(Sequence, Default)]
+#[derive(Default)]
 struct RepairSeq;
 
-impl Sequence<RepairJob, RepairDone> for RepairSeq {
+impl Sequence for RepairSeq {
+    type Req = RepairJob;
+    type Rsp = RepairDone;
+
     async fn body(&mut self, ctx: &mut SeqCtx<RepairJob, RepairDone>) -> Result<(), SeqError> {
         let machines = ["laptop", "desktop", "tablet", "server"];
 
@@ -195,31 +216,12 @@ impl Sequence<RepairJob, RepairDone> for RepairSeq {
     }
 }
 
-// Chapter 37, Figure 4: Asking for a receipt that will never exist.
-//
-// The cost of separating the request from the answer, stated plainly. A
-// sequence that asks for a response the driver never sends waits forever —
-// a ticket for a repair the shop does not do. There is no way for the
-// framework to know the difference between "not ready yet" and "never coming",
-// which is why this is the sequence writer's responsibility.
-//
-// The test is expected to time out, and that is the lesson.
-#[derive(Sequence, Default)]
-struct LostTicketSeq;
-
-impl Sequence<RepairJob, RepairDone> for LostTicketSeq {
-    async fn body(&mut self, ctx: &mut SeqCtx<RepairJob, RepairDone>) -> Result<(), SeqError> {
-        let mut job = RepairJob { machine: "laptop" };
-        ctx.start_item(&mut job).await?;
-        let ticket = ctx.finish_item(job).await?;
-
-        // Ticket 1043 was never issued by this desk.
-        let bogus = TxnId(1043);
-        ctx.warning(&format!("asking for ticket {bogus}, not {ticket}"));
-        let _never = ctx.get_response(Some(bogus)).await;
-        Ok(())
-    }
-}
+// Chapter 37, Figure 4 is a paragraph, not code: **asking for a receipt that
+// will never exist.** A sequence that calls `get_response` for a ticket the
+// desk never issues waits forever — a ticket for a repair the shop does not
+// do. Nothing can tell "not ready yet" from "never coming", which is why it is
+// the sequence writer's job to ask only for answers that are owed. There is no
+// runnable figure because the only way to show it is a test that hangs.
 
 // ===========================================================================
 // The environment and the tests
@@ -234,9 +236,9 @@ struct ShopEnv {
 }
 
 impl Component for ShopEnv {
-    fn build(&mut self, ctx: &mut RustdvCtx) {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
         self.seqr = Sequencer::new();
-        ConfigDb::set(Some(ctx), "*", "SEQR", self.seqr.handle());
+        ConfigDb::set(None, "*", "SEQR", self.seqr.handle());
         self.desk = RepairDesk::new_comp();
     }
 
