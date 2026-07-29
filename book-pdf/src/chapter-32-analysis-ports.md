@@ -73,17 +73,17 @@ Three `write()` calls, two listeners, six deliveries, zero awaits — `write` is
 
 One Rust honesty note, because you can see it in the figure: subscribers connect as `Rc<RefCell<dyn Subscriber<T>>>`. The port and the test both need to reach the coverage object — genuinely shared, genuinely mutated — and Chapter 13's escape hatch is the correct spelling of that. This is the pattern's cost, and Chapter 33 shows the alternative that most scoreboard-shaped components prefer: don't subscribe an object at all; attach a FIFO and pull.
 
-## AnalysisFifo: broadcast to stream
+## AnalysisBus: broadcast to stream
 
 The `write()`-callback style suits collectors that react item by item. A scoreboard would rather *consume* — await items in its own task, at its own pace. `connect_fifo()` bridges the two worlds:
 
 ```rust
-// Figure 5: An AnalysisFifo turns broadcast into a stream
+// Figure 5: An AnalysisBus turns broadcast into a stream
 
 #[rustdv::test]
 async fn analysis_fifo_test(_ctx: RustdvCtx) -> Result<(), TestError> {
     let ap: AnalysisPort<Ops> = AnalysisPort::new();
-    let fifo: AnalysisFifo<Ops> = ap.connect_fifo();
+    let fifo: AnalysisBus<Ops> = ap.connect_fifo();
 
     ap.write(&Ops::Xor);
     ap.write(&Ops::And);
@@ -118,6 +118,6 @@ Zero-or-more subscribers is the analysis port's contract. A monitor publishes id
 
 ## Summary
 
-The analysis port ported as the one communication primitive that stays itself: `AnalysisPort<T>` broadcasts with a non-blocking, non-awaiting `write(&T)` to zero or more listeners; `Subscriber<T>` is `uvm_subscriber` with `write` enforced at compile time instead of by `UVMFatalError`; and `AnalysisFifo<T>` (via `connect_fifo()`) buffers the broadcast for consumers that prefer to pull, unbounded so the publisher never waits. Items travel by borrow, cloning only where a subscriber keeps them; callback-style subscribers ride in `Rc<RefCell<...>>`, the visible price of genuine sharing.
+The analysis port ported as the one communication primitive that stays itself: `AnalysisPort<T>` broadcasts with a non-blocking, non-awaiting `write(&T)` to zero or more listeners; `Subscriber<T>` is `uvm_subscriber` with `write` enforced at compile time instead of by `UVMFatalError`; and `AnalysisBus<T>` (via `connect_fifo()`) buffers the broadcast for consumers that prefer to pull, unbounded so the publisher never waits. Items travel by borrow, cloning only where a subscriber keeps them; callback-style subscribers ride in `Rc<RefCell<...>>`, the visible price of genuine sharing.
 
 The toolbox is complete: lifecycle, environments, configs, variation points, channels, broadcasts. Testbench 6.0 now assembles all of it into the architecture the Interlude previewed — driver, two monitors, scoreboard, coverage, every connection an endpoint passed at construction — across the next two chapters: the components first, then the wiring.

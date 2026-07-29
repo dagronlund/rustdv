@@ -49,7 +49,7 @@ pub mod port;
 pub mod sequence;
 pub mod shared;
 
-pub use analysis::{AnalysisFifo, AnalysisPort, PublishExport, Subscriber, SubscribeExport};
+pub use analysis::{AnalysisBus, AnalysisPort, PublishExport, Subscriber, SubscribeExport};
 pub use shared::RustdvShared;
 pub use channel::{channel, Receiver, Sender, TlmEmpty, TlmError, TlmFull};
 pub use component::{

@@ -33,7 +33,7 @@ these components in action is in
   nothing reaches for another component.
 - **The stimulus and the observation sides are symmetric.** The Tester puts and
   the Driver gets, point-to-point through a `TlmFifo`; the monitors publish and
-  the Scoreboard and Coverage subscribe, one-to-many through an `AnalysisFifo`.
+  the Scoreboard and Coverage subscribe, one-to-many through an `AnalysisBus`.
   Two shapes of TLM, one connection idiom (Chapters 31 and 32).
 - **A component declares what it needs and is handed it.** Every one of the six
   declares `#[port(..)]` fields and nothing else — no handles to siblings, no

@@ -174,7 +174,7 @@ Three places rustdv wins, none of them "compile-time bug finding":
   must teach**, not a footnote — it is where a UVM engineer's habit will
   mislead them.
 
-  An `AnalysisFifo` is not a FIFO. It holds nothing: `write` calls every
+  An `AnalysisBus` is not a FIFO. It holds nothing: `write` calls every
   subscribed object and returns, and a datum broadcast to nobody is gone. So
   the question "where does the traffic go?" has a different answer than in the
   UVM: **wherever the subscriber decides to put it.** A tally (ch32 Figure 1), a

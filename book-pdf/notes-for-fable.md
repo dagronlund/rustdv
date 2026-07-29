@@ -89,7 +89,7 @@ Grouped as the chapter should probably group it. Taken from
   `#[derive(Component)]`, `RustdvCtx`, `TestError`, `ObjectionGuard`,
   `print_hierarchy`, `start_all`, `run_extract_check_report`, `CheckSink`
 - *TLM* — `channel`, `Sender`, `Receiver`, `TlmFifo`, `AnalysisPort`,
-  `AnalysisFifo`, `Subscriber`
+  `AnalysisBus`, `Subscriber`
 - *Sequences* — `Sequence`, `Sequencer`, `SeqCtx`, `SeqItem`, `SeqItemPort`,
   `SeqError`, `TxnId`, `ResponseQueue`
 - *Configuration* — `Active`
@@ -295,7 +295,7 @@ path; connection is a lookup (D83). The FIFO being a concrete child is a
 deliberate carve-out from "every child is `RustdvComp`" (D84).
 
 **Two different mechanisms — do not blur them** (D86). `TlmFifo` queues data for
-a consumer to pull (blocking, consumer-paced, one taker per item). `AnalysisFifo`
+a consumer to pull (blocking, consumer-paced, one taker per item). `AnalysisBus`
 stores nothing: `write()` calls every subscriber immediately and returns
 (publisher-paced, zero time, everyone sees everything). Ray corrected a proposed
 merge of the two; the distinction is the chapter's spine, not a footnote.

@@ -48,7 +48,7 @@ For readers coming from SystemVerilog UVM (and *The UVM Primer*): where each pie
 | connection errors at elaboration | a compile error (E0308) at the construction site | 31 |
 | `uvm_analysis_port.write()` | `AnalysisPort<T>::write(&T)` — non-blocking broadcast | 32 |
 | `uvm_subscriber` (pure virtual `write`) | `trait Subscriber<T> { fn write(&mut self, &T); }` | 32 |
-| `uvm_tlm_analysis_fifo` | `AnalysisFifo<T>` via `ap.connect_fifo()` | 32 |
+| `uvm_tlm_analysis_fifo` | `AnalysisBus<T>` via `ap.connect_fifo()` | 32 |
 | `uvm_agent` + `is_active` | env plays the agent; `Active` enum + `Option<Driver>` | 34 |
 | `do_copy` / `do_compare` / `convert2string` | `#[derive(Clone, PartialEq, Debug)]` + `Display` | 10, 35 |
 | `uvm_field_*` macros (runtime field walking) | `derive` — the same generation, at compile time | 21, 35 |

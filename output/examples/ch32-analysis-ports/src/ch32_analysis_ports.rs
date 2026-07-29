@@ -42,7 +42,7 @@
 //! straight to subscribers — and since both components are erased
 //! `RustdvComp`s, neither side can drive the call.
 //!
-//! **rustdv gives analysis a hub too.** An `AnalysisFifo` is a concrete
+//! **rustdv gives analysis a hub too.** An `AnalysisBus` is a concrete
 //! `#[component(fifo)]` child with two named export accessors:
 //!
 //! ```ignore
@@ -62,7 +62,7 @@
 //!
 //! ## The hub keeps nothing (Ray, 2026-07-28)
 //!
-//! Despite the name, an `AnalysisFifo` is **not a FIFO and holds no items**.
+//! Despite the name, an `AnalysisBus` is **not a FIFO and holds no items**.
 //! `write` calls every subscribed object and returns; if nobody is subscribed
 //! the datum is lost. That is the mechanism, not a limitation of it — a
 //! broadcast that stored what nobody wanted would grow forever, and a monitor
@@ -185,7 +185,7 @@ impl Component for NumberGen {
 
 // Chapter 32, Figure 4: One publisher, two subscribers, one hub.
 //
-// The `AnalysisFifo` brokers the broadcast: the publisher's port connects to
+// The `AnalysisBus` brokers the broadcast: the publisher's port connects to
 // `pub_export()`, and every subscriber connects to the same `sub_export()`.
 // Connecting two subscribers to one `sub_export()` is what makes the write
 // fan out — and the wiring reads exactly like Chapter 31's put/get.
@@ -199,7 +199,7 @@ struct BroadcastTest {
     #[component(child)]
     collector: RustdvComp,
     #[component(fifo)]
-    analysis_fifo: AnalysisFifo<u32>,
+    analysis_fifo: AnalysisBus<u32>,
 }
 
 impl Component for BroadcastTest {
@@ -207,7 +207,7 @@ impl Component for BroadcastTest {
         self.source = NumberGen::new_comp();
         self.counter = Counter::new_comp();
         self.collector = Collector::new_comp();
-        self.analysis_fifo = AnalysisFifo::new();
+        self.analysis_fifo = AnalysisBus::new();
     }
 
     fn connect(&mut self, _ctx: &mut RustdvCtx) {
@@ -233,13 +233,13 @@ struct NoSubscribersTest {
     #[component(child)]
     source: RustdvComp,
     #[component(fifo)]
-    analysis_fifo: AnalysisFifo<u32>,
+    analysis_fifo: AnalysisBus<u32>,
 }
 
 impl Component for NoSubscribersTest {
     fn build(&mut self, _ctx: &mut RustdvCtx) {
         self.source = NumberGen::new_comp();
-        self.analysis_fifo = AnalysisFifo::new();
+        self.analysis_fifo = AnalysisBus::new();
     }
 
     fn connect(&mut self, _ctx: &mut RustdvCtx) {
@@ -329,14 +329,14 @@ struct SlowSubscriberTest {
     #[component(child)]
     checker: RustdvComp,
     #[component(fifo)]
-    analysis_fifo: AnalysisFifo<u32>,
+    analysis_fifo: AnalysisBus<u32>,
 }
 
 impl Component for SlowSubscriberTest {
     fn build(&mut self, _ctx: &mut RustdvCtx) {
         self.source = NumberGen::new_comp();
         self.checker = SlowChecker::new_comp();
-        self.analysis_fifo = AnalysisFifo::new();
+        self.analysis_fifo = AnalysisBus::new();
     }
 
     fn connect(&mut self, _ctx: &mut RustdvCtx) {

@@ -61,7 +61,7 @@ impl MyEnv {
 ```
 
 - Analysis fan-out: monitors own an `AnalysisPort<T>` and `write(&item)`;
-  scoreboards read `AnalysisFifo<T>`s created by `connect_fifo()`;
+  scoreboards read `AnalysisBus<T>`s created by `connect_fifo()`;
   coverage implements `Subscriber<T>` and connects via
   `ap.connect(Rc<RefCell<dyn Subscriber<T>>>)`.
 

@@ -161,8 +161,8 @@ pyuvm's `Coverage` extended `uvm_analysis_export` and did both jobs in one class
 
 #[derive(rustdv::Component)]
 pub struct Scoreboard {
-    cmd_fifo: AnalysisFifo<CmdTuple>,
-    result_fifo: AnalysisFifo<u64>,
+    cmd_fifo: AnalysisBus<CmdTuple>,
+    result_fifo: AnalysisBus<u64>,
 }
 
 impl Component for Scoreboard {
@@ -192,6 +192,6 @@ Gone at last: the `Rc<RefCell<Vec<...>>>` lists that versions 2.0 through 5.0 dr
 
 ## Summary
 
-Testbench 6.0's components each do one thing. The tester generates and sends (`Sender<Cmd>`); the driver receives and drives (`Receiver<Cmd>` to BFM); one generic `Monitor<T>` observes and broadcasts, taking the BFM accessor as a passed *function* where Python passed a method name; `Coverage` splits into a `Subscriber` collector and a checking `Component`; and the `Scoreboard` buffers broadcasts in owned `AnalysisFifo`s and drains them in `check`, shared-mutable-state-free. Every component names its inputs and outputs in its field types.
+Testbench 6.0's components each do one thing. The tester generates and sends (`Sender<Cmd>`); the driver receives and drives (`Receiver<Cmd>` to BFM); one generic `Monitor<T>` observes and broadcasts, taking the BFM accessor as a passed *function* where Python passed a method name; `Coverage` splits into a `Subscriber` collector and a checking `Component`; and the `Scoreboard` buffers broadcasts in owned `AnalysisBus`s and drains them in `check`, shared-mutable-state-free. Every component names its inputs and outputs in its field types.
 
 None of them, you will notice, knows any other exists. That is Chapter 34's whole subject: the environment that introduces them — where every connection is a constructor argument, and the wiring diagram *is* the `new()` function.

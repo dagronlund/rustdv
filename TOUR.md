@@ -56,7 +56,7 @@ pre-push hook:
 - **The TLM layer, as of 2026-07-28** — ch31 (put/get/peek, the y = 2x²
   pipeline, FIFO analysis taps), ch32 (broadcast, and a slow subscriber that
   buffers for itself), and ch34 / TB 6.0 (the TinyALU testbench wired with
-  `TlmFifo` and two `AnalysisFifo` buses) all run on Icarus.
+  `TlmFifo` and two `AnalysisBus` buses) all run on Icarus.
 - `cargo test --workspace` in `/rustdv` — pure-Rust unit tests for the
   testbench logic, no simulator required.
 
@@ -164,7 +164,7 @@ The three things a new thread most needs to know, all in
   Racing the whole tree drops it mid-phase and destroys the components before
   extract/check/report can walk them — which showed up as a test passing with
   its scoreboard never running.
-- **D90 — the analysis hub holds nothing.** `AnalysisFifo` is a subscriber list;
+- **D90 — the analysis hub holds nothing.** `AnalysisBus` is a subscriber list;
   `write` calls each subscriber and returns, and a datum broadcast to nobody is
   gone. Storage belongs to the subscriber.
 
@@ -173,7 +173,7 @@ The three things a new thread most needs to know, all in
 objects). `tinyalu_tb` still runs on the pre-restoration `AnalysisPort` and is
 the D75 retrofit. Two naming questions are parked for Ray and should not be
 settled silently: **Q18** (caption code listings "Example N" rather than
-"Figure N") and **Q19** (`AnalysisFifo` names storage on a thing that has none).
+"Figure N") and **Q19** (`AnalysisBus` names storage on a thing that has none).
 
 **The manuscript waits (D77).** Part II+ prose is written from working code by a
 separate Fable pass; its instructions are `book-pdf/fable-brief.md`, and Fable

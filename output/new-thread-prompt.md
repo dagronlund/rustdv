@@ -60,7 +60,7 @@ not just the what.
    what is the next piece of work?
 4. **The TLM layer as built.** How does a parent connect a port on a child it
    cannot name the type of? Why does that mechanism also work for the parent's
-   own port, and what did it replace? What does `AnalysisFifo` store?
+   own port, and what did it replace? What does `AnalysisBus` store?
 5. **Concurrency.** How can a parent's `run` be concurrent with its children's,
    and where does the objection race happen? What went wrong when it happened in
    the other place?

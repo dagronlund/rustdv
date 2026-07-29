@@ -148,9 +148,9 @@ struct AluEnv {
     #[component(child)]
     coverage: RustdvComp,
     #[component(fifo)]
-    cmd_bus: AnalysisFifo<CmdTuple>,
+    cmd_bus: AnalysisBus<CmdTuple>,
     #[component(fifo)]
-    result_bus: AnalysisFifo<u64>,
+    result_bus: AnalysisBus<u64>,
 }
 
 impl Component for AluEnv {
@@ -163,8 +163,8 @@ impl Component for AluEnv {
         self.result_mon = ResultMonitor::new_comp();
         self.scoreboard = Scoreboard::new_comp();
         self.coverage = Coverage::new_comp();
-        self.cmd_bus = AnalysisFifo::new();
-        self.result_bus = AnalysisFifo::new();
+        self.cmd_bus = AnalysisBus::new();
+        self.result_bus = AnalysisBus::new();
     }
 
     fn connect(&mut self, _ctx: &mut RustdvCtx) {

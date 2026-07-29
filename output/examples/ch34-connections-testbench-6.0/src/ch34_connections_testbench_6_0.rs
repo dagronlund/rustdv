@@ -33,7 +33,7 @@
 //!
 //! One idiom throughout: a concrete FIFO between the two components, a named
 //! export, `connect(component, PORT_NAME)`. `TlmFifo` carries point-to-point
-//! traffic; `AnalysisFifo` brokers a broadcast — several subscribers connect
+//! traffic; `AnalysisBus` brokers a broadcast — several subscribers connect
 //! to the same `sub_export()`.
 //!
 //! The Tester generates commands and *puts* them; the Driver *gets* them and
@@ -283,7 +283,7 @@ impl Component for Coverage {
 // Chapter 34, Figure 1: build the components and the FIFOs; connect in one
 // place. **Every connection is the same shape** — a concrete FIFO, a named
 // export, and `connect(component, PORT_NAME)` — whether the traffic is
-// point-to-point (`TlmFifo`) or broadcast (`AnalysisFifo`). Nothing reaches
+// point-to-point (`TlmFifo`) or broadcast (`AnalysisBus`). Nothing reaches
 // into an erased child; every endpoint is reached through a trait method that
 // answers the same way for a child slot and for `self` (D83b).
 #[derive(Component, Default)]
@@ -303,9 +303,9 @@ struct AluEnv {
     #[component(fifo)]
     cmd_fifo: TlmFifo<Command>,
     #[component(fifo)]
-    cmd_bus: AnalysisFifo<CmdTuple>, // the command broadcast, two subscribers
+    cmd_bus: AnalysisBus<CmdTuple>, // the command broadcast, two subscribers
     #[component(fifo)]
-    result_bus: AnalysisFifo<u64>, // the result broadcast, one subscriber
+    result_bus: AnalysisBus<u64>, // the result broadcast, one subscriber
 }
 
 impl Component for AluEnv {
@@ -317,8 +317,8 @@ impl Component for AluEnv {
         self.scoreboard = Scoreboard::new_comp();
         self.coverage = Coverage::new_comp();
         self.cmd_fifo = TlmFifo::new(1);
-        self.cmd_bus = AnalysisFifo::new();
-        self.result_bus = AnalysisFifo::new();
+        self.cmd_bus = AnalysisBus::new();
+        self.result_bus = AnalysisBus::new();
     }
 
     fn connect(&mut self, _ctx: &mut RustdvCtx) {

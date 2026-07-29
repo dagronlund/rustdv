@@ -47,7 +47,7 @@ For readers coming from cocotb and pyuvm (and *Python for RTL Verification*): th
 | `UVMTLMConnectionError` | a compile error (E0308) at the construction site | 31 |
 | `uvm_analysis_port.write()` | `AnalysisPort<T>::write(&T)` — non-blocking broadcast | 32 |
 | `uvm_subscriber` | `trait Subscriber<T> { fn write(&mut self, &T); }` | 32 |
-| `uvm_tlm_analysis_fifo` | `AnalysisFifo<T>` via `ap.connect_fifo()` | 32 |
+| `uvm_tlm_analysis_fifo` | `AnalysisBus<T>` via `ap.connect_fifo()` | 32 |
 | `uvm_object` do_copy/do_compare/convert2string | `#[derive(Clone, PartialEq, Debug)]` | 35 |
 | `do_compare` overrides | a comparator closure, owned by the scoreboard | 35 |
 | `uvm_sequence.body()` | `Sequence<REQ, RSP>` trait, boxed-future `body` | 36 |

@@ -30,7 +30,7 @@ Three tests, all ending `REGRESSION: PASS`.
 - **One connection idiom.** `pub_export()`/`sub_export()` read exactly like
   Chapter 31's `put_export()`/`get_export()`; several subscribers on one
   `sub_export()` is what makes it a broadcast.
-- **`AnalysisFifo` is not `TlmFifo`, and holds nothing at all.** `write` calls
+- **`AnalysisBus` is not `TlmFifo`, and holds nothing at all.** `write` calls
   every subscriber and returns; there is no queue in the hub, and a datum
   broadcast to nobody is gone (D86/D90). A component that wants to keep the
   traffic keeps it — a tally (Figure 1), a `Vec` (Figure 2), a `TlmFifo` of its

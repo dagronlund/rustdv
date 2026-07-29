@@ -3,10 +3,10 @@
 //!
 //! # Analysis is not a queue
 //!
-//! [`AnalysisFifo`] and [`TlmFifo`](crate::TlmFifo) share three letters and
+//! [`AnalysisBus`] and [`TlmFifo`](crate::TlmFifo) share three letters and
 //! nothing else. A `TlmFifo` is a *queue*: one consumer takes each item, the
 //! producer blocks when it is full, and the item is gone once taken. An
-//! `AnalysisFifo` is a *broadcast*, and **it has no queue at all**: `write`
+//! `AnalysisBus` is a *broadcast*, and **it has no queue at all**: `write`
 //! calls every subscriber and returns. Nothing is stored, so a write with no
 //! subscribers is not buffered for later — it is simply gone, which is legal
 //! and is what a monitor nobody listens to should cost. Do not reach for one
@@ -111,7 +111,7 @@ impl<T: Clone + 'static> AnalysisPort<T> {
     /// `uvm_tlm_analysis_fifo`) and hand it back to the caller.
     ///
     /// The FIFO is an ordinary unbounded [`TlmFifo`] — **not** an
-    /// [`AnalysisFifo`], which keeps nothing (D90). A subscriber that wants to
+    /// [`AnalysisBus`], which keeps nothing (D90). A subscriber that wants to
     /// pull the stream at its own pace owns the storage; the broadcast does
     /// not. Unbounded, so a write never blocks the publisher.
     pub fn connect_fifo(&self) -> TlmFifo<T> {
@@ -207,26 +207,26 @@ impl<T: 'static> SubscribeExport<T> {
 /// Declare it as a child with `#[component(fifo)]`, like a `TlmFifo`, then hand
 /// out its exports in `connect`: [`pub_export`](Self::pub_export) for the
 /// source, [`sub_export`](Self::sub_export) for each listener.
-pub struct AnalysisFifo<T: 'static> {
+pub struct AnalysisBus<T: 'static> {
     inner: Rc<HubInner<T>>,
 }
 
-impl<T: 'static> Clone for AnalysisFifo<T> {
+impl<T: 'static> Clone for AnalysisBus<T> {
     /// Another handle to the *same* hub.
     fn clone(&self) -> Self {
-        AnalysisFifo { inner: self.inner.clone() }
+        AnalysisBus { inner: self.inner.clone() }
     }
 }
 
-impl<T: 'static> Default for AnalysisFifo<T> {
+impl<T: 'static> Default for AnalysisBus<T> {
     fn default() -> Self {
-        AnalysisFifo::new()
+        AnalysisBus::new()
     }
 }
 
-impl<T: 'static> AnalysisFifo<T> {
-    pub fn new() -> AnalysisFifo<T> {
-        AnalysisFifo { inner: Rc::new(HubInner { subs: RefCell::new(Vec::new()) }) }
+impl<T: 'static> AnalysisBus<T> {
+    pub fn new() -> AnalysisBus<T> {
+        AnalysisBus { inner: Rc::new(HubInner { subs: RefCell::new(Vec::new()) }) }
     }
 
     /// The publish side, for a source's `PublishPort`.
@@ -252,11 +252,11 @@ impl<T: 'static> AnalysisFifo<T> {
 }
 
 // A hub is a component: it appears in the hierarchy and its phases are no-ops.
-impl<T: 'static> Component for AnalysisFifo<T> {}
+impl<T: 'static> Component for AnalysisBus<T> {}
 
-impl<T: 'static> ComponentNode for AnalysisFifo<T> {
+impl<T: 'static> ComponentNode for AnalysisBus<T> {
     fn node_name(&self) -> &'static str {
-        "AnalysisFifo"
+        "AnalysisBus"
     }
     fn children_mut(&mut self) -> Vec<(String, &mut (dyn ComponentNode + 'static))> {
         Vec::new()

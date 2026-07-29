@@ -185,12 +185,12 @@ impl ComponentNode for Coverage {
 // Chapter 33, Figure 8: The Scoreboard drains its analysis FIFOs in check
 #[derive(rustdv::Component)]
 pub struct Scoreboard {
-    cmd_fifo: AnalysisFifo<CmdTuple>,
-    result_fifo: AnalysisFifo<u64>,
+    cmd_fifo: AnalysisBus<CmdTuple>,
+    result_fifo: AnalysisBus<u64>,
 }
 
 impl Scoreboard {
-    pub fn new(cmd_fifo: AnalysisFifo<CmdTuple>, result_fifo: AnalysisFifo<u64>) -> Scoreboard {
+    pub fn new(cmd_fifo: AnalysisBus<CmdTuple>, result_fifo: AnalysisBus<u64>) -> Scoreboard {
         Scoreboard { cmd_fifo, result_fifo }
     }
 }

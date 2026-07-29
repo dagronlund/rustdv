@@ -61,7 +61,7 @@ closure), never baked into the type.
   wrong for pipelined throughput — choose per the plan.
 - **Monitors**: spawn loops that read the BFM stream, log the transaction
   (live narration is the debugging UI), and `AnalysisPort::write` it.
-- **Scoreboard**: owns `AnalysisFifo`s from `ap.connect_fifo()`; compares
+- **Scoreboard**: owns `AnalysisBus`s from `ap.connect_fifo()`; compares
   in `check(&mut CheckSink)` draining with `try_get`, handling all four
   arms: matched pair, clean exhaustion, orphaned command, orphaned result.
   Report counts in `report()`. Add a "nothing was compared" error — a

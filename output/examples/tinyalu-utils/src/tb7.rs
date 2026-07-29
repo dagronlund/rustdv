@@ -121,14 +121,14 @@ impl Component for ResultMonitor {
 /// the default comparator is `PartialEq` against the predictor's output.
 #[derive(rustdv::Component)]
 pub struct Scoreboard {
-    cmd_fifo: AnalysisFifo<AluCommand>,
-    result_fifo: AnalysisFifo<AluResult>,
+    cmd_fifo: AnalysisBus<AluCommand>,
+    result_fifo: AnalysisBus<AluResult>,
     compared: usize,
     mismatches: usize,
 }
 
 impl Scoreboard {
-    pub fn new(cmd_fifo: AnalysisFifo<AluCommand>, result_fifo: AnalysisFifo<AluResult>) -> Scoreboard {
+    pub fn new(cmd_fifo: AnalysisBus<AluCommand>, result_fifo: AnalysisBus<AluResult>) -> Scoreboard {
         Scoreboard { cmd_fifo, result_fifo, compared: 0, mismatches: 0 }
     }
 }

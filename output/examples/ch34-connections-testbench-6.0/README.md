@@ -35,7 +35,7 @@ Chapter 34 has connected them.
 
 Every connection is the same shape — a concrete FIFO, a named export,
 `connect(component, PORT_NAME)` — whether the traffic is point-to-point
-(`TlmFifo`) or broadcast (`AnalysisFifo`).
+(`TlmFifo`) or broadcast (`AnalysisBus`).
 
 ## The Rust win worth noting
 

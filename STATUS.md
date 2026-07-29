@@ -310,7 +310,8 @@ clear and the walk-time path stamping all went away with it; `RustdvPath`
   `put_ap()`/`get_ap()`. `TlmFifo::new(usize)` replaced `new(Option<usize>)`;
   `unbounded()` is the other constructor.
 - `rustdv-methodology/src/analysis.rs` — `AnalysisFifo` is now the broadcast
-  hub: `pub_export()` and `sub_export()`. (This bullet first read
+  hub (renamed `AnalysisBus` on 2026-07-29, D103 — read it as that
+  below): `pub_export()` and `sub_export()`. (This bullet first read
   "…, `get_export()`", written before D90 struck the hub's queue later the same
   day; the deviations list below is the correct record. Corrected 2026-07-28.)
   The pre-hub `AnalysisPort`/`Subscriber` stay for the Part IV testbenches not
