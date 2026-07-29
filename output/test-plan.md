@@ -6,11 +6,11 @@
 > | Tier | Where | Count |
 > |---|---|---|
 > | §2 no-simulator | `#[cfg(test)]` modules in `rustdv/` | 110, was 12 |
-> | §3 targeted simulator | `rustdv/framework-tests/` | 39, plus `sim-mutation` |
+> | §3 targeted simulator | `rustdv/framework-tests/` | 38, plus `sim-mutation` |
 > | §4 compile-fail | `rustdv/framework-tests/compile-fail/` | 5 |
 >
 > The regression is 236 entries (was 228), green — the eight new ones are the
-> six targeted groups, `sim-mutation`, and `compile-fail-methodology`; the 39
+> six targeted groups, `sim-mutation`, and `compile-fail-methodology`; the 38
 > and the 5 are counted inside those. What each file actually
 > covers is in the code, not here — this document is the plan and the
 > reasoning, and the tests are the record. Deviations from the plan as written

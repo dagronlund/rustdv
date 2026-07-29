@@ -391,7 +391,7 @@ the built suite differs from the plan as written. What landed:
   and is also the enforcement: a future still pending when the run queue
   empties panics with an explanation, so a test that quietly needed a
   simulator fails loudly instead of hanging.
-- **39 targeted simulator tests** in `rustdv/framework-tests/`, against a new
+- **38 targeted simulator tests** in `rustdv/framework-tests/`, against a new
   `hdl/probe.sv`. One cdylib, six regression entries, selected by a new
   `RUSTDV_TESTCASE` filter in the runner (cocotb's `TESTCASE`, widened to
   case-insensitive substrings; a filter matching nothing is an error, not a

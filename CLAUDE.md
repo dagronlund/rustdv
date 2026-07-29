@@ -21,10 +21,14 @@ before proposing anything architectural. Do **not** follow the older
 `output/.design-doc.md` — it is the pre-restoration spec whose closed-world
 design caused the problems now being fixed.
 
-**Where it stands (2026-07-28):** ch23–ch34 are converted and out of
-quarantine — phases, ConfigDb, factory, and now the whole TLM layer (ports,
-exports, the analysis hub, FIFO taps). Next is ch35 and the sequence chapters
-ch36–ch39 / TB 7.0–8.0. TOUR.md's "Where the work stands" section is the
+**Where it stands (2026-07-29):** the restoration's code is done. ch23–ch39
+are converted and out of quarantine — phases, ConfigDb, factory, the whole TLM
+layer, transactions, and all four sequence testbenches (TB 7.0–8.0). The test
+suite is built on top: 110 no-simulator tests, 38 targeted simulator tests in
+`rustdv/framework-tests/`, 5 compile-fail cases, and `sim-mutation`; the
+regression is 236 and the pre-push hook runs all of it
+(`output/regression/TESTING.md`). Next is the **TinyALU refactor**, the last
+known technical debt. TOUR.md's "Where the work stands" section is the
 orientation for a new thread; the decisions that most shape new code are D83b
 (connection is a trait method, not a registry), D82b/D82c (children move out for
 the run phase; each component races the objection event, never the whole tree),

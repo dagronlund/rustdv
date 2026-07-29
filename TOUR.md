@@ -2,15 +2,17 @@
 
 *New here — human or AI? This is the walk-around. Ten minutes, and you'll
 know what this project is, what's been proven, and where everything lives.
-Last verified 2026-07-28; the proven claims below are checked by the
+Last verified 2026-07-29; the proven claims below are checked by the
 regression suite, not aspirational.*
 
 > **Active work: the UVM restoration.** A prior pass wrongly stripped the
 > UVM's dynamic build/connect process and its TLM FIFOs. Branch
-> `ch23_onwards` is restoring them, one TinyALU testbench version at a time;
-> **ch23–ch34 are done and green** (phases, env, logging, ConfigDb, factory,
-> and the whole TLM layer), with ch35 and the sequence chapters ch36–ch39 /
-> TB 7.0–8.0 next. The framework and the Part II+ prose are under active
+> `ch23_onwards` restored them, one TinyALU testbench version at a time, and
+> **its code is done: ch23–ch39 are green** (phases, env, logging, ConfigDb,
+> factory, the whole TLM layer, transactions, and all four sequence
+> testbenches). The test suite is built on top of it. Next is the TinyALU
+> refactor — the last known technical debt. The framework and the Part II+
+> prose are under active
 > revision — later chapters are being rewritten from working code, not
 > settled. The authoritative decision log is `output/.design-decisions.md`
 > (its §0 is the mission and method); read it and CLAUDE.local.md before
@@ -143,10 +145,29 @@ or similar) and to nobody else:
 - `CLAUDE.md` has the standing rules; persistent memory notes point here.
   Deeper history: `STATUS.md` bottom-to-top.
 
-### Where the work stands (2026-07-28) — read this before proposing anything
+### Where the work stands (2026-07-29) — read this before proposing anything
 
-Branch `ch23_onwards`. The restoration has reached the end of the TLM work:
-**ch23–ch34 are converted, run on Icarus, and are out of quarantine.**
+Branch `ch23_onwards`. **The restoration's code is done.** ch23–ch39 are
+converted, run on Icarus, and are out of quarantine — phases, the ConfigDb, the
+factory, the whole TLM layer, transactions, and all four sequence testbenches
+(TB 7.0, 7.1, 7.2, 8.0). The only quarantined package left is `ch21_macros`,
+which is a macro demonstration with no simulator test and is marked
+`no_sim_test` in `regress.json`.
+
+**The test suite is built** (`output/test-plan.md` is the plan and the
+reasoning; its §8 records where the built suite differs). Three tiers under the
+21 chapter runs:
+
+| Tier | Where | What it is |
+|---|---|---|
+| no-simulator | `#[cfg(test)]` modules in `rustdv/` | 110 tests, `regress.py --suite unit`, ~2 s |
+| targeted simulator | `rustdv/framework-tests/` | 38 tests in six named groups, plus `sim-mutation` |
+| compile-fail | `rustdv/framework-tests/compile-fail/` | 5 cases, each asserting its `error[E….]` |
+
+Regression: **236 entries, green**, and the pre-push hook runs all of it.
+`output/regression/TESTING.md` is the operating manual, including the two
+runner behaviours a simulator test has to know about (the phase survives a
+test; vvp exits on an empty event queue).
 
 The three things a new thread most needs to know, all in
 `output/.design-decisions.md`:
@@ -168,12 +189,26 @@ The three things a new thread most needs to know, all in
   `write` calls each subscriber and returns, and a datum broadcast to nobody is
   gone. Storage belongs to the subscriber.
 
-**Next up:** ch35 (transactions) and the sequence chapters ch36–ch39 / TB
-7.0–8.0, which need D80's sequence factory (a second registry for non-component
-objects). `tinyalu_tb` still runs on the pre-restoration `AnalysisPort` and is
-the D75 retrofit. Two naming questions are parked for Ray and should not be
-settled silently: **Q18** (caption code listings "Example N" rather than
-"Figure N") and **Q19** (`AnalysisBus` names storage on a thing that has none).
+**Next up, in the order Ray set:**
+
+1. **The TinyALU refactor.** `tinyalu_tb` still runs on the pre-restoration
+   `AnalysisPort` and on `new(config, ..)`-style construction rather than the
+   restored phases. It is the last known technical debt, and it was deferred to
+   the end on purpose — Ray's rule is that the library ships with none.
+2. **Two runner behaviours** the new simulator tests had to work around, both
+   written up in `output/test-plan.md` §8 and at the bottom of `STATUS.md`:
+   the simulator phase survives a test (so a test can pass or fail on what ran
+   before it), and a `Clock`'s write can land inside a ReadOnly callback via
+   the await-an-edge-then-`read_only` pattern the book teaches. Neither was
+   fixed unilaterally; both want a decision.
+3. **Q18**, the one open question left in `output/.design-decisions.md` §16:
+   whether to caption code listings "Example N" rather than "Figure N". Ray is
+   asking Fable for a recommendation and will come back to Opus to make the
+   change. Do not settle it silently.
+4. **The directory names `ch37-fibonacci-testbench-7.1` and
+   `ch38-get-response-testbench-7.2`** still carry the old chapter assignment;
+   the crate roots inside them are already correct (ch37 is the repair desk,
+   ch38 is Fibonacci). A rename, not a rework.
 
 **The manuscript waits (D77).** Part II+ prose is written from working code by a
 separate Fable pass; its instructions are `book-pdf/fable-brief.md`, and Fable
