@@ -6,13 +6,19 @@ One command guards the whole project:
 output/regression/regress.py
 ```
 
-Exit 0 means nothing you care about has changed behavior. Three suites run:
+Exit 0 means nothing you care about has changed behavior. Four suites run, in
+this order:
 
 | Suite | Question it answers | Needs Rust? |
 |---|---|---|
+| `unit` | Do the framework's own rules still hold? (`cargo test`, no simulator, ~2s) | yes |
 | `book-sync` | Does every book figure still have a matching, verbatim example file? | no |
 | `examples` | Does every example still build, run, print, panic, or fail-to-compile exactly as blessed? | yes |
-| `custom` | Do your own drop-in tests (future rustdv crate, tools, scripts) still pass? | per test |
+| `custom` | Do the simulator tests and the drop-in tests still pass? | per test |
+
+`unit` runs first on purpose. A ConfigDb precedence bug should fail in two
+seconds with the rule's name on it, not four minutes later as "sim-ch27 went
+red".
 
 ## One-time setup
 
@@ -99,6 +105,61 @@ structurally hard to break something silently.
   then checks for the marker instead of demanding verbatim match. (Currently
   none; the original two were resolved by fixing the manuscript — see
   `output/examples/ERRATA.md`.)
+
+## The three tiers of framework test
+
+The chapter runs (`custom/sim-ch*`) prove a chapter's testbench still works
+end to end. They are good tests and they cannot tell you *which* rule broke.
+Three narrower tiers can:
+
+**No simulator — `cargo test`, in `rustdv/`.** Anything built from `Event`s
+and `Queue`s: the ConfigDb, the factory, port binding, the analysis
+broadcast, the whole sequencer handshake. These live in `#[cfg(test)] mod
+tests` beside the code they test and run in milliseconds. The line is
+enforced by `rustdv_sim::testing::block_on`, which panics with an explanation
+if the future is still pending when the run queue empties — a test that
+awaits `Timer` or touches a signal fails there rather than hanging, and
+belongs in the next tier.
+
+**Targeted simulator tests — `rustdv/framework-tests/`.** One cdylib against
+`hdl/probe.sv` (a clock, signals of known width, one counter). Each module
+prefixes its test names, and `RUSTDV_TESTCASE` selects a group, so
+`sim-triggers`, `sim-clock`, `sim-signals`, `sim-concurrency`,
+`sim-elaboration` and `sim-runner` are six lines in the regression report off
+one build:
+
+```
+rustdv/framework-tests/run.sh          # all of them
+rustdv/framework-tests/run.sh conc     # one group
+```
+
+`sim-mutation` is separate and is the check with teeth: it corrupts the
+TinyALU's XOR to an OR, requires two testbenches to **fail**, then requires
+both to pass again on the real RTL. A scoreboard that cannot fail is not a
+scoreboard.
+
+**Compile-fail — `rustdv/framework-tests/compile-fail/`.** Claims the book
+makes about what the compiler rejects. Each case asserts its `error[E….]`
+code, not merely that the build failed; without the code a case that started
+failing for an unrelated reason would keep passing and stop testing anything.
+
+### Two things a simulator test has to know
+
+Both are properties of the runner, not quirks of these tests:
+
+- **The simulator phase outlives the test.** A test ending inside ReadOnly
+  leaves the next one starting inside ReadOnly, where a write is a panic.
+  `framework_tests::fresh_phase()` advances one step to get out; any test that
+  writes a signal calls it first.
+- **vvp exits when its event queue empties.** A test with no clock and no
+  pending timer that awaits `next_time_step()` will not be woken — the
+  simulator quits and the rest of the regression never runs. Keep a clock or a
+  timer alive.
+
+### Adding a `test.json` option
+
+`test.json` accepts an `"env"` object whose keys are set in the test's
+environment. The six targeted entries use it for `RUSTDV_TESTCASE`.
 
 ## Relationship to check.sh
 

@@ -376,3 +376,53 @@ transcripts in each README):
   then written to give that teaching runnable code, motivated the honest way: a
   subscriber whose work takes simulation time, since `write` cannot await. ch32
   is seven figures, three tests.
+
+## 2026-07-29 — the test suite: three tiers under the chapter runs
+
+`output/test-plan.md` is the plan and the reasoning; §8 of it records where
+the built suite differs from the plan as written. What landed:
+
+- **110 no-simulator tests** (was 12), in `#[cfg(test)]` modules beside the
+  code they test, run first by `regress.py --suite unit` in about two seconds.
+  The methodology layer — ConfigDb, factory, ports, FIFO, analysis bus,
+  objections, the phase walk, the whole sequencer handshake — had no unit test
+  at all before this; a bug there surfaced as "some chapter went red" and the
+  bisect was manual. `rustdv_sim::testing::block_on` is what makes it possible
+  and is also the enforcement: a future still pending when the run queue
+  empties panics with an explanation, so a test that quietly needed a
+  simulator fails loudly instead of hanging.
+- **39 targeted simulator tests** in `rustdv/framework-tests/`, against a new
+  `hdl/probe.sv`. One cdylib, six regression entries, selected by a new
+  `RUSTDV_TESTCASE` filter in the runner (cocotb's `TESTCASE`, widened to
+  case-insensitive substrings; a filter matching nothing is an error, not a
+  green run of zero tests). `test.json` grew an `"env"` key to drive it.
+- **`sim-mutation`**: the TinyALU's XOR is corrupted to an OR, two testbenches
+  are required to fail, and then required to pass again on the real RTL. The
+  second half is the part that matters — without it a testbench that had
+  stopped compiling would "catch" every mutation.
+- **5 compile-fail cases** for the methodology layer, each asserting its
+  `error[E….]` code. One of them was vacuous when first written: `let _ =
+  cmd.a` after `finish_item(cmd)` **compiles**, because `let _` does not
+  evaluate a place expression. The use-after-move only appears if the value is
+  really read. That is the argument for asserting the code rather than the
+  failure.
+
+Regression: 236 entries, green — 228 before, plus the six targeted groups,
+`sim-mutation` and `compile-fail-methodology`.
+
+### Two runner behaviours the tests had to work around
+
+Recorded rather than fixed — both want a decision (test-plan §8).
+
+- **The simulator phase survives a test.** A test ending inside ReadOnly
+  leaves the next one starting there, where a write panics on the cocotb rule,
+  so a test can pass or fail depending on what ran before it.
+  `framework_tests::fresh_phase()` steps out of it. The per-test reset in
+  `run_one` — which already clears the ConfigDb and the logging config — is
+  where a real fix would go.
+- **A clock's write can land inside a ReadOnly callback.** `read_only().await`
+  runs the executor from within the ReadOnly callback; a `Clock` task due in
+  the same step then writes, and Icarus prints "attempted to put a value to
+  variable 'clk' during a read-only synch callback". A diagnostic, not a
+  failure — but the pattern that provokes it is await-an-edge-then-`read_only`,
+  which is the monitor pattern the book teaches.

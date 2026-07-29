@@ -63,10 +63,14 @@ class Missing:
     def __init__(self, msg):
         self.stderr = msg
 
-def run(cmd, cwd=None, timeout=120):
+def run(cmd, cwd=None, timeout=120, env=None):
     try:
+        full_env = None
+        if env:
+            full_env = dict(os.environ)
+            full_env.update(env)
         return subprocess.run(cmd, cwd=cwd or ROOT, capture_output=True,
-                              text=True, timeout=timeout)
+                              text=True, timeout=timeout, env=full_env)
     except FileNotFoundError:
         return Missing(f"command not found: {cmd[0]}")
     except subprocess.TimeoutExpired:
@@ -294,7 +298,8 @@ def suite_custom(args):
             continue
         cwd = os.path.join(ROOT, spec["cwd"]) if "cwd" in spec else os.path.dirname(spec_path)
         try:
-            r = run(spec["cmd"], cwd=cwd, timeout=spec.get("timeout", 300))
+            r = run(spec["cmd"], cwd=cwd, timeout=spec.get("timeout", 300),
+                    env=spec.get("env"))
         except Exception as e:
             record(tid, False, str(e))
             continue

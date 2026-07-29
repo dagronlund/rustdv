@@ -9,6 +9,22 @@ members = [
     "rustdv-vpi-stubs",
     "rustdv-runner",
     "tinyalu_tb",
+    "framework-tests",
+]
+# Crates that must NOT compile. Each is built on its own by
+# framework-tests/compile-fail/run.sh, which requires the failure and checks
+# the error code; a workspace member would just break `cargo build`.
+#
+# Listed here so they are visible from the workspace root, but the listing is
+# not what keeps them out: they sit *inside* a member's directory, and for
+# that cargo wants an empty `[workspace]` table in each of their own
+# manifests. Both are present; the table is the one doing the work.
+exclude = [
+    "framework-tests/compile-fail/export_interface_mismatch",
+    "framework-tests/compile-fail/misspelled_port_name",
+    "framework-tests/compile-fail/use_after_finish_item",
+    "framework-tests/compile-fail/eq_on_a_float",
+    "framework-tests/compile-fail/port_attr_on_non_port",
 ]
 
 # ---------------------------------------------------------------------------

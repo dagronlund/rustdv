@@ -1,10 +1,20 @@
 # rustdv test plan
 
-> **Status 2026-07-29: the no-simulator tier is built.** 110 framework unit
-> tests now run as `regress.py --suite unit` in about two seconds, up from 12.
-> §2 below is implemented; §3's targeted simulator tests and §4's compile-fail
-> cases are not. What each file actually covers is in the code, not here — this
-> document is the plan and the reasoning, and the tests are the record.
+> **Status 2026-07-29: built.** All three tiers below exist and are wired into
+> the regression.
+>
+> | Tier | Where | Count |
+> |---|---|---|
+> | §2 no-simulator | `#[cfg(test)]` modules in `rustdv/` | 110, was 12 |
+> | §3 targeted simulator | `rustdv/framework-tests/` | 39, plus `sim-mutation` |
+> | §4 compile-fail | `rustdv/framework-tests/compile-fail/` | 5 |
+>
+> The regression is 236 entries (was 228), green — the eight new ones are the
+> six targeted groups, `sim-mutation`, and `compile-fail-methodology`; the 39
+> and the 5 are counted inside those. What each file actually
+> covers is in the code, not here — this document is the plan and the
+> reasoning, and the tests are the record. Deviations from the plan as written
+> are listed at the bottom.
 
 *Written 2026-07-29, modelled on pyuvm's suite
 (`../rustdv-reference/pyuvm-master/tests`). pyuvm splits its testing in two —
@@ -375,3 +385,69 @@ Items 1–3 are the ones I would not ship without.
   dynamically-typed API where a wrong type is a run-time surprise; rustdv's
   compiler removes some of those cases. Fewer lines for the same confidence is
   the expected outcome, and D4 says to say so rather than pad.
+
+---
+
+## 8. Where the built suite differs from this plan
+
+Written after building it. Each of these is a decision, not an omission.
+
+**One crate, six regression entries.** §3.2 called for seven directories under
+`output/regression/tests/`, each its own testbench. Seven builds and seven
+elaborations of the same framework would cost minutes to say what one build
+says in seconds, so the targeted tests are one cdylib in
+`rustdv/framework-tests/` and the regression selects a group with a new
+`RUSTDV_TESTCASE` environment variable — cocotb's `TESTCASE`, widened from
+exact names to case-insensitive substrings. A filter matching nothing is an
+error rather than a green run of zero tests. `sim-mutation` stayed separate
+because it builds different RTL.
+
+**The tests live with the framework, not with the book.** `output/examples` is
+the manuscript's; these are rustdv's own, so they are a member of the rustdv
+workspace and `cargo test --workspace` links them. The same reasoning puts the
+compile-fail cases in `framework-tests/compile-fail/` rather than in the
+book's `manifest.json`, where `book-sync` would ask which figure they were.
+
+**`sim-clock` and `sim-signals` did not need their own designs.** One probe
+module — a clock, signals of each width, two never driven, one counter — 
+serves triggers, clocks, signals, and the phase tests together.
+
+**Deregistration is tested at the GPI, not through `Timer`.** §3.2 asked for
+"a dropped trigger future deregisters its VPI callback". A leaked callback
+is *silently* harmless from inside a test: it fires, wakes a dropped waker,
+and nothing observes it. So the test registers two callbacks that count into
+a cell, drops one, and requires the survivor to have fired and the other not
+to have. The control matters as much as the assertion.
+
+**Two runner claims needed indirection to test.** The xUnit XML is written
+after the last test, so nothing inside the run can read it — `check_xunit.sh`
+wraps the `runner_` group, then parses the file and checks it is well-formed,
+that the declared `tests`/`failures`/`skipped` counts match the elements
+present, and that every case has a name and a numeric time. And nothing
+exposes the effective log level for a test to read back, so
+`log::reset_config()` is tested through a **file handler**: the first test
+attaches one at the empty prefix, logs, and leaves the level at Critical; the
+second requires its own info message to reach its own file (proving the level
+did not leak) and to be absent from the first file (proving the handler did
+not).
+
+### Two findings, for the record
+
+Neither is caused by the tests; both are properties of the runner that the
+tests had to work around, and both are candidates for a design decision
+rather than a fix I made unilaterally.
+
+1. **The simulator phase survives a test.** A test that ends inside ReadOnly
+   leaves the next test starting inside ReadOnly, where a write panics with
+   the cocotb rule. The result is that a test can pass or fail depending on
+   what ran before it. `fresh_phase()` works around it here. The runner could
+   instead advance out of ReadOnly as part of `run_one`'s per-test reset,
+   beside the `ConfigDb::clear()` that is already there.
+
+2. **A clock's write can land inside a ReadOnly callback.** `read_only().await`
+   drives the executor from within the ReadOnly callback, and a `Clock` task
+   whose timer came due in the same step then writes — Icarus prints
+   "attempted to put a value to variable 'clk' during a read-only synch
+   callback". It is a VPI diagnostic and not a failure, and the pattern that
+   provokes it is the monitor pattern the book teaches: await an edge, then
+   `read_only()`. Worth deciding on before release.

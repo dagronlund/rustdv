@@ -262,8 +262,52 @@ async fn run_one(reg: &'static TestRegistration, seed: u64) -> Outcome {
     outcome
 }
 
+/// `RUSTDV_TESTCASE` — run only the tests whose names contain one of these
+/// comma-separated substrings (cocotb's `TESTCASE`, widened from exact names
+/// to substrings so a naming prefix selects a group).
+///
+/// Matching is case-insensitive because the two test forms spell their names
+/// differently: `#[rustdv::test]` on a function registers `conc_two_runs`,
+/// and on a struct it registers the type name, `ConcTwoRuns`. One filter
+/// should select a group whichever form its members happen to take.
+///
+/// A filter matching nothing is an **error**, not an empty pass: a typo in a
+/// regression entry would otherwise look like a green run of zero tests.
+fn apply_testcase_filter(
+    tests: Vec<&'static TestRegistration>,
+) -> Result<Vec<&'static TestRegistration>, String> {
+    let Ok(raw) = std::env::var("RUSTDV_TESTCASE") else { return Ok(tests) };
+    let pats: Vec<String> = raw
+        .split(',')
+        .map(|s| s.trim().to_ascii_lowercase())
+        .filter(|s| !s.is_empty())
+        .collect();
+    if pats.is_empty() {
+        return Ok(tests);
+    }
+    let kept: Vec<_> = tests
+        .into_iter()
+        .filter(|t| {
+            let name = t.name.to_ascii_lowercase();
+            pats.iter().any(|p| name.contains(p))
+        })
+        .collect();
+    if kept.is_empty() {
+        return Err(format!("RUSTDV_TESTCASE={raw} matched no test"));
+    }
+    Ok(kept)
+}
+
 async fn regression() {
-    let tests = collect_tests();
+    let tests = match apply_testcase_filter(collect_tests()) {
+        Ok(t) => t,
+        Err(e) => {
+            log::error(&e);
+            println!("REGRESSION: FAIL");
+            gpi::finish();
+            return;
+        }
+    };
     let seed = seed_from_env();
     log::info(&format!(
         "rustdv: found {} test(s), RUSTDV_RANDOM_SEED={seed}",

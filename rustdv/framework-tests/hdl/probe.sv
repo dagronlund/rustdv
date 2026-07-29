@@ -1,0 +1,40 @@
+// A design that exists to be measured, not to compute anything.
+//
+// The book's examples run against the TinyALU because a reader wants a device
+// that does something. These tests want the opposite: signals of known widths
+// with nothing driving them, so a value read back is the value the framework
+// wrote and nothing else. The one exception is `counted`, which the RTL drives
+// on every rising edge — an edge trigger needs something to be edging.
+`timescale 1ns/1ns
+module probe;
+
+   // Driven by the framework (Clock::new(&clk, ..).start()).
+   bit clk;
+
+   // Written and read by the framework; nothing in here touches them, so a
+   // read-back that differs from the write is the framework's doing.
+   logic [7:0]  byte_sig;
+   logic [15:0] word_sig;
+   logic [3:0]  nibble;
+   logic        flag;
+
+   // Never assigned anywhere: stays X for the whole simulation, which is what
+   // the X/Z tests read.
+   logic        never_driven;
+   logic [7:0]  never_driven_bus;
+
+   // Driven by the design, so the framework can watch a signal change without
+   // having changed it.
+   logic [7:0]  counted;
+   initial counted = 0;
+   always @(posedge clk) counted <= counted + 1;
+
+   // Icarus elides a variable nothing reads, and an elided variable is not in
+   // the VPI namespace — the framework's `signal("byte_sig")` comes back
+   // "no object named 'byte_sig' in scope 'probe'". Reading them all into one
+   // wire nobody uses keeps them alive without driving them, which is the
+   // whole point of declaring them.
+   wire keep_alive = ^{byte_sig, word_sig, nibble, flag,
+                       never_driven, never_driven_bus};
+
+endmodule

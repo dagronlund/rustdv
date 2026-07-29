@@ -3,11 +3,10 @@
 version = 4
 
 [[package]]
-name = "framework_tests"
+name = "cf_export_interface_mismatch"
 version = "0.1.0"
 dependencies = [
  "rustdv",
- "rustdv-vpi-stubs",
 ]
 
 [[package]]
@@ -26,7 +25,6 @@ name = "rustdv-gpi"
 version = "0.1.0"
 dependencies = [
  "rustdv-gpi-sys",
- "rustdv-vpi-stubs",
 ]
 
 [[package]]
@@ -42,7 +40,6 @@ name = "rustdv-methodology"
 version = "0.1.0"
 dependencies = [
  "rustdv-sim",
- "rustdv-vpi-stubs",
 ]
 
 [[package]]
@@ -59,17 +56,4 @@ name = "rustdv-sim"
 version = "0.1.0"
 dependencies = [
  "rustdv-gpi",
- "rustdv-vpi-stubs",
-]
-
-[[package]]
-name = "rustdv-vpi-stubs"
-version = "0.1.0"
-
-[[package]]
-name = "tinyalu_tb"
-version = "0.1.0"
-dependencies = [
- "rustdv",
- "rustdv-vpi-stubs",
 ]
