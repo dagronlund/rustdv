@@ -2,18 +2,20 @@
 
 *New here — human or AI? This is the walk-around. Ten minutes, and you'll
 know what this project is, what's been proven, and where everything lives.
-Last verified 2026-07-23; the proven claims below are checked by the
+Last verified 2026-07-28; the proven claims below are checked by the
 regression suite, not aspirational.*
 
 > **Active work: the UVM restoration.** A prior pass wrongly stripped the
 > UVM's dynamic build/connect process and its TLM FIFOs. Branch
 > `ch23_onwards` is restoring them, one TinyALU testbench version at a time;
-> ch23–29 are done and green (phases, env, logging, ConfigDb, factory), with
-> ch30 (TB 5.0) next. The framework and the Part II+ prose are under active
+> **ch23–ch34 are done and green** (phases, env, logging, ConfigDb, factory,
+> and the whole TLM layer), with ch35 and the sequence chapters ch36–ch39 /
+> TB 7.0–8.0 next. The framework and the Part II+ prose are under active
 > revision — later chapters are being rewritten from working code, not
 > settled. The authoritative decision log is `output/.design-decisions.md`
 > (its §0 is the mission and method); read it and CLAUDE.local.md before
-> proposing anything architectural.
+> proposing anything architectural. **"Where the work stands", at the bottom
+> of this file, is the live status; this callout is the one-line version.**
 
 ## What this project is
 

@@ -1,14 +1,24 @@
-//! Chapter 34: Connections — testbench 6.0, the pieces wired with TLM.
+//! Chapters 33 and 34: Testbench 6.0 — the components, and the wiring.
 //!
 //!     sim-common/run_sim.sh ch34_connections_testbench_6_0 tinyalu \
 //!         sim-common/hdl/timescale.v sim-common/hdl/tinyalu.sv
 //!
-//! ============================================================================
-//! ASPIRATIONAL — the target API (D1/D2). This is the payoff chapter: put/get
+//! **Two chapters, one crate (D91).** Chapter 33 refactors the 6.0 components
+//! so each does one job — it is a chapter of *definitions*, with no environment
+//! and nothing to run — and Chapter 34 wires them together. They share this
+//! file because D45 requires a chapter example to be self-contained: splitting
+//! the components into a crate that Chapter 34 imports is precisely the
+//! cross-chapter import D45 dissolved. The captions carry the chapter number,
+//! so `// Chapter 33, Figure 1:` and `// Chapter 34, Figure 1:` coexist here
+//! and each chapter's README maps its own figures.
+//!
+//! Chapter 33 owns Figures 1–6 (Tester, Driver, the two monitors, Scoreboard,
+//! Coverage); Chapter 34 owns Figures 1–2 (the env, and the test).
+//!
+//! Built and green on Icarus (2026-07-28). This is the payoff chapter: put/get
 //! (Chapter 31) and analysis broadcast (Chapter 32) wired into one working
-//! TinyALU testbench, all connections resolved by path through the registry so
-//! no parent reaches into an erased child.
-//! ============================================================================
+//! TinyALU testbench, every connection resolved through `ComponentNode::port_slot`
+//! (D83b) so no parent reaches into an erased child.
 //!
 //! ## Architecture (the book's 6.0)
 //!
@@ -41,12 +51,14 @@
 //! same way when both streams carry the same type**, which is the case the SV
 //! macros actually exist for (D88).
 //!
-//! ## Depends on concurrent run + real objections (D56/D60)
+//! ## Concurrent runs and real objections (D82)
 //!
-//! Tester, Driver, and both monitors have run phases that must run at once (the
-//! Driver blocks on an empty cmd_fifo until the Tester puts). This is the same
-//! increment Chapter 31 forces: `run_all` spawns each `run`, the phase ends on
-//! objection consensus. Written assuming that has landed.
+//! Tester, Driver, and both monitors have run phases that run at once (the
+//! Driver blocks on an empty cmd_fifo until the Tester puts). `run_all` joins
+//! them and each component races the objection-drained event individually.
+//! This chapter is what caught D82c: racing the *whole* run tree dropped it
+//! mid-phase, destroying the components before `check` could walk them, and
+//! the test passed with its scoreboard never running.
 
 use std::collections::HashSet;
 
@@ -62,7 +74,7 @@ type Command = (u8, u8, Ops);
 // Stimulus: Tester -> cmd_fifo -> Driver
 // ===========================================================================
 
-// Chapter 34, Figure 1: The Tester puts commands into a FIFO.
+// Chapter 33, Figure 1: The Tester puts commands into a FIFO.
 #[derive(Component, Default)]
 struct Tester {
     #[port(put)]
@@ -96,7 +108,7 @@ impl Component for Tester {
     }
 }
 
-// Chapter 34, Figure 2: The Driver gets commands and drives the BFM.
+// Chapter 33, Figure 2: The Driver gets commands and drives the BFM.
 #[derive(Component, Default)]
 struct Driver {
     #[port(get)]
@@ -118,7 +130,7 @@ impl Component for Driver {
 // Observation: monitors broadcast, subscribers collect
 // ===========================================================================
 
-// Chapter 34, Figure 3: The command monitor watches the bus and broadcasts.
+// Chapter 33, Figure 3: The command monitor watches the bus and broadcasts.
 #[derive(Component, Default)]
 struct CmdMonitor {
     #[port(publish)]
@@ -135,7 +147,7 @@ impl Component for CmdMonitor {
     }
 }
 
-// Chapter 34, Figure 4: The result monitor broadcasts results.
+// Chapter 33, Figure 4: The result monitor broadcasts results.
 #[derive(Component, Default)]
 struct ResultMonitor {
     #[port(publish)]
@@ -152,7 +164,7 @@ impl Component for ResultMonitor {
     }
 }
 
-// Chapter 34, Figure 5: The Scoreboard subscribes to BOTH streams.
+// Chapter 33, Figure 5: The Scoreboard subscribes to BOTH streams.
 //
 // Two `Subscriber` impls, one per transaction type — the multiple-analysis-input
 // pattern that needs no imp_decl macros (D20).
@@ -227,7 +239,7 @@ impl Component for Scoreboard {
     }
 }
 
-// Chapter 34, Figure 6: Coverage subscribes to the command stream only.
+// Chapter 33, Figure 6: Coverage subscribes to the command stream only.
 //
 // A second subscriber on `cmd_bus` — the scoreboard does not know it is there,
 // and the monitor does not know either. That is the decoupling the hub buys.
@@ -267,11 +279,12 @@ impl Component for Coverage {
 // The environment wires it all together
 // ===========================================================================
 
-// Chapter 34, Figure 7: build the components and the FIFOs; connect in one
+// Chapter 34, Figure 1: build the components and the FIFOs; connect in one
 // place. **Every connection is the same shape** — a concrete FIFO, a named
 // export, and `connect(component, PORT_NAME)` — whether the traffic is
 // point-to-point (`TlmFifo`) or broadcast (`AnalysisFifo`). Nothing reaches
-// into an erased child; every endpoint resolves by path.
+// into an erased child; every endpoint is reached through a trait method that
+// answers the same way for a child slot and for `self` (D83b).
 #[derive(Component, Default)]
 struct AluEnv {
     #[component(child)]
@@ -327,7 +340,7 @@ impl Component for AluEnv {
     }
 }
 
-// Chapter 34, Figure 8: the test is just the env.
+// Chapter 34, Figure 2: the test is just the env.
 #[rustdv::test]
 #[derive(Component, Default)]
 struct AluTest {

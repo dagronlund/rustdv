@@ -2,13 +2,9 @@
 //!
 //!     sim-common/run_sim.sh ch31_component_communications playground
 //!
-//! ============================================================================
-//! ASPIRATIONAL — the *target* API (D1/D2), written before the framework can
-//! compile it. rustdv is to be changed to satisfy this, replacing the
-//! pre-restoration `channel`/`Sender`/`Receiver` design (which "channels
-//! replace TLM-1" — the destroyed model this branch exists to undo). Do not
-//! wire this into the build until the framework satisfies it.
-//! ============================================================================
+//! Built and green on Icarus (2026-07-28). This chapter replaced the
+//! pre-restoration `channel`/`Sender`/`Receiver` design — "channels replace
+//! TLM-1" was the destroyed model this branch exists to undo.
 //!
 //! ## The model (D17–D24)
 //!
@@ -19,38 +15,46 @@
 //! the decoupling point (§0.3.2). Each capability has a blocking form (waits on
 //! full/empty) and a non-blocking form (`try_*`/`can_*`).
 //!
-//! ## Connection without reaching into an erased child (the registry model)
+//! ## Connection without reaching into an erased child (D83b)
 //!
-//! A component is a factory `RustdvComp`, so a parent cannot reach `producer.put_port`
-//! by field. Instead `#[port(...)]` makes each port **register itself** by
-//! (component path, field name) during build, and connection is a registry
-//! *lookup*: `fifo.put_export().connect(&self.producer, Producer::PUT_PORT)`.
-//! `#[port(put)] put_port` also generates the `Producer::PUT_PORT` constant — a
-//! typed `PortName<u32>` — so the name is typo-proof (a misspelled constant does
-//! not compile) and the export's transaction type is checked against the port's
-//! at the connect. The instance path is the only part resolved at runtime; the
-//! constant's value and the registration key both come from the one field, so
-//! they cannot drift. Nothing reaches into the child.
+//! A component is a factory `RustdvComp`, so a parent cannot reach
+//! `producer.put_port` by field, and Rust has no `$cast`-to-base to recover the
+//! concrete type. Instead `#[derive(Component)]` generates
+//! `ComponentNode::port_slot(name)` from the `#[port(..)]` fields — **a trait
+//! method, which is reachable *through* `dyn` where a cast is not**. The export
+//! initiates the connection and names the port with a derive-generated
+//! constant: `fifo.put_export().connect(&self.producer, Producer::PUT_PORT)`.
+//!
+//! Because `port_slot` answers through `dyn`, the *same* call works when a
+//! component connects its **own** port (`connect(self, MathTest::X_OUT)`,
+//! Figure 10) — that uniformity is the point, and it is why `uvm_test` is a
+//! `uvm_component`. An earlier design keyed a registry on the hierarchical
+//! path; it could address a child but not the connecting component itself,
+//! because a component does not know its own path (D7). It was struck (D83b).
+//!
+//! `#[port(put)] put_port` generates `Producer::PUT_PORT`, a typed
+//! `PortName<dyn PutIf<u32>>`, so a misspelling does not compile and aiming a
+//! `get` export at a `put` port does not compile either — the name carries the
+//! interface, not just a string.
 //!
 //! The FIFO is a concrete `#[component(fifo)]` child (reachable to call
 //! `put_export()` on) — the model closest to UVM, where the FIFO is a real
 //! component with a path. It is a deliberate carve-out: a FIFO is plumbing,
-//! never a factory-override target (like the BFM, D33). Every declared port must
-//! be connected by end of elaboration or elaboration fails (D22).
+//! never a factory-override target (like the BFM, D33). Every declared put/get
+//! port must be connected by end of elaboration or elaboration fails (D22/D85).
 //!
-//! ## DEPENDENCY THIS EXAMPLE FORCES (read before building)
+//! ## Why this chapter forced concurrent run phases (D82)
 //!
 //! Put/get through a size-1 FIFO **requires two run phases running at once**:
 //! the producer blocks on a full FIFO and can only proceed once the consumer
-//! drains it. Under the current sequential `run_all` (D56) this **deadlocks** —
-//! the producer's `run` is awaited to completion before the consumer's ever
-//! starts, and it never completes. Component Communications is therefore the
-//! testbench D56/D60 anticipated: *"concurrent run phases + meaningful
-//! objections arrive together... when a testbench first needs two long-running
-//! run phases at once."* Building ch31 means undoing that deferral first:
-//! `run_all` must spawn each `run` and the phase must end on objection
-//! consensus, not on sequential completion. This example is written assuming
-//! that increment has landed.
+//! drains it. Under the sequential `run_all` that preceded this work it
+//! deadlocked. Component Communications is the testbench D56/D60 anticipated:
+//! *"concurrent run phases + meaningful objections arrive together... when a
+//! testbench first needs two long-running run phases at once."* `run_all` now
+//! **joins** the children's runs rather than spawning them (D82 — join, not
+//! spawn, so a run future may borrow the tree), a parent's own `run` joins its
+//! children's by moving them out of their slots (D82b), and each component
+//! races the objection-drained event individually (D82c).
 
 use rustdv::prelude::*;
 
@@ -62,8 +66,8 @@ rustdv::vpi_bootstrap!();
 
 // Chapter 31, Figure 1: A producer holds a put port and blocks on a full FIFO.
 //
-// `#[port(put)]` registers `put_port` under this component's path + "put_port"
-// so the env can wire it without reaching in. `PutPort<u32>` offers blocking
+// `#[port(put)]` makes `put_port` reachable by name through `port_slot`, so the
+// env can wire it without reaching in. `PutPort<u32>` offers blocking
 // `put().await` (here) and non-blocking `try_put`/`can_put` (Figure 4).
 #[derive(Component, Default)]
 struct Producer {
@@ -115,7 +119,7 @@ impl Component for Consumer {
 //
 // The producer and consumer are ordinary factory `RustdvComp` children. The FIFO
 // is a concrete `#[component(fifo)]` child so its exports are reachable. Every
-// `connect` is port -> export resolved by (path, name): the export never
+// `connect` is port -> export resolved through `port_slot`: the export never
 // reaches into the erased child.
 #[rustdv::test]
 #[derive(Component, Default)]
@@ -404,14 +408,14 @@ impl Component for MathTest {
 // to completion first, this test hangs instead.
 
 // ===========================================================================
-// Beyond the book — the checks a registry connection makes possible
+// Beyond the book — the checks declared ports make possible
 // ===========================================================================
 
 // Chapter 31, Figure 11: A port left unconnected is an elaboration error (D22).
 //
 // The book has no figure for this: pyuvm discovers a missing connection lazily,
-// at first use, as a Python attribute error. rustdv sweeps the registry at the
-// end of elaboration and reports every declared-but-unconnected port at once,
+// at first use, as a Python attribute error. rustdv walks the tree at the end
+// of elaboration and reports every declared-but-unconnected port at once,
 // naming its path — before any run phase starts. Here the producer's put port
 // is never connected, so the test fails elaboration with `tlm_unconnected_port`.
 #[rustdv::test(expect_error = "tlm_unconnected_port")]

@@ -175,12 +175,6 @@ pub struct GetExport<T: 'static> {
 }
 
 impl<T: 'static> GetExport<T> {
-    /// Wrap any `GetIf` as a get export — how the analysis hub offers its
-    /// buffered stream through the same accessor a FIFO uses.
-    pub fn from_iface(iface: Rc<dyn GetIf<T>>) -> GetExport<T> {
-        GetExport { iface }
-    }
-
     pub fn connect(&self, owner: &dyn PortOwner, name: PortName<dyn GetIf<T>>) {
         bind_or_panic(owner, name, self.iface.clone());
     }

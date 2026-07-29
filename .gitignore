@@ -9,6 +9,9 @@ book-pdf/book/
 # check.sh scratch output
 output/examples/build.log
 
+# ch26's file-handler figure writes its log beside the run (Figure 5)
+output/examples/rustdv_ch26_log.txt
+
 # simulator build products
 sim/build/
 

@@ -88,12 +88,19 @@ impl LogPolicy for DebugLogging {
 
 // Chapter 26, Figure 5: Writing log entries to a file, and taking this
 // subtree off the console. The file handler still receives everything.
+//
+// The path is relative, so the log lands beside wherever you ran the
+// simulation — not in a fixed system-wide location. That is deliberate: a
+// shared absolute path like `/tmp/rustdv_ch26_log.txt` is one another user, or
+// a leftover from an earlier run under a different account, can own and lock
+// you out of. A test that writes outside its own working directory is a test
+// that can be broken by something it has never heard of.
 #[derive(Default)]
 pub struct FileLogging;
 
 impl LogPolicy for FileLogging {
     fn configure(&self, ctx: &mut RustdvCtx) {
-        ctx.add_file_handler_hier("/tmp/rustdv_ch26_log.txt", false)
+        ctx.add_file_handler_hier("rustdv_ch26_log.txt", false)
             .expect("could not open the log file");
         ctx.remove_console_hier();
     }

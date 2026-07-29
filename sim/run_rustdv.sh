@@ -16,7 +16,7 @@ PROFILE="${1:-release}"
 REPO_ROOT="$(cd .. && pwd)"
 
 # Build outside the (possibly mounted) repo for speed; see STATUS.md.
-export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-/tmp/rustdv-target}"
+export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-/tmp/rustdv-target-$(id -u)}"
 
 mkdir -p build
 

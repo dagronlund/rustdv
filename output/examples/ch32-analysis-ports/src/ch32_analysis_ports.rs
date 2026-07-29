@@ -2,11 +2,9 @@
 //!
 //!     sim-common/run_sim.sh ch32_analysis_ports playground
 //!
-//! ============================================================================
-//! ASPIRATIONAL — the target API (D1/D2), written before the framework compiles
-//! it. Replaces the pre-restoration `AnalysisPort::new()` / `ap.connect(rc)`
-//! design with the component-and-registry model used across the TLM chapters.
-//! ============================================================================
+//! Built and green on Icarus (2026-07-28). This chapter replaced the
+//! pre-restoration `AnalysisPort::new()` / `ap.connect(rc)` design with the
+//! hub-and-declared-port model used across the TLM chapters (D83b).
 //!
 //! ## The model (D17, D23, D24)
 //!

@@ -541,6 +541,33 @@ pub fn start_of_simulation_all(node: &mut dyn ComponentNode, ctx: &mut RustdvCtx
     }
 }
 
+/// One component's own `run`, ended by the objection consensus.
+///
+/// **Every run body races the drained event here, at the leaf, rather than the
+/// whole tree racing it at the top.** The difference matters because losing a
+/// race means being *dropped*: a top-level race drops the entire `run_all`
+/// future, and with it the children [`take_children`] moved out — so
+/// extract/check/report would walk a tree whose components had been destroyed
+/// mid-phase, silently, and a scoreboard's `check` would never run. Racing per
+/// component instead lets every level of the walk return normally and put its
+/// children back.
+///
+/// A run body that loops forever (a driver, a monitor) is dropped when the
+/// consensus is reached, which is what UVM does to its forked `run_phase`
+/// processes.
+async fn run_one<'a>(
+    node: &'a mut dyn ComponentNode,
+    ctx: &'a mut RustdvCtx,
+) -> Result<(), TestError> {
+    let objections = ctx.objections().clone();
+    match rustdv_sim::first2(node.dyn_run(ctx), objections.wait_drained_event()).await {
+        rustdv_sim::Either::First(r) => r,
+        // The consensus ended the phase: this component's run did not fail,
+        // it was stopped.
+        rustdv_sim::Either::Second(()) => Ok(()),
+    }
+}
+
 /// Bottom-up: every component's `run` fires, children first (D48). The walk
 /// is boxed-recursive because `dyn_run` yields a boxed future we await, and
 /// the children's borrows are held across those awaits.
@@ -580,33 +607,6 @@ pub fn start_of_simulation_all(node: &mut dyn ComponentNode, ctx: &mut RustdvCtx
 ///    parents with no run body, so nothing changes for them.
 /// 2. **Taken children joined *with* the parent's own run** — the shape D78
 ///    prescribes for all new code, and the one the sequence chapters need.
-/// One component's own `run`, ended by the objection consensus.
-///
-/// **Every run body races the drained event here, at the leaf, rather than the
-/// whole tree racing it at the top.** The difference matters because losing a
-/// race means being *dropped*: a top-level race drops the entire `run_all`
-/// future, and with it the children [`take_children`] moved out — so
-/// extract/check/report would walk a tree whose components had been destroyed
-/// mid-phase, silently, and a scoreboard's `check` would never run. Racing per
-/// component instead lets every level of the walk return normally and put its
-/// children back.
-///
-/// A run body that loops forever (a driver, a monitor) is dropped when the
-/// consensus is reached, which is what UVM does to its forked `run_phase`
-/// processes.
-async fn run_one<'a>(
-    node: &'a mut dyn ComponentNode,
-    ctx: &'a mut RustdvCtx,
-) -> Result<(), TestError> {
-    let objections = ctx.objections().clone();
-    match rustdv_sim::first2(node.dyn_run(ctx), objections.wait_drained_event()).await {
-        rustdv_sim::Either::First(r) => r,
-        // The consensus ended the phase: this component's run did not fail,
-        // it was stopped.
-        rustdv_sim::Either::Second(()) => Ok(()),
-    }
-}
-
 pub fn run_all<'a>(
     node: &'a mut dyn ComponentNode,
     ctx: &'a mut RustdvCtx,

@@ -53,7 +53,8 @@ REGRESSION: PASS
 ```
 
 `FileTest` prints nothing — its subtree was taken off the console — but
-`/tmp/rustdv_ch26_log.txt` receives it:
+`rustdv_ch26_log.txt`, written beside wherever you ran the simulation,
+receives it:
 
 ```
       0.00ns INFO     [FileTest.comp]: This is info

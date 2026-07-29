@@ -7,18 +7,20 @@ sim-common/run_sim.sh ch34_connections_testbench_6_0 tinyalu \
     sim-common/hdl/timescale.v sim-common/hdl/tinyalu.sv
 ```
 
+**This crate carries two chapters (D91).** Chapter 33 defines the six
+components and has nothing to run; Chapter 34 wires them up and runs. The
+captions in the source carry the chapter number, so both live here without
+colliding. Chapter 33's figure map is in
+[`../ch33-components-testbench-6.0/README.md`](../ch33-components-testbench-6.0/README.md).
+
 | Figure | Title | Where |
 |---|---|---|
-| 1 | The Tester puts commands into a FIFO | `src/ch34_connections_testbench_6_0.rs` (`Tester`) |
-| 2 | The Driver gets commands and drives the BFM | `src/ch34_connections_testbench_6_0.rs` (`Driver`) |
-| 3 | The command monitor watches the bus and broadcasts | `src/ch34_connections_testbench_6_0.rs` (`CmdMonitor`) |
-| 4 | The result monitor broadcasts results | `src/ch34_connections_testbench_6_0.rs` (`ResultMonitor`) |
-| 5 | The Scoreboard subscribes to BOTH streams | `src/ch34_connections_testbench_6_0.rs` (`Scoreboard`) |
-| 6 | Coverage subscribes to the command stream only | `src/ch34_connections_testbench_6_0.rs` (`Coverage`) |
-| 7 | Build the components and the FIFOs; connect in one place | `src/ch34_connections_testbench_6_0.rs` (`AluEnv`) |
-| 8 | The test is just the env | `src/ch34_connections_testbench_6_0.rs` (`AluTest`) |
+| 1 | Build the components and the FIFOs; connect in one place | `src/ch34_connections_testbench_6_0.rs` (`AluEnv`) |
+| 2 | The test is just the env | `src/ch34_connections_testbench_6_0.rs` (`AluTest`) |
 
-One test, ending `REGRESSION: PASS`.
+One test, ending `REGRESSION: PASS`. The transcript below is the whole
+testbench — Chapter 33's components included — since they only run once
+Chapter 34 has connected them.
 
 ## Architecture
 
