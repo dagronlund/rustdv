@@ -35,6 +35,14 @@ Five tests, all ending `REGRESSION: PASS`.
 - **Unconnected ports are found at elaboration, not at first use.**
   `UnconnectedTest` fails before any run phase, naming
   `UnconnectedTest.producer.put_port` (D22/D85).
+- **A failed `try_put` gives the transaction back.** Figures 4–6 carry a
+  non-`Copy` `Packet` on purpose. `try_put` takes the packet by value, so the
+  UVM's bit return would have eaten a packet that was never delivered;
+  `Err(back)` is the packet coming home, and the retry loop takes it back.
+  Written the tempting way — `while port.try_put(packet).is_err()` — it does
+  not compile, because `packet` was moved on the first attempt. A `u32`
+  version compiles and teaches the reader a loop that breaks on their first
+  real transaction.
 
 ## Transcript
 
@@ -56,12 +64,12 @@ Real Icarus output (`RUSTDV_RANDOM_SEED=1`):
       0.00ns INFO     running NonBlockingTest (2/5)
       0.00ns INFO     [NonBlockingTest.producer]: put 0
       0.00ns INFO     [NonBlockingTest.producer]: FIFO full, retrying
-      0.00ns INFO     [NonBlockingTest.consumer]: got 0
+      0.00ns INFO     [NonBlockingTest.consumer]: got pkt0 (n=0)
       1.00ns INFO     [NonBlockingTest.producer]: put 1
       1.00ns INFO     [NonBlockingTest.producer]: FIFO full, retrying
-      1.00ns INFO     [NonBlockingTest.consumer]: got 1
+      1.00ns INFO     [NonBlockingTest.consumer]: got pkt1 (n=1)
       2.00ns INFO     [NonBlockingTest.producer]: put 2
-      2.00ns INFO     [NonBlockingTest.consumer]: got 2
+      2.00ns INFO     [NonBlockingTest.consumer]: got pkt2 (n=2)
       2.00ns INFO     NonBlockingTest PASSED
       2.00ns INFO     running MathTest (3/5)
       2.00ns INFO     [MathTest.square_it]: 1² = 1

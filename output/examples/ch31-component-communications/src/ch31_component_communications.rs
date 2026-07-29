@@ -151,27 +151,51 @@ impl Component for PutGetPeekTest {
 // Non-blocking put / get
 // ===========================================================================
 
+// A transaction, not an integer. It owns a `String`, so it is **not `Copy`** —
+// like every real transaction you will put on a port. The figures below are
+// written against it deliberately: a `u32` would let a retry loop compile that
+// falls apart the moment the reader substitutes their own command type.
+#[derive(Debug)]
+struct Packet {
+    n: u32,
+    label: String,
+}
+
+impl Packet {
+    fn new(n: u32) -> Packet {
+        Packet { n, label: format!("pkt{n}") }
+    }
+}
+
 // Chapter 31, Figure 4: A non-blocking producer never waits — `try_put` fails
 // when the FIFO is full, and the producer decides what to do (here, yield and
 // retry).
 //
-// The UVM's `try_put` returns a bit; rustdv's returns `Result<(), T>`, and the
-// difference is ownership. `put` takes the item, so a `try_put` that could only
-// say "no" would have eaten it. The `Err` hands it back, which is why the retry
-// below can use `n` again.
+// **Read the `Err` binding.** The UVM's `try_put` returns a bit, because SV
+// passes a class handle and the caller keeps its copy. rustdv's `try_put` takes
+// the packet *by value* — it has to, since a successful put hands the packet to
+// whoever gets it next — so a bare "no" would have eaten a packet that was never
+// delivered. `Err(back)` is the packet coming home, and `packet = back;` is the
+// retry loop taking it back for the next attempt.
+//
+// This is what the type system will not let you get wrong: drop the `Err`
+// binding and the loop does not compile, because `packet` was moved on the
+// first attempt.
 #[derive(Component, Default)]
 struct NbProducer {
     #[port(put)]
-    put_port: PutPort<u32>,
+    put_port: PutPort<Packet>,
 }
 
 impl Component for NbProducer {
     async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
         let _obj = ctx.raise_objection("producing (nb)");
         for n in 0..3 {
-            while self.put_port.try_put(n).is_err() {
+            let mut packet = Packet::new(n);
+            while let Err(back) = self.put_port.try_put(packet) {
                 ctx.info("FIFO full, retrying");
                 Timer::ns(1).await;
+                packet = back; // the FIFO gave it back; try again with it
             }
             ctx.info(&format!("put {n}"));
         }
@@ -181,10 +205,14 @@ impl Component for NbProducer {
 
 // Chapter 31, Figure 5: A non-blocking consumer — `try_get` returns `None` when
 // the FIFO is empty.
+//
+// `Option<Packet>` for the same reason `Result<(), Packet>` above: a get either
+// hands you a packet or hands you nothing, and there is no third state where a
+// packet exists but nobody owns it.
 #[derive(Component, Default)]
 struct NbConsumer {
     #[port(get)]
-    get_port: GetPort<u32>,
+    get_port: GetPort<Packet>,
 }
 
 impl Component for NbConsumer {
@@ -193,8 +221,10 @@ impl Component for NbConsumer {
         let mut seen = 0;
         while seen < 3 {
             match self.get_port.try_get() {
-                Some(n) => {
-                    ctx.info(&format!("got {n}"));
+                Some(packet) => {
+                    // The whole packet arrived, label and all — the consumer
+                    // now owns it, and the FIFO no longer does.
+                    ctx.info(&format!("got {} (n={})", packet.label, packet.n));
                     seen += 1;
                 }
                 None => Timer::ns(1).await,
@@ -205,6 +235,11 @@ impl Component for NbConsumer {
 }
 
 // Chapter 31, Figure 6: Same wiring, non-blocking components.
+//
+// The FIFO now carries `Packet` rather than `u32`, and not one connect line
+// changed shape. That is the generic FIFO doing its job — and the typed
+// `PortName` doing its job too: connect this `TlmFifo<Packet>` to a port that
+// wants `u32` and the mistake is a compile error, not a run-time surprise.
 #[rustdv::test]
 #[derive(Component, Default)]
 struct NonBlockingTest {
@@ -213,7 +248,7 @@ struct NonBlockingTest {
     #[component(child)]
     consumer: RustdvComp,
     #[component(fifo)]
-    fifo: TlmFifo<u32>,
+    fifo: TlmFifo<Packet>,
 }
 
 impl Component for NonBlockingTest {
