@@ -121,10 +121,25 @@ or similar) and to nobody else:
   and each call has a ~45 s budget — chunk accordingly. `regress.py` takes
   a few minutes from cold, so pre-build the example workspace first
   (`cargo build --workspace --exclude` each quarantined crate) and then run it.
-- **Disk fills up.** The VM has ~9.6 GB and the two `CARGO_TARGET_DIR`s reach
-  ~1.5 GB together; a full disk shows up as `regress.py` failures reading
-  `No space left on device`, which looks like a real regression and is not.
-  `rm -rf /tmp/*-target/debug/incremental` reclaims ~600 MB.
+- **Keep all your scratch in one place you own: `/tmp/rustdv-$(id -u)/`.**
+  More than one session can share the VM, each under a different uid, and each
+  sees the other's files as owned by `nobody`. A bare `/tmp/rustdv-target` is
+  therefore a landmine: whoever creates it first owns it, and the next session
+  cannot write to it *or* delete it (`/tmp` is sticky), so a stale directory
+  from a thread that has since gone away can block builds indefinitely. The
+  failure is unhelpful — `Permission denied` deep in a cargo or `cp` line, or
+  every sim test failing at once. `run_sim.sh` and `sim/run_rustdv.sh` default
+  into this root already; put your own logs and extracted files under
+  `scratch/` there too, and clean up with one `rm -rf /tmp/rustdv-$(id -u)`.
+  For the same reason, never write to a fixed shared path from a test.
+- **Disk fills up.** The VM has ~9.6 GB and a debug build of the framework plus
+  the examples reaches ~1.1 GB; a full disk shows up as `regress.py` failures
+  reading `No space left on device`, which looks like a real regression and is
+  not. Two ways out: `CARGO_PROFILE_DEV_DEBUG=0` cuts those builds to ~240 MB
+  (debuginfo is nearly all of it, and transcripts are unaffected — `file!()`
+  and `line!()` are compile-time macros), and
+  `rm -rf /tmp/rustdv-$(id -u)/*-target/debug/incremental` reclaims a few
+  hundred MB more.
 - `CLAUDE.md` has the standing rules; persistent memory notes point here.
   Deeper history: `STATUS.md` bottom-to-top.
 
