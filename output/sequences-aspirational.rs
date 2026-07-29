@@ -32,10 +32,11 @@
 //!    sequencer's path. Neither book's sequence can log or reproduce a seed;
 //!    this is cheap and rustdv needs it because a factory-built sequence is
 //!    made by a `Default` maker and cannot be handed a seed at construction.
-//! 5. `finish_item` **returns the item**. This is the §3 Option B/D position:
-//!    the driver borrows the payload, fills in the result, and `item_done`
-//!    sends it back up the channel that carried it down. See Q20 — Ray may
-//!    prefer the response queue everywhere, which would change ch37.
+//! 5. **Nothing about REQ/RSP changes.** `finish_item(req)` takes ownership,
+//!    `item_done(rsp)` sends the answer back as its own value — which is the
+//!    standard, and is what `sequence.rs` already does (D93). The books' habit
+//!    of writing the result *into* the item is what handles look like in a
+//!    language that has them, not a capability to reproduce.
 //! 6. Sub-sequences are **joined, not spawned** (D82), so a sub-sequence may
 //!    borrow the parent sequence's state.
 
@@ -69,14 +70,11 @@ struct AluCommand {
     a: u8,
     b: u8,
     op: Ops,
-    /// Filled in by the driver and read back by the sequence (Figure 12).
-    /// `None` until the item has been through the DUT.
-    result: Option<u16>,
 }
 
 impl AluCommand {
     fn new(a: u8, b: u8, op: Ops) -> AluCommand {
-        AluCommand { a, b, op, result: None }
+        AluCommand { a, b, op }
     }
 }
 
@@ -359,18 +357,21 @@ impl Component for MaxTest {
 // Chapter 37, Figure 1: A driver that waits for the answer, and sends it back.
 //
 // `get_next_item` hands over a `SeqItem<AluCommand>` — the framework's
-// envelope, carrying the transaction id and the payload. `payload_mut()` is
-// the driver's write access to the command, and whatever it writes there goes
-// home with the item when `item_done` releases it.
+// envelope, carrying the transaction id and the payload. The command is the
+// driver's now; it is not going back anywhere. The answer travels separately,
+// as an `AluResult`, and `item_done` tags it with this item's id so the
+// sequence that asked gets the one it asked for.
 //
-// **This is the Rust shape of the UVM's shared handle.** In SystemVerilog and
-// in Python the sequence still holds a reference to the object it sent, so the
-// driver writing `cmd.result` is visible to the sequence immediately. Rust
-// does not have two owners of one mutable value, and asking for them
-// (`Rc<RefCell<AluCommand>>` on every item) would tax every sequence for a
-// feature most do not use. So the item makes a round trip instead: it moves to
-// the driver, gets filled in, and comes back. The sequence gets the same
-// answer one line later, and nothing is shared.
+// **Do not go looking for the UVM's shared handle here.** In SystemVerilog and
+// Python the sequence still holds a reference to the object it sent, so a
+// driver writing `cmd.result` is visible to the sequence at once, and both
+// books use that. It is not a feature to reproduce — it is what happens when
+// two names point at one object. Rust has one owner, so the request goes one
+// way and the answer comes back the other, which is what the UVM's own
+// `item_done(rsp)` was always for.
+//
+// A sequence that wants to keep the command it sent clones it before
+// `finish_item`. Most do not need to.
 #[derive(Component, Default)]
 struct RspDriver {
     #[port(seq_item)]
@@ -384,15 +385,15 @@ impl Component for RspDriver {
         let bfm = TinyAluBfm::get();
         bfm.reset().await;
         loop {
-            let mut item = self.seq_item_port.get_next_item().await;
+            let item = self.seq_item_port.get_next_item().await;
             let cmd = item.payload();
             bfm.send_op(cmd.a, cmd.b, cmd.op).await;
             // Wait for *this* operation's answer before taking another item.
             let result = bfm.get_result().await;
             self.result_ap.write(&result);
-            item.payload_mut().result = Some(result as u16);
-            // The item goes back to the sequence, result and all.
-            self.seq_item_port.item_done_with(item);
+            // The answer goes back as its own value. The command itself is the
+            // driver's now — it does not travel anywhere.
+            self.seq_item_port.item_done(Some(AluResult { result: result as u16 }));
         }
     }
 }
@@ -423,8 +424,11 @@ impl Sequence<AluCommand, AluResult> for FibonacciSeq {
             ctx.start_item(&mut cmd).await?;
             cmd.a = prev;
             cmd.b = cur;
-            let cmd = ctx.finish_item(cmd).await?; // comes home with .result
-            let sum = cmd.result.expect("the driver fills in every result");
+            // `cmd` moves to the driver here. This sequence has no further use
+            // for it; one that did would write `finish_item(cmd.clone())`, and
+            // the compiler would say so if it forgot.
+            let id = ctx.finish_item(cmd).await?;
+            let sum = ctx.get_response(Some(id)).await.result;
             fib.push(sum);
             prev = cur;
             cur = sum as u8;
@@ -444,94 +448,42 @@ impl Sequence<AluCommand, AluResult> for FibonacciSeq {
 // Expected: Fibonacci Sequence: [0, 1, 1, 2, 3, 5, 8, 13, 21]
 
 // ===========================================================================
-// Chapter 38 / TB 7.2 — when the answer does not come home with the item
+// The response transaction
 // ===========================================================================
 
-// Chapter 38, Figure 1: A response is its own transaction.
+// Chapter 37, Figure 4: A response is its own transaction.
+//
+// It is not the command with a field filled in — it is a separate value the
+// driver creates and gives up. `item_done` tags it with the request's id, so a
+// sequence gets the answer to the question it asked even when several are in
+// flight.
+//
+// Note what rustdv does not make you do. SystemVerilog needs
+// `rsp.set_id_info(req)` and pyuvm needs `rsp.set_context(req)` to correlate
+// the two by hand, and forgetting it is a run-time fatal. Here the id is in the
+// envelope the driver was handed, so the framework tags the response and there
+// is nothing to forget.
 #[derive(Debug, Clone, Default)]
 struct AluResult {
     result: u16,
 }
 
-// Chapter 38, Figure 2: A driver that answers separately.
+// ---------------------------------------------------------------------------
+// OPEN: what is Chapter 38 (TB 7.2) about now?
 //
-// Chapter 37's driver put the answer *in* the command and gave the command
-// back. This one builds a separate response and drops it in the sequencer's
-// response queue, tagged with the request's transaction id. The sequence picks
-// it up whenever it likes, by id.
+// In both source books, 7.2 exists to teach the *second* way a driver answers
+// a sequence — `get_response()` as an alternative to writing into the shared
+// item handle. rustdv has one way, because the shared handle was never a
+// mechanism (D93). So the chapter's original subject has dissolved, and this
+// file deliberately does not invent a replacement.
 //
-// Two things this buys that Figure 37's round trip cannot:
-//
-//   1. **The answer can arrive late, or out of order.** The item's handshake is
-//      already over; the response is independent of it. A pipelined DUT that
-//      returns results out of order is the case this exists for.
-//   2. **The answer is optional.** A RAM that responds to reads and not to
-//      writes cannot be modelled by "every item comes home with its answer."
-//
-// And one thing it costs, which the book must state: a sequence that asks for
-// a response the driver never sends **waits forever**. That is the pitfall,
-// and it is why Chapter 37's mechanism is the one to reach for first.
-//
-// Note what rustdv does not make you do. SystemVerilog needs
-// `rsp.set_id_info(req)` and pyuvm needs `rsp.set_context(req)` to correlate
-// the two by hand, and forgetting it is a fatal error at run time. Here the
-// id is in the envelope the driver was handed, so `item_done` tags the
-// response itself and there is nothing to forget.
-#[derive(Component, Default)]
-struct RspQueueDriver {
-    #[port(seq_item)]
-    seq_item_port: SeqItemPort<AluCommand, AluResult>,
-    #[port(publish)]
-    result_ap: PublishPort<u64>,
-}
-
-impl Component for RspQueueDriver {
-    async fn run(&mut self, _ctx: &mut RustdvCtx) -> Result<(), TestError> {
-        let bfm = TinyAluBfm::get();
-        bfm.reset().await;
-        loop {
-            let item = self.seq_item_port.get_next_item().await;
-            let cmd = item.payload();
-            bfm.send_op(cmd.a, cmd.b, cmd.op).await;
-            let result = bfm.get_result().await;
-            self.result_ap.write(&result);
-            // Tagged with this item's TxnId automatically.
-            self.seq_item_port.item_done(Some(AluResult { result: result as u16 }));
-        }
-    }
-}
-
-// Chapter 38, Figure 3: The same Fibonacci, through the response queue.
-//
-// `finish_item` returns the transaction id; `get_response` cherry-picks that
-// id out of the queue. With one item in flight at a time the id is redundant
-// and `get_response(None)` would do — it earns its keep the moment two
-// sequences share a sequencer, which is Chapter 39.
-#[derive(Sequence, Default)]
-struct FibonacciRspSeq;
-
-impl Sequence<AluCommand, AluResult> for FibonacciRspSeq {
-    async fn body(&mut self, ctx: &mut SeqCtx<AluCommand, AluResult>) -> Result<(), SeqError> {
-        let mut prev: u8 = 0;
-        let mut cur: u8 = 1;
-        let mut fib = vec![prev as u16, cur as u16];
-
-        for _ in 0..7 {
-            let mut cmd = AluCommand::new(0, 0, Ops::Add);
-            ctx.start_item(&mut cmd).await?;
-            cmd.a = prev;
-            cmd.b = cur;
-            let id = ctx.finish_item(cmd).await?.txn_id();
-            let rsp = ctx.get_response(Some(id)).await;
-            fib.push(rsp.result);
-            prev = cur;
-            cur = rsp.result as u8;
-        }
-
-        ctx.info(&format!("Fibonacci Sequence: {fib:?}"));
-        Ok(())
-    }
-}
+// The material that is genuinely still there and unclaimed: several requests
+// outstanding at once, answers correlated by id rather than by arrival order.
+// The TinyALU cannot show it — `cmd_driver` drives only when the bus is idle,
+// one operation at a time — so a chapter on it would need either a different
+// DUT or a driver that decouples from result collection without the DUT
+// pipelining. That is a question for Ray, not a gap to fill here.
+// ---------------------------------------------------------------------------
 
 // ===========================================================================
 // Chapter 39 / TB 8.0 — virtual sequences and a programming interface
@@ -610,8 +562,8 @@ impl Sequence<AluCommand, AluResult> for OpSeq {
     async fn body(&mut self, ctx: &mut SeqCtx<AluCommand, AluResult>) -> Result<(), SeqError> {
         let mut cmd = AluCommand::new(self.a, self.b, self.op);
         ctx.start_item(&mut cmd).await?;
-        let cmd = ctx.finish_item(cmd).await?;
-        self.result = cmd.result;
+        let id = ctx.finish_item(cmd).await?;
+        self.result = Some(ctx.get_response(Some(id)).await.result);
         Ok(())
     }
 }
@@ -684,7 +636,7 @@ impl Component for AluTest {
     async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
         let _obj = ctx.raise_objection("running the virtual sequence");
         let mut test_all = TestAllSeq::create_seq();
-        test_all.start_virtual(ctx).await?; // Q22: or start(None)?
+        test_all.start_virtual().await?; // D95: no sequencer, so no `start(&seqr)`
         Ok(())
     }
 }

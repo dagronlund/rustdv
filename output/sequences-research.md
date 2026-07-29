@@ -475,8 +475,10 @@ framework prefix. Q25.
 
 ## 5. Open questions for Ray
 
-Numbered here as Q20+ so they can be lifted into §16 of the decision log
-verbatim if you want them there.
+*Status 2026-07-29: Q20, Q21, Q22 and Q26 are **settled** — see §28 of the
+decision log, D93–D96. All eight now live in §16 of the log, which is the
+authoritative list; the entries below are kept as the reasoning that produced
+them.*
 
 - **Q20 — how does a result get back to a sequence?** Options A–D in §3. I
   recommend **D** (`finish_item` returns the item for 7.1; the response queue
