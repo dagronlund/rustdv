@@ -137,6 +137,81 @@ Three places rustdv wins, none of them "compile-time bug finding":
 - **Loud config failures.** SV's `get()` collapses four distinct failures into a
   silent `return 0`; rustdv returns a `Result` naming the cause (D14).
 
+- **A failed non-blocking put hands the transaction back** (D89). This one is
+  small enough to miss and important enough that ch31 was rewritten for it, so
+  the prose must carry it. The pattern the reader must see, from ch31 Figures
+  4–6:
+
+  ```rust
+  let mut packet = Packet::new(n);
+  while let Err(back) = self.put_port.try_put(packet) {
+      ctx.info("FIFO full, retrying");
+      Timer::ns(1).await;
+      packet = back; // the FIFO gave it back; try again with it
+  }
+  ```
+
+  How to explain it: SV's `try_put` returns a **bit** because it passes a class
+  handle and the caller still holds its own. rustdv's `try_put` takes the packet
+  **by value** — it must, since a successful put hands the packet to whoever
+  gets it next — so a bare "no" would have swallowed a packet that was never
+  delivered. `Err(back)` is the packet coming home. Two things to state plainly:
+
+  1. This is *not* Rust catching a bug SV has. SV has no bug here; it has a
+     different ownership model. rustdv returns the item because it had to take
+     it. Frame it as **what the signature must be**, not as a win.
+  2. Written the tempting way — `while port.try_put(packet).is_err()` — it does
+     not compile: `packet` was moved on the first attempt. The compiler error is
+     real and was run; quote it if it helps, do not invent one.
+
+  Do **not** demonstrate this with a `u32`. A `Copy` item makes the tempting
+  loop compile and teaches a pattern that breaks on the reader's first real
+  transaction. Ch31 carries a non-`Copy` `Packet` for exactly this reason; leave
+  it that way. `try_get`'s `Option<T>` is the same argument in the other
+  direction and should be explained alongside it.
+
+- **The subscriber owns the storage** (D90). This is a **new pattern the book
+  must teach**, not a footnote — it is where a UVM engineer's habit will
+  mislead them.
+
+  An `AnalysisFifo` is not a FIFO. It holds nothing: `write` calls every
+  subscribed object and returns, and a datum broadcast to nobody is gone. So
+  the question "where does the traffic go?" has a different answer than in the
+  UVM: **wherever the subscriber decides to put it.** A tally (ch32 Figure 1), a
+  `Vec` (ch32 Figure 2), a comparison against a prediction (ch34's scoreboard) —
+  the shape is the subscriber's choice, and if it wants a queue it declares a
+  `TlmFifo` of its own.
+
+  Say explicitly what this replaces. A UVM scoreboard routes each stream into a
+  `uvm_tlm_analysis_fifo` because a class gets **one** `write` method: a second
+  stream needs the `uvm_analysis_imp_decl` macros to mint a differently-named
+  one, and a FIFO per stream is the way around that. A rustdv subscriber
+  declares two `SubscribePort`s and two `WriteSink` impls, so the workaround has
+  nothing to work around, and the FIFO that used to sit in the scoreboard is
+  simply absent. A reader who does not see this said plainly will go looking for
+  the analysis FIFO and conclude something is missing.
+
+  The one reason a rustdv subscriber *would* own a queue is different from the
+  UVM's, and **ch32 Figures 6–7 exist to teach it**: `write` is synchronous and
+  cannot await, so a subscriber whose work *takes simulation time* splits the
+  job. `write` does the one instant thing — `try_put` into an unbounded
+  `TlmFifo` it owns — and the component's `run` gets from that FIFO and takes as
+  long as it likes. `SlowChecker` is the component; `SlowSubscriberTest` is the
+  proof.
+
+  Three things to draw out of those figures:
+
+  1. **The FIFO is connected to no port.** It is an ordinary handoff *inside*
+     one component, between a synchronous method and an asynchronous one — not
+     part of the testbench topology. A reader who has just learned `connect`
+     will expect otherwise.
+  2. **The inbox must be unbounded.** `write` cannot wait for space and analysis
+     has no back-pressure, so a bounded inbox could only drop items. Say why,
+     not just what.
+  3. **The transcript is the argument.** All three writes land at `0.00ns`; the
+     checks come out at 5, 10 and 15ns. The publisher is never held up by what a
+     subscriber does with an item. Use the real transcript from the ch32 README.
+
 Two justifications for Rust that survive §0.4 and should not be confused with
 bug-finding: types scale with codebase and team size, and monomorphization with
 no GC is the *emulation* argument (D36) — throughput, not correctness.

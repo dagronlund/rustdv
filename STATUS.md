@@ -338,18 +338,37 @@ transcripts in each README):
 
 - **ch31** — 5 tests, including the y = 2x² pipeline (a parent's `run`
   concurrent with its children's) and the FIFO taps.
-- **ch32** — 3 tests; the whole broadcast transcript is at `0.00ns`, which is
-  the point.
+- **ch32** — 3 tests. The broadcast transcript is at `0.00ns`, which is the
+  point; the slow-subscriber test then shows writes at `0.00ns` and checks at
+  5/10/15ns, which is the other point.
 - **ch34 / TB 6.0** — the TinyALU testbench wired with `TlmFifo` and two
   `AnalysisFifo` buses; scoreboard checks all four ops, coverage sees 4 of 4.
 
 **Deviations recorded rather than hidden.**
 
-- `PutPort::try_put` returns `Result<(), T>`, not the UVM's bit: `put` takes
-  ownership, so a bool would eat the item on failure. The ch31 figure says so.
+- `PutPort::try_put` returns `Result<(), T>` and `try_get` returns `Option<T>`,
+  not the UVM's bit — `put` takes ownership, so a refusal that kept the item
+  would lose it (D89). Found because ch31 Figure 4 demonstrated it over a `u32`,
+  where the tempting `while port.try_put(n).is_err()` compiles *because `u32` is
+  `Copy`* and breaks on the reader's first real transaction. Figures 4–6 now
+  carry a non-`Copy` `Packet` and thread the item back through `Err`. **Rule for
+  every future figure: demonstrate an ownership property with a non-`Copy`
+  type**, or the compiler stops being the check the book claims it is.
 - ch34's Tester holds its objection for twenty clocks after its last `put`,
   where the Python testbench waits ten — the multiply is last and takes longest
   to come back. Without the wait the scoreboard silently checks fewer results
   than it saw commands.
-- `AnalysisFifo` buffers only once `get_export()` (or `get()`) is asked for. A
-  hub used purely for broadcast would otherwise grow a queue nobody drains.
+- `AnalysisFifo` holds **nothing** — no queue, no `get_export()` (D90, Ray).
+  It broadcasts and returns; a datum nobody subscribed to is lost. An earlier
+  build gave it a queue that switched on when `get_export()` was called, which
+  was invisible state and left `try_get()` returning `None` forever. Storage now
+  belongs to the subscriber: `AnalysisPort::connect_fifo()` hands back an
+  unbounded `TlmFifo`. `tinyalu_tb`'s scoreboard fields changed type
+  accordingly. ch32's Figure 6 was cut: the UVM's analysis FIFO in a scoreboard
+  is a workaround for one `write` per class (`uvm_analysis_imp_decl`), and
+  rustdv's two ports and two `WriteSink`s mean there is nothing to work around
+  (Ray). **Book obligation recorded:** the subscriber-owns-the-storage pattern
+  is new and must be taught — see D90 and the Fable brief. ch32 Figures 6–7 were
+  then written to give that teaching runnable code, motivated the honest way: a
+  subscriber whose work takes simulation time, since `write` cannot await. ch32
+  is seven figures, three tests.

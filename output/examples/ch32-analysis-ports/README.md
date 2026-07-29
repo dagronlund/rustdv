@@ -13,7 +13,8 @@ sim-common/run_sim.sh ch32_analysis_ports playground
 | 3 | A source holds an analysis port and writes to it | `src/ch32_analysis_ports.rs` (`NumberGen`) |
 | 4 | One publisher, two subscribers, one hub | `src/ch32_analysis_ports.rs` (`BroadcastTest`) |
 | 5 | A hub with no subscribers is legal | `src/ch32_analysis_ports.rs` (`NoSubscribersTest`) |
-| 6 | The same hub also buffers — pull instead of push | `src/ch32_analysis_ports.rs` (`BufferedTest`) |
+| 6 | When the subscriber needs *time* | `src/ch32_analysis_ports.rs` (`Inbox`/`SlowChecker`) |
+| 7 | The publisher does not wait for the slow subscriber | `src/ch32_analysis_ports.rs` (`SlowSubscriberTest`) |
 
 Three tests, all ending `REGRESSION: PASS`.
 
@@ -29,9 +30,25 @@ Three tests, all ending `REGRESSION: PASS`.
 - **One connection idiom.** `pub_export()`/`sub_export()` read exactly like
   Chapter 31's `put_export()`/`get_export()`; several subscribers on one
   `sub_export()` is what makes it a broadcast.
-- **`AnalysisFifo` is not `TlmFifo`.** Broadcast versus queue: every subscriber
-  sees every item, nothing is consumed, nobody blocks (D86). The same hub also
-  offers `get_export()` for a component that would rather pull.
+- **`AnalysisFifo` is not `TlmFifo`, and holds nothing at all.** `write` calls
+  every subscriber and returns; there is no queue in the hub, and a datum
+  broadcast to nobody is gone (D86/D90). A component that wants to keep the
+  traffic keeps it — a tally (Figure 1), a `Vec` (Figure 2), a `TlmFifo` of its
+  own (Figure 6), a comparison against a prediction (Chapter 34). Two
+  accessors, not three: `pub_export()` and `sub_export()`.
+- **A subscriber that needs time buffers for itself.** `write` is synchronous
+  and cannot await, so a subscriber whose work *takes* simulation time splits
+  the job: `write` does the one instant thing — `try_put` into an unbounded
+  `TlmFifo` it owns — and its `run` gets from that FIFO and takes as long as it
+  likes. Figures 6–7. Note the FIFO is connected to no port at all; it is an
+  ordinary handoff inside one component, between a synchronous method and an
+  asynchronous one.
+- **...but not for the UVM's reason.** A UVM scoreboard holds a
+  `uvm_tlm_analysis_fifo` because a class gets one `write`, so a second stream
+  needs the `uvm_analysis_imp_decl` macros and a FIFO per stream is the way
+  around them. rustdv declares two `SubscribePort`s and two `WriteSink` impls
+  (D20/D88), so that reason is gone. In Figure 6 the reason is time, and only
+  time.
 
 ## Transcript
 
@@ -51,20 +68,25 @@ Real Icarus output (`RUSTDV_RANDOM_SEED=1`):
       0.00ns INFO     [NoSubscribersTest.source]: wrote 1
       0.00ns INFO     [NoSubscribersTest.source]: wrote 2
       0.00ns INFO     NoSubscribersTest PASSED
-      0.00ns INFO     running BufferedTest (3/3)
-      0.00ns INFO     [BufferedTest.source]: wrote 0
-      0.00ns INFO     [BufferedTest.source]: wrote 1
-      0.00ns INFO     [BufferedTest.source]: wrote 2
-      0.00ns INFO     [BufferedTest.drainer]: drained 0
-      0.00ns INFO     [BufferedTest.drainer]: drained 1
-      0.00ns INFO     [BufferedTest.drainer]: drained 2
-      0.00ns INFO     BufferedTest PASSED
+      0.00ns INFO     running SlowSubscriberTest (3/3)
+      0.00ns INFO     [SlowSubscriberTest.source]: wrote 0
+      0.00ns INFO     [SlowSubscriberTest.source]: wrote 1
+      0.00ns INFO     [SlowSubscriberTest.source]: wrote 2
+      5.00ns INFO     [SlowSubscriberTest.checker]: checked 0
+     10.00ns INFO     [SlowSubscriberTest.checker]: checked 1
+     15.00ns INFO     [SlowSubscriberTest.checker]: checked 2
+     15.00ns INFO     SlowSubscriberTest PASSED
 ******************************************************************************
 ** TEST                                       STATUS  SIM TIME (ns)      **
 ******************************************************************************
 ** BroadcastTest                                PASS           0.00      **
 ** NoSubscribersTest                            PASS           0.00      **
-** BufferedTest                                 PASS           0.00      **
+** SlowSubscriberTest                           PASS          15.00      **
 ******************************************************************************
 REGRESSION: PASS
 ```
+
+The last test is the one to read for timing: the source's three writes all land
+at `0.00ns` — a publisher is never held up by what a subscriber does with an
+item — while the checker's results come out at 5, 10 and 15ns as it works
+through its own queue.

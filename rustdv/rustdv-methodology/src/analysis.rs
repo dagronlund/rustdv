@@ -6,9 +6,16 @@
 //! [`AnalysisFifo`] and [`TlmFifo`](crate::TlmFifo) share three letters and
 //! nothing else. A `TlmFifo` is a *queue*: one consumer takes each item, the
 //! producer blocks when it is full, and the item is gone once taken. An
-//! `AnalysisFifo` is a *broadcast*: every subscriber sees every item, nothing
-//! is consumed, nobody blocks, and a write with no subscribers is legal.
-//! Do not reach for one expecting the other.
+//! `AnalysisFifo` is a *broadcast*, and **it has no queue at all**: `write`
+//! calls every subscriber and returns. Nothing is stored, so a write with no
+//! subscribers is not buffered for later — it is simply gone, which is legal
+//! and is what a monitor nobody listens to should cost. Do not reach for one
+//! expecting the other.
+//!
+//! To keep the traffic, *subscribe and keep it*: a subscriber's `write` puts
+//! the item wherever that component wants it — a `Vec`, an unbounded
+//! `TlmFifo`, a comparison against a prediction. The hub is not the memory;
+//! the subscriber is.
 //!
 //! # Why delivery is synchronous
 //!
@@ -41,16 +48,12 @@
 //! This is a deliberate divergence from IEEE 1800.2 — which we are not
 //! implementing — and one idiom to learn beats two.
 
-use std::cell::{Cell, RefCell};
-use std::future::Future;
-use std::pin::Pin;
+use std::cell::RefCell;
 use std::rc::Rc;
 
-use rustdv_sim::queue::Queue;
-
 use crate::component::{Component, ComponentNode};
-use crate::fifo::GetExport;
-use crate::port::{bind_or_panic, sink_of, GetIf, PortName, PortOwner, PublishIf, SinkHandle};
+use crate::fifo::TlmFifo;
+use crate::port::{bind_or_panic, sink_of, PortName, PortOwner, PublishIf, SinkHandle};
 
 // ===========================================================================
 // The legacy direct port (pre-hub; still used by testbenches not yet rebuilt)
@@ -104,23 +107,30 @@ impl<T> AnalysisPort<T> {
 }
 
 impl<T: Clone + 'static> AnalysisPort<T> {
-    /// Attach a buffering analysis FIFO (pyuvm `uvm_tlm_analysis_fifo`).
-    pub fn connect_fifo(&self) -> AnalysisFifo<T> {
-        let fifo = AnalysisFifo::new();
-        fifo.start_buffering();
-        let adapter = Rc::new(RefCell::new(FifoAdapter { fifo: fifo.clone() }));
+    /// Attach a buffering FIFO to this broadcast (pyuvm
+    /// `uvm_tlm_analysis_fifo`) and hand it back to the caller.
+    ///
+    /// The FIFO is an ordinary unbounded [`TlmFifo`] — **not** an
+    /// [`AnalysisFifo`], which keeps nothing (D90). A subscriber that wants to
+    /// pull the stream at its own pace owns the storage; the broadcast does
+    /// not. Unbounded, so a write never blocks the publisher.
+    pub fn connect_fifo(&self) -> TlmFifo<T> {
+        let fifo = TlmFifo::unbounded();
+        let adapter = Rc::new(RefCell::new(FifoAdapter { fifo: fifo.handle() }));
         self.connect(adapter);
         fifo
     }
 }
 
 struct FifoAdapter<T: Clone + 'static> {
-    fifo: AnalysisFifo<T>,
+    fifo: TlmFifo<T>,
 }
 
 impl<T: Clone + 'static> Subscriber<T> for FifoAdapter<T> {
     fn write(&mut self, item: &T) {
-        self.fifo.write(item);
+        // Unbounded, so this cannot fail and cannot block. The clone is the
+        // price of keeping a copy of something the publisher still owns.
+        let _ = self.fifo.try_put(item.clone());
     }
 }
 
@@ -128,17 +138,17 @@ impl<T: Clone + 'static> Subscriber<T> for FifoAdapter<T> {
 // The hub
 // ===========================================================================
 
-/// What every handle to one hub points at.
-struct HubInner<T: Clone + 'static> {
+/// What every handle to one hub points at. A subscriber list, and nothing
+/// else — there is no queue here by design (D90).
+struct HubInner<T: 'static> {
     subs: RefCell<Vec<Rc<dyn SinkHandle<T>>>>,
-    /// The pull side (`get_export`). Unbounded, so a write never blocks.
-    q: Queue<T>,
-    /// Buffer only if somebody is pulling. A hub used purely for broadcast
-    /// would otherwise grow a queue nobody ever drains.
-    buffering: Cell<bool>,
 }
 
-impl<T: Clone + 'static> HubInner<T> {
+impl<T: 'static> HubInner<T> {
+    /// Hand the item to every subscriber, in connection order, and return.
+    ///
+    /// No queue, no clone of the item, no yield: subscribers see a `&T` and
+    /// take from it what they want to keep.
     fn broadcast(&self, item: &T) {
         // Cloned out of the RefCell first: a subscriber's handler is free to
         // do anything, and this loop must not hold a borrow while it runs.
@@ -146,38 +156,22 @@ impl<T: Clone + 'static> HubInner<T> {
         for sub in subs {
             sub.deliver(item);
         }
-        if self.buffering.get() {
-            // Unbounded, so this cannot fail and cannot block.
-            let _ = self.q.try_put(item.clone());
-        }
     }
 }
 
-impl<T: Clone + 'static> PublishIf<T> for HubInner<T> {
+impl<T: 'static> PublishIf<T> for HubInner<T> {
     fn write(&self, item: &T) {
         self.broadcast(item);
     }
 }
 
-impl<T: Clone + 'static> GetIf<T> for HubInner<T> {
-    fn get(&self) -> Pin<Box<dyn Future<Output = T> + '_>> {
-        Box::pin(self.q.get())
-    }
-    fn try_get(&self) -> Option<T> {
-        self.q.try_get()
-    }
-    fn can_get(&self) -> bool {
-        !self.q.is_empty()
-    }
-}
-
 /// The publish side of a hub: connect it to a source's
 /// [`PublishPort`](crate::PublishPort).
-pub struct PublishExport<T: Clone + 'static> {
+pub struct PublishExport<T: 'static> {
     inner: Rc<HubInner<T>>,
 }
 
-impl<T: Clone + 'static> PublishExport<T> {
+impl<T: 'static> PublishExport<T> {
     pub fn connect(&self, owner: &dyn PortOwner, name: PortName<dyn PublishIf<T>>) {
         bind_or_panic(owner, name, self.inner.clone() as Rc<dyn PublishIf<T>>);
     }
@@ -185,11 +179,11 @@ impl<T: Clone + 'static> PublishExport<T> {
 
 /// The subscribe side of a hub. Connect as many subscribers to it as you
 /// like — that is what makes the write a broadcast.
-pub struct SubscribeExport<T: Clone + 'static> {
+pub struct SubscribeExport<T: 'static> {
     inner: Rc<HubInner<T>>,
 }
 
-impl<T: Clone + 'static> SubscribeExport<T> {
+impl<T: 'static> SubscribeExport<T> {
     /// Take the subscriber's sink and add it to the broadcast list.
     ///
     /// Unlike a put/get connect, nothing is written *into* the port: the
@@ -203,39 +197,36 @@ impl<T: Clone + 'static> SubscribeExport<T> {
     }
 }
 
-/// A broadcast hub: one publisher in, every subscriber out — and, for anyone
-/// who would rather pull than be pushed, a buffered stream.
+/// A broadcast hub: one publisher in, every subscriber out.
 ///
-/// Declare it as a child with `#[component(fifo)]`, like a `TlmFifo`, then
-/// hand out its exports in `connect`. Three accessors, three jobs:
-/// [`pub_export`](Self::pub_export), [`sub_export`](Self::sub_export),
-/// [`get_export`](Self::get_export).
-pub struct AnalysisFifo<T: Clone + 'static> {
+/// **It holds no items.** `write` calls each subscriber and returns; if nobody
+/// is subscribed the datum is gone (D90). A component that needs to keep the
+/// traffic subscribes and keeps it — in a `Vec`, or in an unbounded `TlmFifo`
+/// it owns, if it wants to pull on its own schedule.
+///
+/// Declare it as a child with `#[component(fifo)]`, like a `TlmFifo`, then hand
+/// out its exports in `connect`: [`pub_export`](Self::pub_export) for the
+/// source, [`sub_export`](Self::sub_export) for each listener.
+pub struct AnalysisFifo<T: 'static> {
     inner: Rc<HubInner<T>>,
 }
 
-impl<T: Clone + 'static> Clone for AnalysisFifo<T> {
+impl<T: 'static> Clone for AnalysisFifo<T> {
     /// Another handle to the *same* hub.
     fn clone(&self) -> Self {
         AnalysisFifo { inner: self.inner.clone() }
     }
 }
 
-impl<T: Clone + 'static> Default for AnalysisFifo<T> {
+impl<T: 'static> Default for AnalysisFifo<T> {
     fn default() -> Self {
         AnalysisFifo::new()
     }
 }
 
-impl<T: Clone + 'static> AnalysisFifo<T> {
+impl<T: 'static> AnalysisFifo<T> {
     pub fn new() -> AnalysisFifo<T> {
-        AnalysisFifo {
-            inner: Rc::new(HubInner {
-                subs: RefCell::new(Vec::new()),
-                q: Queue::unbounded(),
-                buffering: Cell::new(false),
-            }),
-        }
+        AnalysisFifo { inner: Rc::new(HubInner { subs: RefCell::new(Vec::new()) }) }
     }
 
     /// The publish side, for a source's `PublishPort`.
@@ -249,49 +240,21 @@ impl<T: Clone + 'static> AnalysisFifo<T> {
         SubscribeExport { inner: self.inner.clone() }
     }
 
-    /// The pull side, for a component's `GetPort` — the port of
-    /// `uvm_tlm_analysis_fifo`. Asking for it starts the buffering; a hub
-    /// nobody pulls from keeps no queue.
-    pub fn get_export(&self) -> GetExport<T> {
-        self.start_buffering();
-        GetExport::from_iface(self.inner.clone() as Rc<dyn GetIf<T>>)
-    }
-
-    pub(crate) fn start_buffering(&self) {
-        self.inner.buffering.set(true);
-    }
-
     /// Broadcast an item, as the owner of the hub rather than through a port.
     pub fn write(&self, item: &T) {
         self.inner.broadcast(item);
     }
 
-    /// How many subscribers are listening.
+    /// How many subscribers are listening. Zero is legal.
     pub fn subscriber_count(&self) -> usize {
         self.inner.subs.borrow().len()
-    }
-
-    // --- the buffered stream, read directly by the hub's owner ------------
-
-    pub async fn get(&self) -> T {
-        self.start_buffering();
-        self.inner.q.get().await
-    }
-    pub fn try_get(&self) -> Option<T> {
-        self.inner.q.try_get()
-    }
-    pub fn len(&self) -> usize {
-        self.inner.q.len()
-    }
-    pub fn is_empty(&self) -> bool {
-        self.inner.q.is_empty()
     }
 }
 
 // A hub is a component: it appears in the hierarchy and its phases are no-ops.
-impl<T: Clone + 'static> Component for AnalysisFifo<T> {}
+impl<T: 'static> Component for AnalysisFifo<T> {}
 
-impl<T: Clone + 'static> ComponentNode for AnalysisFifo<T> {
+impl<T: 'static> ComponentNode for AnalysisFifo<T> {
     fn node_name(&self) -> &'static str {
         "AnalysisFifo"
     }

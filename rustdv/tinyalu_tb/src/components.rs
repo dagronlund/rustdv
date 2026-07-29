@@ -135,14 +135,16 @@ impl Component for ResultMonitor {
 #[derive(rustdv::Component)]
 #[component(no_factory)]
 pub struct Scoreboard {
-    cmd_fifo: AnalysisFifo<AluCommand>,
-    result_fifo: AnalysisFifo<AluResult>,
+    // Unbounded `TlmFifo`s, handed over by `AnalysisPort::connect_fifo()`.
+    // The broadcast keeps nothing (D90) — the subscriber owns the storage.
+    cmd_fifo: TlmFifo<AluCommand>,
+    result_fifo: TlmFifo<AluResult>,
     compared: usize,
     mismatches: usize,
 }
 
 impl Scoreboard {
-    pub fn new(cmd_fifo: AnalysisFifo<AluCommand>, result_fifo: AnalysisFifo<AluResult>) -> Scoreboard {
+    pub fn new(cmd_fifo: TlmFifo<AluCommand>, result_fifo: TlmFifo<AluResult>) -> Scoreboard {
         Scoreboard { cmd_fifo, result_fifo, compared: 0, mismatches: 0 }
     }
 }
