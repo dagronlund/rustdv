@@ -121,8 +121,9 @@ struct RepairDone {
 struct RepairDesk {
     #[port(seq_item)]
     seq_item_port: SeqItemPort<RepairJob, RepairDone>,
-    /// Jobs in the shop: the envelope, and how many clocks are left on it.
-    bench: Vec<(SeqItem<RepairJob>, u32)>,
+    /// Jobs in the shop: the envelope, how long it was quoted, and how many
+    /// ticks are left on it.
+    bench: Vec<(SeqItem<RepairJob>, u32, u32)>,
 }
 
 impl Component for RepairDesk {
@@ -135,7 +136,10 @@ impl Component for RepairDesk {
             if let Some(job) = self.seq_item_port.try_next_item() {
                 // Nobody knows how long it will take. Not even the desk, until
                 // it looks at the machine.
-                let clocks = 1 + (rng.u8() % 5) as u32;
+                // A wide spread is what makes the point: quote everything the same
+                // and a later job can never overtake an earlier one, and the
+                // ticket has nothing to disambiguate.
+                let clocks = 1 + (rng.u8() % 8) as u32;
                 ctx.info(&format!(
                     "took in {} ({}), {} clocks",
                     job.payload().machine,
@@ -149,23 +153,23 @@ impl Component for RepairDesk {
                 // finished and only one job is ever in the shop — which is the
                 // whole thing this chapter is about.
                 self.seq_item_port.item_done(None);
-                self.bench.push((job, clocks));
+                self.bench.push((job, clocks, clocks));
             }
 
             // --- age the shop, and hand back anything that is done --------
             Timer::ns(5).await;
             let mut still_working = Vec::new();
-            for (job, left) in self.bench.drain(..) {
+            for (job, quoted, left) in self.bench.drain(..) {
                 if left > 1 {
-                    still_working.push((job, left - 1));
+                    still_working.push((job, quoted, left - 1));
                 } else {
                     let machine = job.payload().machine;
-                    ctx.info(&format!("ready: {} ({})", machine, job.txn_id()));
+                    ctx.info(&format!("ready: {} ({}) after {} ticks", machine, job.txn_id(), quoted));
                     // The receipt goes back under the job's own ticket, so the
                     // customer who asks for 1043 gets 1043 however many others
                     // were finished first.
                     self.seq_item_port
-                        .put_response(job.txn_id(), RepairDone { machine, clocks: 0 });
+                        .put_response(job.txn_id(), RepairDone { machine, clocks: quoted });
                 }
             }
             self.bench = still_working;
@@ -206,11 +210,30 @@ impl Sequence for RepairSeq {
             tickets.push((machine, ticket));
         }
 
-        // Then collect, in the order *we* care about — which is not the order
-        // the shop finishes them.
-        for (machine, ticket) in tickets {
-            let done = ctx.get_response(Some(ticket)).await;
-            ctx.info(&format!("collected {machine} (ticket {ticket}): {done:?}"));
+        // Then come back and check the board.
+        //
+        // **This is why `try_get_response` exists.** Blocking on ticket #1 and
+        // then #2 and then #3 would collect them in the order they were issued
+        // no matter what the shop did — the out-of-order work would be real and
+        // invisible. Polling collects them in the order they are *finished*,
+        // which is what the customer actually experiences and what the ticket
+        // is for.
+        while !tickets.is_empty() {
+            Timer::ns(10).await; // walk back to the counter and look
+            let mut i = 0;
+            while i < tickets.len() {
+                let (machine, ticket) = tickets[i];
+                match ctx.try_get_response(Some(ticket)) {
+                    Some(done) => {
+                        ctx.info(&format!(
+                            "collected {machine} ({ticket}) after {} ticks",
+                            done.clocks
+                        ));
+                        tickets.remove(i);
+                    }
+                    None => i += 1,
+                }
+            }
         }
         Ok(())
     }

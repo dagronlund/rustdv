@@ -155,6 +155,22 @@ impl<RSP> ResponseQueue<RSP> {
     pub fn get_response(&self, txn_id: Option<TxnId>) -> GetResponse<RSP> {
         GetResponse { inner: self.inner.clone(), txn_id }
     }
+
+    /// Is it ready **yet**? Returns `None` rather than waiting.
+    ///
+    /// The non-blocking half of the pair, as `try_put`/`try_get` are to
+    /// `put`/`get` and `try_next_item` is to `get_next_item`. A sequence with
+    /// several requests outstanding needs it: blocking on one ticket forces
+    /// the collection order back to the order they were issued, and hides the
+    /// very thing an out-of-order responder is doing.
+    pub fn try_get_response(&self, txn_id: Option<TxnId>) -> Option<RSP> {
+        let mut items = self.inner.items.borrow_mut();
+        let idx = match txn_id {
+            None => (!items.is_empty()).then_some(0),
+            Some(id) => items.iter().position(|(i, _)| *i == id),
+        };
+        idx.map(|i| items.remove(i).1)
+    }
 }
 
 pub struct GetResponse<RSP> {
@@ -451,6 +467,17 @@ impl<REQ: 'static, RSP: 'static> SeqCtx<REQ, RSP> {
         slot.ready.set();
         slot.done.wait().await;
         Ok(slot.id)
+    }
+
+    /// Ask whether an answer is ready, without waiting. `None` takes whatever
+    /// is next; `Some(id)` looks for that ticket only.
+    ///
+    /// This is what a sequence with several requests outstanding polls with —
+    /// the equivalent of checking the board for your number rather than
+    /// standing at the counter.
+    pub fn try_get_response(&mut self, txn_id: Option<TxnId>) -> Option<RSP> {
+        let responses = self.seqr().ok()?.responses.clone();
+        responses.try_get_response(txn_id)
     }
 
     /// Wait for an answer. `None` takes whatever is next; `Some(id)` waits for
