@@ -167,11 +167,11 @@ fn seed_from_env() -> u64 {
 }
 
 async fn run_one(reg: &'static TestRegistration, seed: u64) -> Outcome {
-    // Each test starts clean — pyuvm's run_test clears singletons and
-    // resets the default logging level, so a test never inherits the
-    // previous test's BFM (with its half-drained queues) or its logging
-    // configuration. D16's rule, applied beyond the ConfigDb.
-    rustdv_methodology::clear_singletons();
+    // Each test starts clean — pyuvm's run_test does the same, so a test never
+    // inherits the previous test's BFM (with its half-drained queues) or its
+    // logging configuration. D16's rule; the ConfigDb clear is what carries it
+    // for the BFM now that the BFM lives there rather than in a singleton
+    // (D101).
     rustdv_methodology::ConfigDb::clear();
     log::reset_config();
 

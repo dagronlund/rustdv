@@ -52,7 +52,7 @@ Real Icarus output (`RUSTDV_RANDOM_SEED=1`):
 
 ```
       0.00ns INFO     rustdv: found 1 test(s), RUSTDV_RANDOM_SEED=1
-      0.00ns INFO     running AluTest (1/1)
+      0.00ns INFO     running AluTest (1/1)  [ch34-connections-testbench-6.0/src/ch34_connections_testbench_6_0.rs:346]
     240.00ns INFO     [AluTest.env.scoreboard]: PASSED: c1 Add 67 = 0128
     240.00ns INFO     [AluTest.env.scoreboard]: PASSED: 5e And 0b = 000a
     240.00ns INFO     [AluTest.env.scoreboard]: PASSED: b9 Xor 80 = 0039

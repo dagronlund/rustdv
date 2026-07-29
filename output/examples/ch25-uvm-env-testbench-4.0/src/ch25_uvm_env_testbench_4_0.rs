@@ -12,8 +12,9 @@
 //!
 //! - The tester and the scoreboard are now **siblings**, created in their
 //!   parent's `build` phase, so neither can be handed the BFM through a
-//!   constructor. They ask for it: `TinyAluBfm::get()`, the port of pyuvm's
-//!   `TinyAluBfm()` singleton. One BFM per test.
+//!   constructor. They ask for it by name from the **ConfigDb**, which the
+//!   test filled in. That is how SystemVerilog does it too; Chapter 27 is the
+//!   full treatment, and Figure 3 says just enough to read the code.
 //! - The scoreboard does its collecting in `start_of_simulation` and its
 //!   comparing in `check` — phases, not hand-called methods.
 //!
@@ -64,7 +65,25 @@ impl Operands for MaxOperands {
 // varies is a type parameter, not an override.
 //
 // The BFM is not a constructor argument — this component is created by its
-// parent's build phase, which passes nothing. It asks for the ambient BFM.
+// parent's build phase, which passes nothing (D6). So how does it get one?
+//
+// **The ConfigDb**, which is this chapter's other new idea. A component that
+// needs something it was not handed asks for it by name, and something above
+// it in the tree put it there. Chapter 27 is the full treatment — precedence,
+// wildcards, what happens when the name is wrong. For now two lines are
+// enough to read the code:
+//
+//   ConfigDb::set(None, "*", "BFM", bfm)   // the test: everyone gets this one
+//   ConfigDb::get(Some(ctx), "", "BFM")    // a component: give me mine
+//
+// The `Result` is the point of the mechanism rather than an inconvenience:
+// SystemVerilog's `get()` returns a silent zero when the name is wrong, and
+// you find out much later. This one says so (D14).
+//
+// SystemVerilog does the same thing for the same reason —
+// `uvm_config_db#(virtual tinyalu_bfm)::set(null, "*", "bfm", bfm)` sits in
+// the `top.sv` of every UVM testbench — and pyuvm reaches it with a
+// singleton instead.
 #[derive(Component, Default)]
 pub struct BaseTester<T: Operands + Default + 'static> {
     operands: T,
@@ -77,13 +96,16 @@ impl<T: Operands + Default + 'static> Component for BaseTester<T> {
         self.rng = Some(ctx.rng());
     }
 
-    fn start_of_simulation(&mut self, _ctx: &mut RustdvCtx) {
-        TinyAluBfm::get().start_tasks();
+    fn start_of_simulation(&mut self, ctx: &mut RustdvCtx) {
+        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM").expect("the test sets BFM");
+        bfm.start_tasks();
     }
 
     async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
         let _obj = ctx.raise_objection("tester stimulus");
-        let bfm = TinyAluBfm::get();
+        // A phase that returns `Result` can use `?`; the phases above return
+        // nothing, so they say `expect` instead. Same lookup either way.
+        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM")?;
         let rng = self.rng.as_mut().expect("build phase did not run");
 
         bfm.reset().await;
@@ -135,23 +157,24 @@ impl Component for Scoreboard {
     // The spawned tasks must be `'static`, so they cannot borrow the
     // scoreboard. They clone `Rc` handles instead: the task owns a
     // reference count, not a borrow of `self`.
-    fn start_of_simulation(&mut self, _ctx: &mut RustdvCtx) {
-        let (bfm, cmds) = (TinyAluBfm::get(), self.cmds.clone());
+    fn start_of_simulation(&mut self, ctx: &mut RustdvCtx) {
+        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM").expect("the test sets BFM");
+        let (cmd_bfm, cmds) = (bfm.clone(), self.cmds.clone());
         spawn_named(
             async move {
                 loop {
-                    let cmd = bfm.get_cmd().await;
+                    let cmd = cmd_bfm.get_cmd().await;
                     cmds.borrow_mut().push(cmd);
                 }
             },
             "scoreboard.get_cmds",
         );
 
-        let (bfm, results) = (TinyAluBfm::get(), self.results.clone());
+        let (result_bfm, results) = (bfm, self.results.clone());
         spawn_named(
             async move {
                 loop {
-                    let result = bfm.get_result().await;
+                    let result = result_bfm.get_result().await;
                     results.borrow_mut().push(result);
                 }
             },
@@ -220,9 +243,15 @@ pub type MaxEnv = AluEnv<MaxOperands>;
 // The tests
 // ===========================================================================
 
-// Chapter 25, Figure 10: Each test builds the environment it wants. The test
-// has no run phase at all now — the stimulus moved into the tester
-// component, and the objection it raises is what holds the run phase open.
+// Chapter 25, Figure 10: Each test builds the environment it wants, and puts
+// the BFM where its components can find it. The test has no run phase at all
+// now — the stimulus moved into the tester component, and the objection it
+// raises is what holds the run phase open.
+//
+// `None` as the first argument means "from the top", and `"*"` means every
+// component below it, so one line serves the whole tree. The test is the right
+// place for it: it is the only component that knows the DUT handle, and it is
+// above everything that needs the BFM.
 
 #[rustdv::test]
 #[derive(Component, Default)]
@@ -232,7 +261,9 @@ struct RandomTest {
 }
 
 impl Component for RandomTest {
-    fn build(&mut self, _ctx: &mut RustdvCtx) {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        let bfm = TinyAluBfm::new(&ctx.dut()).expect("TinyALU signals");
+        ConfigDb::set(None, "*", "BFM", Rc::new(bfm));
         self.env = Some(RandomEnv::default());
     }
 }
@@ -245,7 +276,9 @@ struct MaxTest {
 }
 
 impl Component for MaxTest {
-    fn build(&mut self, _ctx: &mut RustdvCtx) {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        let bfm = TinyAluBfm::new(&ctx.dut()).expect("TinyALU signals");
+        ConfigDb::set(None, "*", "BFM", Rc::new(bfm));
         self.env = Some(MaxEnv::default());
     }
 }

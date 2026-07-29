@@ -47,7 +47,7 @@ async fn drive_stimulus(
     mut get_operands: impl FnMut(&mut Rng) -> (u8, u8),
 ) -> Result<(), TestError> {
     let _obj = ctx.raise_objection("tester stimulus");
-    let bfm = TinyAluBfm::get();
+    let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM")?;
     let mut rng = ctx.rng();
 
     bfm.reset().await;
@@ -115,23 +115,24 @@ struct Scoreboard {
 }
 
 impl Component for Scoreboard {
-    fn start_of_simulation(&mut self, _ctx: &mut RustdvCtx) {
-        let (bfm, cmds) = (TinyAluBfm::get(), self.cmds.clone());
+    fn start_of_simulation(&mut self, ctx: &mut RustdvCtx) {
+        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM").expect("the test sets BFM");
+        let (cmd_bfm, cmds) = (bfm.clone(), self.cmds.clone());
         spawn_named(
             async move {
                 loop {
-                    let cmd = bfm.get_cmd().await;
+                    let cmd = cmd_bfm.get_cmd().await;
                     cmds.borrow_mut().push(cmd);
                 }
             },
             "scoreboard.get_cmds",
         );
 
-        let (bfm, results) = (TinyAluBfm::get(), self.results.clone());
+        let (result_bfm, results) = (bfm, self.results.clone());
         spawn_named(
             async move {
                 loop {
-                    let result = bfm.get_result().await;
+                    let result = result_bfm.get_result().await;
                     results.borrow_mut().push(result);
                 }
             },
@@ -192,8 +193,9 @@ impl Component for AluEnv {
         self.tester = BaseTester::create_comp();
     }
 
-    fn start_of_simulation(&mut self, _ctx: &mut RustdvCtx) {
-        TinyAluBfm::get().start_tasks();
+    fn start_of_simulation(&mut self, ctx: &mut RustdvCtx) {
+        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM").expect("the test sets BFM");
+        bfm.start_tasks();
     }
 }
 
@@ -215,7 +217,9 @@ struct RandomTest {
 }
 
 impl Component for RandomTest {
-    fn build(&mut self, _ctx: &mut RustdvCtx) {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        let bfm = TinyAluBfm::new(&ctx.dut()).expect("TinyALU signals");
+        ConfigDb::set(None, "*", "BFM", Rc::new(bfm));
         Factory::set_type_override::<BaseTester, RandomTester>();
         self.env = AluEnv::new_comp();
     }
@@ -230,7 +234,9 @@ struct MaxTest {
 }
 
 impl Component for MaxTest {
-    fn build(&mut self, _ctx: &mut RustdvCtx) {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        let bfm = TinyAluBfm::new(&ctx.dut()).expect("TinyALU signals");
+        ConfigDb::set(None, "*", "BFM", Rc::new(bfm));
         Factory::set_type_override::<BaseTester, MaxTester>();
         self.env = AluEnv::new_comp();
     }

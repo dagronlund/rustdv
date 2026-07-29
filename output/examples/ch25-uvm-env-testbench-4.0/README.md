@@ -29,14 +29,14 @@ Transcript (seed 1):
 
 ```
       0.00ns INFO     rustdv: found 2 test(s), RUSTDV_RANDOM_SEED=1
-      0.00ns INFO     running RandomTest (1/2)  [ch25-uvm-env-testbench-4.0/src/ch25_uvm_env_testbench_4_0.rs:216]
+      0.00ns INFO     running RandomTest (1/2)  [ch25-uvm-env-testbench-4.0/src/ch25_uvm_env_testbench_4_0.rs:256]
     150.00ns INFO     [RandomTest.env.scoreboard]: PASSED: c1 Add 67 = 0128
     150.00ns INFO     [RandomTest.env.scoreboard]: PASSED: 5e And 0b = 000a
     150.00ns INFO     [RandomTest.env.scoreboard]: PASSED: b9 Xor 80 = 0039
     150.00ns INFO     [RandomTest.env.scoreboard]: PASSED: a5 Mul 75 = 4b69
     150.00ns INFO     [RandomTest.env.scoreboard]: Covered all operations
     150.00ns INFO     RandomTest PASSED
-    150.00ns INFO     running MaxTest (2/2)  [ch25-uvm-env-testbench-4.0/src/ch25_uvm_env_testbench_4_0.rs:229]
+    150.00ns INFO     running MaxTest (2/2)  [ch25-uvm-env-testbench-4.0/src/ch25_uvm_env_testbench_4_0.rs:271]
     300.00ns INFO     [MaxTest.env.scoreboard]: PASSED: ff Add ff = 01fe
     300.00ns INFO     [MaxTest.env.scoreboard]: PASSED: ff And ff = 00ff
     300.00ns INFO     [MaxTest.env.scoreboard]: PASSED: ff Xor ff = 0000
@@ -54,18 +54,25 @@ REGRESSION: PASS
 
 ## Two things worth reading the code for
 
-**The BFM is ambient.** The tester and the scoreboard are siblings created
-in their parent's `build` phase, so neither can be handed the BFM through a
-constructor — `build` passes nothing (D6). Each calls `TinyAluBfm::get()`
-and receives the same object, the port of pyuvm's
-`class TinyAluBfm(metaclass=Singleton)`. SystemVerilog reaches the same
-place with `uvm_config_db#(virtual tinyalu_bfm)::set(null, "*", "bfm", bfm)`.
-Both source languages could have threaded a handle through constructors and
-neither did — D3.
+**A component asks for the BFM by name.** The tester and the scoreboard are
+siblings created in their parent's `build` phase, so neither can be handed the
+BFM through a constructor — `build` passes nothing (D6). The test puts one in
+the ConfigDb and each component asks for it:
 
-The singleton is scoped to **one test**: the runner clears singletons before
-each test, matching pyuvm's `run_test`, so `MaxTest` never inherits
-`RandomTest`'s half-drained queues.
+    ConfigDb::set(None, "*", "BFM", Rc::new(bfm));                  // the test
+    let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM")?; // a component
+
+This is where the ConfigDb first earns its place; Chapter 27 is the full
+treatment. SystemVerilog does exactly this —
+`uvm_config_db#(virtual tinyalu_bfm)::set(null, "*", "bfm", bfm)` sits in the
+`top.sv` of every UVM testbench — while pyuvm reaches the same place with a
+singleton. Both source languages could have threaded a handle through
+constructors and neither did (D3); rustdv follows SystemVerilog's answer rather
+than pyuvm's, so the reader learns one mechanism instead of two (D101).
+
+The BFM is scoped to **one test**: the runner clears the ConfigDb before each
+test, matching pyuvm's `run_test`, so `MaxTest` never inherits `RandomTest`'s
+half-drained queues.
 
 **Inheritance becomes one generic written once.** Python needs
 `BaseTester` + `RandomTester` + `MaxTester`, and `BaseEnv` + `RandomEnv` +

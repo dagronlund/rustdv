@@ -48,7 +48,6 @@ pub mod objection;
 pub mod port;
 pub mod sequence;
 pub mod shared;
-pub mod singleton;
 
 pub use analysis::{AnalysisFifo, AnalysisPort, PublishExport, Subscriber, SubscribeExport};
 pub use shared::RustdvShared;
@@ -69,7 +68,6 @@ pub use port::{
     PortOwner, PublishIf, PublishPort, PutIf, PutPort, SinkHandle, SubscribePort, WriteSink,
 };
 pub use objection::{ObjectionGuard, ObjectionRegistry};
-pub use singleton::{clear_singletons, singleton, singleton_exists};
 pub use sequence::{
     ResponseQueue, SeqCtx, SeqError, SeqItem, SeqItemPort, Sequence, Sequencer, TxnId,
 };

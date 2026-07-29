@@ -26,7 +26,7 @@ pub use rustdv_runner as runner;
 pub use rustdv_sim as sim;
 // The methodology layer is NOT re-exported as a whole-crate module: its
 // public items are on the curated surface below and in the prelude, so
-// testbenches reach them as `rustdv::Factory`, `rustdv::singleton`, etc.
+// testbenches reach them as `rustdv::Factory`, `rustdv::ConfigDb`, etc.
 // (No `rustdv::uvm` — rustdv is not an implementation of IEEE 1800.2.)
 
 // --- macros -----------------------------------------------------------------
@@ -53,7 +53,7 @@ pub use rustdv_sim::log;
 pub use rustdv_methodology::{
     build_all, channel, check_all, check_connections, connect_all, end_of_elaboration_all,
     extract_all, final_all, print_hierarchy, report_all, run_all, run_component_test,
-    run_extract_check_report, singleton, start_all, start_of_simulation_all, unconnected_ports,
+    run_extract_check_report, start_all, start_of_simulation_all, unconnected_ports,
     Active, AnalysisFifo, AnalysisPort, CheckSink,
     Component as ComponentTrait, ComponentNode, DynPhases, ObjectionGuard, ObjectionRegistry,
     Receiver, ResponseQueue, Sender, SeqCtx, SeqError, SeqItem, SeqItemPort, Sequence, Sequencer,

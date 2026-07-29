@@ -27,20 +27,26 @@ Real Icarus output (`RUSTDV_RANDOM_SEED=1`):
 
 ```
       0.00ns INFO     rustdv: found 2 test(s), RUSTDV_RANDOM_SEED=1
-      0.00ns INFO     running RandomTest (1/2)  [ch30-variation-point-testbench-5.0/src/ch30_variation_point_testbench_5_0.rs:211]
+      0.00ns INFO     running RandomTest (1/2)  [ch30-variation-point-testbench-5.0/src/ch30_variation_point_testbench_5_0.rs:212]
     150.00ns INFO     [RandomTest.env.scoreboard]: PASSED: c1 Add 67 = 0128
     150.00ns INFO     [RandomTest.env.scoreboard]: PASSED: 5e And 0b = 000a
     150.00ns INFO     [RandomTest.env.scoreboard]: PASSED: b9 Xor 80 = 0039
     150.00ns INFO     [RandomTest.env.scoreboard]: PASSED: a5 Mul 75 = 4b69
     150.00ns INFO     [RandomTest.env.scoreboard]: Covered all operations
     150.00ns INFO     RandomTest PASSED
-    150.00ns INFO     running MaxTest (2/2)  [ch30-variation-point-testbench-5.0/src/ch30_variation_point_testbench_5_0.rs:226]
+    150.00ns INFO     running MaxTest (2/2)  [ch30-variation-point-testbench-5.0/src/ch30_variation_point_testbench_5_0.rs:229]
     300.00ns INFO     [MaxTest.env.scoreboard]: PASSED: ff Add ff = 01fe
     300.00ns INFO     [MaxTest.env.scoreboard]: PASSED: ff And ff = 00ff
     300.00ns INFO     [MaxTest.env.scoreboard]: PASSED: ff Xor ff = 0000
     300.00ns INFO     [MaxTest.env.scoreboard]: PASSED: ff Mul ff = fe01
     300.00ns INFO     [MaxTest.env.scoreboard]: Covered all operations
     300.00ns INFO     MaxTest PASSED
+******************************************************************************
+** TEST                                       STATUS  SIM TIME (ns)      **
+******************************************************************************
+** RandomTest                                   PASS         150.00      **
+** MaxTest                                      PASS         150.00      **
+******************************************************************************
 REGRESSION: PASS
 ```
 

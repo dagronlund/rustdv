@@ -38,8 +38,8 @@
 //!
 //! The Tester generates commands and *puts* them; the Driver *gets* them and
 //! drives the BFM. Two monitors watch the bus and *broadcast* what they see;
-//! the Scoreboard and Coverage *subscribe*. The BFM is the ambient singleton
-//! (D57), the RTL self-clocks (D42).
+//! the Scoreboard and Coverage *subscribe*. The BFM comes from the ConfigDb,
+//! filed there by the test (D101); the RTL self-clocks (D42).
 //!
 //! ## The Rust win worth noting (D20): multiple analysis inputs, no macros
 //!
@@ -61,6 +61,7 @@
 //! the test passed with its scoreboard never running.
 
 use std::collections::HashSet;
+use std::rc::Rc;
 
 use rustdv::prelude::*;
 use tinyalu_utils::{alu_prediction, CmdTuple, Ops, TinyAluBfm};
@@ -100,7 +101,7 @@ impl Component for Tester {
         // commands. Hold the objection for a flush, as the Python testbench
         // does. It waits ten clocks; this waits twenty, because the multiply
         // is the last operation and takes the longest to come back.
-        let bfm = TinyAluBfm::get();
+        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM")?;
         for _ in 0..20 {
             bfm.clk().falling_edge().await;
         }
@@ -116,8 +117,8 @@ struct Driver {
 }
 
 impl Component for Driver {
-    async fn run(&mut self, _ctx: &mut RustdvCtx) -> Result<(), TestError> {
-        let bfm = TinyAluBfm::get();
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM")?;
         bfm.reset().await;
         loop {
             let (aa, bb, op) = self.cmd_port.get().await; // blocks until a command
@@ -138,8 +139,8 @@ struct CmdMonitor {
 }
 
 impl Component for CmdMonitor {
-    async fn run(&mut self, _ctx: &mut RustdvCtx) -> Result<(), TestError> {
-        let bfm = TinyAluBfm::get();
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM")?;
         loop {
             let cmd = bfm.get_cmd().await;
             self.ap.write(&cmd);
@@ -155,8 +156,8 @@ struct ResultMonitor {
 }
 
 impl Component for ResultMonitor {
-    async fn run(&mut self, _ctx: &mut RustdvCtx) -> Result<(), TestError> {
-        let bfm = TinyAluBfm::get();
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM")?;
         loop {
             let result = bfm.get_result().await;
             self.ap.write(&result);
@@ -335,8 +336,9 @@ impl Component for AluEnv {
         self.result_bus.sub_export().connect(&self.scoreboard, Scoreboard::RESULT_IN);
     }
 
-    fn start_of_simulation(&mut self, _ctx: &mut RustdvCtx) {
-        TinyAluBfm::get().start_tasks();
+    fn start_of_simulation(&mut self, ctx: &mut RustdvCtx) {
+        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM").expect("the test sets BFM");
+        bfm.start_tasks();
     }
 }
 
@@ -349,7 +351,9 @@ struct AluTest {
 }
 
 impl Component for AluTest {
-    fn build(&mut self, _ctx: &mut RustdvCtx) {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        let bfm = TinyAluBfm::new(&ctx.dut()).expect("TinyALU signals");
+        ConfigDb::set(None, "*", "BFM", Rc::new(bfm));
         self.env = AluEnv::new_comp();
     }
 }
