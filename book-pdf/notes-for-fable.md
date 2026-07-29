@@ -433,6 +433,36 @@ Figure numbering changed completely. Take the map from
    field counts, hand-written when "the same" means something narrower
    (Figure 2, Batman and Bruce Wayne).
 
+**Say plainly that a transaction is not an object** (Ray, 2026-07-29). Every
+reader arrives from `uvm_object` or `uvm_sequence_item` with an object in their
+head, and this is the chapter where that model quietly misleads them. Two facts,
+stated rather than implied:
+
+- **It is not an object. It is a location in memory, referenced by a name.**
+  `AluCommand { a, b, op }` is a layout — three fields side by side — and
+  `cmd` is a binding to that place. Nothing is wrapped around it, nothing
+  points at it, and there is no identity separate from the bytes. That is why
+  the chapter opens with "plain struct, no base class": there is no object for
+  a base class to be part of.
+- **It is not a class, so there is no `super()`.** No inheritance chain means
+  no `super().do_copy(other)` to remember, no `super().__str__()` to extend,
+  and no virtual dispatch on a transaction. What a base class *gave* you —
+  printing, comparing, copying — arrives instead as traits attached from the
+  outside, which is why they are derives rather than inherited methods.
+
+Ray was explicit that he is not sure where this belongs; the natural place is
+the chapter opening, before Figure 1, since every later figure is a consequence
+of it. Part I has already taught structs, so this is a **reminder aimed at the
+UVM habit**, not a first explanation — the reader knows what a struct is and
+still has an object in mind.
+
+It also sets up Chapter 36. Because a transaction is a place and not a handle,
+`finish_item(cmd)` hands over the *contents* — the sequence does not keep a
+reference to something the driver is also holding. That is the whole reason
+rustdv has no equivalent of the UVM's "the driver writes into the item I still
+have" (D93), and a reader who has absorbed "not an object" will find it
+obvious rather than surprising.
+
 New material worth prose: `PartialEq` versus `Eq` (Figure 3). The reason there
 are two traits is that `PartialEq` does not promise `a == a` — IEEE 754 says
 NaN equals nothing — and `Eq` adds that promise. It bites a verification

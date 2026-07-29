@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
+path = "src/ch39_virtual_sequence_testbench_8_0.rs"
 crate-type = ["cdylib"]
 
 [dependencies]
