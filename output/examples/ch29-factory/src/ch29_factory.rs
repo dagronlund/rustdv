@@ -71,7 +71,7 @@ impl Component for TinyComponent {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct TinyTest {
-    #[component(child)]
+    #[component]
     tc: RustdvComp,
 }
 
@@ -90,7 +90,7 @@ impl Component for TinyTest {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct TinyFactoryTest {
-    #[component(child)]
+    #[component]
     tc: RustdvComp,
 }
 
@@ -109,7 +109,7 @@ impl Component for TinyFactoryTest {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct CreateByNameTest {
-    #[component(child)]
+    #[component]
     tc: RustdvComp,
 }
 
@@ -151,7 +151,7 @@ impl Component for MediumComponent {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct MediumFactoryTest {
-    #[component(child)]
+    #[component]
     tc: RustdvComp,
 }
 
@@ -171,7 +171,7 @@ impl Component for MediumFactoryTest {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct MediumNameTest {
-    #[component(child)]
+    #[component]
     tc: RustdvComp,
 }
 
@@ -195,9 +195,9 @@ impl Component for MediumNameTest {
 // lands at. You never type "tc1" here; the struct already said it.
 #[derive(Component, Default)]
 struct TwoCompEnv {
-    #[component(child)]
+    #[component]
     tc1: RustdvComp,
-    #[component(child)]
+    #[component]
     tc2: RustdvComp,
 }
 
@@ -218,7 +218,7 @@ impl Component for TwoCompEnv {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct TwoCompTest {
-    #[component(child)]
+    #[component]
     env: Option<TwoCompEnv>,
 }
 
@@ -241,7 +241,7 @@ impl Component for TwoCompTest {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct PrintOverridesTest {
-    #[component(child)]
+    #[component]
     tc: RustdvComp,
 }
 

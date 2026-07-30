@@ -181,9 +181,9 @@ impl Component for Scoreboard {
 // the whole environment (the Python book's `AluEnv.start_of_simulation_phase`).
 #[derive(Component, Default)]
 struct AluEnv {
-    #[component(child)]
+    #[component]
     scoreboard: RustdvComp,
-    #[component(child)]
+    #[component]
     tester: RustdvComp,
 }
 
@@ -212,7 +212,7 @@ impl Component for AluEnv {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct RandomTest {
-    #[component(child)]
+    #[component]
     env: RustdvComp,
 }
 
@@ -229,7 +229,7 @@ impl Component for RandomTest {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct MaxTest {
-    #[component(child)]
+    #[component]
     env: RustdvComp,
 }
 

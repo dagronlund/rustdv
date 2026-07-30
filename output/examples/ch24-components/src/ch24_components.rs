@@ -100,7 +100,7 @@ impl Component for BottomComp {
 // its own build phase, and announces itself at end of elaboration.
 #[derive(Component, Default)]
 struct MiddleComp {
-    #[component(child)]
+    #[component]
     bc: Option<BottomComp>,
 }
 
@@ -118,7 +118,7 @@ impl Component for MiddleComp {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct TestTop {
-    #[component(child)]
+    #[component]
     mc: Option<MiddleComp>,
 }
 

@@ -247,9 +247,9 @@ impl Sequence for RepairSeq {
 
 #[derive(Component, Default)]
 struct ShopEnv {
-    #[component(sequencer)]
+    #[component]
     seqr: Sequencer<RepairJob, RepairDone>,
-    #[component(child)]
+    #[component]
     desk: RustdvComp,
 }
 
@@ -269,7 +269,7 @@ impl Component for ShopEnv {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct RepairTest {
-    #[component(child)]
+    #[component]
     env: RustdvComp,
 }
 

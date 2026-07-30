@@ -288,23 +288,23 @@ impl Component for Coverage {
 // answers the same way for a child slot and for `self` (D83b).
 #[derive(Component, Default)]
 struct AluEnv {
-    #[component(child)]
+    #[component]
     tester: RustdvComp,
-    #[component(child)]
+    #[component]
     driver: RustdvComp,
-    #[component(child)]
+    #[component]
     cmd_mon: RustdvComp,
-    #[component(child)]
+    #[component]
     result_mon: RustdvComp,
-    #[component(child)]
+    #[component]
     scoreboard: RustdvComp,
-    #[component(child)]
+    #[component]
     coverage: RustdvComp,
-    #[component(fifo)]
+    #[component]
     cmd_fifo: TlmFifo<Command>,
-    #[component(fifo)]
+    #[component]
     cmd_bus: AnalysisBus<CmdTuple>, // the command broadcast, two subscribers
-    #[component(fifo)]
+    #[component]
     result_bus: AnalysisBus<u64>, // the result broadcast, one subscriber
 }
 
@@ -346,7 +346,7 @@ impl Component for AluEnv {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct AluTest {
-    #[component(child)]
+    #[component]
     env: RustdvComp,
 }
 

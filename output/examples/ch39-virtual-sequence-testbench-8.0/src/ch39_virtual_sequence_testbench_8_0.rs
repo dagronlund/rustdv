@@ -394,17 +394,17 @@ impl Component for Scoreboard {
 
 #[derive(Component, Default)]
 struct AluEnv {
-    #[component(sequencer)]
+    #[component]
     seqr: Sequencer<AluCommand, AluResult>,
-    #[component(child)]
+    #[component]
     driver: RustdvComp,
-    #[component(child)]
+    #[component]
     cmd_mon: RustdvComp,
-    #[component(child)]
+    #[component]
     scoreboard: RustdvComp,
-    #[component(fifo)]
+    #[component]
     cmd_bus: AnalysisBus<CmdTuple>,
-    #[component(fifo)]
+    #[component]
     result_bus: AnalysisBus<u64>,
 }
 
@@ -440,7 +440,7 @@ impl Component for AluEnv {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct AluTest {
-    #[component(child)]
+    #[component]
     env: RustdvComp,
 }
 
@@ -461,7 +461,7 @@ impl Component for AluTest {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct ParallelTest {
-    #[component(child)]
+    #[component]
     env: RustdvComp,
 }
 
@@ -482,7 +482,7 @@ impl Component for ParallelTest {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct FibonacciProgramTest {
-    #[component(child)]
+    #[component]
     env: RustdvComp,
 }
 

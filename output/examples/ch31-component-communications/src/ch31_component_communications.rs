@@ -37,7 +37,7 @@
 //! `get` export at a `put` port does not compile either — the name carries the
 //! interface, not just a string.
 //!
-//! The FIFO is a concrete `#[component(fifo)]` child (reachable to call
+//! The FIFO is a concrete `#[component]` child (reachable to call
 //! `put_export()` on) — the model closest to UVM, where the FIFO is a real
 //! component with a path. It is a deliberate carve-out: a FIFO is plumbing,
 //! never a factory-override target (like the BFM, D33). Every declared put/get
@@ -118,17 +118,17 @@ impl Component for Consumer {
 // them in `connect`.
 //
 // The producer and consumer are ordinary factory `RustdvComp` children. The FIFO
-// is a concrete `#[component(fifo)]` child so its exports are reachable. Every
+// is a concrete `#[component]` child so its exports are reachable. Every
 // `connect` is port -> export resolved through `port_slot`: the export never
 // reaches into the erased child.
 #[rustdv::test]
 #[derive(Component, Default)]
 struct PutGetPeekTest {
-    #[component(child)]
+    #[component]
     producer: RustdvComp,
-    #[component(child)]
+    #[component]
     consumer: RustdvComp,
-    #[component(fifo)]
+    #[component]
     fifo: TlmFifo<u32>,
 }
 
@@ -247,11 +247,11 @@ impl Component for NbConsumer {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct NonBlockingTest {
-    #[component(child)]
+    #[component]
     producer: RustdvComp,
-    #[component(child)]
+    #[component]
     consumer: RustdvComp,
-    #[component(fifo)]
+    #[component]
     fifo: TlmFifo<Packet>,
 }
 
@@ -345,15 +345,15 @@ impl Component for TimesTwo {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct MathTest {
-    #[component(child)]
+    #[component]
     square_it: RustdvComp,
-    #[component(child)]
+    #[component]
     times_two: RustdvComp,
-    #[component(fifo)]
+    #[component]
     x_fifo: TlmFifo<u32>,
-    #[component(fifo)]
+    #[component]
     sq_fifo: TlmFifo<u32>,
-    #[component(fifo)]
+    #[component]
     y_fifo: TlmFifo<u32>,
     #[port(put)]
     x_out: PutPort<u32>,
@@ -421,9 +421,9 @@ impl Component for MathTest {
 #[rustdv::test(expect_error = "tlm_unconnected_port")]
 #[derive(Component, Default)]
 struct UnconnectedTest {
-    #[component(child)]
+    #[component]
     producer: RustdvComp,
-    #[component(fifo)]
+    #[component]
     fifo: TlmFifo<u32>,
 }
 
@@ -482,13 +482,13 @@ impl Component for TapWatcher {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct FifoTapTest {
-    #[component(child)]
+    #[component]
     producer: RustdvComp,
-    #[component(child)]
+    #[component]
     consumer: RustdvComp,
-    #[component(child)]
+    #[component]
     watcher: RustdvComp,
-    #[component(fifo)]
+    #[component]
     fifo: TlmFifo<u32>,
 }
 

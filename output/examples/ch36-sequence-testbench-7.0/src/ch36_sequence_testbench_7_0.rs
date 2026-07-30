@@ -38,7 +38,7 @@
 //!
 //! ## What this asks the framework for
 //!
-//! 1. `Sequencer<REQ, RSP>` as a **component** — `#[component(sequencer)]`,
+//! 1. `Sequencer<REQ, RSP>` as a **component** — `#[component]`,
 //!    the D84 carve-out that `TlmFifo` already has: concrete, reachable, and
 //!    never a factory-override target.
 //! 2. `#[port(seq_item)]` and `SeqItemPort<REQ, RSP>` implementing `PortField`,
@@ -314,7 +314,7 @@ impl Component for Scoreboard {
 
 // Chapter 36, Figure 6: The env owns the sequencer and files its handle.
 //
-// `#[component(sequencer)]` is the same carve-out D84 made for FIFOs: both
+// `#[component]` is the same carve-out D84 made for FIFOs: both
 // endpoints of a connection are erased `RustdvComp` slots, so something
 // concrete has to make the call. The connect line has the shape every
 // connection in Chapters 31–34 had.
@@ -323,19 +323,19 @@ impl Component for Scoreboard {
 // it lives — the same ConfigDb the BFM arrives through since Chapter 25.
 #[derive(Component, Default)]
 struct AluEnv {
-    #[component(sequencer)]
+    #[component]
     seqr: Sequencer<AluCommand, AluResult>,
-    #[component(child)]
+    #[component]
     driver: RustdvComp,
-    #[component(child)]
+    #[component]
     cmd_mon: RustdvComp,
-    #[component(child)]
+    #[component]
     result_mon: RustdvComp,
-    #[component(child)]
+    #[component]
     scoreboard: RustdvComp,
-    #[component(fifo)]
+    #[component]
     cmd_bus: AnalysisBus<CmdTuple>,
-    #[component(fifo)]
+    #[component]
     result_bus: AnalysisBus<u64>,
 }
 
@@ -385,7 +385,7 @@ impl Component for AluEnv {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct BaseTest {
-    #[component(child)]
+    #[component]
     env: RustdvComp,
 }
 
@@ -426,7 +426,7 @@ impl Component for BaseTest {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct RandomTest {
-    #[component(child)]
+    #[component]
     inner: RustdvComp,
 }
 
@@ -440,7 +440,7 @@ impl Component for RandomTest {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct MaxTest {
-    #[component(child)]
+    #[component]
     inner: RustdvComp,
 }
 

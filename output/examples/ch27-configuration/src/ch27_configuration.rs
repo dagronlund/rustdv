@@ -78,9 +78,9 @@ impl Component for MsgLogger {
 // Chapter 27, Figure 2: Two loggers in the environment.
 #[derive(Component, Default)]
 struct MsgEnv {
-    #[component(child)]
+    #[component]
     loga: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     logb: Option<MsgLogger>,
 }
 
@@ -99,7 +99,7 @@ impl Component for MsgEnv {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct MsgTest {
-    #[component(child)]
+    #[component]
     env: Option<MsgEnv>,
 }
 
@@ -123,13 +123,13 @@ impl Component for MsgTest {
 // mechanism for sharing two of them.
 #[derive(Component, Default)]
 struct MultiMsgEnv {
-    #[component(child)]
+    #[component]
     loga: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     logb: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     talka: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     talkb: Option<MsgLogger>,
 }
 
@@ -150,7 +150,7 @@ impl Component for MultiMsgEnv {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct MultiMsgTest {
-    #[component(child)]
+    #[component]
     env: Option<MultiMsgEnv>,
 }
 
@@ -170,15 +170,15 @@ impl Component for MultiMsgTest {
 // Chapter 27, Figure 8: Adding gtalk, which nobody configures by name.
 #[derive(Component, Default)]
 struct GlobalEnv {
-    #[component(child)]
+    #[component]
     loga: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     logb: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     talka: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     talkb: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     gtalk: Option<MsgLogger>,
 }
 
@@ -207,7 +207,7 @@ impl Component for GlobalEnv {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct GlobalTest {
-    #[component(child)]
+    #[component]
     env: Option<GlobalEnv>,
 }
 
@@ -228,7 +228,7 @@ impl Component for GlobalTest {
 // Chapter 27, Figure 11: The env configures its own child...
 #[derive(Component, Default)]
 struct ConflictEnv {
-    #[component(child)]
+    #[component]
     loga: Option<MsgLogger>,
 }
 
@@ -256,7 +256,7 @@ impl Component for ConflictEnv {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct ConflictTest {
-    #[component(child)]
+    #[component]
     env: Option<ConflictEnv>,
 }
 

@@ -43,9 +43,9 @@ impl Component for MsgLogger {
 
 #[derive(Component, Default)]
 struct MsgEnv {
-    #[component(child)]
+    #[component]
     loga: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     logb: Option<MsgLogger>,
 }
 
@@ -65,7 +65,7 @@ impl Component for MsgEnv {
 #[rustdv::test(expect_error = "config_not_found")]
 #[derive(Component, Default)]
 struct MsgTest {
-    #[component(child)]
+    #[component]
     env: Option<MsgEnv>,
 }
 
@@ -86,7 +86,7 @@ impl Component for MsgTest {
 #[rustdv::test(expect_error = "config_not_found")]
 #[derive(Component, Default)]
 struct MsgTestAlmostFixed {
-    #[component(child)]
+    #[component]
     env: Option<MsgEnv>,
 }
 
@@ -131,9 +131,9 @@ impl Component for NiceMsgLogger {
 
 #[derive(Component, Default)]
 struct NiceMsgEnv {
-    #[component(child)]
+    #[component]
     loga: Option<NiceMsgLogger>,
-    #[component(child)]
+    #[component]
     logb: Option<NiceMsgLogger>,
 }
 
@@ -156,7 +156,7 @@ impl Component for NiceMsgEnv {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct NiceMsgTest {
-    #[component(child)]
+    #[component]
     env: Option<NiceMsgEnv>,
 }
 
@@ -179,7 +179,7 @@ impl Component for NiceMsgTest {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct NiceMsgTestAlmostFixed {
-    #[component(child)]
+    #[component]
     env: Option<NiceMsgEnv>,
 }
 
@@ -202,13 +202,13 @@ impl Component for NiceMsgTestAlmostFixed {
 // Chapter 28, Figure 8: Wildcards behaving, for contrast with the failures.
 #[derive(Component, Default)]
 struct MultiMsgEnv {
-    #[component(child)]
+    #[component]
     loga: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     logb: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     talka: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     talkb: Option<MsgLogger>,
 }
 
@@ -224,7 +224,7 @@ impl Component for MultiMsgEnv {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct MultiMsgTest {
-    #[component(child)]
+    #[component]
     env: Option<MultiMsgEnv>,
 }
 
@@ -250,7 +250,7 @@ impl Component for MultiMsgTest {
 // rather than leaving you to trust the rule (D13).
 #[derive(Component, Default)]
 struct ConflictEnv {
-    #[component(child)]
+    #[component]
     loga: Option<MsgLogger>,
 }
 
@@ -264,7 +264,7 @@ impl Component for ConflictEnv {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct ConflictTest {
-    #[component(child)]
+    #[component]
     env: Option<ConflictEnv>,
 }
 
@@ -291,15 +291,15 @@ impl Component for ConflictTest {
 // you actually got wrong when a lookup misses.
 #[derive(Component, Default)]
 struct GlobalEnv {
-    #[component(child)]
+    #[component]
     loga: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     logb: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     talka: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     talkb: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     gtalk: Option<MsgLogger>,
 }
 
@@ -316,7 +316,7 @@ impl Component for GlobalEnv {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct GlobalTest {
-    #[component(child)]
+    #[component]
     env: Option<GlobalEnv>,
 }
 

@@ -43,7 +43,7 @@
 //! `RustdvComp`s, neither side can drive the call.
 //!
 //! **rustdv gives analysis a hub too.** An `AnalysisBus` is a concrete
-//! `#[component(fifo)]` child with two named export accessors:
+//! `#[component]` child with two named export accessors:
 //!
 //! ```ignore
 //! self.analysis_fifo.pub_export().connect(&self.mon, Monitor::PUB_PORT);
@@ -192,13 +192,13 @@ impl Component for NumberGen {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct BroadcastTest {
-    #[component(child)]
+    #[component]
     source: RustdvComp,
-    #[component(child)]
+    #[component]
     counter: RustdvComp,
-    #[component(child)]
+    #[component]
     collector: RustdvComp,
-    #[component(fifo)]
+    #[component]
     analysis_fifo: AnalysisBus<u32>,
 }
 
@@ -230,9 +230,9 @@ impl Component for BroadcastTest {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct NoSubscribersTest {
-    #[component(child)]
+    #[component]
     source: RustdvComp,
-    #[component(fifo)]
+    #[component]
     analysis_fifo: AnalysisBus<u32>,
 }
 
@@ -324,11 +324,11 @@ impl Component for SlowChecker {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct SlowSubscriberTest {
-    #[component(child)]
+    #[component]
     source: RustdvComp,
-    #[component(child)]
+    #[component]
     checker: RustdvComp,
-    #[component(fifo)]
+    #[component]
     analysis_fifo: AnalysisBus<u32>,
 }
 

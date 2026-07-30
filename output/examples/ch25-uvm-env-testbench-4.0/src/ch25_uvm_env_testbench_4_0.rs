@@ -222,9 +222,9 @@ impl Component for Scoreboard {
 // all three.
 #[derive(Component, Default)]
 pub struct AluEnv<T: Operands + Default + 'static> {
-    #[component(child)]
+    #[component]
     scoreboard: Option<Scoreboard>,
-    #[component(child)]
+    #[component]
     tester: Option<BaseTester<T>>,
 }
 
@@ -256,7 +256,7 @@ pub type MaxEnv = AluEnv<MaxOperands>;
 #[rustdv::test]
 #[derive(Component, Default)]
 struct RandomTest {
-    #[component(child)]
+    #[component]
     env: Option<RandomEnv>,
 }
 
@@ -271,7 +271,7 @@ impl Component for RandomTest {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct MaxTest {
-    #[component(child)]
+    #[component]
     env: Option<MaxEnv>,
 }
 

@@ -22,15 +22,15 @@ pub struct AluEnvConfig {
 #[derive(rustdv::Component)]
 pub struct AluEnv {
     seqr: Sequencer<AluCommand>,
-    #[component(child)]
+    #[component]
     driver: Option<Driver>,
-    #[component(child)]
+    #[component]
     cmd_mon: CmdMonitor,
-    #[component(child)]
+    #[component]
     result_mon: ResultMonitor,
-    #[component(child)]
+    #[component]
     scoreboard: Scoreboard,
-    #[component(child)]
+    #[component]
     coverage: Option<Coverage>,
 }
 

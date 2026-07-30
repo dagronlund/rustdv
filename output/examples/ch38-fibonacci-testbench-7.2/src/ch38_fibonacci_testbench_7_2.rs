@@ -151,13 +151,13 @@ impl Sequence for FibonacciSeq {
 // else is watching the bus.
 #[derive(Component, Default)]
 struct FibEnv {
-    #[component(sequencer)]
+    #[component]
     seqr: Sequencer<AluCommand, AluResult>,
-    #[component(child)]
+    #[component]
     driver: RustdvComp,
-    #[component(fifo)]
+    #[component]
     result_bus: AnalysisBus<u64>,
-    #[component(child)]
+    #[component]
     watcher: RustdvComp,
 }
 
@@ -228,7 +228,7 @@ impl Component for ResultWatcher {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct FibonacciTest {
-    #[component(child)]
+    #[component]
     env: RustdvComp,
 }
 
