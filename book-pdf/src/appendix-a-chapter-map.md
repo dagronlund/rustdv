@@ -28,12 +28,12 @@ Two books precede this one, and either prepares you for it: [*The UVM Primer*](h
 | Ch. 21: Macros | *(the `` `uvm_*_utils `` macros, demystified)* | (decorators; design patterns) |
 | Ch. 22: Why UVM? | Ch. 1: Introduction | Why UVM? |
 | Ch. 23: uvm_test Testbench: 3.0 | Ch. 11: UVM Tests | uvm_test testbench: 3.0 |
-| Ch. 24: Components: The Hierarchy Problem | Ch. 12: UVM Components | uvm_component |
+| Ch. 24: Components | Ch. 12: UVM Components | uvm_component |
 | Ch. 25: uvm_env Testbench: 4.0 | Ch. 13: UVM Environments | uvm_env testbench: 4.0 |
 | Ch. 26: Logging | Ch. 19: UVM Reporting | Logging |
 | Ch. 27: Configuration | *(uvm_config_db, in passing)* | ConfigDB() |
 | Ch. 28: Configuration Debugging | — | Debugging the ConfigDB() |
-| Ch. 29: The Factory Problem | Ch. 9: The Factory Pattern | The UVM factory |
+| Ch. 29: The Factory | Ch. 9: The Factory Pattern | The UVM factory |
 | Ch. 30: Variation-Point Testbench: 5.0 | — | UVM factory testbench: 5.0 |
 | Ch. 31: Component Communications | Ch. 14: A New Paradigm; Ch. 18: Put and Get Ports | Component communications |
 | Ch. 32: Analysis Ports | Ch. 15: Talking to Multiple Objects | Analysis ports |
@@ -41,8 +41,9 @@ Two books precede this one, and either prepares you for it: [*The UVM Primer*](h
 | Ch. 34: Connections in Testbench 6.0 | Ch. 18: Put and Get in Action; Ch. 22: UVM Agents | Connections in testbench 6.0 |
 | Ch. 35: Transactions | Ch. 20: Deep Operations; Ch. 21: UVM Transactions | uvm_object in Python |
 | Ch. 36: Sequence Testbench: 7.0 | Ch. 23: UVM Sequences | Sequence testbench: 7.0 |
-| Ch. 37: Fibonacci Testbench: 7.1 | Ch. 23: UVM Sequences | Fibonacci testbench: 7.1 |
-| Ch. 38: get_response Testbench: 7.2 | Ch. 23: UVM Sequences | get_response() testbench: 7.2 |
+| Ch. 37: The Repair Desk: Testbench 7.1 | Ch. 23: UVM Sequences | Fibonacci testbench: 7.1 / get_response() testbench: 7.2 |
+| Ch. 38: Fibonacci Testbench: 7.2 | Ch. 23: UVM Sequences | Fibonacci testbench: 7.1 |
 | Ch. 39: Virtual Sequence Testbench: 8.0 | Ch. 23: UVM Sequences | Virtual sequence testbench: 8.0 |
 | Ch. 40: The Complete TinyALU Testbench | *(no mirror)* | *(no mirror)* |
-| Ch. 41: The Future of Rust in Verification | Ch. 24: Onward with the UVM | The future of Python in verification |
+
+This book has no closing what-comes-next chapter — the earlier books each wrote one, and their futures arrived on their own schedules. The book ends with the testbench.

@@ -2,7 +2,7 @@
 
 Python made testbench code shorter and stranger at the same time with two features: comprehensions, which built a whole list in one bracketed line, and generators, which used `yield` to produce values one at a time without ever building the list at all. Both were ways of saying *here is a stream of values and a recipe for making them*. SystemVerilog never had either — nor the feature underneath them — which makes this chapter the newest ground in Part I for half of this book's readers, and worth every minute of it.
 
-Rust has both ideas, reorganized around one feature: the **iterator**. And driving the iterator machinery is a smaller feature that this book has been saving up for eleven chapters, because it is quietly one of the most important in the language: the **closure**. Closures matter far beyond this chapter. When Part IV rebuilds the UVM factory, the mechanism that replaces the entire override registry will turn out to be a closure stored in a struct field. This is the chapter where you learn why that sentence makes sense.
+Rust has both ideas, reorganized around one feature: the **iterator**. And driving the iterator machinery is a smaller feature that this book has been saving up for eleven chapters, because it is quietly one of the most important in the language: the **closure**. Closures matter far beyond this chapter. When Chapter 29 rebuilds the UVM factory, the values its registry stores — the makers that construct components on demand — will turn out to be exactly this chapter's closures. This is the chapter where you learn why that sentence makes sense.
 
 > **In the UVM...** stimulus recipes were loops. Python's dialect could also write them as generators — `yield` hands a value to the caller and *keeps running* — and as comprehensions like `[nn**2 for nn in range(11) if nn % 2 == 0]`, four parts in square brackets replacing a four-line loop. SystemVerilog's closest analog was a task feeding a mailbox: the stream-of-values idea was there, but functions were never values you could pass around, store, or build streams from.
 
@@ -312,9 +312,9 @@ fn main() {
 
 The one new idea here is `flat_map`, the nested-loop adapter: for each `aa` it runs the inner closure, which produces a whole stream of `(aa, bb)` pairs, and `flat_map` splices those inner streams end to end — the outer `for aa` and the inner `for bb`, rewritten as adapters. Same nine pairs, same order, but now nothing is computed until the caller asks for the next one. And *that* laziness is what forces the two `move`s. The inner closure must own its copy of `aa`, and the outer must own `n`, because these closures ride out of the function inside the returned iterator and are called long after `operand_pairs`'s own variables are gone. The capture rules you learned through the ownership lens are exactly what make it safe to return a paused computation from a function. Python kept the whole stack frame alive on the heap to manage this; Rust moves in precisely the values the closures need, and the compiler names each one if you forget the `move`.
 
-> ² Generator syntax has been experimented with in unstable Rust for years, but stable Rust — the Rust this book teaches — does not have it, and honestly, between adapters and `impl Iterator`, you will rarely feel the gap.
+> ² Generator syntax has been experimented with in unstable Rust for years, but stable Rust — the Rust this book teaches — does not have it, and between adapters and `impl Iterator`, you will rarely feel the gap.
 
-## Closures you keep: a seed for Part IV
+## Closures you keep: a seed for Chapter 29
 
 Everything so far has passed closures *downward* — into `map`, into `filter`, used and forgotten. The last idea in this chapter is the one with the longest reach in this book: a closure is a value, and like any value, it can be **stored in a struct field** and called later, by code that has no idea what the closure does inside.
 
@@ -357,7 +357,7 @@ PASS: (255, 1) -> 256
 FAIL: (15, 53) expected 5, got 6
 ```
 
-Two `Checker` values, one struct definition, two completely different behaviors — selected not by inheritance, not by overriding a virtual method, but by *which closure was placed in the field at construction time*. Sit with that for a moment, because it is the seed of something large. The UVM factory — the registry, the `type_id::create()` calls, the override tables — exists to answer one question: *how does a test change what the testbench builds without editing the testbench?* Python and SystemVerilog needed a registry because they could not comfortably pass constructors around as values. Rust can. When Chapter 29 rebuilds the factory's job, the answer will be a config struct carrying closure fields much like `predict` — a constructor in a box, replaced by the test in three visible lines, checked end to end by the compiler. You now hold the entire mechanism; Part IV supplies the methodology.
+Two `Checker` values, one struct definition, two completely different behaviors — selected not by inheritance, not by overriding a virtual method, but by *which closure was placed in the field at construction time*. Sit with that for a moment, because it is the seed of something large. The UVM factory — the registry, the `type_id::create()` calls, the override tables — exists to answer one question: *how does a test change what the testbench builds without editing the testbench?* rustdv keeps the registry, because create-by-name and overrides installed at a distance need one — and what that registry *stores*, one per component type, is a maker: a constructor as a value, a closure in a box, exactly like `predict` here. Where SystemVerilog manufactures its makers with `type_id` proxy classes and pyuvm with a metaclass, Rust just writes the closure down. You now hold the mechanism the registry stores; Chapter 29 supplies the methodology around it.
 
 ## Summary
 

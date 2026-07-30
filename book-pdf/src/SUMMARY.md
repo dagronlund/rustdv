@@ -20,6 +20,7 @@
 
 ---
 
+- [The rustdv Toolkit](the-rustdv-toolkit.md)
 - [async/await and the Executor](chapter-15-async-await-executor.md)
 - [Tasks, Channels, and Sim-Aware Queues](chapter-16-tasks-queues.md)
 - [Simulating with rustdv-sim](chapter-17-simulating-with-rustdv-sim.md)
@@ -29,7 +30,7 @@
 - [Macros: Code That Writes Code](chapter-21-macros.md)
 - [Why UVM?](chapter-22-why-uvm.md)
 - [uvm_test Testbench: 3.0](chapter-23-uvm-test-testbench-3.0.md)
-- [Components: The Hierarchy Problem](chapter-24-components.md)
+- [Components](chapter-24-components.md)
 - [uvm_env Testbench: 4.0](chapter-25-uvm-env-testbench-4.0.md)
 - [Logging](chapter-26-logging.md)
 - [Configuration](chapter-27-configuration.md)
@@ -42,8 +43,8 @@
 - [Connections in Testbench 6.0](chapter-34-connections-testbench-6.0.md)
 - [Transactions](chapter-35-transactions.md)
 - [Sequence Testbench: 7.0](chapter-36-sequence-testbench-7.0.md)
-- [Fibonacci Testbench: 7.1](chapter-37-fibonacci-testbench-7.1.md)
-- [get_response Testbench: 7.2](chapter-38-get-response-testbench-7.2.md)
+- [The Repair Desk: Testbench 7.1](chapter-37-repair-desk-testbench-7.1.md)
+- [Fibonacci Testbench: 7.2](chapter-38-fibonacci-testbench-7.2.md)
 - [Virtual Sequence Testbench: 8.0](chapter-39-virtual-sequence-testbench-8.0.md)
 - [The Complete TinyALU Testbench](chapter-40-complete-tinyalu-testbench.md)
 
@@ -52,3 +53,4 @@
 [Appendix A: Chapter Maps to the Earlier Books](appendix-a-chapter-map.md)
 [Appendix B: Python → Rust Idiom Translations](appendix-b-idiom-translations.md)
 [Appendix C: SystemVerilog-UVM → rustdv Translations](appendix-c-sv-translations.md)
+[Appendix D: What rustdv Provides](appendix-d-what-rustdv-provides.md)

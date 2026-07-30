@@ -36,24 +36,27 @@ For readers coming from cocotb and pyuvm (and *Python for RTL Verification*): th
 
 | Python (pyuvm) | Rust (rustdv) | Chapter |
 |---|---|---|
-| `uvm_test` class, `uvm_test_top` | the `#[rustdv::test]` fn owns the env | 23 |
-| `raise_objection()`/`drop_objection()` | `ObjectionGuard` (RAII) + `all_objections_dropped().await` | 23 |
-| `uvm_component(name, parent)` tree | children are struct fields; `#[derive(Component)]` | 24 |
-| nine phases | constructors (build/connect) + `start`/`extract`/`check`/`report`/`final_phase` | 24 |
-| `self.logger`, `[uvm_test_top.comp]` | `Logger::new("path")`, same bracket format | 26 |
-| `ConfigDB().set/get`, wildcards, globals | typed config structs; repeated fields; `..Default::default()` | 27 |
-| `create()` + `set_type_override_by_type` | maker closures in config structs | 29 |
-| TLM-1 put/get/peek port classes | `channel()` → `Sender<T>`/`Receiver<T>`, six methods | 31 |
-| `UVMTLMConnectionError` | a compile error (E0308) at the construction site | 31 |
-| `uvm_analysis_port.write()` | `AnalysisPort<T>::write(&T)` — non-blocking broadcast | 32 |
-| `uvm_subscriber` | `trait Subscriber<T> { fn write(&mut self, &T); }` | 32 |
-| `uvm_tlm_analysis_fifo` | `AnalysisBus<T>` via `ap.connect_fifo()` | 32 |
-| `uvm_object` do_copy/do_compare/convert2string | `#[derive(Clone, PartialEq, Debug)]` | 35 |
-| `do_compare` overrides | a comparator closure, owned by the scoreboard | 35 |
-| `uvm_sequence.body()` | `Sequence<REQ, RSP>` trait, boxed-future `body` | 36 |
-| `start_item`/`finish_item` | `ctx.start_item(&mut req)` / `ctx.finish_item(req)? -> TxnId` | 36 |
-| `seq_item_port.get_next_item()` | `port.get_next_item().await -> SeqItem<REQ>` | 36 |
-| `item_done()` / `item_done(rsp)` + `set_id_info` | `item_done(None)` / `item_done(Some(rsp))` — auto-tagged | 36–38 |
-| `get_response()` | `ctx.get_response(None)` FIFO / `Some(id)` cherry-pick | 37–38 |
-| virtual sequence (no sequencer `start()`) | plain struct + `async fn body`; no `SeqCtx` to misuse | 39 |
-| `is_active` from ConfigDB | `Active` enum + `Option<Driver>` children | 34 |
+| `@pyuvm.test()` on a class, `uvm_test_top` | `#[rustdv::test]` on a struct; the root is named after your test | 23 |
+| `raise_objection()`/`drop_objection()` | `ctx.raise_objection(..)` → RAII `ObjectionGuard`; drop releases | 23 |
+| `uvm_component(name, parent)` tree | children are struct fields; `#[derive(Component)]`; paths derived | 24 |
+| the nine phases, pyuvm's traversal order | the nine phases, same order: `build`, `connect`, ... `final_phase` | 24 |
+| `self.logger`, `[uvm_test_top.comp]` | `ctx.info(..)`, same bracket format, path supplied by the walk | 26 |
+| `ConfigDB().set/get`, wildcards, globals | `ConfigDb::set/get` — same paths, same globs, `Result` answers | 25, 27 |
+| `except UVMConfigItemNotFound` | `match` on `ConfigError::NotFound { .. }` | 28 |
+| metaclass registration + `create()` | `#[derive(Component)]` registers; `Foo::create_comp()` | 21, 29 |
+| `set_type_override_by_type` | `Factory::set_type_override::<A, B>()` (also by name, by instance) | 29, 30 |
+| TLM-1 put/get/peek port classes | `PutPort`/`GetPort`/`PeekPort`, wired export-to-port through a `TlmFifo` | 31 |
+| `UVMTLMConnectionError` (lazy, at first use) | elaboration sweep names every unwired port before run | 31 |
+| `uvm_analysis_port.write()` | `PublishPort<T>::write(&T)` through an `AnalysisBus` hub | 32 |
+| `uvm_subscriber` (one `write` per class) | a `WriteSink<T>` impl per stream — two streams, two impls | 32, 34 |
+| `uvm_tlm_analysis_fifo` | absent — the subscriber owns its storage | 32 |
+| `uvm_object` do_copy/do_compare/`__str__` | `#[derive(Clone, PartialEq, Debug)]` + hand-written `Display` | 35 |
+| `copy(other)` / `clone()` | `clone_from(&mut self, src)` / `clone()` | 35 |
+| `uvm_sequence.body()` | `impl Sequence` — `type Req`/`type Rsp`, `async fn body(ctx)` | 36 |
+| `start_item`/`finish_item` | `ctx.start_item(&mut req)` / `ctx.finish_item(req)` → ticket | 36 |
+| `seq_item_port.get_next_item()` | `port.get_next_item().await` → `SeqItem<REQ>` | 36 |
+| `item_done()` / `item_done(rsp)` + `set_id_info` | `item_done(None)` / `item_done(Some(rsp))` — auto-tagged | 36, 38 |
+| `get_response()` | `get_response(Some(ticket))` / `try_get_response` — in order or by ticket | 37, 38 |
+| *(no pyuvm counterpart)* `try_next_item` | `try_next_item()` → `Option` — the UVM's non-blocking accept, kept | 37 |
+| `seq.start(seqr)` / `start(None)` for virtual | `seq.start(&seqr)` / `start_virtual()` | 36, 39 |
+| `is_active` int from ConfigDB | `Active` enum from the ConfigDb; a passive env skips building the driver | 40 |

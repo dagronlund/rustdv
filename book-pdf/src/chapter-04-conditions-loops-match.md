@@ -77,7 +77,7 @@ Python called this trade "more flexibility at the cost of more code," and System
 
 ## if is an expression
 
-Here is the first genuinely new idea. In Chapter 3 we met Rust's distinction between statements and expressions: an expression produces a value. In Rust, `if`/`else` *is an expression* — the whole construct evaluates to the value of whichever branch ran. That means you can bind it with `let`:
+Here is the first new idea. In Chapter 3 we met Rust's distinction between statements and expressions: an expression produces a value. In Rust, `if`/`else` *is an expression* — the whole construct evaluates to the value of whichever branch ran. That means you can bind it with `let`:
 
 ```rust
 // Figure 4: Conditional assignment — no ternary needed

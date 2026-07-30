@@ -45,7 +45,7 @@ first: AluCommand { a: 5, b: 3, op: Add }
 
 Familiar territory: `push` is `append` or `push_back`, `len()` is `len()` or `size()`, `log[0]` is `log[0]`. Note that `log` must be `let mut` — Chapter 3's immutability-by-default applies to collections with no exceptions, which means a testbench data structure cannot be quietly modified by code you didn't expect to modify it. Also note `Vec::new()` gave us an empty vector; the `vec!` macro is the literal syntax, so `vec![1, 2, 3]` is Rust's `[1, 2, 3]` or `'{1, 2, 3}`.
 
-Now the part that is genuinely new. A Python list — like every SystemVerilog queue of class handles — holds *references*. When you append a transaction, the container gets one more name for an object that still has all its other names; the monitor keeps its handle, the scoreboard keeps its handle, and the garbage collector sorts out the afterlife. A `Vec` holds *values*. When you push a transaction into a `Vec`, the transaction **moves** into the `Vec` — the vector becomes the owner, exactly as if you had assigned it to a new variable in Chapter 5. Figure 2 shows what happens when we forget.
+Now the part that is new. A Python list — like every SystemVerilog queue of class handles — holds *references*. When you append a transaction, the container gets one more name for an object that still has all its other names; the monitor keeps its handle, the scoreboard keeps its handle, and the garbage collector sorts out the afterlife. A `Vec` holds *values*. When you push a transaction into a `Vec`, the transaction **moves** into the `Vec` — the vector becomes the owner, exactly as if you had assigned it to a new variable in Chapter 5. Figure 2 shows what happens when we forget.
 
 ```rust
 // Figure 2: Pushing is a move
@@ -210,7 +210,7 @@ PASSED: random_ops
 still have random_ops
 ```
 
-If instead the function is going to *keep* the text — storing a component's name in a struct field, say — it should take a `String` and own it outright, and the move at the call site honestly documents the handoff. When rustdv asks for `&str` in a signature, it is promising to look and not keep; when it asks for `String`, it is telling you the name is moving in permanently.
+If instead the function is going to *keep* the text — storing a component's name in a struct field, say — it should take a `String` and own it outright, and the move at the call site documents the handoff. When rustdv asks for `&str` in a signature, it is promising to look and not keep; when it asks for `String`, it is telling you the name is moving in permanently.
 
 One habit does not survive the crossing at all: indexing into a string. `line[45]` was everyday Python (and legal SV); in Rust, `s[0]` on a `String` does not compile. Rust strings are UTF-8 encoded, so a character can occupy anywhere from one to four bytes, and Rust refuses to guess whether you want the byte or the character.³ When you need the characters, say so — `for ch in s.chars()` iterates over them — and methods like `split`, `trim` (Python's `strip`), `replace`, and `contains` cover the daily string chores you already know by name.
 

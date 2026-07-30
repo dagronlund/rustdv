@@ -1,184 +1,330 @@
 # Chapter 36: Sequence Testbench: 7.0
 
-Everything until now has generated stimulus *inside* the testbench — testers wired into the env, swapped by generics or makers. The UVM's crown jewel inverts that: stimulus becomes *data-generating objects* called sequences, started by tests, fed to drivers through a handshake with guaranteed ordering. Testbench 7.0 adopts the machinery whole, and this is the one place rustdv ports a UVM subsystem *event for event* — because the handshake's ordering semantics are methodology, not mechanism, and whatever taught you `start_item`/`finish_item` would like them to still be true.
+Testbench 6.0 is a fine machine with one design flaw left: a new stimulus pattern means a new *component*. Want maximum operands instead of random ones? Override the Tester through the factory — rebuild part of the structure to change what the structure carries. *The UVM Primer* puts the objection best: overriding the tester to change stimulus is "like swapping out your car's steering wheel whenever you chose a different destination." The UVM's answer is the sequence system, and it is the methodology's crown jewel: the testbench structure holds still, and the **program** changes. This chapter builds testbench 7.0 around it.
 
-> **In the UVM...** we extended `uvm_sequence` and wrote a `body()` that looped: create a sequence item, `start_item(cmd)` — returns when the driver is ready — fill the operands, *late generation* (SV: `assert(cmd.randomize())`; pyuvm: set them and `await` each call), then `finish_item(cmd)` — returns when the driver calls `item_done()`. The driver pulled with `seq_item_port.get_next_item()`, and the test started it all with `seq.start(seqr)`.
+> **In the UVM...** a `uvm_sequence` holds a `body()` task that creates `uvm_sequence_item`s and sends them with `start_item()`/`finish_item()`. A `uvm_sequencer` arbitrates among running sequences; the driver pulls with `seq_item_port.get_next_item()`, drives the DUT, and releases with `item_done()`. A test creates a sequence and calls `seq.start(sequencer)`.
 
-## The handshake, preserved event for event
+The cast, before the code:
 
-Before any code, the contract — the same five steps every UVM dialect guarantees, with the rustdv spellings:
+- A **sequence** is *not a component*. It has no place in the tree, no path, no phases — one method, `body`, and a context to run it against. It is a test program.
+- The **sequencer** *is* a component: it holds the arbitration machinery and hands out one export. The environment files a handle to it in the ConfigDb so that a test levels above can start sequences on it without knowing where it lives.
+- The **driver** pulls. Testbench 6.0's `cmd_fifo` is gone; the sequencer is the decoupling point now.
 
-```text
-# Figure 1: The sequencer handshake
+<figure>
+<svg viewBox="0 0 660 300" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif" font-size="13">
+  <defs>
+    <marker id="harr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#888"/>
+    </marker>
+  </defs>
+  <text x="90" y="24" text-anchor="middle" fill="currentColor" font-weight="bold">Sequence</text>
+  <text x="330" y="24" text-anchor="middle" fill="currentColor" font-weight="bold">Sequencer</text>
+  <text x="570" y="24" text-anchor="middle" fill="currentColor" font-weight="bold">Driver</text>
+  <line x1="90" y1="34" x2="90" y2="290" stroke="#888" stroke-dasharray="4 3"/>
+  <line x1="330" y1="34" x2="330" y2="290" stroke="#888" stroke-dasharray="4 3"/>
+  <line x1="570" y1="34" x2="570" y2="290" stroke="#888" stroke-dasharray="4 3"/>
+  <line x1="565" y1="58" x2="335" y2="58" stroke="#888" stroke-width="1.5" marker-end="url(#harr)"/>
+  <text x="450" y="50" text-anchor="middle" fill="currentColor" font-size="11">get_next_item().await — driver blocks</text>
+  <line x1="95" y1="92" x2="325" y2="92" stroke="#888" stroke-width="1.5" marker-end="url(#harr)"/>
+  <text x="210" y="84" text-anchor="middle" fill="currentColor" font-size="11">start_item(&amp;mut cmd).await</text>
+  <line x1="325" y1="118" x2="95" y2="118" stroke="#888" stroke-width="1.5" marker-end="url(#harr)"/>
+  <text x="210" y="110" text-anchor="middle" fill="currentColor" font-size="11">grant: your turn; driver is waiting</text>
+  <rect x="30" y="136" width="120" height="40" rx="6" fill="none" stroke="#888" stroke-width="1.5"/>
+  <text x="90" y="153" text-anchor="middle" fill="currentColor" font-size="11" font-style="italic">set the stimulus</text>
+  <text x="90" y="168" text-anchor="middle" fill="currentColor" font-size="11" font-style="italic">HERE — late setting</text>
+  <line x1="95" y1="204" x2="325" y2="204" stroke="#888" stroke-width="1.5" marker-end="url(#harr)"/>
+  <text x="210" y="196" text-anchor="middle" fill="currentColor" font-size="11">finish_item(cmd).await — cmd moves</text>
+  <line x1="335" y1="222" x2="565" y2="222" stroke="#888" stroke-width="1.5" marker-end="url(#harr)"/>
+  <text x="450" y="214" text-anchor="middle" fill="currentColor" font-size="11">item — get_next_item returns</text>
+  <line x1="565" y1="256" x2="335" y2="256" stroke="#888" stroke-width="1.5" marker-end="url(#harr)"/>
+  <text x="450" y="248" text-anchor="middle" fill="currentColor" font-size="11">item_done() — after driving the DUT</text>
+  <line x1="325" y1="278" x2="95" y2="278" stroke="#888" stroke-width="1.5" marker-end="url(#harr)"/>
+  <text x="210" y="270" text-anchor="middle" fill="currentColor" font-size="11">finish_item returns</text>
+</svg>
+<figcaption><em>Figure 1: The sequencer handshake. Everything between the grant and finish_item happens with the driver committed and holding still.</em></figcaption>
+</figure>
 
- Sequence                    Sequencer                   Driver
- --------                    ---------                   ------
- 1. start_item(&mut cmd) --> enqueue; block until
-                             this item's turn      <---- 2. get_next_item()
-                                                         grants; blocks until
- 3. fill operands;                                       the item is ready
-    finish_item(cmd)     --> hand off payload      ----> returns SeqItem<REQ>
-    block until done                                     4. drive the DUT...
-                                                            item_done(rsp)
- 5. finish_item returns  <-- release                <---- (rsp tagged with the
-    (and rsp is fetchable                                  envelope's txn id)
-     via get_response)
-```
+Study the window in the middle of figure 1, because it is the answer to the question every newcomer asks about this protocol: *why two calls?* Why `start_item` then `finish_item`, when a single `send(cmd).await` looks like it would do? Because `start_item` returns at a very particular moment — the sequencer has granted this item its turn, *and the driver is blocked waiting for its contents*. Everything the sequence does between the two calls happens with the driver committed and holding still. That is where **late stimulus setting** lives: a sequence can look at the state of the testbench and decide what to send *now*, at the moment of delivery, rather than when it queued the item. A single `send` fixes the values before arbitration runs; the two-call rendezvous fixes them after. SystemVerilog had `mailbox#(T)` in the language and built this two-phase rendezvous anyway; pyuvm simplified nearly everything else about sequences and kept both phases. The gap between the calls is the feature.
 
-Step 3 is the point of the whole design: the operands are filled **after** the grant, at the moment the driver is ready — *late generation*, so stimulus can depend on the freshest state of the system. Every ordering in this table is observable in SV-UVM, observable in pyuvm, and observable here.
-
-## The trait and the two ports
+## The driver
 
 ```rust
-// Figure 2: The Sequence trait
-
-pub trait Sequence<REQ, RSP = REQ> {
-    fn body<'a>(
-        &'a mut self,
-        ctx: SeqCtx<REQ, RSP>,
-    ) -> Pin<Box<dyn Future<Output = Result<(), SeqError>> + 'a>>;
+// Chapter 36, Figure 2: The driver pulls items instead of being pushed them
+#[derive(Component, Default)]
+struct Driver {
+    #[port(seq_item)]
+    seq_item_port: SeqItemPort<AluCommand, AluResult>,
 }
-```
-
-`uvm_sequence` became a one-method trait: `body`, as before. The signature carries this book's only user-facing `Pin<Box<...>>`, promised back in Chapter 15, and the reason is honest: a sequencer stores *heterogeneous* sequences — any type implementing the trait — so `body`'s future must be boxed to have one runtime shape. Write `Box::pin(async move { ... })` around your body and read past it forever after. The two type parameters are the request and response transaction types; `RSP` defaults to `REQ`, and the TinyALU's sequences ignore it until Chapter 37.
-
-The sequence talks through its `SeqCtx` — `start_item`, `finish_item`, `get_response` — and the driver through its `SeqItemPort`:
-
-```rust
-// Figure 3: The driver's side of the handshake (from Chapter 33's Driver,
-// now in its final form)
 
 impl Component for Driver {
-    fn start(&mut self, _ctx: &mut RustdvCtx) {
-        let bfm = self.bfm.clone();
-        let mut port = self.seq_item_port.take().expect("Driver started twice");
-        spawn_named(
-            async move {
-                loop {
-                    let item = port.get_next_item().await;
-                    bfm.send_op(item.payload().clone()).await;
-                    port.item_done(None);
-                }
-            },
-            "driver",
-        );
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM")?;
+        bfm.reset().await;
+        loop {
+            let item = self.seq_item_port.get_next_item().await;
+            let cmd = item.payload();
+            bfm.send_op(cmd.a, cmd.b, cmd.op).await;
+            self.seq_item_port.item_done(None);
+        }
     }
 }
 ```
 
-Three UVM rules survive with upgraded enforcement. `get_next_item` twice without `item_done` — a runtime sequencer error in both earlier dialects — panics here with the same diagnosis (a testbench bug, per the taxonomy). The item arrives as a `SeqItem<AluCommand>` — Chapter 35's envelope — with the payload inside and the transaction id on the wrapper, where the driver can't lose it. And `item_done(None)` declares "no response" in its argument; a response-bearing driver writes `item_done(Some(rsp))` and the envelope tags it automatically — the `set_id_info()` chore, retired.
+The difference from 6.0's driver is not the direction of the data — it is *who decides when*. `get_next_item()` returns only when a sequence has an item ready **and** the driver asked for it: a rendezvous, not a queue. The port is a `SeqItemPort<AluCommand, AluResult>` — request and response types, the same `#(REQ, RSP)` convention `uvm_driver` uses — declared with `#[port(seq_item)]` and wired in `connect` like every port since Chapter 31. And note `item_done(None)`: testbench 7.0 fires and forgets, no answer travels back, which is why the test will hold its objection for a flush at the end. Chapter 38's driver answers, and the flush goes away.
 
-For reference, the full surfaces of both sides:
+The transactions are Chapter 35's, re-shown as always rather than imported:
 
 ```rust
-// Figure 4: The sequence-side and driver-side APIs
-
-impl<REQ, RSP> SeqCtx<REQ, RSP> {
-    pub async fn start_item(&mut self, item: &mut REQ);
-    pub async fn finish_item(&mut self, item: REQ) -> Result<TxnId, SeqError>;
-    pub async fn get_response(&mut self, txn_id: Option<TxnId>) -> RSP;
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AluCommand {
+    pub a: u8,
+    pub b: u8,
+    pub op: Ops,
 }
 
-impl<REQ, RSP> SeqItemPort<REQ, RSP> {
-    pub async fn get_next_item(&mut self) -> SeqItem<REQ>;
-    pub fn item_done(&mut self, rsp: Option<RSP>);
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct AluResult {
+    pub result: u16,
 }
 ```
 
 ## The sequences
 
-```rust
-// Figure 5: RandomSeq — late generation at grant time
+The Python book writes a `BaseSeq` whose `body()` loops the operations and calls `self.set_operands(tr)`, then subclasses it twice to override that one method. Rust has no inheritance, so the same design splits along a different line: the part that *varies* is a trait, and the part that *does not* is a function.
 
-pub struct RandomSeq {
-    pub n_per_op: usize,
-    pub rng: Rng,
+```rust
+// Chapter 36, Figure 3: One body, three stimulus patterns
+trait Operands {
+    fn set_operands(&mut self, rng: &mut Rng, cmd: &mut AluCommand);
 }
 
-impl Sequence<AluCommand> for RandomSeq {
-    fn body<'a>(
-        &'a mut self,
-        mut ctx: SeqCtx<AluCommand>,
-    ) -> Pin<Box<dyn Future<Output = Result<(), SeqError>> + 'a>> {
-        Box::pin(async move {
-            for _ in 0..self.n_per_op {
-                for op in Ops::ALL {
-                    let mut cmd = AluCommand { a: 0, b: 0, op };
-                    ctx.start_item(&mut cmd).await;
-                    // Late generation: fill at grant time.
-                    cmd.a = self.rng.u8();
-                    cmd.b = self.rng.u8();
-                    ctx.finish_item(cmd).await?;
-                }
-            }
-            Ok(())
-        })
+async fn all_ops<S: Operands>(
+    seq: &mut S,
+    ctx: &mut SeqCtx<AluCommand, AluResult>,
+) -> Result<(), SeqError> {
+    let mut rng = ctx.rng();
+    for op in Ops::ALL {
+        let mut cmd = AluCommand { a: 0, b: 0, op };
+        ctx.start_item(&mut cmd).await?; // the driver is now waiting for us
+        seq.set_operands(&mut rng, &mut cmd); // decide the stimulus HERE
+        ctx.finish_item(cmd).await?; // hand it over; wait for item_done
+    }
+    Ok(())
+}
+```
+
+Three lines in `all_ops` are figure 1 as code, and the middle one is deliberately placed: `set_operands` runs *between* `start_item` and `finish_item`, in the late-setting window, which is the whole reason the two calls exist.
+
+The third line is also this book's Chapter 5 collecting a payoff. `finish_item(cmd)` takes the command **by value** — the sequence hands over the *contents*, not a reference to something it still holds. After that line, `cmd` is gone: use it and the compiler's error names the move. If a sequence needs the command afterward — to log it, or to build the next command from it — `finish_item(cmd.clone())` is equally legal, and which one you write is a decision about ownership the code now states instead of implying. Both source books write the result *into* the sequence item the sequence still holds — not a capability rustdv lacks, but what handles look like when two names point at one object. Rust has one owner, so nothing is shared and nothing needs restoring.
+
+```rust
+// Chapter 36, Figure 4: The base sequence sends zeros
+#[derive(Default)]
+struct BaseSeq;
+
+impl Operands for BaseSeq {
+    fn set_operands(&mut self, _rng: &mut Rng, _cmd: &mut AluCommand) {
+        // zeros: whatever `all_ops` built the command with
+    }
+}
+
+impl Sequence for BaseSeq {
+    type Req = AluCommand;
+    type Rsp = AluResult;
+
+    async fn body(&mut self, ctx: &mut SeqCtx<AluCommand, AluResult>) -> Result<(), SeqError> {
+        all_ops(self, ctx).await
     }
 }
 ```
 
-```rust
-// Figure 6: MaxSeq — same protocol, different data
+`Sequence` is the trait with one method — `body` — plus the request and response types. Implementing it is what makes `BaseSeq` startable and, as figure 8 will show, factory-overridable.
 
-impl Sequence<AluCommand> for MaxSeq {
-    fn body<'a>(
-        &'a mut self,
-        mut ctx: SeqCtx<AluCommand>,
-    ) -> Pin<Box<dyn Future<Output = Result<(), SeqError>> + 'a>> {
-        Box::pin(async move {
-            for op in Ops::ALL {
-                let mut cmd = AluCommand { a: 0xFF, b: 0xFF, op };
-                ctx.start_item(&mut cmd).await;
-                ctx.finish_item(cmd).await?;
-            }
-            Ok(())
-        })
+```rust
+// Chapter 36, Figure 5: Random and maximum operands
+#[derive(Default)]
+struct RandomSeq;
+
+impl Operands for RandomSeq {
+    fn set_operands(&mut self, rng: &mut Rng, cmd: &mut AluCommand) {
+        cmd.a = rng.u8();
+        cmd.b = rng.u8();
+    }
+}
+
+impl Sequence for RandomSeq {
+    type Req = AluCommand;
+    type Rsp = AluResult;
+
+    async fn body(&mut self, ctx: &mut SeqCtx<AluCommand, AluResult>) -> Result<(), SeqError> {
+        all_ops(self, ctx).await
+    }
+}
+
+#[derive(Default)]
+struct MaxSeq;
+
+impl Operands for MaxSeq {
+    fn set_operands(&mut self, _rng: &mut Rng, cmd: &mut AluCommand) {
+        cmd.a = 0xFF;
+        cmd.b = 0xFF;
+    }
+}
+
+impl Sequence for MaxSeq {
+    type Req = AluCommand;
+    type Rsp = AluResult;
+
+    async fn body(&mut self, ctx: &mut SeqCtx<AluCommand, AluResult>) -> Result<(), SeqError> {
+        all_ops(self, ctx).await
     }
 }
 ```
 
-The bodies read like their UVM ancestors with the ceremony removed: an SV sequence filled at grant time with `assert(cmd.randomize())`, the Python design routed the fill through a `BaseSeq` with an overridable `set_operands()` hook; the rustdv sequences just write their operand code between `start_item` and `finish_item`, because with sequences as plain values there is no hierarchy to protect from the difference — a base-with-hook remains available if a family of sequences shares a skeleton, but two ten-line sequences don't need one. Note `finish_item(cmd).await?` *consumes* the command — after handoff, the sequence provably cannot touch the in-flight item, closing a hazard both earlier dialects share: anything still holding the item's handle could mutate a transaction the driver is busy driving.
+One detail with regression consequences: the random numbers come from `ctx.rng()`, the seeded generator every other part of the testbench uses, so a failing run reproduces from its seed. (pyuvm's sequences draw from Python's global `random` module, which sits outside cocotb's seeding.)
 
-## Starting sequences
+## The environment
 
 ```rust
-// Figure 7: The test starts a sequence on the sequencer
+// Chapter 36, Figure 6: The env owns the sequencer and files its handle
+#[derive(Component, Default)]
+struct AluEnv {
+    #[component(sequencer)]
+    seqr: Sequencer<AluCommand, AluResult>,
+    #[component(child)]
+    driver: RustdvComp,
+    #[component(child)]
+    cmd_mon: RustdvComp,
+    #[component(child)]
+    result_mon: RustdvComp,
+    #[component(child)]
+    scoreboard: RustdvComp,
+    #[component(fifo)]
+    cmd_bus: AnalysisBus<CmdTuple>,
+    #[component(fifo)]
+    result_bus: AnalysisBus<u64>,
+}
 
-    let config = AluEnvConfig { bfm: bfm.clone(), is_active: Active::Active, enable_coverage: true };
-    let mut env = AluEnv::new(config);
+impl Component for AluEnv {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        self.seqr = Sequencer::new();
+        ConfigDb::set(None, "*", "SEQR", self.seqr.handle());
 
-    let mut run_ctx = RustdvCtx::new();
-    start_all(&mut env, &mut run_ctx);
-    {
-        let _obj = run_ctx.raise_objection(description);
-        env.sequencer().start(seq).await?;
-        bfm.wait_idle().await; // drain by knowledge, not by clock-counting
+        self.driver = Driver::new_comp();
+        self.cmd_mon = CmdMonitor::new_comp();
+        self.result_mon = ResultMonitor::new_comp();
+        self.scoreboard = Scoreboard::new_comp();
+        self.cmd_bus = AnalysisBus::new();
+        self.result_bus = AnalysisBus::new();
     }
-    run_ctx.all_objections_dropped().await;
+
+    fn connect(&mut self, _ctx: &mut RustdvCtx) {
+        // stimulus: sequences --> [seqr] --> Driver
+        self.seqr.seq_item_export().connect(&self.driver, Driver::SEQ_ITEM_PORT);
+
+        // observation, unchanged from Chapter 34
+        self.cmd_bus.pub_export().connect(&self.cmd_mon, CmdMonitor::AP);
+        self.cmd_bus.sub_export().connect(&self.scoreboard, Scoreboard::CMD_IN);
+        self.result_bus.pub_export().connect(&self.result_mon, ResultMonitor::AP);
+        self.result_bus.sub_export().connect(&self.scoreboard, Scoreboard::RESULT_IN);
+    }
+
+    fn start_of_simulation(&mut self, ctx: &mut RustdvCtx) {
+        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM").expect("the test sets BFM");
+        bfm.start_tasks();
+    }
+}
 ```
 
-The env here is the Interlude's: sequencer, `Option<Driver>` (active/passive from the config enum), monitors, scoreboard, `Option<Coverage>` — the full 6.0 architecture with the sequencer replacing the tester-to-driver channel. Three details deserve the ink. `env.sequencer()` hands the test a clonable handle, doing the job the UVM routed through the config database — fetch the sequencer handle and hope the type was right — except this handle is typed (`Sequencer<AluCommand>`), so starting a sequence of the wrong transaction type is a compile error. `start(seq).await` is `seq.start(seqr)` with the receiver flipped, returning the sequence's own `Result` — a sequence can fail, and the `?` forwards it. And `bfm.wait_idle()` finally retires the drain hack: where earlier testbenches waited out a guessed number of clock cycles for the last transaction — fifty in the Python design, twenty in testbench 6.0 — the BFM now reports when its queue is empty and the handshake is quiet. Sequences know when they're done; the testbench should too.
+Three things:
+
+- `#[component(sequencer)]` is the same carve-out `TlmFifo` got in Chapter 31: both endpoints of a connection are erased `RustdvComp` slots, so something concrete has to make the call, and a sequencer — like a FIFO — is infrastructure you will never factory-override. The connect line has the shape every connection since Chapter 31 has had.
+- `ConfigDb::set(None, "*", "SEQR", self.seqr.handle())` files the sequencer where any test can find it. This is pyuvm's idiom, and the reason it beats searching the tree by path string is Chapter 27's: a hand-typed path goes stale, and the ConfigDb is how things that must find each other do. Note the sequencer goes in as a *handle* — every sequence must reach the same sequencer, the `Rc` case from Chapter 27's Clone-or-`Rc` rule.
+- The monitors, the two `AnalysisBus` buses, and the two-stream scoreboard are Chapters 33–34's, unchanged. That is the chapter's claim about structure made visible: sequences arrived, and the observation side did not move.
+
+## The tests
+
+```rust
+// Chapter 36, Figure 7: The test starts a sequence on the sequencer
+#[rustdv::test]
+#[derive(Component, Default)]
+struct BaseTest {
+    #[component(child)]
+    env: RustdvComp,
+}
+
+impl Component for BaseTest {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        let bfm = TinyAluBfm::new(&ctx.dut()).expect("TinyALU signals");
+        ConfigDb::set(None, "*", "BFM", Rc::new(bfm));
+        self.env = AluEnv::new_comp();
+    }
+
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let _obj = ctx.raise_objection("running the sequence");
+        let seqr: Sequencer<AluCommand, AluResult> = ConfigDb::get(Some(ctx), "", "SEQR")?;
+
+        let mut seq = create_seq::<BaseSeq>();
+        seq.start(&seqr).await?;
+
+        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM")?;
+        for _ in 0..20 {
+            bfm.clk().falling_edge().await;
+        }
+        Ok(())
+    }
+}
+```
+
+The test finds the sequencer in the ConfigDb — it neither knows nor cares where in the tree it lives — and `start` is a method on the *sequence*, taking the sequencer, exactly as both source books write it. Three details:
+
+- The lookup happens in `run`, not in an elaboration phase. pyuvm does it in `end_of_elaboration_phase` because a Python phase cannot return an error; here `?` works, and a missing `SEQR` is a named failure.
+- `create_seq::<BaseSeq>()` builds the sequence *through the factory* — a second registry, parallel to Chapter 29's, because a sequence is not a component and cannot ride the first one. That line is what makes the next figure possible.
+- After `start` returns, the last commands are still in flight — accepted, not yet answered. The test holds its objection for twenty falling edges: twenty, not ten, because the multiply is the last operation and the slowest, and a shorter flush would let the scoreboard silently check fewer results than it saw commands.
+
+```rust
+// Chapter 36, Figure 8: Two more tests, one testbench, no new components
+#[rustdv::test]
+#[derive(Component, Default)]
+struct RandomTest {
+    #[component(child)]
+    inner: RustdvComp,
+}
+
+impl Component for RandomTest {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        set_seq_override::<BaseSeq, RandomSeq>();
+        self.inner = BaseTest::new_comp();
+    }
+}
+
+#[rustdv::test]
+#[derive(Component, Default)]
+struct MaxTest {
+    #[component(child)]
+    inner: RustdvComp,
+}
+
+impl Component for MaxTest {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        set_seq_override::<BaseSeq, MaxSeq>();
+        self.inner = BaseTest::new_comp();
+    }
+}
+```
+
+This is what sequences bought. In Chapter 30, a new stimulus pattern meant a new component and a factory override on a component slot. Here it is a different *program* run through an unchanged structure: `RandomTest` is `BaseTest` plus one `set_seq_override` line, and nothing in `AluEnv` knows either sequence exists. The steering wheel stays; only the destination changes.
 
 ```text
-# Figure 8: Testbench 7.0 running
---
-     75.00ns INFO     cmd_monitor: AluCommand { a: 193, b: 103, op: Add }
-     75.00ns INFO     result_monitor: AluResult { result: 296 }
-     95.00ns INFO     cmd_monitor: AluCommand { a: 94, b: 11, op: And }
-     95.00ns INFO     result_monitor: AluResult { result: 10 }
-    115.00ns INFO     cmd_monitor: AluCommand { a: 185, b: 128, op: Xor }
-    115.00ns INFO     result_monitor: AluResult { result: 57 }
-    135.00ns INFO     cmd_monitor: AluCommand { a: 165, b: 117, op: Mul }
-    165.00ns INFO     result_monitor: AluResult { result: 19305 }
-    185.00ns INFO     scoreboard: 4 compared, 0 mismatches
-    185.00ns INFO     coverage: Add=1 And=1 Mul=1 Xor=1
-    185.00ns INFO     random_test PASSED
-```
+# Figure 9: Testbench 7.0 running
 
-The Interlude's transcript, earned line by line: struct transactions in the monitor narration, the scoreboard's counted verdict, coverage's tally — and underneath it, the handshake ticking through its five events per operation.
+[TRANSCRIPT NEEDED — ch36's README predates the conversion; copy verbatim
+from a rerun of `sim-common/run_sim.sh ch36_sequence_testbench_7_0 tinyalu
+sim-common/hdl/timescale.v sim-common/hdl/tinyalu.sv`.]
+```
 
 ## Summary
 
-Testbench 7.0 adopted the sequence machinery: `Sequence<REQ, RSP>` with a boxed-future `body` (the design's one visible `Pin`), `SeqCtx::start_item`/`finish_item` preserving the UVM's grant-then-fill ordering — late generation intact — and the driver's `get_next_item`/`item_done` loop with the double-get error preserved as a panic. Transactions travel in `SeqItem` envelopes that own identity; `finish_item` consumes the payload, ending shared-handle mutation of in-flight items; tests reach the sequencer through a typed handle and start sequences as plain values — the per-test variation the factory chapters predicted would need no machinery at all. And `wait_idle` replaced clock-count draining with actual completion knowledge.
+Testbench 7.0 separates what to send from what sends it. A sequence is a program — no tree, no path, no phases, one `body` — started on a sequencer, which is the component that arbitrates turns and feeds the driver through the same connect idiom as every other wiring in the book. The two-call handshake is the design's heart: `start_item` returns with the driver committed and waiting, the window between the calls is where stimulus is decided at the last responsible moment, and `finish_item(cmd)` hands over the command by value — clone it first if you still need it, and the compiler will hold you to whichever answer you gave. Sequences build through their own factory registry, so `create_seq::<BaseSeq>()` plus `set_seq_override` gives tests the same substitution power over programs that Chapter 29 gave them over structure.
 
-The response path — `item_done(Some(...))` and `get_response` — sat unused today. Testbench 7.1 needs it: stimulus that depends on the DUT's answers, demonstrated the traditional way, by making the TinyALU compute Fibonacci numbers.
+Version 7.0 fires and forgets, which is why its test counts clocks at the end instead of knowing when the work is done. The next two chapters close the loop: first a repair desk where answers come back out of order and a ticket claims yours, then Fibonacci on the TinyALU, where each command cannot be written until the previous one is answered.

@@ -1,151 +1,181 @@
 # Chapter 26: Logging
 
-With a hierarchy to hang them on, we can tour the features that live on it, starting with the one you've been reading all book: logging. Large testbenches generate more output than humans can read, so the game is filtering and directing — per component, per subtree, per destination — and the pyuvm surface for that game ports over nearly method-for-method.
+With a hierarchy to hang them on, we can tour the features that live on it, starting with the one you have been reading all book: logging. Large testbenches generate more output than humans can read, so the game is filtering and directing — per component, per subtree, per destination — and the pyuvm surface for that game ports over nearly method-for-method.
 
-> **In the UVM...** we logged through the framework. SystemVerilog: `` `uvm_info(get_type_name(), "msg", UVM_MEDIUM) ``, verbosities from `UVM_NONE` to `UVM_DEBUG`, opened per subtree with `set_report_verbosity_level_hier()`. pyuvm: `self.logger`, inherited from `uvm_report_object` — six levels from DEBUG to CRITICAL, INFO the default threshold, `set_logging_level_hier(DEBUG)` for a subtree, and handlers to say where messages went. The path between square brackets, `[uvm_test_top.comp]`, told us who was talking.
+> **In the UVM...** we logged through the framework. SystemVerilog: `` `uvm_info(get_type_name(), "msg", UVM_MEDIUM) ``, verbosities from `UVM_NONE` to `UVM_DEBUG`, opened per subtree with `set_report_verbosity_level_hier()`. pyuvm: `self.logger`, inherited from `uvm_report_object` — levels from DEBUG to CRITICAL, INFO the default threshold, `set_logging_level_hier(DEBUG)` for a subtree, and handlers to say where messages went. The path between square brackets, `[uvm_test_top.comp]`, told us who was talking.
 
 ## Creating log messages
 
-rustdv's logger has two layers, and you have been using the anonymous one — `log::info(...)`, plain messages with the simulated timestamp — since Chapter 15. Components graduate to the named layer: a `Logger` carrying the component's hierarchy path, created in the constructor, playing exactly the role of pyuvm's `self.logger`:
-
 ```rust
-// Figure 1: Logging messages of all levels
-
-struct LogComp {
-    logger: Logger,
-}
-
-impl LogComp {
-    fn new(path: &str) -> LogComp {
-        LogComp { logger: Logger::new(path) }
-    }
-}
+// Chapter 26, Figure 1: Logging messages of all levels
+#[derive(Component, Default)]
+struct LogComp;
 
 impl Component for LogComp {
-    fn start(&mut self, ctx: &mut RustdvCtx) {
-        let obj = ctx.raise_objection("logging");
-        let logger = self.logger.clone();
-        spawn_named(
-            async move {
-                logger.debug("This is debug");
-                logger.info("This is info");
-                logger.warning("This is warning");
-                logger.error("This is error");
-                logger.critical("This is critical");
-                drop(obj);
-            },
-            "log_comp.run",
-        );
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let _obj = ctx.raise_objection("logging");
+        ctx.debug("This is debug");
+        ctx.info("This is info");
+        ctx.warning("This is warning");
+        ctx.error("This is error");
+        ctx.critical("This is critical");
+        Ok(())
     }
 }
 ```
 
-```text
-# Figure 2: The default level is Info
---
-      0.00ns INFO     [uvm_test_top.comp]: This is info
-      0.00ns WARNING  [uvm_test_top.comp]: This is warning
-      0.00ns ERROR    [uvm_test_top.comp]: This is error
-      0.00ns CRITICAL [uvm_test_top.comp]: This is critical
-```
+Five levels, one method each, all on the context — `debug`, `info`, `warning`, `error`, `critical`, the same ladder pyuvm inherited from Python's `logging` module. The default threshold is Info, so when this component runs unconfigured, the debug line is filtered out. And notice what the component does *not* pass anywhere: a name. `ctx.info` is attributed to whoever called it, because the context knows.
 
-Five calls, four lines — the same demonstration, the same missing line. `debug` ranks below the default INFO threshold and is filtered, precisely as its ancestors filtered. The output format carries the familiar signature into the rustdv house style: simulated time, level, `[hierarchy.path]:`, message.
+## One component, four logging policies
 
-One honest deviation to flag while it is visible in figure 2: pyuvm's logger got its path *for free* — the component knew its parent, so `uvm_test_top.comp` materialized without your help. A rustdv component's logger takes the path as a constructor argument, because a struct field does not know what field name it lives in. The convention is the one you'd guess (the logger path matches the field path: the env constructs `Scoreboard::new(...)` whose logger is `"env.scoreboard"`), and the derive-macro wiring that would automate it is on rustdv's roadmap rather than in its present. One string per constructor is the current price of the feature.¹
-
-> ¹ The logging-span wiring is deferred. The `Logger` API is shaped so that when it lands, it changes who *calls* `Logger::new` — not any code that logs.
-
-## Logging levels
-
-The six levels come straight across, minus one that Python's `logging` module defined but nobody used:
-
-```text
-# Figure 3: Logging levels
-
-Level     rustdv               filtered by default?
------     ------               --------------------
-CRITICAL  log::critical / .critical()   no
-ERROR     log::error / .error()         no
-WARNING   log::warning / .warning()     no
-INFO      log::info / .info()           no  <- default threshold
-DEBUG     log::debug / .debug()         yes
-(NOTSET)  — not ported; set an explicit level instead
-```
-
-A message prints when its level is at or above the governing threshold. "Governing" is where the hierarchy earns its keep: each named logger answers to the most specific level set on any *prefix* of its path, falling back to the global threshold (`log::set_level`) when nobody has spoken for it.
-
-## Setting logging levels
-
-pyuvm offered `set_logging_level` (one component) and `set_logging_level_hier` (the component and everything below). rustdv folds the pair into one function whose argument decides the scope — a path names one logger; a path *prefix* names a subtree:
+The Python book demonstrates logging configuration by writing `LogTest` and then subclassing it three times, each subclass overriding `end_of_elaboration_phase` to configure differently. No inheritance here, so the varying part becomes — the same move as Chapter 25's testers — a type parameter:
 
 ```rust
-// Figure 4: Setting the logging level for a hierarchy
+// Chapter 26, Figure 2: The logging policy is the only thing that varies
+pub trait LogPolicy: Default {
+    /// Called in `end_of_elaboration`, where pyuvm configures logging:
+    /// the hierarchy is final, and nothing has run yet.
+    fn configure(&self, ctx: &mut RustdvCtx);
+}
 
-#[rustdv::test]
-async fn debug_test(_ctx: RustdvCtx) -> Result<(), TestError> {
-    let mut comp = LogComp::new("uvm_test_top.comp");
-    set_level_for("uvm_test_top", Level::Debug); // ...and everything below it
+#[derive(Component, Default)]
+struct LogTest<P: LogPolicy + 'static> {
+    #[component(child)]
+    comp: Option<LogComp>,
+    policy: P,
+}
 
-    let mut run_ctx = RustdvCtx::new();
-    start_all(&mut comp, &mut run_ctx);
-    run_ctx.all_objections_dropped().await;
-```
+impl<P: LogPolicy + 'static> Component for LogTest<P> {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        self.comp = Some(LogComp::default());
+    }
 
-```text
-# Figure 5: Now the debug message prints
---
-      0.00ns DEBUG    [uvm_test_top.comp]: This is debug
-      0.00ns INFO     [uvm_test_top.comp]: This is info
-      0.00ns WARNING  [uvm_test_top.comp]: This is warning
-      0.00ns ERROR    [uvm_test_top.comp]: This is error
-      0.00ns CRITICAL [uvm_test_top.comp]: This is critical
-```
-
-`set_level_for("uvm_test_top", Level::Debug)` opens the whole tree under `uvm_test_top` — `set_logging_level_hier(DEBUG)`, `set_report_verbosity_level_hier(UVM_DEBUG)`, called from the same moment in the schedule (after construction, before `start_all`: the lines that replaced `end_of_elaboration_phase`). Longest prefix wins, so the debugging move you will actually make on a bad day is surgical: leave the world at INFO and open one suspect:
-
-```rust
-set_level_for("env.agent.driver", Level::Debug);   // just the driver chatters
-```
-
-The pyuvm caution — you can only set hierarchical levels after the hierarchy is built — dissolves rather than ports: levels attach to path prefixes, not to component objects, so there is no object that must exist first. Set them whenever; they govern whoever logs.
-
-## Handlers: where the messages go
-
-pyuvm inherited Python's handler zoo and taught two: the screen (StreamHandler, default) and a file. rustdv's screen handler is likewise just *on*, and the file handler is one call, mirroring `logging.FileHandler("log.txt", mode="w")` with the mode spelled as a boolean:
-
-```rust
-// Figure 6: Logging to a file
-
-#[rustdv::test]
-async fn file_test(_ctx: RustdvCtx) -> Result<(), TestError> {
-    log::log_to_file("/tmp/rustdv_ch26_log.txt", false).map_err(|e| TestError(e.to_string()))?;
-
-    let mut comp = LogComp::new("uvm_test_top.comp");
-    let mut run_ctx = RustdvCtx::new();
-    start_all(&mut comp, &mut run_ctx);
-    run_ctx.all_objections_dropped().await;
-
-    log::remove_log_file();
-    log::info("messages above are also in /tmp/rustdv_ch26_log.txt");
-    run_extract_check_report(&mut comp).map_err(TestError::from)
+    fn end_of_elaboration(&mut self, ctx: &mut RustdvCtx) {
+        self.policy.configure(ctx);
+    }
 }
 ```
 
-`false` is mode `"w"` (start fresh), `true` is mode `"a"` (append); `remove_log_file()` is `remove_logging_handler` for the one removable handler. And note the `?` on `log_to_file` — opening a file can fail, and where Python's `FileHandler` would raise `PermissionError` from inside the logging machinery, the rustdv call returns `Result` at the call site, converted here into a test error with the path in the message. After the run:
+`end_of_elaboration` is where logging configuration belongs, for the reason Chapter 28 will use it for database dumps: the hierarchy is final and nothing has run, so the policy governs every message the run phase will produce. The four policies:
 
-```text
-$ cat /tmp/rustdv_ch26_log.txt
---
-      0.00ns INFO     [uvm_test_top.comp]: This is info
-      0.00ns WARNING  [uvm_test_top.comp]: This is warning
-      0.00ns ERROR    [uvm_test_top.comp]: This is error
-      0.00ns CRITICAL [uvm_test_top.comp]: This is critical
+```rust
+// Chapter 26, Figure 3: The default — no configuration at all
+#[derive(Default)]
+pub struct DefaultLogging;
+
+impl LogPolicy for DefaultLogging {
+    fn configure(&self, _ctx: &mut RustdvCtx) {}
+}
 ```
 
-The screen output and the file agree line for line — one stream, two destinations, which is all a testbench usually wants. (pyuvm's further reaches — per-*component* handlers via `add_logging_handler`, custom formatters — have no rustdv port today; if your flow needs the log sliced per component, the pragmatic answer is grep over the path brackets, which is what the brackets are for.)
+```rust
+// Chapter 26, Figure 4: Setting the logging level for a hierarchy
+#[derive(Default)]
+pub struct DebugLogging;
+
+impl LogPolicy for DebugLogging {
+    fn configure(&self, ctx: &mut RustdvCtx) {
+        ctx.set_logging_level_hier(Level::Debug);
+    }
+}
+```
+
+`_hier` means what it means in pyuvm: this component and everything under it. Which component? The one holding the context — no path argument, and none possible to typo.
+
+```rust
+// Chapter 26, Figure 5: Writing log entries to a file
+#[derive(Default)]
+pub struct FileLogging;
+
+impl LogPolicy for FileLogging {
+    fn configure(&self, ctx: &mut RustdvCtx) {
+        ctx.add_file_handler_hier("rustdv_ch26_log.txt", false)
+            .expect("could not open the log file");
+        ctx.remove_console_hier();
+    }
+}
+```
+
+Two handler operations, both hierarchy-scoped: add a file destination for this subtree, and take the subtree off the console. The file path is deliberately relative — the log lands beside wherever you ran the simulation. A shared absolute path like `/tmp/rustdv_log.txt` is a file some other user, or a leftover from an earlier run under a different account, can own and lock you out of; a test that writes outside its own working directory can be broken by something it has never heard of.
+
+```rust
+// Chapter 26, Figure 6: Disabling logging for a hierarchy
+#[derive(Default)]
+pub struct NoLogging;
+
+impl LogPolicy for NoLogging {
+    fn configure(&self, ctx: &mut RustdvCtx) {
+        ctx.disable_logging_hier();
+    }
+}
+```
+
+```rust
+// Chapter 26, Figure 7: The four tests are type aliases over one base
+#[rustdv::test]
+type LogTestDefault = LogTest<DefaultLogging>;
+
+#[rustdv::test]
+type DebugTest = LogTest<DebugLogging>;
+
+#[rustdv::test]
+type FileTest = LogTest<FileLogging>;
+
+#[rustdv::test]
+type NoLog = LogTest<NoLogging>;
+```
+
+```text
+# Figure 8: Four tests, four logging behaviors
+
+      0.00ns INFO     rustdv: found 4 test(s), RUSTDV_RANDOM_SEED=1
+      0.00ns INFO     running LogTestDefault (1/4)  [ch26-logging/src/ch26_logging.rs:117]
+      0.00ns INFO     [LogTestDefault.comp]: This is info
+      0.00ns WARNING  [LogTestDefault.comp]: This is warning
+      0.00ns ERROR    [LogTestDefault.comp]: This is error
+      0.00ns CRITICAL [LogTestDefault.comp]: This is critical
+      0.00ns INFO     LogTestDefault PASSED
+      0.00ns INFO     running DebugTest (2/4)  [ch26-logging/src/ch26_logging.rs:120]
+      0.00ns DEBUG    [DebugTest.comp]: This is debug
+      0.00ns INFO     [DebugTest.comp]: This is info
+      0.00ns WARNING  [DebugTest.comp]: This is warning
+      0.00ns ERROR    [DebugTest.comp]: This is error
+      0.00ns CRITICAL [DebugTest.comp]: This is critical
+      0.00ns INFO     DebugTest PASSED
+      0.00ns INFO     running FileTest (3/4)  [ch26-logging/src/ch26_logging.rs:123]
+      0.00ns INFO     FileTest PASSED
+      0.00ns INFO     running NoLog (4/4)  [ch26-logging/src/ch26_logging.rs:126]
+      0.00ns INFO     NoLog PASSED
+******************************************************************************
+** TEST                                       STATUS  SIM TIME (ns)      **
+******************************************************************************
+** LogTestDefault                               PASS           0.00      **
+** DebugTest                                    PASS           0.00      **
+** FileTest                                     PASS           0.00      **
+** NoLog                                        PASS           0.00      **
+******************************************************************************
+REGRESSION: PASS
+```
+
+Read the transcript against the policies: the default test filters debug; the debug test shows it; the file test prints *nothing* — its subtree went off the console — and the no-log test is silent. Where did `FileTest`'s messages go?
+
+```text
+# Figure 9: rustdv_ch26_log.txt receives what the console did not
+
+      0.00ns INFO     [FileTest.comp]: This is info
+      0.00ns WARNING  [FileTest.comp]: This is warning
+      0.00ns ERROR    [FileTest.comp]: This is error
+      0.00ns CRITICAL [FileTest.comp]: This is critical
+```
+
+The file has one more thing to teach, by omission: `DebugTest` ran immediately before `FileTest` and set its level to Debug, yet the file holds no `This is debug` line. The runner resets logging configuration between tests, the way pyuvm's `run_test` does, so no test can leave the console switched off — or the level opened up — for the next one. No cleanup phase needed, and none to forget.
+
+## What the figures do not contain
+
+The chapter's real lesson is a thing missing from every listing: **a path.** `LogComp` is one type, written once, and it logged as `[LogTestDefault.comp]`, `[DebugTest.comp]`, `[FileTest.comp]` — whichever was true for the test it was built under, with nothing in the component saying so. `ctx.info` is attributed to its caller, and `ctx.set_logging_level_hier` addresses its caller's subtree, because the context carries the path the phase walk derived in Chapter 24. The alternative — a logger constructed with `"uvm_test_top.comp"` and a level set by path string — is a hand-typed name that keeps compiling, and keeps lying, after the component is renamed or moved. rustdv never asks you to type a path the tree already knows.
 
 ## Summary
 
-Logging ported as a two-layer system over the format you already knew. The anonymous layer (`log::info` and friends) serves quick tests; the named layer gives each component a `Logger` carrying its hierarchy path — pyuvm's `self.logger` with the path made explicit, printed between the familiar square brackets. Six levels became five useful ones with INFO as the default gate; `set_level_for(prefix, level)` does the work of both `set_logging_level` and `set_logging_level_hier`, with longest-prefix-wins enabling the open-one-driver debugging move; and the file handler is `log_to_file`/`remove_log_file`, mode "w" or "a", with fallibility in the signature instead of the stack trace.
+Logging rides the context: five levels with Info as the default gate, `set_logging_level_hier` to open a subtree, file handlers and console removal per hierarchy, and `disable_logging_hier` for silence — pyuvm's surface, with the paths supplied by the framework instead of the engineer. Configuration happens in `end_of_elaboration`, applies to the run that follows, and is reset between tests by the runner. The four demonstrations share one generic test with the policy as a type parameter, the by-now-familiar spelling of a base class with one overridden method.
 
-Next, the feature pyuvm hung on the hierarchy with string paths and a database: configuration. Chapter 25's constructor arguments were the quiet preview; Chapter 27 makes the argument in full — the ConfigDB's job, done by types.
+Chapter 25 introduced the ConfigDb in two lines and promised the rest. Time to pay: paths, wildcards, globals, precedence — configuration, in full.

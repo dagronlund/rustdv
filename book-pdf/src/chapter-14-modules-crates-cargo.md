@@ -293,7 +293,7 @@ test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured
 
 `254` is `0xFF + 0xFF` wrapped to eight bits; `510` is the truth. The bug that would have surfaced as a scoreboard miscompare forty minutes into a regression — with the *DUT* as the initial suspect — instead surfaced in milliseconds, correctly attributed to the predictor, before any simulator ran.
 
-Savor what just changed, because it is a genuinely new capability, not a nicer version of an old one. Your testbench's pure logic — predictors, transaction arithmetic, coverage binning, anything that computes without touching a signal — now has its own test suite that runs on every build, for free. Your old stacks kept all testbench verification inside the simulation; the testbench was only ever as tested as your last regression. From here on, this book runs `cargo test` habitually: when Part IV builds scoreboards and coverage collectors, their logic arrives with unit tests beside it, and the simulator's time is spent on the only thing that actually needs a simulator — the DUT.
+Savor what just changed, because it is a new capability, not a nicer version of an old one. Your testbench's pure logic — predictors, transaction arithmetic, coverage binning, anything that computes without touching a signal — now has its own test suite that runs on every build, for free. Your old stacks kept all testbench verification inside the simulation; the testbench was only ever as tested as your last regression. From here on, this book runs `cargo test` habitually: when the later chapters build scoreboards and coverage collectors, their logic arrives with unit tests beside it, and the simulator's time is spent on the only thing that actually needs a simulator — the DUT.
 
 ## Summary
 

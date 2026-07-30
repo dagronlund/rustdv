@@ -1,158 +1,260 @@
-# Chapter 29: The Factory Problem, Solved by Closures and Generics
+# Chapter 29: The Factory
 
-The UVM factory answers a question every test-writer eventually asks: *how do I change what the testbench does without editing the testbench?* Testbench 4.0 needed two environments because the tester was hardcoded into each; the factory's promise is one environment whose parts a test can swap from outside. The promise is kept in rustdv — this chapter and the next are the keeping — but the machinery goes the way of the ConfigDB's: the global registry, the override tables, and `create()` dissolve, and what delivers the capability is a language feature you have held since Chapter 12: **constructors are values, and closures carry them.**
+The UVM factory answers a question every test writer eventually asks: *how do I change what the testbench does without editing the testbench?* One environment, closed and finished, should serve many tests — and configuration alone only changes *values*. To change what a slot in the hierarchy is *built as*, you need construction itself to be interceptable. That is the factory, and rustdv has one, working the way the factory you know works: build a component through it, and code above you can substitute a different type without touching the code that built it.
 
-> **In the UVM...** we instantiated components through the factory — `tiny_component::type_id::create("tc", this)` in SV, `TinyComponent.create("tc", self)` in pyuvm — instead of calling the constructor; then `set_type_override_by_type(...)` made every subsequent create of a Tiny produce a Medium. Registration happened behind our backs — the `` `uvm_component_utils `` macro in SV, a metaclass at import time in Python — and the factory resolved overrides, including chains of them, at each creation.
+> **In the UVM...** we instantiated components through the factory — `tiny_component::type_id::create("tc", this)` in SystemVerilog, `TinyComponent.create("tc", self)` in pyuvm — instead of calling the constructor; then `set_type_override_by_type(...)` made every subsequent create of a Tiny produce a Medium, and an instance override targeted one path. Registration happened behind our backs — the `` `uvm_component_utils `` macro in SV, a metaclass at import time in Python — and `factory.print()` listed the overrides in force.
 
-## The component, created directly
+Everything in that box has a direct rustdv counterpart, and this chapter walks them in the same order the Python book's factory chapter does. The differences are under the floor, and the chapter will point at each as it goes by.
 
-The classic lab animal, ported:
+## Creating a component through the factory
 
 ```rust
-// Figure 1: A tiny example component
-
-pub struct TinyComponent {
-    logger: Logger,
-}
-
-impl TinyComponent {
-    pub fn new() -> TinyComponent {
-        TinyComponent { logger: Logger::new("uvm_test_top.tc") }
-    }
-}
+// Chapter 29, Figure 1: A tiny example component
+#[derive(Component, Default)]
+struct TinyComponent;
 
 impl Component for TinyComponent {
-    fn start(&mut self, ctx: &mut RustdvCtx) {
-        let obj = ctx.raise_objection("tiny");
-        let logger = self.logger.clone();
-        spawn_named(
-            async move {
-                logger.info("I'm so tiny!");
-                drop(obj);
-            },
-            "tc.run",
-        );
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let _obj = ctx.raise_objection("tiny");
+        ctx.info("I'm so tiny!");
+        Ok(())
     }
 }
 ```
 
-```rust
-// Figure 2: Instantiating the component by calling new() directly
+Nothing here mentions the factory, and that is the first difference worth noticing: **registration is universal and automatic.** `#[derive(Component)]` enrolls every component by name, so `TinyComponent` can be created by type or by the string `"TinyComponent"`, and can be the target of an override, with no separate registration step and no "did I remember the utils macro?" This is the same promise pyuvm's metaclass makes, kept by the derive you were already writing. (A component whose constructor takes arguments opts out with `#[component(no_factory)]` — it simply cannot be built by name, because a registry of makers has no arguments to give it.)
 
-#[derive(rustdv::Component)]
-pub struct TinyEnv {
-    #[component(child)]
-    tc: TinyComponent,
-}
-```
-
-```text
-# Figure 3: The expected log message
---
-      0.00ns INFO     [uvm_test_top.tc]: I'm so tiny!
-```
-
-Direct construction, and note precisely what both earlier books noted: the component's *type is hardcoded* — in our case doubly so, in the field's type and in the constructor call. No test can change what `TinyEnv` builds without editing `TinyEnv`. The UVM's remedy began by swapping the constructor call for `create()` — same result, but construction now routed through a global registry that overrides could redirect. rustdv has no `create()`, because it has something Python and SystemVerilog lack: constructors you can *pass around*.
-
-## The variation point
-
-Here is the whole trick. If `TinyEnv` should be overridable, its config carries the constructor:
+Now, two ways to build one:
 
 ```rust
-// Figure 4: A designed variation point: the maker closure
-
-/// Anything that can stand where a TinyComponent stood.
-pub trait TinyLike: ComponentNode {}
-impl<T: ComponentNode> TinyLike for T {}
-
-pub struct FlexEnvConfig {
-    /// The variation point, explicit in the type. A test overrides the
-    /// component by assigning a different closure.
-    pub make_tc: Box<dyn FnOnce() -> Box<dyn TinyLike>>,
-}
-
-impl Default for FlexEnvConfig {
-    fn default() -> FlexEnvConfig {
-        FlexEnvConfig { make_tc: Box::new(|| Box::new(TinyComponent::new())) }
-    }
-}
-
-pub struct FlexEnv {
-    tc: Box<dyn TinyLike>,
-}
-
-impl FlexEnv {
-    pub fn new(config: FlexEnvConfig) -> FlexEnv {
-        FlexEnv { tc: (config.make_tc)() }
-    }
-}
-```
-
-Take it a piece at a time, because every piece is a Chapter 10–13 alumnus doing methodology work. `TinyLike` is the *contract of the slot*: what must be true of anything standing in this position — here, just "be a component" (real slots say more; testbench 6.0's driver slot demands the driver interface). `make_tc` is a boxed `FnOnce` closure returning a boxed trait object: a constructor, stored in a struct field, called exactly once — `(config.make_tc)()` — where pyuvm called `create()`. The `Default` impl is the factory's "no override registered" case: by default, the maker builds the original. And the child field became `Box<dyn TinyLike>` — dynamic dispatch, deliberately, because an overridable slot *is* the place where you don't know the concrete type; this is the trait-objects-versus-generics line from Chapter 10, drawn exactly where rustdv's design draws it.
-
-```text
-# Figure 5: The default maker builds the original component
---
-      0.00ns INFO     [uvm_test_top.tc]: I'm so tiny!
-```
-
-## The override
-
-```rust
-// Figure 6: The component a test will swap in
-
-pub struct MediumComponent {
-    logger: Logger,
-}
-// ...identical shape; its start() logs "I'm medium size."
-```
-
-```rust
-// Figure 7: The override is an assignment, visible in the test
-
+// Chapter 29, Figure 2: Building the component the normal way
 #[rustdv::test]
-async fn medium_test(_ctx: RustdvCtx) -> Result<(), TestError> {
-    let config = FlexEnvConfig {
-        make_tc: Box::new(|| Box::new(MediumComponent::new())),
-    };
-    let mut env = FlexEnv::new(config);
-    // ...lifecycle as always
+#[derive(Component, Default)]
+struct TinyTest {
+    #[component(child)]
+    tc: RustdvComp,
+}
+
+impl Component for TinyTest {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        self.tc = TinyComponent::new_comp();
+    }
+}
 ```
 
 ```text
-# Figure 8: The environment builds the substitute
---
-      0.00ns INFO     [uvm_test_top.tc]: I'm medium size.
+# Figure 3: The normal way builds what it says
+
+      0.00ns INFO     running TinyTest (1/7)
+      0.00ns INFO     [TinyTest.tc]: I'm so tiny!
 ```
 
-That is `set_type_override_by_type(TinyComponent, MediumComponent)`: three visible lines in the test, no strings, no registry, checked end to end. If `MediumComponent` doesn't satisfy the slot's contract, the closure doesn't compile — where pyuvm discovered an unsuitable override by runtime failure inside `create()`. If two tests want different substitutes, each builds its own config; there is no ambient global registry for one test's override to leak through into the next test's run, a bug class the SystemVerilog UVM knows well.
+`new_comp()` is rustdv's plain constructor — the analog of UVM's `new`. Note what it does *not* take: no name, no parent. Both come from the tree, as they have since Chapter 24. A component built this way is fixed; nobody upstream can swap it, because it never went through the factory.
 
-And the resolution story deserves its sentence of appreciation. pyuvm's `find_override` was a recursive resolver walking override *chains* — Tiny→Medium, Medium→Large, with loop detection, because overrides of overrides accumulate in a global table. The rustdv equivalent is: the field holds one closure. Assignment is visible and final; there is no chain to chase, no loop to detect, and "what will this env build?" is answered by reading the config at the construction site.
+```rust
+// Chapter 29, Figure 4: Building the component through the factory
+#[rustdv::test]
+#[derive(Component, Default)]
+struct TinyFactoryTest {
+    #[component(child)]
+    tc: RustdvComp,
+}
 
-## The honest ledger
-
-The earlier books' factory chapters closed by printing the registry's contents — `factory.print()` in SV, `uvm_factory().debug_level` in pyuvm. There is no registry to print, which is the cue to write down what this design deliberately does *not* do — the same ledger rustdv's design keeps:
+impl Component for TinyFactoryTest {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        self.tc = TinyComponent::create_comp();
+    }
+}
+```
 
 ```text
-# Figure 9: The factory, dispositioned
+# Figure 5: The factory way builds the same thing — until someone objects
 
-pyuvm capability                        rustdv disposition
-----------------                        ------------------
-create() + type override                maker closure in the config (this chapter)
-per-test behavior swap                  a different sequence, or a different maker (Ch. 30)
-create_component_by_name("...")         not ported — strings only where strings help
-instance-path overrides ("*.agent2.*")  honestly lost: no ambient registry to pattern-match
-override chains + loop detection        nothing to chase: one closure per slot
-factory debug printing                  read the config; #[derive(Debug)] prints it
-string registry                         survives in exactly one place: test discovery (Ch. 21)
+      0.00ns INFO     running TinyFactoryTest (2/7)
+      0.00ns INFO     [TinyFactoryTest.tc]: I'm so tiny!
 ```
 
-Two rows need a word. *Create-by-name* — conjuring a component from a string — was mechanism in service of the override table; with the table gone, a string-to-constructor map is something you can build in an afternoon if a flow genuinely needs it (a `HashMap<&str, Maker>` is not a framework). *Instance-path overrides* are the real loss, and the book will not pretend otherwise: in SV-UVM you can override every driver under `*.agent2` in an env whose source you cannot edit. With no global registry there is nothing to pattern-match against. The exchange is that an env's possible behaviors are exactly what its config type declares — no action at a distance — and the mitigation is a design convention this book teaches from here on: **envs intended for reuse expose maker fields in their configs.** An env without designed variation points can only be forked; rustdv is honestly weaker than SV-UVM here, and honestly clearer about what a given testbench can do.
+Put figures 2 and 4 side by side: identical structs, one `RustdvComp` field each, and exactly one line different — `new_comp()` versus `create_comp()`. With no override in force they even log the same output. The difference is invisible here and total later: `create_comp()` flags the slot, and the build walk checks flagged slots for an override and swaps in the substitute if one is installed. This is the `new` versus `create` distinction every UVM engineer already carries, transcribed — and it puts a real decision in the block author's hands: **overridability is the build line, not the field type.** A `RustdvComp` field says nothing about whether its occupant can be swapped; the line that fills it says everything. Write `create_comp()` for the slots a reuser may replace, `new_comp()` for the ones they may not.
 
-The dominant use of the factory in practice, though, is none of these exotica. It is: *the max-ops test overrides the random tester.* And for that, the next chapter shows, you often need even less machinery than this chapter built — because the thing tests most want to vary is the sequence, and sequences are just values you start.
+The string form completes the set:
+
+```rust
+// Chapter 29, Figure 6: Building a component from a string name
+#[rustdv::test]
+#[derive(Component, Default)]
+struct CreateByNameTest {
+    #[component(child)]
+    tc: RustdvComp,
+}
+
+impl Component for CreateByNameTest {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        self.tc = Factory::create_by_name("TinyComponent");
+    }
+}
+```
+
+The name is data — here a literal, in a bigger testbench a line from a command file. The universal registry is what turns the string back into a constructor, and this test logs exactly what figures 3 and 5 did. An unregistered name is a testbench bug and fails at this call — names are data, and no compiler checks data.
+
+## Overriding a type
+
+```rust
+// Chapter 29, Figure 7: The component we substitute in
+#[derive(Component, Default)]
+struct MediumComponent;
+
+impl Component for MediumComponent {
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let _obj = ctx.raise_objection("medium");
+        ctx.info("I'm medium size.");
+        Ok(())
+    }
+}
+```
+
+```rust
+// Chapter 29, Figure 8: Overriding TinyComponent with MediumComponent, by type
+#[rustdv::test]
+#[derive(Component, Default)]
+struct MediumFactoryTest {
+    #[component(child)]
+    tc: RustdvComp,
+}
+
+impl Component for MediumFactoryTest {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        Factory::set_type_override::<TinyComponent, MediumComponent>();
+        self.tc = TinyComponent::create_comp();
+    }
+}
+```
+
+```text
+# Figure 9: The same create line builds something else
+
+      0.00ns INFO     running MediumFactoryTest (4/7)
+      0.00ns INFO     [MediumFactoryTest.tc]: I'm medium size.
+```
+
+Read the build closely, because its two lines are doing Chapter 24's argument one more time. The create line is unedited — it still says `TinyComponent::create_comp()`, and in a real testbench it would live in an environment that never learns it was overridden. The override is installed *above*, before the create runs, and it is build's top-down direction that guarantees the ordering: the test's `build` runs before the walk descends to the slot, so the override is in force by the time it matters. This is the gap between existing and having children, doing exactly the job Chapter 24 promised the factory would need it for.
+
+One check does happen at compile time, and it is worth being exact about which: the type pair. `set_type_override::<TinyComponent, MediumComponent>()` requires the substitute to *be* a component — the maker generated from it must produce a tree node — so overriding with a non-component does not build. SystemVerilog catches that analog at run time in `$cast`. Which slot gets overridden, though, and whether anyone creates a `TinyComponent` at all — those resolve at run time, by design, because deferring them is what the factory is *for*.
+
+When even the types are data, the override is too:
+
+```rust
+// Chapter 29, Figure 10: The same override, by string name
+#[rustdv::test]
+#[derive(Component, Default)]
+struct MediumNameTest {
+    #[component(child)]
+    tc: RustdvComp,
+}
+
+impl Component for MediumNameTest {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        Factory::set_type_override_by_name("TinyComponent", "MediumComponent");
+        self.tc = TinyComponent::create_comp();
+    }
+}
+```
+
+```text
+# Figure 11: Same substitution, by name
+
+      0.00ns INFO     running MediumNameTest (5/7)
+      0.00ns INFO     [MediumNameTest.tc]: I'm medium size.
+```
+
+## Overriding one instance
+
+A type override hits every flagged slot that asks for the type. Sometimes you want just one:
+
+```rust
+// Chapter 29, Figure 12: An environment with two components of the same type
+#[derive(Component, Default)]
+struct TwoCompEnv {
+    #[component(child)]
+    tc1: RustdvComp,
+    #[component(child)]
+    tc2: RustdvComp,
+}
+
+impl Component for TwoCompEnv {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        self.tc1 = TinyComponent::create_comp();
+        self.tc2 = TinyComponent::create_comp();
+    }
+}
+```
+
+```rust
+// Chapter 29, Figure 13: Overriding only env.tc1
+#[rustdv::test]
+#[derive(Component, Default)]
+struct TwoCompTest {
+    #[component(child)]
+    env: Option<TwoCompEnv>,
+}
+
+impl Component for TwoCompTest {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        Factory::set_inst_override::<TinyComponent, MediumComponent>(ctx, "env.tc1");
+        self.env = Some(TwoCompEnv::default());
+    }
+}
+```
+
+```text
+# Figure 14: The path picks the instance
+
+      0.00ns INFO     running TwoCompTest (6/7)
+      0.00ns INFO     [TwoCompTest.env.tc1]: I'm medium size.
+      0.00ns INFO     [TwoCompTest.env.tc2]: I'm so tiny!
+```
+
+Notice what the env did *not* do: it built `tc1` and `tc2` with two identical `create_comp()` calls, no names typed. The factory can still tell them apart because the *fields* are named — when the walk reaches each slot, it checks the override against the path it landed at, and `env.tc1` matches while `env.tc2` does not. The path in `set_inst_override` is a string, but it is a string doing the same job `ConfigDb::set`'s path does: addressing a component elsewhere in the tree, from a place that has no other way to point at it. It does not duplicate a name the field already carries.
+
+(And the demonstration is not vacuous: delete the `set_inst_override` line and both children log "I'm so tiny!"; restore it and only `tc1` changes. The override drives the outcome — a rerun anyone can do.)
+
+## Debugging the factory
+
+Chapter 28 gave the ConfigDb a dump because a resolved value doesn't show the competition. The factory has the same need — a resolved build tells you what got built, not *why* — and the same answer:
+
+```rust
+// Chapter 29, Figure 15: Printing the overrides in force
+#[rustdv::test]
+#[derive(Component, Default)]
+struct PrintOverridesTest {
+    #[component(child)]
+    tc: RustdvComp,
+}
+
+impl Component for PrintOverridesTest {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        Factory::set_type_override_by_name("TinyComponent", "MediumComponent");
+        self.tc = TinyComponent::create_comp();
+    }
+
+    fn end_of_elaboration(&mut self, _ctx: &mut RustdvCtx) {
+        Factory::print();
+    }
+}
+```
+
+```text
+# Figure 16: The overrides in force, listed
+
+      0.00ns INFO     running PrintOverridesTest (7/7)
+      0.00ns INFO     Factory overrides:
+      0.00ns INFO       *                           : TinyComponent -> MediumComponent
+      0.00ns INFO     [PrintOverridesTest.tc]: I'm medium size.
+```
+
+`Factory::print()` at `end_of_elaboration`, for Chapter 28's reason: the hierarchy is final, nothing has run, and what you see is what every `create_comp()` resolved against. (Under the floor it is the same store the ConfigDb dumps, seen through the factory's window — a fact you can enjoy and never need.)
 
 ## Summary
 
-The factory's methodology — tests changing testbench behavior without editing the env — ported whole; its mechanism compressed into the language. A variation point is a config field holding a maker closure (`Box<dyn FnOnce() -> Box<dyn SlotContract>>`), defaulted to the original component, overridden by assignment in the test that wants a substitute; the slot's requirements are a trait bound, checked at compile time, and resolution is reading the field. The registry survives only where strings genuinely help — test selection by name — and the ledger records the deliberate losses, instance-path overrides chief among them, traded for envs whose capabilities are declared in their types.
+The factory, ported whole and working as the one you know: `new_comp()` is `new` and fixed, `create_comp()` is `create` and overridable, and the choice between them is the block author deciding what a reuser may swap — per build line, not per type. Registration is universal via the derive, so create-by-name and override-by-name need no bookkeeping; type overrides check at compile time only that the substitute is a component, and everything else — which slots, which paths, whether the override fires at all — resolves during the top-down build walk, which is the moment Chapter 24 restored for exactly this purpose. Instance overrides tell twins apart by the paths their field names created, and `Factory::print()` shows the standing orders when a build surprises you.
 
-Testbench 5.0 now does what testbench 4.0's twin environments existed to avoid: one environment, two tests, with the difference between them carried entirely in what the tests pass in.
+Testbench 5.0 puts the factory to work: one environment with a variation point, and two tests that fill it differently without touching a line of the env.

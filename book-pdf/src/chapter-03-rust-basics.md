@@ -179,7 +179,7 @@ xx *= 3: 6
 xx /= 4: 1
 ```
 
-Same operators, same rhythm — Rust has `+=`, `*=`, `/=`, and friends, though like Python it has no `++`. But `xx` was born an `i32` and will die an `i32`; `6 /= 4` gives 1, not 1.5. A binding's type is fixed for the binding's whole life. Which raises an obvious question: what do we do when we genuinely want the Python pattern — same *idea*, new *type*?
+Same operators, same rhythm — Rust has `+=`, `*=`, `/=`, and friends, though like Python it has no `++`. But `xx` was born an `i32` and will die an `i32`; `6 /= 4` gives 1, not 1.5. A binding's type is fixed for the binding's whole life. Which raises an obvious question: what do we do when we want the Python pattern — same *idea*, new *type*?
 
 ## Shadowing: same name, new binding
 
@@ -235,7 +235,7 @@ One genuine difference from f-strings: the braces capture *names only*, not arbi
 
 ## Expressions vs. statements
 
-Here is the concept in this chapter most likely to be genuinely new, rather than a stricter spelling of something you had. Python and SystemVerilog both divide the world into statements (`if`, `for`, assignments) and expressions (things with values), and mostly keep them apart. In Rust, nearly everything is an **expression** — nearly everything *has a value* — and the language leans on this constantly.
+Here is the concept in this chapter most likely to be new, rather than a stricter spelling of something you had. Python and SystemVerilog both divide the world into statements (`if`, `for`, assignments) and expressions (things with values), and mostly keep them apart. In Rust, nearly everything is an **expression** — nearly everything *has a value* — and the language leans on this constantly.
 
 Two demonstrations. First, `if` is an expression, which means it can sit on the right-hand side of a `let`:
 

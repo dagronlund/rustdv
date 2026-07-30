@@ -54,7 +54,7 @@ error[E0063]: missing field `kg` in initializer of `Animal`
 
 The program never ran. There is no such thing as an `Animal` with an undefined mass, so the class of bug Python could only warn about is not a bug you can write.¹ SystemVerilog engineers will feel at home — and should note the upgrade: an SV field you never assign holds a default value and simulates anyway; a Rust field you never assign stops the build. This is the pattern of the whole chapter — of the whole book, really: where your old language offered a convention and a warning, Rust offers a rule and a compile error.
 
-One freedom is genuinely gone: you cannot add a field to an object after the fact. `walrus.age = 12` on a struct with no `age` field does not compile. Every field a transaction will ever carry is visible in one place, in its definition, forever. For quick scripts this feels confining. For a transaction type that five components and three engineers share, it is exactly what you want.
+One freedom is gone: you cannot add a field to an object after the fact. `walrus.age = 12` on a struct with no `age` field does not compile. Every field a transaction will ever carry is visible in one place, in its definition, forever. For quick scripts this feels confining. For a transaction type that five components and three engineers share, it is exactly what you want.
 
 > ¹ The walrus, having survived one book already, takes this in stride.
 

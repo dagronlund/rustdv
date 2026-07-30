@@ -1,106 +1,173 @@
 # Chapter 30: Variation-Point Testbench: 5.0
 
-Testbench 4.0 had a flaw both earlier books flagged the moment it shipped: two tests needed two environments — `AluEnv<RandomTester>` and `AluEnv<MaxTester>` in our version, `RandomEnv` and `MaxEnv` before — even though the environments differed in exactly one component. Version 5.0 fixes it the way the factory always promised: **one environment**, with the difference carried in from the tests. In the UVM the carrier was a factory override; here it is Chapter 29's maker closure, doing its first day of real testbench work.
+Testbench 4.0 had a flaw both earlier books flagged the moment it shipped: two tests needed two environments — `AluEnv<RandomOperands>` and `AluEnv<MaxOperands>` in our version, `RandomEnv` and `MaxEnv` before — even though the environments differed in exactly one component. Version 5.0 fixes it the way the factory always promised: **one environment**, with the difference carried in from the tests, through the machinery Chapter 29 just built.
 
-> **In the UVM...** we kept one `AluEnv` that created its tester through the factory — `base_tester::type_id::create("tester", this)`, `BaseTester.create("tester", self)` — and each test registered an override in `build_phase`: `set_type_override_by_type(BaseTester, RandomTester)`. Three lines that changed what the env built without the env knowing.
+> **In the UVM...** we kept one `AluEnv` that created its tester through the factory — `base_tester::type_id::create("tester", this)` in SystemVerilog, `BaseTester.create("tester", self)` in pyuvm — and each test registered an override in `build_phase`: `set_type_override_by_type(BaseTester, RandomTester)`. Three lines that changed what the env built without the env knowing.
 
-## The variation point, for real
+Before the code, the design question this version answers, because it corrects Chapter 25 on purpose. `AluEnv<T>` chose its tester with a *type parameter* — a compile-time decision, which meant `RandomEnv` and `MaxEnv` were **different types**. That is the right tool when the variation is fixed at build time. But the whole point of a variation point is that a *test* chooses at *run* time — and a factory override cannot reach a type parameter: by the time any code runs, `AluEnv<RandomOperands>` simply *is* what it is, monomorphized and sealed. Runtime choice needs a runtime slot. So 5.0's env is one concrete type with a `create_comp()` line where the type parameter used to be, and the generic form survives for what it is good at: variation chosen at compile time, like Chapter 26's logging policies. Know which kind of variation you have, and you know which tool to reach for.
 
-The slot's contract and the maker type, exactly as Chapter 29 designed them, now sized for the TinyALU:
+## The testers
 
 ```rust
-// Figure 1: The slot's contract, and the maker that fills it
+// Chapter 30, Figure 1: The stimulus every tester runs
+async fn drive_stimulus(
+    ctx: &mut RustdvCtx,
+    mut get_operands: impl FnMut(&mut Rng) -> (u8, u8),
+) -> Result<(), TestError> {
+    let _obj = ctx.raise_objection("tester stimulus");
+    let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM")?;
+    let mut rng = ctx.rng();
 
-/// What must be true of anything standing in the tester slot.
-pub trait TesterCompLike: ComponentNode {}
-impl<T: ComponentNode> TesterCompLike for T {}
+    bfm.reset().await;
 
-/// A stored constructor: give it the BFM, get a tester component.
-pub type TesterMaker = Box<dyn FnOnce(Rc<TinyAluBfm>) -> Box<dyn TesterCompLike>>;
+    for op in Ops::ALL {
+        let (aa, bb) = get_operands(&mut rng);
+        bfm.send_op(aa, bb, op).await;
+    }
+    // send two dummy operations to allow
+    // the last real operation to complete
+    bfm.send_op(0, 0, Ops::Add).await;
+    bfm.send_op(0, 0, Ops::Add).await;
+    Ok(())
+}
 ```
 
-One refinement over Chapter 29's toy: the maker *takes an argument*. A tester component cannot exist without its BFM, so the stored constructor's signature says so — `FnOnce(Rc<TinyAluBfm>) -> ...` — and the env, which owns the BFM, supplies it at the moment of creation. pyuvm's `create("tester", self)` passed name-and-parent to whatever the override table produced and trusted the ConfigDB to deliver everything else; the rustdv maker's parameter list *is* the delivery manifest.
+Only the operands differ between testers, so the shared body is a function — Chapter 23's `alu_test` move — and each tester passes in how it picks operands, as a closure. Which closure runs is decided by which tester the factory installs.
 
 ```rust
-// Figure 2: One environment with a designed variation point
+// Chapter 30, Figure 2: The abstract base and the two testers that fill its slot
+#[derive(Component, Default)]
+struct BaseTester;
 
-pub struct AluEnvConfig {
-    pub bfm: Rc<TinyAluBfm>,
-    pub make_tester: TesterMaker,
+impl Component for BaseTester {
+    async fn run(&mut self, _ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        panic!("BaseTester is abstract — override it with RandomTester or MaxTester");
+    }
 }
 
-pub struct AluEnv {
-    tester: Box<dyn TesterCompLike>,
-    scoreboard: Scoreboard,
+#[derive(Component, Default)]
+struct RandomTester;
+
+impl Component for RandomTester {
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        drive_stimulus(ctx, |rng| (rng.u8(), rng.u8())).await
+    }
 }
 
-impl AluEnv {
-    pub fn new(config: AluEnvConfig) -> AluEnv {
-        AluEnv {
-            // The variation point: the env builds whatever the test sent.
-            tester: (config.make_tester)(config.bfm.clone()),
-            scoreboard: Scoreboard::new(config.bfm),
-        }
+#[derive(Component, Default)]
+struct MaxTester;
+
+impl Component for MaxTester {
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        drive_stimulus(ctx, |_rng| (0xFF, 0xFF)).await
     }
 }
 ```
 
-Compare with 4.0's env line by line. The generic parameter `<T: Tester>` is gone; the `tester` field is a `Box<dyn TesterCompLike>` — the env genuinely does not know, at compile time, what will stand there, which is the entire point. The scoreboard is untouched: variation points cost only the slots that vary. And the env is *closed*: nothing outside can change what it builds except through the config it declares, which is both the discipline (Chapter 29's honest ledger) and the reuse story — this env works for every TinyALU test anyone will ever write, because the thing tests want to change is exactly the thing its config exposes.
+`BaseTester` is the type the environment names and the factory overrides — the analog of the Python book's abstract `BaseTester`, which raises an error if run un-overridden. Here that is a `panic!`: a test that forgets its override builds a `BaseTester`, and running one *is* the bug, reported in its own words. The derive registers all three types, so any of them can stand in the tester slot.
 
-## Two tests, one environment
+## The environment
+
+The scoreboard is testbench 4.0's, re-shown in the chapter's file and deliberately untouched — the reader is meant to see it unchanged while the tester's *selection* changes around it. The env is where 5.0 differs:
 
 ```rust
-// Figure 4: random_test picks its tester with three visible lines
+// Chapter 30, Figure 3: The environment builds its tester through the factory
+#[derive(Component, Default)]
+struct AluEnv {
+    #[component(child)]
+    scoreboard: RustdvComp,
+    #[component(child)]
+    tester: RustdvComp,
+}
 
+impl Component for AluEnv {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        self.scoreboard = Scoreboard::new_comp();
+        self.tester = BaseTester::create_comp();
+    }
+
+    fn start_of_simulation(&mut self, ctx: &mut RustdvCtx) {
+        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM").expect("the test sets BFM");
+        bfm.start_tasks();
+    }
+}
+```
+
+Two build lines, and they encode the block author's whole policy. The scoreboard is `new_comp()` — fixed, not a variation point, no test may swap it. The tester is `create_comp()` — the one slot a reuser may fill differently. Same field type on both (`RustdvComp` says nothing about overridability); the build line carries the decision, exactly as Chapter 29 taught. Note also that starting the BFM's tasks moved here from the tester — once, for the whole environment, matching the Python book's `AluEnv`.
+
+## The tests
+
+```rust
+// Chapter 30, Figure 4: random_test overrides BaseTester with RandomTester
 #[rustdv::test]
-async fn random_test(ctx: RustdvCtx) -> Result<(), TestError> {
-    // Run with random operands
-    let rng = ctx.rng();
-    run_test(
-        &ctx,
-        Box::new(move |bfm| Box::new(TesterComp::new(bfm, RandomTester { rng }))),
-    )
-    .await
+#[derive(Component, Default)]
+struct RandomTest {
+    #[component(child)]
+    env: RustdvComp,
+}
+
+impl Component for RandomTest {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        let bfm = TinyAluBfm::new(&ctx.dut()).expect("TinyALU signals");
+        ConfigDb::set(None, "*", "BFM", Rc::new(bfm));
+        Factory::set_type_override::<BaseTester, RandomTester>();
+        self.env = AluEnv::new_comp();
+    }
 }
 ```
 
 ```rust
-// Figure 5: max_test differs only in the maker it sends
-
+// Chapter 30, Figure 5: max_test differs only in the tester it installs
 #[rustdv::test]
-async fn max_test(ctx: RustdvCtx) -> Result<(), TestError> {
-    // Run with maximum operands
-    run_test(&ctx, Box::new(|bfm| Box::new(TesterComp::new(bfm, MaxTester)))).await
+#[derive(Component, Default)]
+struct MaxTest {
+    #[component(child)]
+    env: RustdvComp,
+}
+
+impl Component for MaxTest {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        let bfm = TinyAluBfm::new(&ctx.dut()).expect("TinyALU signals");
+        ConfigDb::set(None, "*", "BFM", Rc::new(bfm));
+        Factory::set_type_override::<BaseTester, MaxTester>();
+        self.env = AluEnv::new_comp();
+    }
 }
 ```
 
-Set these beside pyuvm's 5.0 tests and the symmetry is exact: pyuvm's tests were `build_phase` plus one `set_type_override_by_type` line; ours are one maker expression. The `move` on `random_test`'s closure is Chapter 12 remembering its manners — the closure captures the seeded `rng` by value and carries it into the tester it will someday build. The shared `run_test` body (figure 3 in the chapter's example crate) is Chapter 25's skeleton with the maker threaded through; nothing else changed, and the transcript proves it:
+The build-order guarantee from Chapters 24 and 29, working: the test's `build` installs the override before the walk descends into `env`, so by the time the factory resolves `env.tester`, the substitution is in force. The env is not edited between the two tests, and does not know which tester it got.
 
 ```text
 # Figure 6: One env, two behaviors
---
-    145.00ns INFO     PASSED: c1 Add 67 = 0128
-    145.00ns INFO     PASSED: 5e And 0b = 000a
-    145.00ns INFO     PASSED: b9 Xor 80 = 0039
-    145.00ns INFO     PASSED: a5 Mul 75 = 4b69
-    145.00ns INFO     Covered all operations
-    145.00ns INFO     random_test PASSED
-    290.00ns INFO     PASSED: ff Add ff = 01fe
-    290.00ns INFO     PASSED: ff And ff = 00ff
-    290.00ns INFO     PASSED: ff Xor ff = 0000
-    290.00ns INFO     PASSED: ff Mul ff = fe01
-    290.00ns INFO     Covered all operations
-    290.00ns INFO     max_test PASSED
+
+      0.00ns INFO     rustdv: found 2 test(s), RUSTDV_RANDOM_SEED=1
+      0.00ns INFO     running RandomTest (1/2)  [ch30-variation-point-testbench-5.0/src/ch30_variation_point_testbench_5_0.rs:212]
+    150.00ns INFO     [RandomTest.env.scoreboard]: PASSED: c1 Add 67 = 0128
+    150.00ns INFO     [RandomTest.env.scoreboard]: PASSED: 5e And 0b = 000a
+    150.00ns INFO     [RandomTest.env.scoreboard]: PASSED: b9 Xor 80 = 0039
+    150.00ns INFO     [RandomTest.env.scoreboard]: PASSED: a5 Mul 75 = 4b69
+    150.00ns INFO     [RandomTest.env.scoreboard]: Covered all operations
+    150.00ns INFO     RandomTest PASSED
+    150.00ns INFO     running MaxTest (2/2)  [ch30-variation-point-testbench-5.0/src/ch30_variation_point_testbench_5_0.rs:229]
+    300.00ns INFO     [MaxTest.env.scoreboard]: PASSED: ff Add ff = 01fe
+    300.00ns INFO     [MaxTest.env.scoreboard]: PASSED: ff And ff = 00ff
+    300.00ns INFO     [MaxTest.env.scoreboard]: PASSED: ff Xor ff = 0000
+    300.00ns INFO     [MaxTest.env.scoreboard]: PASSED: ff Mul ff = fe01
+    300.00ns INFO     [MaxTest.env.scoreboard]: Covered all operations
+    300.00ns INFO     MaxTest PASSED
+******************************************************************************
+** TEST                                       STATUS  SIM TIME (ns)      **
+******************************************************************************
+** RandomTest                                   PASS         150.00      **
+** MaxTest                                      PASS         150.00      **
+******************************************************************************
+REGRESSION: PASS
 ```
 
-Identical results to 4.0 — same seed, same operands, down to the hex — from half the environment code.
-
-## Which tool, when
-
-Part IV has now shown two ways to make one env serve many tests, and a word on choosing is owed. **Generics** (`AluEnv<T>`, testbench 4.0) resolve the variation at compile time: zero dispatch cost, full inlining, and the set of variants is closed — each is a distinct type. **Maker closures** (testbench 5.0) resolve it at construction time: one env type, open to any conforming substitute, at the price of a vtable call nobody will ever measure. The rule of thumb the rest of the book follows: when the *test* is the thing choosing, and choice is the feature — use the closure in the config; when a component is generic over its transaction or port types as an internal matter — use generics. And keep Chapter 29's spoiler in mind: the most common per-test variation of all, *what stimulus runs*, will shortly need neither, because sequences (Chapter 36) are plain values the test starts directly. The factory's dominion shrinks to the cases where testbench *structure* truly varies — which is why this chapter's pattern, though load-bearing, appears in real testbenches less often than a SystemVerilog veteran would guess.
+Compare against Chapter 25's transcript: the operands and results are *identical*, bit for bit, same seed. The same stimulus, selected by a runtime factory override instead of a compile-time type parameter — which is the entire chapter, demonstrated by two transcripts agreeing.
 
 ## Summary
 
-Testbench 5.0 collapsed 4.0's parallel environments into one `AluEnv` with a designed variation point: a `TesterMaker` closure in the config, typed to receive the BFM and return anything satisfying the slot's trait. The env builds whatever the test sent; the tests differ by one expression; the override is visible at the construction site, checked by the compiler, and incapable of leaking between tests through a global table. The same demonstration as pyuvm's 5.0 — same version number, same one-env victory — with the factory's job done by values.
+Testbench 5.0 replaces 4.0's type-parameter variation with a factory slot: one concrete `AluEnv` whose tester is built with `create_comp()`, an abstract `BaseTester` whose run is a self-describing `panic!`, and tests that differ only in the override they install before building the env. The dividing rule is worth keeping: a type parameter serves variation chosen at compile time; a `create_comp()` slot serves variation a test chooses at run time, because an override cannot reach into a monomorphized type. The scoreboard, deliberately untouched, is the control group.
 
-The env's two components still talk to the DUT through one shared BFM, though, and the scoreboard still hoards `get_cmd()` — the very problem Chapter 22 flagged. Standard component-to-component communication is the next stop: channels, and the two-type answer to TLM's thirty classes.
+The env's components still share data the pre-UVM way, though — everything funnels through the BFM's queues, and the scoreboard hogs them. Giving components a standard way to talk to *each other* is TLM, and it is next.

@@ -1,224 +1,266 @@
-# Chapter 27: Configuration: The ConfigDB Problem, Solved by Types
+# Chapter 27: Configuration
 
-Chapter 25's environment took its BFM as a constructor argument and thought nothing of it. This chapter is about why that unremarkable line is the answer to one of the UVM's most remarkable subsystems. The problem is real and permanent: *tests must parameterize components buried deep in a hierarchy the test didn't write* — messages, modes, shared resources. The UVM's answer was the config database — `uvm_config_db#(T)` in SystemVerilog, `ConfigDB()` in pyuvm — a runtime store of path-keyed values. rustdv's answer is a config struct. This chapter replays the config database's classic scenarios and watches each one land.
+Chapter 25 used the ConfigDb twice and promised the full story later: the test did `ConfigDb::set`, the driver did `ConfigDb::get`, and the BFM crossed the testbench without ever appearing in a constructor. This chapter is the full story. The subject is one of verification's permanent problems — *a test must parameterize components buried in a hierarchy the test did not write* — and the UVM's answer to it, a path-addressed runtime database, ported whole.
 
-> **In the UVM...** we stored values with `uvm_config_db#(string)::set(this, "env.loga", "MSG", ...)` or `ConfigDB().set(self, "env.loga", "MSG", "LOG A msg")` — context object plus path string plus key — and components retrieved them with `get()`. Wildcards (`"env.t*"`) configured groups; a null context made globals; "longest path wins" resolved overlaps; and a parent and child setting the same path was settled by a precedence rule you had to memorize.
+> **In the UVM...** we stored values with `uvm_config_db#(string)::set(this, "env.loga", "MSG", ...)` in SystemVerilog or `ConfigDB().set(self, "env.loga", "MSG", ...)` in pyuvm — a context object, a path string, a key — and components retrieved them with `get()`. Wildcards (`"env.t*"`) configured groups at a stroke; a null context made globals; and when two writers hit the same path, a precedence rule decided.
 
-## A component that needs configuration
+Notice what that mechanism *is*: late binding, deliberately. The component that reads a value and the test that writes it never meet — not in a constructor, not in a call chain, nowhere the compiler can see. That is not a weakness the UVM's designers failed to engineer away. It is the feature: one environment, closed and finished, serves a hundred tests because the tests reach into it by *name* at run time. A configuration mechanism the compiler could fully check would be one whose decisions were already made at compile time — which is to say, not a configuration mechanism. rustdv keeps the runtime database, keeps the paths, keeps the wildcards, and spends its type system where this chapter's seam says to spend it: on making the *failures* loud. You will see that at the first `get`.
 
-The lab animal is a `MsgLogger`: a component whose one behavior — the message it logs — comes from outside.
+## Reading a value
+
+The lab animal, as in the earlier books, is a `MsgLogger`: a component whose one behavior — the message it logs — comes from outside.
 
 ```rust
-// Figure 1: A component that needs configuration
+// Chapter 27, Figure 1: Logging a message we get from the ConfigDb
 
-pub struct MsgLogger {
-    logger: Logger,
-    msg: String, // the configured value: a field, not a database lookup
-}
-
-impl MsgLogger {
-    pub fn new(path: &str, msg: String) -> MsgLogger {
-        MsgLogger { logger: Logger::new(path), msg }
-    }
-}
+#[derive(Component, Default)]
+struct MsgLogger;
 
 impl Component for MsgLogger {
-    fn start(&mut self, ctx: &mut RustdvCtx) {
-        let obj = ctx.raise_objection("logging a message");
-        let (logger, msg) = (self.logger.clone(), self.msg.clone());
-        spawn_named(
-            async move {
-                logger.info(&msg);
-                drop(obj);
-            },
-            "msg_logger.run",
-        );
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let _obj = ctx.raise_objection("logging the configured message");
+        let msg: String = ConfigDb::get(Some(ctx), "", "MSG")?;
+        ctx.info(&msg);
+        Ok(())
     }
 }
 ```
 
-The pyuvm `MsgLogger` called `ConfigDB().get(self, "", "MSG")` in its `build_phase` and hoped: hoped someone had `set()` a value, hoped the path matched, hoped the value was a string. The rustdv `MsgLogger` *has a `msg` field*. There is no lookup, so there is nothing to hope about — a `MsgLogger` without a message does not construct, and the compiler makes that argument at every call site.
+Notice first what this component does *not* have: a constructor argument, a field holding the message, any knowledge of who set it. It asks the database. The interesting line is the `get`, and it repays a slow read.
 
-## The config struct
+- **Read the three arguments as context, offset, field.** The store is ambient; the *identity* asking is passed in. The `""` is not a keyword meaning "me" — it is an empty *offset* from the context, which happens to land on the caller. A non-empty offset asks on behalf of another component:
 
-Where does the value come from? From a struct the test builds, whose shape mirrors the hierarchy it configures:
+  ```rust,ignore
+  ConfigDb::get(Some(ctx), "",     "MSG")   // me
+  ConfigDb::get(Some(ctx), "loga", "MSG")   // what loga will see
+  ConfigDb::get(None,      "",     "SEQR")  // no context at all
+  ```
+
+  That third form matters more than it looks. A sequence is not a component and has no path, so when Chapter 36 needs one to find its sequencer, asking with no context is the only way it can ask. Both source books keep exactly this signature, and in *The UVM Primer*'s SystemVerilog the null-context form is the majority idiom.
+
+- **The offset is relative for the same reason log paths are derived, not stored.** An absolute path is a hand-typed string that keeps compiling and starts lying the moment a component moves.
+
+- **A value in the database must either implement `Clone`, so everyone gets their own copy, or ride in an `Rc`, so everyone gets a handle to one copy.** `MSG` is a `String` and a copy is what each logger wants. A sequencer is the opposite case: when Chapter 36 files one in the database, every sequence must reach the *same* sequencer, so it goes in as an `Rc`.
+
+- **`get` returns a `Result`, and the `?` propagates it.** Here is the seam at work. SystemVerilog's `get()` has four distinct ways to disappoint you — the value was never set, the path did not match, the field name was typo'd, the type parameter disagreed with the `set` — and collapses all four into `return 0` with your variable untouched. The failure mode is not the miss; it is that the miss is *silent*, and indistinguishable from a legitimate zero. rustdv's `get` names which of the four happened, and the `Result` is `#[must_use]`: you can propagate it with `?` or handle it, but you cannot quietly drop it. The lookup is still a runtime lookup — that is the design — and when it misses, everyone finds out.
+
+One more thing worth saying about that SystemVerilog signature, because a typed-language reader will assume types would have prevented the mess: `uvm_config_db#(T)` *is* typed — heavily — and the type parameter is part of the lookup. What that bought is a bug class: `set` with `int`, `get` with `uvm_bitstream_t`, and the two calls never meet — a mismatch invisible in the code and silent at run time. pyuvm dropped the type parameter deliberately, and dropping it *removed* that failure mode outright. rustdv follows pyuvm: one key, no type in the address, and the type check happens at the single point of retrieval, loudly. This is the book's recurring lesson in miniature — where a type lives matters more than how many there are.
+
+## Writing a value
+
+The environment holds two loggers; the test configures each by path.
 
 ```rust
-// Figure 2: The config struct mirrors the hierarchy
-
-pub struct MsgEnvConfig {
-    pub loga_msg: String,
-    pub logb_msg: String,
+// Chapter 27, Figure 2: Two loggers in the environment
+#[derive(Component, Default)]
+struct MsgEnv {
+    #[component(child)]
+    loga: Option<MsgLogger>,
+    #[component(child)]
+    logb: Option<MsgLogger>,
 }
 
-#[derive(rustdv::Component)]
-pub struct MsgEnv {
-    #[component(child)]
-    loga: MsgLogger,
-    #[component(child)]
-    logb: MsgLogger,
-}
-
-impl MsgEnv {
-    pub fn new(config: MsgEnvConfig) -> MsgEnv {
-        MsgEnv {
-            loga: MsgLogger::new("env.loga", config.loga_msg),
-            logb: MsgLogger::new("env.logb", config.logb_msg),
-        }
+impl Component for MsgEnv {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        self.loga = Some(MsgLogger::default());
+        self.logb = Some(MsgLogger::default());
     }
 }
 ```
 
 ```rust
-// Figure 3: The test builds the config and hands it over
-
+// Chapter 27, Figure 3: Giving loga and logb different messages
 #[rustdv::test]
-async fn msg_test(_ctx: RustdvCtx) -> Result<(), TestError> {
-    let config = MsgEnvConfig {
-        loga_msg: "LOG A msg".to_string(),
-        logb_msg: "LOG B msg".to_string(),
-    };
-    let mut env = MsgEnv::new(config);
+#[derive(Component, Default)]
+struct MsgTest {
+    #[component(child)]
+    env: Option<MsgEnv>,
+}
 
-    let mut run_ctx = RustdvCtx::new();
-    start_all(&mut env, &mut run_ctx);
-    run_ctx.all_objections_dropped().await;
-    run_extract_check_report(&mut env).map_err(TestError::from)
+impl Component for MsgTest {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        self.env = Some(MsgEnv::default());
+        ConfigDb::set(Some(ctx), "env.loga", "MSG", String::from("LOG A msg"));
+        ConfigDb::set(Some(ctx), "env.logb", "MSG", String::from("LOG B msg"));
+    }
 }
 ```
+
+The paths are relative to the *setter*: `"env.loga"` resolves against the test's own position, exactly as `this` anchored the SystemVerilog `set`. And note the timing, because Chapter 24's argument is collecting its first payment: the test writes these values in its `build`, *before* `env` has built its children. Build runs top-down, so by the time `loga` exists and its `run` asks the database, the answer is waiting. The test reaches two components it never touches, through a mechanism the compiler never sees — which is precisely the job.
 
 ```text
 # Figure 4: The loga and logb components have different things to say
---
-      0.00ns INFO     [env.loga]: LOG A msg
-      0.00ns INFO     [env.logb]: LOG B msg
+
+[TRANSCRIPT NEEDED — ch27's README predates the conversion and carries no
+transcripts; copy verbatim from a rerun of
+`sim-common/run_sim.sh ch27_configuration playground` (MsgTest).]
 ```
 
-Same output as ever, and compare what stood behind it. The config database: two `set()` calls with paths assembled from a context object and a string, matched at build time against `get()` calls by a path-glob algorithm, any link of which could silently fail. rustdv: a struct with two fields, passed to a constructor that distributes them. The "path" is the nesting — `MsgEnvConfig` configures `MsgEnv`, whose constructor routes each field to its child. Wrong type in a field: compile error. Missing field: compile error (`E0063`, naming the field). Typo'd field name: compile error. pyuvm's `UVMConfigItemNotFound` and the silent zero of a failed SV `get()` have no rustdv equivalent, because *not found* is not a state a struct field can be in.
+## Wildcards
 
-## Wildcards become visible sharing
-
-pyuvm's wildcard — `ConfigDB().set(self, "env.t*", "MSG", "TALK TALK")` — configured `talka` and `talkb` at a stroke, by pattern-matching paths at runtime. The rustdv translation is almost embarrassingly direct: one field, used twice.
+pyuvm configured a family of components at a stroke with `ConfigDB().set(self, "env.t*", ...)`. rustdv keeps the glob. First, an environment with something worth matching:
 
 ```rust
-// Figure 5: "Wildcards" become one field used twice
-
-pub struct MultiMsgConfig {
-    pub loga_msg: String,
-    pub logb_msg: String,
-    pub talk_msg: String, // talka AND talkb: sharing is visible in new()
+// Chapter 27, Figure 5: Adding talka and talkb to the environment
+#[derive(Component, Default)]
+struct MultiMsgEnv {
+    #[component(child)]
+    loga: Option<MsgLogger>,
+    #[component(child)]
+    logb: Option<MsgLogger>,
+    #[component(child)]
+    talka: Option<MsgLogger>,
+    #[component(child)]
+    talkb: Option<MsgLogger>,
 }
-```
 
-```rust
-impl MultiMsgEnv {
-    pub fn new(config: MultiMsgConfig) -> MultiMsgEnv {
-        MultiMsgEnv {
-            talka: MsgLogger::new("env.talka", config.talk_msg.clone()),
-            talkb: MsgLogger::new("env.talkb", config.talk_msg),
-            loga: MsgLogger::new("env.loga", config.loga_msg),
-            logb: MsgLogger::new("env.logb", config.logb_msg),
-        }
+impl Component for MultiMsgEnv {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        self.loga = Some(MsgLogger::default());
+        self.logb = Some(MsgLogger::default());
+        self.talka = Some(MsgLogger::default());
+        self.talkb = Some(MsgLogger::default());
     }
 }
 ```
 
-```text
-# Figure 6: The "talk" components get the same message
---
-      0.00ns INFO     [env.talka]: TALK TALK
-      0.00ns INFO     [env.talkb]: TALK TALK
-      0.00ns INFO     [env.loga]: LOG A msg
-      0.00ns INFO     [env.logb]: LOG B msg
-```
-
-The `clone()`/move pair even documents the fan-out: `talka` gets a copy, `talkb` gets the original, and if you add `talkc` without cloning, the compiler stops you at the use-after-move. Where the glob pattern acted at a distance — who *else* matches `env.t*`? grep and pray — the loop or repeated field acts exactly where you can see it. (For configuring a `Vec` of twenty drivers, the same idea is a `for` loop or `vec![config.msg.clone(); 20]`; visibility scales.)
-
-## Global data becomes a Default
-
-pyuvm's `set(None, "*", "MSG", "GLOBAL")` planted a value every component could see, serving as a fallback when no specific path matched, with "longest path wins" arbitrating. Rust has a standard trait for "the value you get when nobody speaks up":
+The Python version made `MultiMsgEnv` by subclassing and `super().build_phase()`. Rust has no inheritance, and the difference between the two envs is *structural* — which children exist — so the env is written out. Four fields is cheaper to read than a mechanism for sharing two of them.
 
 ```rust
-// Figure 7: "Global data" becomes a Default implementation
+// Chapter 27, Figure 6: Using a wildcard to configure both talkers at once
+#[rustdv::test]
+#[derive(Component, Default)]
+struct MultiMsgTest {
+    #[component(child)]
+    env: Option<MultiMsgEnv>,
+}
 
-impl Default for GlobalConfig {
-    fn default() -> GlobalConfig {
-        GlobalConfig {
-            loga_msg: "GLOBAL".to_string(),
-            logb_msg: "GLOBAL".to_string(),
-            talk_msg: "GLOBAL".to_string(),
-            gtalk_msg: "GLOBAL".to_string(),
-        }
+impl Component for MultiMsgTest {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        self.env = Some(MultiMsgEnv::default());
+        ConfigDb::set(Some(ctx), "env.loga", "MSG", String::from("LOG A msg"));
+        ConfigDb::set(Some(ctx), "env.logb", "MSG", String::from("LOG B msg"));
+        ConfigDb::set(Some(ctx), "env.t*", "MSG", String::from("TALK TALK"));
+    }
+}
+```
+
+`set` takes a glob; `get` takes a concrete path. pyuvm enforces the same asymmetry, and it is the right way round: you write to a *pattern* of components, but you always read as *one* component.
+
+```text
+# Figure 7: The "talk" components get the same message
+
+[TRANSCRIPT NEEDED — same rerun, MultiMsgTest.]
+```
+
+## Global data
+
+One more logger, `gtalk`, which nobody configures by name:
+
+```rust
+// Chapter 27, Figure 8: Adding gtalk, which nobody configures by name
+#[derive(Component, Default)]
+struct GlobalEnv {
+    #[component(child)]
+    loga: Option<MsgLogger>,
+    #[component(child)]
+    logb: Option<MsgLogger>,
+    #[component(child)]
+    talka: Option<MsgLogger>,
+    #[component(child)]
+    talkb: Option<MsgLogger>,
+    #[component(child)]
+    gtalk: Option<MsgLogger>,
+}
+
+impl Component for GlobalEnv {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        self.loga = Some(MsgLogger::default());
+        self.logb = Some(MsgLogger::default());
+        self.talka = Some(MsgLogger::default());
+        self.talkb = Some(MsgLogger::default());
+        self.gtalk = Some(MsgLogger::default());
     }
 }
 ```
 
 ```rust
-// Figure 8: Overriding some fields, defaulting the rest
+// Chapter 27, Figure 9: Storing a message for everybody
+#[rustdv::test]
+#[derive(Component, Default)]
+struct GlobalTest {
+    #[component(child)]
+    env: Option<GlobalEnv>,
+}
 
-    let config = GlobalConfig {
-        loga_msg: "LOG A msg".to_string(),
-        logb_msg: "LOG B msg".to_string(),
-        talk_msg: "TALK TALK".to_string(),
-        ..GlobalConfig::default() // gtalk_msg falls back to "GLOBAL"
-    };
-```
-
-```text
-# Figure 9: The default is matched only where nothing overrides it
---
-      0.00ns INFO     [env.gtalk]: GLOBAL
-      0.00ns INFO     [env.talka]: TALK TALK
-      0.00ns INFO     [env.loga]: LOG A msg
-      0.00ns INFO     [env.logb]: LOG B msg
-```
-
-The `..Default::default()` syntax — *struct update*, Rust calls it — is "longest path wins" with the resolution done by the reader's eyes: explicit fields win, everything else defaults. There is no algorithm because there is no ambiguity; each field is set in exactly one visible place.
-
-Which brings us to the config database's most instructive scenario. A parent sets `env.loga`'s message; the env itself sets `loga`'s message; both paths resolve to `uvm_test_top.env.loga`, and the UVM applies its rule: *the parent wins* — a precedence you memorize, and Chapter 28's debugging chapter exists substantially because people don't. Try to write that conflict in rustdv:
-
-```rust
-// Figure 10: The parent/child conflict has nowhere to live
-
-    let config = MsgEnvConfig {
-        loga_msg: "PARENT RULES!".to_string(),
-        loga_msg: "CHILD RULES!".to_string(),
-    };
-```
-
-```text
---
-error[E0062]: field `loga_msg` specified more than once
-  --> src/main.rs:13:9
-   |
-12 |         loga_msg: "PARENT RULES!".to_string(),
-   |         ------------------------------------- first use of `loga_msg`
-13 |         loga_msg: "CHILD RULES!".to_string(),
-   |         ^^^^^^^^ used more than once
-```
-
-The conflict is not resolved by a precedence rule; it is rejected as a contradiction. A field has one value, set at one construction site, and two claimants collide in the compiler rather than in a debugging session at seed 8,441.
-
-## Sharing real resources
-
-Strings made the mechanics visible; the case that matters is sharing something live — a handle to the TinyAluBfm, the job SystemVerilog's config database spends most of its life doing for virtual interfaces. You have been reading the rustdv answer since Chapter 25: an `Rc<TinyAluBfm>` field in the config, cloned to each component that needs the one BFM. The form testbench 6.0 adopts wholesale:
-
-```rust
-// Figure 11: The shape of a real config tree (testbench 6.0's, previewed)
-
-pub struct AluEnvConfig {
-    pub bfm: Rc<TinyAluBfm>,     // shared resource: an Rc field
-    pub is_active: Active,       // an enum — not a string-keyed int
-    pub enable_coverage: bool,
+impl Component for GlobalTest {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        self.env = Some(GlobalEnv::default());
+        ConfigDb::set(Some(ctx), "env.loga", "MSG", String::from("LOG A msg"));
+        ConfigDb::set(Some(ctx), "env.logb", "MSG", String::from("LOG B msg"));
+        ConfigDb::set(Some(ctx), "env.t*", "MSG", String::from("TALK TALK"));
+        ConfigDb::set(None, "*", "MSG", String::from("GLOBAL"));
+    }
 }
 ```
 
-Nested hierarchies nest their configs (`AluEnvConfig` holding an `AluAgentConfig`, mirroring the ownership tree), and a test configures a component three levels down by building a struct three levels deep — every level named, every field typed, the whole tree readable top to bottom in the test that built it.
+The last line is the port of pyuvm's `ConfigDB().set(None, ...)` and SystemVerilog's `set(null, ...)`: with no context to offset from, the glob is absolute, and `"*"` matches every path. It is the fallback for any component no more specific rule names — here, `gtalk`.
 
-What of `wait_modified`, the block-until-someone-changes-my-config? It has no direct port; the pattern it serves — a component reacting to a mid-run parameter change — is a `sim::Event` (or a channel) carried *in* the config struct, which says what it means: this value is a signal, not a setting. Nobody ever used `wait_modified` in anger, and neither will we.
+Which raises the obvious question: `loga`'s path matches `env.loga`, `env.t*` does not match it, but `*` does — so which value does `loga` get? **Resolution is most-specific-first**: `env.loga` beats `env.t*` beats `*`. That is pyuvm's rule, and rustdv adopts it. SystemVerilog readers should note their UVM does *not* sort by specificity — it gathers every match and takes the one with the highest precedence, which is why a stray global in an SV testbench can shadow a specific setting in ways that surprise people. Chapter 28 is about seeing what actually resolved, for exactly such moments.
+
+```text
+# Figure 10: The default is matched only where nothing overrides it
+
+[TRANSCRIPT NEEDED — same rerun, GlobalTest.]
+```
+
+## The parent/child conflict
+
+The database's most instructive scenario. The env configures its own child; the test configures the same component by a longer path; both writes land on exactly the same component. Which message prints?
+
+```rust
+// Chapter 27, Figure 11: The env configures its own child...
+#[derive(Component, Default)]
+struct ConflictEnv {
+    #[component(child)]
+    loga: Option<MsgLogger>,
+}
+
+impl Component for ConflictEnv {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        self.loga = Some(MsgLogger::default());
+        ConfigDb::set(Some(ctx), "loga", "MSG", String::from("CHILD RULES!"));
+    }
+}
+```
+
+```rust
+// Chapter 27, Figure 12: ...and the test configures the same component
+#[rustdv::test]
+#[derive(Component, Default)]
+struct ConflictTest {
+    #[component(child)]
+    env: Option<ConflictEnv>,
+}
+
+impl Component for ConflictTest {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        self.env = Some(ConflictEnv::default());
+        ConfigDb::set(Some(ctx), "env.loga", "MSG", String::from("PARENT RULES!"));
+    }
+}
+```
+
+**The parent wins** — and it is worth understanding why, because the rule is not arbitrary and it is not "first write wins." Under a naive last-write-wins, the parent would *lose*: build is top-down, so an ancestor always writes before its descendants. If recency decided, every child could silently overrule the test that instantiated it, and configuring a testbench from the top — the entire point of the mechanism — would be impossible. So a build-phase write carries a precedence that *decreases with the setter's depth*: the shallower the writer, the stronger the write, regardless of order. The test outranks the env; `PARENT RULES!` prints. (A write made after build, from a run phase, carries full precedence and outranks every build-time write — by then, whoever is writing is doing so on purpose.) This is the same rule the UVM applies and the same reasoning behind it; the difference is Chapter 28's, where you can ask the database to *show you* the contest instead of memorizing its outcome.
+
+```text
+# Figure 13: The parent wins
+
+[TRANSCRIPT NEEDED — same rerun, ConflictTest.]
+```
 
 ## Summary
 
-The ConfigDB's problem — tests parameterizing deeply buried components — survives untouched; its mechanism dissolved into the language. Values travel in config structs whose nesting mirrors the ownership tree: fields instead of path-plus-key lookups, so missing, mistyped, and wrongly-typed configuration are compile errors with field names in them. Wildcards became a field used in several visible places; global defaults became `Default` plus struct-update syntax; parent/child conflicts became `E0062`, a contradiction the compiler refuses to arbitrate. Shared resources ride as `Rc` fields, and the enum-not-int, bool-not-string typing of figure 11 is the config style every remaining testbench version uses.
+The problem — tests parameterizing components they never touch — is permanent, and rustdv answers it the way all three UVMs do: a runtime database addressed by hierarchical path. `set` takes context, glob, and field; `get` takes context, offset, and field, and returns a `Result` that names which of the four possible misses happened — the one place this chapter spends types, because the lookup itself is late binding and is supposed to be. Values are `Clone`d in or shared by `Rc`. Wildcards write to patterns; reads are always concrete; resolution is most-specific-first; and in the parent/child conflict the shallower writer wins so that configuration from the top stays possible.
 
-pyuvm needed a whole second chapter to teach *debugging* the ConfigDB. Chapter 28 walks the same crime scenes — wrong path, wrong phase, shadowed precedence, wrong type — and files the report on where each body went.
+pyuvm needed a second chapter to teach *debugging* the ConfigDB, and honesty requires the same here: a runtime lookup can miss, and the next chapter is the debugger's toolkit that comes with it — printing the database, tracing its decisions, and testing the failure paths on purpose.

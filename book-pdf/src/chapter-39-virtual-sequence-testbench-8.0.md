@@ -1,133 +1,215 @@
 # Chapter 39: Virtual Sequence Testbench: 8.0
 
-The summit. Sequences generate stimulus; *virtual* sequences coordinate sequences — no items, no `start_item`, just a program that launches other sequences in whatever order and concurrency the test demands. Testbench 8.0 is where both earlier journeys ended, and it arrives here with one upgrade the type system supplies for free.
+The last three chapters built sequences that send items. This one builds sequences that send nothing at all. A **virtual sequence** is started without a sequencer; it sends no items of its own; it *starts other sequences*. That is the whole of the idea, and it is what lets a test be assembled from stimulus that already exists rather than written again. Testbench 8.0 is where both earlier books ended their climbs, and it ends this one's: after this chapter, the machinery is complete.
 
-> **In the UVM...** we wrote a `TestAllSeq` extending `uvm_sequence` whose `body()` fetched the sequencer from the config database and ran `rand_seq.start(seqr)` then `max_seq.start(seqr)`; the test started the virtual sequence *without* a sequencer argument. A parallel variant forked the sub-sequences and joined them. And if a virtual sequence mistakenly called `start_item()`, the mistake surfaced at runtime.
+> **In the UVM...** we wrote a `TestAllSeq` extending `uvm_sequence` whose `body()` fetched the sequencer from the config database and ran `rand_seq.start(seqr)` then `max_seq.start(seqr)`; the test started the virtual sequence *without* a sequencer argument. A parallel variant forked the sub-sequences and joined them.
 
-## A virtual sequence is a program
+## A program that runs programs
 
 ```rust
-// Figure 1: A virtual sequence starts other sequences
+// Chapter 39, Figure 1: A virtual sequence starts other sequences
+#[derive(Default)]
+struct TestAllSeq;
 
-pub struct TestAllSeq {
-    pub seqr: Sequencer<AluCommand>,
-    pub rng: Rng,
-}
+impl Sequence for TestAllSeq {
+    type Req = AluCommand;
+    type Rsp = AluResult;
 
-impl TestAllSeq {
-    pub async fn body(&mut self) -> Result<(), SeqError> {
-        // No start_item, no finish_item — no item context to call them on.
-        let mut rand_seq = RandomSeq { rng: self.rng.clone() };
-        let mut max_seq = MaxSeq;
-        self.seqr.start(&mut rand_seq).await?;
-        self.seqr.start(&mut max_seq).await?;
+    async fn body(&mut self, ctx: &mut SeqCtx<AluCommand, AluResult>) -> Result<(), SeqError> {
+        let seqr: Sequencer<AluCommand, AluResult> = ConfigDb::get(None, "", "SEQR")?;
+        RandomSeq::default().start(&seqr).await?;
+        MaxSeq::default().start(&seqr).await?;
+        ctx.info("ran random, then max");
         Ok(())
     }
 }
 ```
 
-Look at what `TestAllSeq` is *not*: it does not implement `Sequence`, because `Sequence::body` receives a `SeqCtx` — an item channel — and a virtual sequence has no items. It is a plain struct holding the sequencer handle it will conduct, with an ordinary `async fn body`. That structural difference is the upgrade: pyuvm policed "virtual sequences must not call `start_item`" with a runtime `UVMSequenceError`; here the misuse is *unwritable* — there is no `ctx` in scope to call `start_item` on. This is what it means to make the illegal state unrepresentable, and this is its cleanest appearance in the book.
+Three observations, in rising order of importance.
 
-The sequencer handle arrives as a field — where pyuvm's virtual sequence pulled `"SEQR"` from the ConfigDB, ours is configured like everything else since Chapter 27: by construction. A virtual sequence coordinating *several* buses holds several sequencer fields, each typed to its transaction, and starting a sequence on the wrong bus is a compile error.
+- The body finds its sequencer the same way a test does — in the ConfigDb, with the `None` context, because a sequence has no path to offset from. That was the reason Chapter 27 kept the null-context form.
+- There is no `start_item` and no `finish_item`. Nothing here touches an item; `RandomSeq` and `MaxSeq` do their own item handling exactly as they did in Chapter 36, unchanged.
+- It is the *same* `Sequence` trait. Nothing marks this sequence "virtual" except what it does — precisely as in SystemVerilog, where `runall_sequence extends uvm_sequence #(uvm_sequence_item)` and simply never sends one.
+
+The test that starts it:
 
 ```rust
-// Figure 2: The test starts the virtual sequence
+// Chapter 39, Figure 2: The test starts the virtual sequence — no sequencer
+#[rustdv::test]
+#[derive(Component, Default)]
+struct AluTest {
+    #[component(child)]
+    env: RustdvComp,
+}
 
-    {
-        let _obj = run_ctx.raise_objection("virtual sequence");
-        let mut vseq = TestAllSeq { seqr: env.sequencer(), rng: ctx.rng() };
-        vseq.body().await?;
-        bfm.wait_idle().await;
+impl Component for AluTest {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        let bfm = TinyAluBfm::new(&ctx.dut()).expect("TinyALU signals");
+        ConfigDb::set(None, "*", "BFM", Rc::new(bfm));
+        self.env = AluEnv::new_comp();
     }
+
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let _obj = ctx.raise_objection("running the virtual sequence");
+        create_seq::<TestAllSeq>().start_virtual().await?;
+        Ok(())
+    }
+}
 ```
+
+`start_virtual()` takes no sequencer, because a virtual sequence has none to take — everything it drives, it drives through sequencers it looked up itself. Why a second method rather than pyuvm's single `start` with an optional argument? Rust has no default arguments, so the choice was between `start(Some(&seqr))` at every ordinary call site — noise that says nothing — or `start(None)` at the virtual ones, where `None` fails to say "virtual." Two names, each meaning what it says.
+
+One design question deserves an answer here, because a Rust-minded reader will already have asked it: *why not a separate `VirtualSequence` trait?* It would make calling `start_item` inside a virtual sequence a compile error instead of the run-time error pyuvm gives. It would also forbid a shape the UVM allows: *The UVM Primer*'s `parallel_sequence` is started *with* a sequencer and is still virtual in the sense that matters, and nothing stops a sequence from sending some items itself and delegating the rest. Two traits would buy a better error message at the cost of a capability — and this book's own thesis, stated in Chapter 1, says which way that trade goes. The framework declines it, knowingly. Late binding keeps its options; the error, if you make it, arrives at run time with a name on it.
 
 ```text
-# Figure 3: Running RandomSeq then MaxSeq
---
-     75.00ns INFO     cmd_monitor: AluCommand { a: 193, b: 103, op: Add }
-     95.00ns INFO     cmd_monitor: AluCommand { a: 94, b: 11, op: And }
-    115.00ns INFO     cmd_monitor: AluCommand { a: 185, b: 128, op: Xor }
-    135.00ns INFO     cmd_monitor: AluCommand { a: 165, b: 117, op: Mul }
-    185.00ns INFO     cmd_monitor: AluCommand { a: 255, b: 255, op: Add }
-    205.00ns INFO     cmd_monitor: AluCommand { a: 255, b: 255, op: And }
-    225.00ns INFO     cmd_monitor: AluCommand { a: 255, b: 255, op: Xor }
-    ...
-    305.00ns INFO     scoreboard: 8 compared, 0 mismatches
-    305.00ns INFO     coverage: Add=2 And=2 Mul=2 Xor=2
-    305.00ns INFO     test_all PASSED
+# Figure 3: Random, then max
+
+[TRANSCRIPT NEEDED — ch39's README predates the conversion; copy the AluTest
+portion verbatim from a rerun of `sim-common/run_sim.sh
+ch39_virtual_sequence_testbench_8_0 tinyalu sim-common/hdl/timescale.v
+sim-common/hdl/tinyalu.sv`.]
 ```
 
-Random operands, then a wall of `0xFF` — in order, eight compares, all covered.
-
-## Running sequences in parallel
+## The same two sequences, at the same time
 
 ```rust
-// Figure 4: Running sub-sequences in parallel
+// Chapter 39, Figure 4: Running sub-sequences in parallel
+#[derive(Default)]
+struct TestAllParallelSeq;
 
-impl TestAllParallelSeq {
-    pub async fn body(&mut self) -> Result<(), SeqError> {
-        let seqr_a = self.seqr.clone();
-        let seqr_b = self.seqr.clone();
-        let rng = self.rng.clone();
-        let random_task = spawn_named(
-            async move { seqr_a.start(&mut RandomSeq { rng }).await },
-            "random_seq",
-        );
-        let max_task = spawn_named(async move { seqr_b.start(&mut MaxSeq).await }, "max_seq");
-        let (r1, r2) = join2(random_task, max_task).await;
-        r1.map_err(|e| SeqError(format!("{e:?}")))??;
-        r2.map_err(|e| SeqError(format!("{e:?}")))??;
+impl Sequence for TestAllParallelSeq {
+    type Req = AluCommand;
+    type Rsp = AluResult;
+
+    async fn body(&mut self, ctx: &mut SeqCtx<AluCommand, AluResult>) -> Result<(), SeqError> {
+        let seqr: Sequencer<AluCommand, AluResult> = ConfigDb::get(None, "", "SEQR")?;
+        let mut random = RandomSeq::default();
+        let mut max = MaxSeq::default();
+
+        let (a, b) = join2(random.start(&seqr), max.start(&seqr)).await;
+        a?;
+        b?;
+        ctx.info("ran random and max together");
         Ok(())
     }
 }
 ```
 
-`cocotb.start_soon` plus `Combine` became `spawn_named` plus `join2` — Chapter 16 vocabulary, because a virtual sequence's body is ordinary async code and *all* the task machinery applies. The sequencer handle clones freely (clones share the one queue), each spawned task owns its clone and its sequence, and the sequencer's FIFO arbitration interleaves the two item streams:
+`join2` is the `fork...join` you met in Chapter 16, doing here what `fork`/`join` does in every SystemVerilog virtual sequence: both sub-sequences run, and `body` continues when both are done. The sequencer arbitrates between the two live streams — FIFO order, one item each in turn — so the transcript alternates random operands with `0xff` operands, both patterns interleaved on one DUT.
+
+One line of reasoning behind `join2` rather than `spawn`: a spawned task must own everything it touches (`'static` — the rule from Chapter 16), and a sub-sequence that borrows the parent sequence's state cannot promise that. Composing the two futures in place costs nothing and keeps that door open. The test differs from figure 2 by exactly one line — it starts `TestAllParallelSeq` instead — and is not worth a listing.
 
 ```text
 # Figure 5: The two sequences interleave at the sequencer
---
-    320.00ns INFO     cmd_monitor: AluCommand { a: 206, b: 66, op: Add }
-    340.00ns INFO     cmd_monitor: AluCommand { a: 255, b: 255, op: Add }
-    360.00ns INFO     cmd_monitor: AluCommand { a: 47, b: 100, op: And }
-    380.00ns INFO     cmd_monitor: AluCommand { a: 255, b: 255, op: And }
-    400.00ns INFO     cmd_monitor: AluCommand { a: 41, b: 179, op: Xor }
-    420.00ns INFO     cmd_monitor: AluCommand { a: 255, b: 255, op: Xor }
-    ...
-    610.00ns INFO     scoreboard: 8 compared, 0 mismatches
-    610.00ns INFO     coverage: Add=2 And=2 Mul=2 Xor=2
-    610.00ns INFO     test_all_parallel PASSED
+
+[TRANSCRIPT NEEDED — same rerun, ParallelTest portion.]
 ```
 
-Random and max commands alternating, exactly as pyuvm's parallel figure showed — each sequence's own items stay in order (the handshake guarantees it), and the interleaving *between* sequences is the sequencer's FIFO fairness at work. (Two double-`?` lines in figure 4 deserve their gloss: awaiting a spawned task yields `Result<_, TaskError>` — Chapter 16 — wrapping the sequence's own `Result`. One `?` per layer of fallibility; nothing is silently dropped, including a sub-sequence that failed.)
+## The testbench becomes a programming interface
 
-SystemVerilog UVM veterans will ask about sequencer arbitration — grab, lock, priorities. rustdv, like pyuvm, ships FIFO arbitration only; the rest remains unported on both sides of the language divide, a gap both projects record rather than hide.
+The chapter's payoff is not running two canned sequences — it is what virtual sequences make possible for the *next* person on the team: an interface. First, one operation as a sequence:
 
-## The ladder, complete
+```rust
+// Chapter 39, Figure 6: One operation, as a sequence
+struct OpSeq {
+    a: u8,
+    b: u8,
+    op: Ops,
+    result: Option<u16>,
+}
 
-Version 8.0 closes the climb that began with one `while` loop:
+impl Sequence for OpSeq {
+    type Req = AluCommand;
+    type Rsp = AluResult;
+
+    async fn body(&mut self, ctx: &mut SeqCtx<AluCommand, AluResult>) -> Result<(), SeqError> {
+        let mut cmd = AluCommand { a: self.a, b: self.b, op: self.op };
+        ctx.start_item(&mut cmd).await?;
+        let ticket = ctx.finish_item(cmd).await?;
+        self.result = Some(ctx.get_response(Some(ticket)).await.result);
+        Ok(())
+    }
+}
+```
+
+`OpSeq` carries parameters, so it is constructed the ordinary way rather than through the factory — the factory's makers take no arguments, and both source books build their parameterized sequences by hand for the same reason. Its body is Chapter 38 in miniature: send one command, claim its response by ticket, store the answer.
+
+```rust
+// Chapter 39, Figure 7: The TinyALU programming interface
+async fn do_op(
+    seqr: &Sequencer<AluCommand, AluResult>,
+    a: u8,
+    b: u8,
+    op: Ops,
+) -> Result<u16, SeqError> {
+    let mut seq = OpSeq { a, b, op, result: None };
+    seq.start(seqr).await?;
+    seq.result.ok_or_else(|| SeqError::from("the driver returned no result"))
+}
+
+async fn do_add(seqr: &Sequencer<AluCommand, AluResult>, a: u8, b: u8) -> Result<u16, SeqError> {
+    do_op(seqr, a, b, Ops::Add).await
+}
+async fn do_and(seqr: &Sequencer<AluCommand, AluResult>, a: u8, b: u8) -> Result<u16, SeqError> {
+    do_op(seqr, a, b, Ops::And).await
+}
+async fn do_xor(seqr: &Sequencer<AluCommand, AluResult>, a: u8, b: u8) -> Result<u16, SeqError> {
+    do_op(seqr, a, b, Ops::Xor).await
+}
+async fn do_mul(seqr: &Sequencer<AluCommand, AluResult>, a: u8, b: u8) -> Result<u16, SeqError> {
+    do_op(seqr, a, b, Ops::Mul).await
+}
+```
+
+This is the payoff. A test writer who has never opened the testbench gets four functions that take numbers and return numbers; sequencer, driver, handshake, and response envelope are all behind them. (In Python these read `seq.result` after `start` returns, because a coroutine cannot hand a value back through `start`; here the function returns what it computed, because that is what functions do.)
+
+And with an interface in hand, a test is just a program:
+
+```rust
+// Chapter 39, Figure 8: Fibonacci, written as a program
+#[derive(Default)]
+struct FibonacciProgramSeq;
+
+impl Sequence for FibonacciProgramSeq {
+    type Req = AluCommand;
+    type Rsp = AluResult;
+
+    async fn body(&mut self, ctx: &mut SeqCtx<AluCommand, AluResult>) -> Result<(), SeqError> {
+        let seqr: Sequencer<AluCommand, AluResult> = ConfigDb::get(None, "", "SEQR")?;
+        let mut prev: u8 = 0;
+        let mut cur: u8 = 1;
+        let mut fib = vec![prev as u16, cur as u16];
+
+        for _ in 0..7 {
+            let sum = do_add(&seqr, prev, cur).await?;
+            fib.push(sum);
+            prev = cur;
+            cur = sum as u8;
+        }
+
+        ctx.info(&format!("Fibonacci Sequence: {fib:?}"));
+        Ok(())
+    }
+}
+```
+
+Compare this against Chapter 38's Fibonacci, where the handshake was visible at every step. The computation is identical; the sequence machinery has vanished into `do_add`. This is what a programming interface is for, and why a team that writes tests but not testbenches wants one.
+
+Its test sets one extra ConfigDb value — `ConfigDb::set(None, "*", "CHECK_COVERAGE", false)` — because a program that only adds will never cover four operations, and the scoreboard reads that flag at check time. A test changing what the scoreboard demands, through the database, without touching it: the whole book's runtime-binding half, in one line.
 
 ```text
-# Figure 6: Ten testbenches, one DUT
+# Figure 9: The TinyALU computes Fibonacci through the interface
 
-1.0  one loop, everything mixed             (Ch. 18)
-     + the BFM: pins extracted              (Ch. 19)
-2.0  testers and scoreboard as structs      (Ch. 20)
-3.0  the methodology's test discipline      (Ch. 23)
-4.0  components + environment               (Ch. 25)
-5.0  one env, variation points              (Ch. 30)
-6.0  single-purpose components, channels,
-     analysis fan-out                       (Ch. 33–34)
-7.0  sequences: stimulus as data            (Ch. 36)
-7.1  the response path                      (Ch. 37)
-7.2  transaction ids, cherry-picking        (Ch. 38)
-8.0  virtual sequences: stimulus programs   (this chapter)
+[TRANSCRIPT NEEDED — same rerun, FibonacciProgramTest portion; expected
+final line is Fibonacci Sequence: [0, 1, 1, 2, 3, 5, 8, 13, 21].]
 ```
 
-Same summit as both earlier books, same architectural steps meaning the same things — by the steeper, more scenic route Chapter 1 promised.
+## The environment underneath
+
+The env this chapter runs on is Chapter 38's, with the driver that answers: it publishes each result on its own analysis port and returns it through `item_done(Some(...))`, and there is no separate `ResultMonitor` — the driver already awaits each answer, so it is the component that *has* it, and a second reader on the BFM's result queue would take turns stealing results from the first. The observation side, the scoreboard's two streams, and the `SEQR` handle in the ConfigDb are all exactly as you left them. Nothing in the environment knows that virtual sequences exist — which is the measure of the design: the top layer of the stimulus stack arrived, and no layer below it moved.
 
 ## Summary
 
-Testbench 8.0 added the coordination layer: virtual sequences as plain structs with async `body` methods and sequencer-handle fields — not `Sequence` implementors, so the no-items rule that pyuvm enforced with `UVMSequenceError` is enforced by there being nothing to misuse. Sequential composition is two awaited `start` calls; parallel composition is `spawn_named` plus `join2` with cloned sequencer handles, the sequencer's FIFO arbitration interleaving item streams while each stream keeps its internal order. Configuration reached the virtual sequence the same way it reaches everything: through a constructor.
+A virtual sequence is a sequence that starts sequences: same trait, no items of its own, started with `start_virtual()` because it has no sequencer to be started on. Sequential composition is two `start` calls in a row; parallel composition is `join2` over two `start` futures, with the sequencer interleaving the streams. There is deliberately no `VirtualSequence` trait — a compile-time fence there would forbid the mixed shapes the UVM permits, and the framework takes the UVM's side of that trade with its eyes open. The chapter's real product is the interface pattern: an `OpSeq` with parameters, wrapped in `do_add`-style functions, until a test reads like arithmetic and the testbench underneath is invisible.
 
-Part IV is complete — every pyuvm chapter has its rustdv companion, and the TinyALU has been verified eleven ways. What remains is to see it all in one place: the capstone testbench, whole, end to end, as a reference you can build from. Chapter 40.
+That is testbench 8.0, and with it every mechanism the UVM promised: phases, configuration, factory, TLM, analysis, transactions, sequences, and programs built from all of them. Chapter 40 returns to the shipped TinyALU testbench — the one the Interlude showed you before you could read it — and walks it end to end, with nothing left unexplained.

@@ -1,202 +1,204 @@
-# Chapter 24: Components: The Hierarchy Problem, Solved by Ownership
+# Chapter 24: Components
 
-`uvm_component` is the backbone of the UVM: everything in a pyuvm testbench extends it, inherits its phase methods, and hangs in a runtime tree beneath `uvm_test_top`. This chapter ports the backbone — and it is the chapter where rustdv's single deepest design decision lives, so let's say it plainly at the top: **the component tree is the ownership tree.** No parent pointers, no global component registry, no name strings passed to constructors. Children are struct fields. Everything else in the chapter unfolds from that sentence.
+Testbench 3.0 gave us a UVM test, and the test was the only component in it: the BFM and the scoreboard were ordinary local values inside its `run`. That works at TinyALU scale and stops working shortly after — a real testbench is a *tree* of single-purpose components, each with its own job, sharing one lifecycle so that everything gets built, wired, run, and checked in a dependable order. The class that provides all of that in the UVM is `uvm_component`. This chapter ports it.
 
-> **In the UVM...** we extended `uvm_component`, whose nine phase methods the framework called in a fixed order — `build`, `connect`, `end_of_elaboration`, `start_of_simulation`, `run` (the only task, objection-gated), `extract`, `check`, `report`, `final` — and we built the hierarchy in `build_phase()` by instantiating children with a *name* and a *parent*: `mc = middle_comp::type_id::create("mc", this)` in SV, `self.mc = MiddleComp("mc", self)` in pyuvm. The framework wove those references into a tree and derived paths like `uvm_test_top.mc.bc`.
+> **In the UVM...** every testbench class extends `uvm_component`, whose phase methods the framework calls in a fixed order — `build`, `connect`, `end_of_elaboration`, `start_of_simulation`, `run` (the only task, objection-gated), `extract`, `check`, `report`, `final`. We built the hierarchy in `build_phase()` by instantiating children with a *name* and a *parent* — `mc = middle_comp::type_id::create("mc", this)` in SystemVerilog, `self.mc = MiddleComp("mc", self)` in pyuvm — and the framework wove the references into a tree with paths like `uvm_test_top.mc.bc`.
 
-## Nine phases, inventoried
+## The nine phases
 
-Port the phase list first, because deciding what each phase *was for* decides what happens to it in Rust.
-
-```text
-# Figure 1: pyuvm's nine phases, and where each went
-
-pyuvm phase                    rustdv
------------                    ------
-build_phase                    the constructor ("build convention")
-connect_phase                  constructor arguments ("connect convention")
-end_of_elaboration_phase       code after construction, before start
-start_of_simulation_phase      (same — the gap between new() and start)
-run_phase                      fn start(&mut self, ctx) spawns tasks; objections end the run
-extract_phase                  fn extract(&mut self)
-check_phase                    fn check(&mut self, errors: &mut CheckSink)
-report_phase                   fn report(&self)
-final_phase                    fn final_phase(&self)
-```
-
-The bottom five — the *runtime* lifecycle — survive as methods on the `Component` trait, with pyuvm's exact traversal orders (start is bottom-up like `run_phase` forking; extract/check/report are top-down) and pyuvm's no-op-by-default convention, via default method bodies: override only what you use.
-
-The top four dissolve, and the reasoning deserves a paragraph rather than a bullet, because it is the memo that shaped rustdv. `build_phase` and `connect_phase` exist in the UVM because factory-driven construction is *two-stage*: the factory instantiates your component bare, and only afterward can it create children (`build`) and wire them (`connect`). Rust constructors are not two-stage. A `new()` function constructs children bottom-up in one pass, and connections are arguments passed down — there is no moment when a component exists but its children don't, so there is no phase to put in that moment. Building is what constructors *do*; connecting is what constructor arguments *are*. rustdv keeps the words as comment conventions (`// build:`, `// connect:` in the worked examples) because the book's chapter structure survives even where the mechanism dissolved. The two elaboration phases were empty in nearly every example either earlier book wrote; their job — code that runs after the tree exists and before the run starts — is simply the lines between `new()` and `start_all()` in your test.
-
-## The lifecycle, demonstrated
-
-pyuvm proved its phase order with a `PhaseTest` that printed from all nine methods. Here is the rustdv equivalent, printing from everything that remains:
+Figure 1 is a test that overrides every phase method just to prove the order. It is a struct test, as in Chapter 23 — and that choice now pays off, because a struct test *is a component*: `#[rustdv::test]` registers it, and the runner drives its phases exactly the way `@pyuvm.test()` hands a class to pyuvm's phaser.
 
 ```rust
-// Figure 2: A component demonstrating the lifecycle methods
-
-struct PhaseComp;
-
-impl PhaseComp {
-    fn new() -> PhaseComp {
-        log::info("1 new() — the build convention");
-        PhaseComp
-    }
-}
-
-impl Component for PhaseComp {
-    fn start(&mut self, _ctx: &mut RustdvCtx) {
-        log::info("2 start");
-    }
-    fn extract(&mut self) {
-        log::info("3 extract");
-    }
-    fn check(&mut self, _errors: &mut CheckSink) {
-        log::info("4 check");
-    }
-    fn report(&self) {
-        log::info("5 report");
-    }
-    fn final_phase(&self) {
-        log::info("6 final_phase");
-    }
-}
-```
-
-```rust
-// Figure 3: The test drives the lifecycle in order
+// Chapter 24, Figure 1: A uvm_test demonstrating the phase methods
 
 #[rustdv::test]
-async fn phase_test(_ctx: RustdvCtx) -> Result<(), TestError> {
-    let mut comp = PhaseComp::new(); // build (and connect, had it children)
+#[derive(Component, Default)]
+struct PhaseTest;
 
-    let mut run_ctx = RustdvCtx::new();
-    start_all(&mut comp, &mut run_ctx); // spawn free-running behavior
-    run_ctx.all_objections_dropped().await; // the run "phase" is objection-gated
-
-    run_extract_check_report(&mut comp).map_err(TestError::from)
-}
-```
-
-```text
-# Figure 4: The lifecycle runs in order
---
-      0.00ns INFO     1 new() — the build convention
-      0.00ns INFO     2 start
-      0.00ns WARNING  all_objections_dropped awaited but no objection was ever raised
-      0.00ns INFO     3 extract
-      0.00ns INFO     4 check
-      0.00ns INFO     5 report
-      0.00ns INFO     6 final_phase
-      0.00ns INFO     phase_test PASSED
-```
-
-Two things in this transcript repay attention. First, *the test is the phase engine*: where pyuvm's machinery invisibly called your methods in order, the rustdv test calls `start_all` and `run_extract_check_report` itself — three visible lines, no dispatcher, and the order is in your file rather than in a framework's. Second, that WARNING is pyuvm's own diagnostic, ported: a run phase in which nobody ever objected usually means somebody forgot their guard, and the framework says so. (`PhaseComp::start` spawns nothing, so nothing objected. The hierarchy test below does it properly.)
-
-`check` deserves its one note now, since every scoreboard forever will use it: it receives a `&mut CheckSink`, and errors reported there accumulate and fail the test through `run_extract_check_report`'s `Result` — checks report through the sink; panics stay reserved for testbench bugs. The taxonomy holds.
-
-## Building the hierarchy: fields, not registrations
-
-Now the main event: pyuvm's `TestTop` → `MiddleComp` → `BottomComp` tower, rebuilt. In pyuvm, each `build_phase` instantiated its child with a name string and `self` as parent, and pyuvm knitted the references into a tree with a global `component_dict` watching over it all. In rustdv:
-
-```rust
-// Figure 5: A three-level hierarchy: children are fields
-
-struct BottomComp;
-
-impl Component for BottomComp {
-    fn start(&mut self, ctx: &mut RustdvCtx) {
-        let obj = ctx.raise_objection("bc run");
-        spawn_named(
-            async move {
-                log::info("bc run phase");
-                drop(obj);
-            },
-            "bc.run",
-        );
+impl Component for PhaseTest {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        ctx.info("1 build");
+    }
+    fn connect(&mut self, ctx: &mut RustdvCtx) {
+        ctx.info("2 connect");
+    }
+    fn end_of_elaboration(&mut self, ctx: &mut RustdvCtx) {
+        ctx.info("3 end_of_elaboration");
+    }
+    fn start_of_simulation(&mut self, ctx: &mut RustdvCtx) {
+        ctx.info("4 start_of_simulation");
+    }
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let _obj = ctx.raise_objection("run");
+        ctx.info("5 run");
+        Ok(())
+    }
+    fn extract(&mut self, ctx: &mut RustdvCtx) {
+        ctx.info("6 extract");
+    }
+    fn check(&mut self, ctx: &mut RustdvCtx, errors: &mut CheckSink) {
+        let _ = errors;
+        ctx.info("7 check");
+    }
+    fn report(&mut self, ctx: &mut RustdvCtx) {
+        ctx.info("8 report");
+    }
+    fn final_phase(&mut self, ctx: &mut RustdvCtx) {
+        ctx.info("9 final");
     }
 }
+```
 
-#[derive(rustdv::Component)]
-struct MiddleComp {
-    #[component(child)]
-    bc: BottomComp,
-}
+The pieces, in source order:
 
-impl Component for MiddleComp {}
+- `#[derive(Component)]` — the derive from Chapter 21. It writes the tree-traversal plumbing so the phaser can walk this component's children. `PhaseTest` has none, so the derive's work here is small; it earns its keep in figure 4.
+- `impl Component for PhaseTest` — the `Component` trait carries all nine phase methods, every one with a default no-op body. A component overrides only the phases it uses; this one overrides all nine only because the order is the demonstration.
+- `ctx: &mut RustdvCtx` — every phase receives the context, and its log lines are stamped with the path the phase walk derived. No phase method takes a name; no component stores one.
+- `async fn run` — the one phase that takes simulated time, so the one that is `async`. It raises an objection the moment it starts and holds it as a guard: the run phase ends when every guard in the testbench has dropped. Dropping happens here at the end of the function, the way any Rust value drops.
+- `fn final_phase`, not `fn final` — `final` is a Rust keyword, so this is the one phase whose rustdv name differs by necessity.
 
-#[derive(rustdv::Component)]
+Figure 2 is the run.
+
+```text
+# Figure 2: The lifecycle runs in order
+
+      0.00ns INFO     rustdv: found 1 test(s), RUSTDV_RANDOM_SEED=1
+      0.00ns INFO     running PhaseTest (1/1)  [ch24-components/src/ch24_components.rs:41]
+      0.00ns INFO     [PhaseTest]: 1 build
+      0.00ns INFO     [PhaseTest]: 2 connect
+      0.00ns INFO     [PhaseTest]: 3 end_of_elaboration
+      0.00ns INFO     [PhaseTest]: 4 start_of_simulation
+      0.00ns INFO     [PhaseTest]: 5 run
+      0.00ns INFO     [PhaseTest]: 6 extract
+      0.00ns INFO     [PhaseTest]: 7 check
+      0.00ns INFO     [PhaseTest]: 8 report
+      0.00ns INFO     [PhaseTest]: 9 final
+      0.00ns INFO     PhaseTest PASSED
+******************************************************************************
+** TEST                                       STATUS  SIM TIME (ns)      **
+******************************************************************************
+** PhaseTest                                    PASS           0.00      **
+******************************************************************************
+REGRESSION: PASS
+```
+
+Nine phases, in the UVM's order, driven by the framework — nobody in the listing called any of them. The `[PhaseTest]` between the brackets is the component's path, derived by the walk rather than stored anywhere.
+
+One divergence to note now, because it matters to SystemVerilog readers checking this against muscle memory: rustdv follows *pyuvm's* traversal directions, not the SystemVerilog UVM's. `build` runs top-down and `connect` bottom-up in all three frameworks, but `end_of_elaboration`, `start_of_simulation`, `extract`, `check`, and `report` run top-down here, where the SystemVerilog UVM runs them bottom-up. If your testbench depends on a child's `report` running before its parent's, that assumption does not carry over.
+
+## Why build and connect exist
+
+A fair question from a Rust point of view: a struct's constructor can build its children, so why have a `build` phase at all? The first draft of rustdv asked exactly that question, answered "no reason," and deleted both phases — children were built in `new()`, connections were constructor arguments, and the framework was simpler for it.
+
+It was also wrong, and the reason it was wrong is the most important paragraph in this chapter. The gap between *a component existing* and *its children existing* is not dead time to be optimized away — it is where every late-binding mechanism in the UVM lives. Configuration must be able to reach a component *before* it decides what children to make: that is how one environment builds an active agent in one test and a passive one in another (Chapter 25). The factory must be able to substitute a child's type *before* the child is constructed: that is what a factory override is (Chapter 29). And connection must happen *after* everything below exists: that is why `connect` runs bottom-up (Chapter 31). Fold building into constructors and all three mechanisms lose the moment they operate in. The UVM's designers had typed classes, parameters, and constructors in hand and still built a two-stage lifecycle — three frameworks in three languages kept it — because deferring those decisions is the point, not an accident of class-based construction.
+
+So in rustdv, `build` and `connect` are real phase methods again, and the directions are load-bearing: `build` runs top-down so a parent decides what to create before its children exist, and `connect` runs bottom-up so wiring happens over a finished subtree.
+
+## Growing the tree
+
+Figure 3 is the hierarchy this section builds — the same three-level tower the earlier books used.
+
+```text
+# Figure 3: The three-level hierarchy
+
+    TestTop                (a test — the root)
+       └── mc: MiddleComp
+              └── bc: BottomComp
+```
+
+Each parent creates its child *in its own build phase*, and the phaser descends into whatever `build` created, so the tree grows top-down as it is walked. Figures 4 through 6 are the three components, from the top down.
+
+```rust
+// Chapter 24, Figure 4: the test at the top. Its build phase constructs the
+// middle component; the phaser descends into the tree that build creates.
+#[rustdv::test]
+#[derive(Component, Default)]
 struct TestTop {
     #[component(child)]
-    mc: MiddleComp,
+    mc: Option<MiddleComp>,
 }
 
 impl Component for TestTop {
-    fn final_phase(&self) {
-        log::info("final phase");
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        ctx.info("build phase");
+        self.mc = Some(MiddleComp::default());
+    }
+    fn final_phase(&mut self, ctx: &mut RustdvCtx) {
+        ctx.info("final phase");
     }
 }
 ```
 
-There is the whole hierarchy: `TestTop` owns `mc`, `MiddleComp` owns `bc`, and the tree is the struct nesting — the compiler enforces its shape, its construction order, and its destruction order, because that is what ownership *is*. The `#[derive(Component)]` you met in Chapter 21 writes the traversal (`visit_children` over fields marked `#[component(child)]`); `BottomComp`, childless, implements `ComponentNode` trivially — or would by the same derive; the chapter's code spells one out by hand to show there is no magic in it.
+Three lines carry the design:
 
-Look at `BottomComp::start` closely, because it is every driver and monitor you will ever write in miniature: raise an objection guard, `move` it into the spawned task, and let the task's completion drop it. The guard moving into the task is the ownership system doing end-of-test bookkeeping: the objection lives exactly as long as the work does.
+- `#[component(child)]` — this attribute tells the derive which fields are children. The phase walk visits exactly the marked fields, in declaration order.
+- `mc: Option<MiddleComp>` — the child is declared as an `Option` because before `build` runs there *is no child*. `None` is the type-level spelling of "declared but not yet built" — the state every UVM component is in between its own construction and its `build_phase`. The struct definition names what the tree can hold; `build` decides what it does hold.
+- `self.mc = Some(MiddleComp::default())` — building the child is an assignment. Compare `self.mc = MiddleComp("mc", self)`: no name string, because the field is named `mc` and the walk derives the path; no parent handle, because ownership already says whose field this is.
 
 ```rust
-// Figure 6: Constructors are the build phase
+// Chapter 24, Figure 5: the middle component builds the bottom component in
+// its own build phase, and announces itself at end of elaboration.
+#[derive(Component, Default)]
+struct MiddleComp {
+    #[component(child)]
+    bc: Option<BottomComp>,
+}
 
-#[rustdv::test]
-async fn hierarchy_test(_ctx: RustdvCtx) -> Result<(), TestError> {
-    // build: bottom-up, in one expression
-    let mut top = TestTop { mc: MiddleComp { bc: BottomComp } };
-
-    print_hierarchy(&mut top);
-
-    let mut run_ctx = RustdvCtx::new();
-    start_all(&mut top, &mut run_ctx);
-    run_ctx.all_objections_dropped().await;
-
-    run_extract_check_report(&mut top).map_err(TestError::from)
+impl Component for MiddleComp {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        self.bc = Some(BottomComp::default());
+    }
+    fn end_of_elaboration(&mut self, ctx: &mut RustdvCtx) {
+        ctx.info("end of elaboration phase");
+    }
 }
 ```
 
-```text
-# Figure 7: The hierarchy, with names synthesized from field names
---
-      0.00ns INFO     top (TestTop)
-      0.00ns INFO     top.mc (MiddleComp)
-      0.00ns INFO     top.mc.bc (BottomComp)
-      0.00ns INFO     bc run phase
-      0.00ns INFO     final phase
-      0.00ns INFO     hierarchy_test PASSED
+`MiddleComp` is not a test — no `#[rustdv::test]` — just a component that both is built and builds. When the top-down walk reaches it, its `build` runs and `bc` comes into existence; the walk then descends into `bc`. Top-down construction, exactly as `build_phase` has always worked.
+
+```rust
+// Chapter 24, Figure 6: the bottom component. Only a run phase, which
+// objects, logs under its path (uvm_test_top.mc.bc in UVM; TestTop.mc.bc
+// here), and drops.
+#[derive(Component, Default)]
+struct BottomComp;
+
+impl Component for BottomComp {
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let _obj = ctx.raise_objection("bc run");
+        ctx.info("run phase");
+        Ok(())
+    }
+}
 ```
 
-`top.mc.bc` — the path the UVM spelled `uvm_test_top.mc.bc` — synthesized entirely from *field names*, at compile time, by the derive. Nobody passed `"mc"` to a constructor; the field is named `mc`, so the component is. The convention both earlier books taught ("give components the same name as their variable") stopped being a convention and became the only possibility. And child access is field access: `top.mc.bc` in a path, `self.mc.bc` in code — no `lookup("uvm_test_top.mc.bc")`, no string to typo, no runtime miss.
+`BottomComp` overrides one phase and is the pattern for every leaf that does work: raise the objection, do the job, and let the guard drop when the function ends. Every component's `run` gets this same deal — each raises its own objection for its own work, and the run phase of the whole testbench ends when the last guard anywhere has dropped. What the objection buys becomes vivid in Chapter 31, where a parent and its children run *at the same time* and components that never finish on their own — monitors, responders — stop exactly when the objecting components are done.
 
-What did we give up against pyuvm's runtime tree? Three things it could do that fields cannot: address a component by *string path* from anywhere (its consumers were the ConfigDB and factory overrides — Chapters 27 and 29 explain why neither needs it here); enumerate *all* components globally (`visit_children` traversal covers the debug-print and hierarchy-walk uses, as `print_hierarchy` just showed); and hold *cyclic* references, child pointing back to parent — which is not a capability, it is the bug factory the ownership tree exists to close. A monitor that needs the scoreboard does not reach up and over via parent pointers; it gets a channel endpoint at construction, which is Chapter 31's whole subject.
-
-## The predefined components
-
-pyuvm shipped a taxonomy of `uvm_component` extensions; the roles all survive, wearing different amounts of type:
+Figure 7 is the run.
 
 ```text
-# Figure 8: The predefined component taxonomy in rustdv
+# Figure 7: The walk derives every path
 
-pyuvm class          rustdv form
------------          -----------
-uvm_test             the #[rustdv::test] function (Ch. 23)
-uvm_env              a plain struct of children (Ch. 25)
-uvm_agent            struct with Option<Driver>/Option<Sequencer> children (Ch. 34)
-uvm_driver           Driver<REQ, RSP> with a typed SeqItemPort (Ch. 33, 36)
-uvm_monitor          a convention, not a marker trait
-uvm_scoreboard       a convention, not a marker trait
-uvm_subscriber       trait Subscriber<T> { fn write(&mut self, item: &T); } (Ch. 32)
+      0.00ns INFO     running TestTop (2/2)  [ch24-components/src/ch24_components.rs:118]
+      0.00ns INFO     [TestTop]: build phase
+      0.00ns INFO     [TestTop.mc]: end of elaboration phase
+      0.00ns INFO     [TestTop.mc.bc]: run phase
+      0.00ns INFO     [TestTop]: final phase
+      0.00ns INFO     TestTop PASSED
 ```
 
-Monitor and scoreboard lose their marker classes because a methodless base class is ceremony in a language without inheritance — the book teaches the roles; the code doesn't need the tag. `uvm_subscriber` stays a real trait because `AnalysisPort` dispatches through its `write` method — and where pyuvm enforced the abstract `write` by raising `UVMFatalError` if you forgot to override it, Rust makes a `Subscriber` without `write` a compile error. The agent's `Option` children are the chapter-34 payoff planted now: a passive agent doesn't carry a disabled driver; it carries `None`.
+Four log lines, four different phase methods, three different components — and each line carries the right path. `[TestTop.mc.bc]` is the path the UVM would spell `uvm_test_top.mc.bc`, synthesized from field names by the walk as it descends: `TestTop.build` created `mc`, the phaser recursed, `mc.build` created `bc`, and each component logged under the path the traversal accumulated. Nothing stored a path and nobody typed one. Move a component to a different place in the tree and its path follows, because there is no string anywhere that could go stale.
+
+## What this costs
+
+Two prices, stated plainly.
+
+**Phase discipline is not checked at compile time.** There is one context type, `RustdvCtx`, and every phase receives it whole — the compiler does not know that raising an objection makes no sense in `build`, or that a value configured during `run` is too late for a `build` that already ran. An operation performed in the wrong phase is a run-time failure with a good message, exactly as it is in every UVM. A family of per-phase context types could push some of this to compile time; it would also mean eight signatures for every helper that takes a context, and rustdv declines the trade. This is the book's seam doing its work: the lifecycle is runtime machinery, and the type system is not pretending otherwise.
+
+**`async fn` in a trait is a live edge of Rust.** `Component::run` is an `async fn` in a trait, and Rust has not finished smoothing that feature: a trait with an `async fn` cannot be made into a `dyn` trait object directly. The framework deals with it by keeping a dyn-safe mirror of the trait internally — machinery you never see and never write, which is why no listing in this book mentions it. It surfaced here as one of the two compiler stories Chapter 1 promised: the restriction forced rustdv to decide *early* how components would be stored and driven, while the framework was still small enough to decide cheaply. Traits and `dyn` do not compose freely around `async`; a framework author feels that edge so that a testbench author does not.
 
 ## Summary
 
-`uvm_component` ported as two small traits and one large idea. The idea: the ownership tree is the component tree — children are struct fields, hierarchy paths come from field names via `#[derive(Component)]`, child access is field access, and the parent-child reference cycles that pyuvm's GC untangled never exist. The traits: `Component` carries the surviving runtime lifecycle (`start`, spawning tasks under objection guards, then `extract`/`check`/`report`/`final_phase`, with pyuvm's traversal orders preserved by `start_all` and `run_extract_check_report`), and `ComponentNode` carries traversal, usually derived. Build and connect phases dissolved into constructors and their arguments — one-pass construction has no gap for them to fill — while the "you never objected" warning and the objection-gated run survive to the log line.
+`uvm_component` ported whole. The `Component` trait carries the nine phases with default no-op bodies — override what you use — and the runner drives them in pyuvm's order and directions: `build` top-down, `connect` bottom-up, run objection-gated, the elaboration and post-run phases top-down (a divergence from the SystemVerilog UVM's bottom-up, worth checking against old habits). A child is a struct field, `Option`-wrapped because it does not exist until its parent's `build` creates it; the phase walk descends into what `build` made, deriving every component's path from field names as it goes. Build and connect are real phases because the gap they occupy — after a component exists, before its children do — is where configuration, factory overrides, and connection all operate; Chapters 25, 29, and 31 each collect on that argument in turn.
 
-Version 4.0 puts the machinery to work: a real `AluEnv` whose fields are the testbench, built by constructors, run by the lifecycle — and the log output showing the traversal orders doing their jobs.
+Version 4.0 is next: the machinery of this chapter, put to work on the TinyALU — an environment component, a scoreboard that checks in `check`, and the BFM delivered through the ConfigDb instead of reached for.

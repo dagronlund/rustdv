@@ -171,7 +171,7 @@ It doesn't compile. Of the two failure categories Python needed `except` blocks 
 
 ## The `?` operator: propagation you can see
 
-Back to the boss metaphor. The genuinely good idea inside exceptions was *delegation*: a low-level function shouldn't have to decide what a divide-by-zero means for the whole program. It should hand the problem upward. Python's `raise` did that invisibly. Rust does it with one visible character.
+Back to the boss metaphor. The good idea inside exceptions was *delegation*: a low-level function shouldn't have to decide what a divide-by-zero means for the whole program. It should hand the problem upward. Python's `raise` did that invisibly. Rust does it with one visible character.
 
 Suppose we're writing a little TinyALU-flavored utility: compute a ratio of two accumulated counts as a percentage. It calls `nice_div`, and if the division fails, our function can't succeed either — the error should go up to *our* caller. Written longhand, that's a `match` where the `Err` arm just re-returns the error. Written idiomatically, it's figure 5.
 

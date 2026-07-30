@@ -1,158 +1,266 @@
-# Chapter 28: Configuration Debugging: What the Compiler Now Does for You
+# Chapter 28: Configuration Debugging
 
-Both earlier books devoted a chapter to debugging the config database, and those chapters earned their keep: the database's failure modes are quiet, remote, and rank among the UVM's most common support questions in every dialect. This chapter walks the same crime scenes with the rustdv config-struct design from Chapter 27 and files a report on each: where the bug went, what it looks like now, and — the honest part — what debugging *remains* when the plumbing can no longer fail.
+Chapter 27 showed configuration working. This chapter shows it failing, which is the more useful skill — both earlier books devoted a chapter to exactly this, because the config database's failure modes are quiet, remote from their causes, and rank among the UVM's most common support questions in every dialect. The database is addressed by strings resolved at run time, so the compiler cannot help. That is not a flaw to apologize for; it is the cost of late binding, stated plainly in Chapter 27 — and it is why the database ships with a debugger's toolkit. This chapter is that toolkit: an error that names its cause, a dump that shows the competition, and a tracer that films every operation.
 
-> **In the UVM...** we learned the config database's classic mistakes one painful demonstration at a time: a typo'd path that matched nothing and left the component running on defaults; a `get()` called before the corresponding `set()`; a wildcard shadowing a specific path (or the reverse, depending on lengths); and a value stored with the wrong type — a `get()` that quietly fails in SystemVerilog, an explosion at the point of use in Python, both deep in the run.
+> **In the UVM...** we learned the database's classic mistakes one painful demonstration at a time: a path that matched nothing, a key spelled two ways, a wildcard shadowing a specific setting, a parent and child fighting over one component. SystemVerilog's `get()` reports them all the same way — `return 0`, variable untouched — and both books taught `print_config(1)` and `+UVM_CONFIG_DB_TRACE` as the way out.
 
-## The wrong path
+## Missing data
 
-The classic: you configure `"env.covergae"` and nothing complains — glob matching has no opinion about paths that match nothing. The component quietly uses its default, and you discover the typo three weeks later when coverage comes back empty. There is no path string in rustdv; the "path" is a chain of field names, and a wrong name is:
-
-```rust
-// Figure 1: The "wrong path" mistake is now a wrong name
-
-struct AluEnvConfig {
-    enable_coverage: bool,
-}
-
-fn main() {
-    // In pyuvm: ConfigDB().set(self, "env.covergae", "ENABLE", True)
-    // matched nothing, silently, and the component used its default.
-    let config = AluEnvConfig { enable_covergae: true };
-    let _ = config;
-}
-```
-
-```text
---
-error[E0560]: struct `AluEnvConfig` has no field named `enable_covergae`
-  --> src/main.rs:11:33
-   |
-11 |     let config = AluEnvConfig { enable_covergae: true };
-   |                                 ^^^^^^^^^^^^^^^ unknown field
-   |
-help: a field with a similar name exists
-   |
-11 +     let config = AluEnvConfig { enable_coverage: true };
-```
-
-Read the bottom of that message again: the compiler *found the field you meant* and typed out the corrected line. The bug class that cost afternoons now costs the time it takes to accept a suggestion.
-
-## The wrong type
-
-Second classic: store `"true"` — the string — where the component expects a boolean. The ConfigDB, whose values were `Any`, stored it cheerfully; the explosion came at the point of use, mid-simulation, with a stack trace pointing at the innocent component rather than the guilty `set()`.
+The lab animal is Chapter 27's logger, unchanged: it asks for `"MSG"` and propagates the error with `?`.
 
 ```rust
-// Figure 2: The "wrong type" mistake never reaches runtime
+// Chapter 28, Figure 1: The logger that propagates the error
+#[derive(Component, Default)]
+struct MsgLogger;
 
-fn main() {
-    // In pyuvm: set(..., "ENABLE", "true") stored a *string*; the component
-    // exploded (or worse, didn't) at the point of use, mid-simulation.
-    let config = AluEnvConfig { enable_coverage: "true" };
-    let _ = config;
+impl Component for MsgLogger {
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let _obj = ctx.raise_objection("logging the configured message");
+        let msg: String = ConfigDb::get(Some(ctx), "", "MSG")?;
+        ctx.info(&msg);
+        Ok(())
+    }
 }
 ```
 
-```text
---
-error[E0308]: mismatched types
-  --> src/main.rs:11:50
-   |
-11 |     let config = AluEnvConfig { enable_coverage: "true" };
-   |                                                  ^^^^^^ expected `bool`, found `&str`
-```
-
-Note where the error points: at the *setter*, not the user — the guilty line, not the innocent one. And note the "or worse, didn't" in the comment: in Python, a non-empty string is truthy, so `"false"` would have *enabled* coverage and passed every runtime check. That bug — configuration accepted, wrong, and invisible — is the one this design was bought to kill.
-
-## The wrong phase, and the shadowed precedence
-
-Two crime scenes need no figure, because the premises were demolished. **Set-after-get** — calling `ConfigDB().get()` in a build phase that ran before the test's `set()` — was an *ordering* bug between two runtime events. In rustdv there are no two events: the config struct is built, whole, before the env constructor runs, and a component cannot ask for a value before it exists because the value's existence is a precondition of the component's. The borrow checker will not even let you construct the env from a config you haven't finished building.
-
-**Shadowed precedence** — the wildcard-versus-specific-path puzzles, the parent-beats-child rule, the whole "longest path wins, except in the build phase, where depth wins" apparatus — dissolved with the database. Chapter 27's figure 10 showed the residue: two values for one field is `E0062`, a contradiction, not a contest. There is exactly one value, constructed in test code you can read top to bottom, and *reading the test* is the entire resolution algorithm.
-
-For completeness, the third member of the demolished set:
+Now break it. The environment holds `loga` and `logb`; the test configures only one:
 
 ```rust
-// Figure 3: Forgetting to configure is a missing field
+// Chapter 28, Figure 2: A message for only one of two loggers
+#[rustdv::test(expect_error = "config_not_found")]
+#[derive(Component, Default)]
+struct MsgTest {
+    #[component(child)]
+    env: Option<MsgEnv>,
+}
 
-fn main() {
-    // In pyuvm: the get() raised UVMConfigItemNotFound at build time —
-    // if you were lucky. Here the test simply doesn't build:
-    let config = AluEnvConfig { enable_coverage: true };
-    let _ = config;
+impl Component for MsgTest {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        self.env = Some(MsgEnv::default());
+        ConfigDb::set(Some(ctx), "env.loga", "MSG", String::from("LOG A msg"));
+    }
 }
 ```
 
-```text
---
-error[E0063]: missing field `n_ops` in initializer of `AluEnvConfig`
-```
-
-`UVMConfigItemNotFound` was the *lucky* outcome in pyuvm — it meant the miss happened where a lookup could notice. The unlucky outcome was a default silently used. Both are now `E0063`, at compile time, naming the field.
-
-## The scorecard
+`logb` finds nothing, its `?` fails the test, and the failure carries the name `config_not_found`. Look at the attribute: `expect_error = "config_not_found"` says this test passes *only if it fails that way*. This is sharper than a bare "expected to fail" flag — a test that failed for some other reason is still reported as a failure, and the report says what you got instead:
 
 ```text
-# Figure 4: The ConfigDB failure modes, dispositioned
-
-pyuvm mistake                     discovered            rustdv disposition
--------------                     ----------            ------------------
-typo'd path                       silently, much later  E0560, with the fix suggested
-wrong value type                  at point of use       E0308, at the setter
-get() before set()                build-time raise      unrepresentable (one-pass build)
-wildcard/precedence shadowing     seed-dependent        unrepresentable (one value per field)
-parent/child conflict             rule you memorized    E0062, a contradiction
-forgot to set at all              raise — or a default  E0063, naming the field
+MsgTest FAILED: expected error 'config_type_mismatch', got config_not_found: ...
 ```
 
-## The debugging that remains
+(That line is real output, produced by deliberately changing the expectation to the wrong kind.) `expect_error` is how this book demonstrates failures without faking transcripts, and it is how you can pin down a testbench's error behavior in a regression.
 
-Now the honest half of the chapter, because "the compiler catches it" is true only of configuration *plumbing*. What remains is configuration *values*: the config that builds fine, flows fine, and is wrong — twenty ops where you meant two hundred, a passive agent where the test needed an active one. The compiler has no opinion about your intentions.
-
-Two habits cover most of it. First, print the tree. pyuvm could dump the ConfigDB's contents on demand; the rustdv equivalent is one derive away, and better formatted:
+The second classic:
 
 ```rust
-// Figure 5: The debugging that remains — print the config tree
-
-#[derive(Debug)]
-struct AluAgentConfig {
-    is_active: Active,
-    n_ops: u32,
+// Chapter 28, Figure 3: Misspelling a key
+#[rustdv::test(expect_error = "config_not_found")]
+#[derive(Component, Default)]
+struct MsgTestAlmostFixed {
+    #[component(child)]
+    env: Option<MsgEnv>,
 }
 
-#[derive(Debug)]
-struct AluEnvConfig {
-    agent: AluAgentConfig,
-    enable_coverage: bool,
+impl Component for MsgTestAlmostFixed {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        self.env = Some(MsgEnv::default());
+        ConfigDb::set(Some(ctx), "env.loga", "MSG", String::from("LOG A msg"));
+        ConfigDb::set(Some(ctx), "env.logb", "MESG", String::from("LOG B msg"));
+    }
+}
+```
+
+Both loggers are now configured — except one value was stored under `MESG`. The failure is identical to figure 2's, because a key that was never written and a key written under another name are the same thing to the database. Nothing here is a compile error; `"MESG"` is a perfectly good string. This is the bug the toolkit exists for, and figures 5 through 7 will catch it.
+
+## Handling a missing value
+
+Sometimes "not found" is not a bug — a component with a sensible default should use it. The variant matters:
+
+```rust
+// Chapter 28, Figure 4: A logger that copes
+#[derive(Component, Default)]
+struct NiceMsgLogger;
+
+impl Component for NiceMsgLogger {
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let _obj = ctx.raise_objection("logging the configured message");
+        let msg: String = match ConfigDb::get(Some(ctx), "", "MSG") {
+            Ok(msg) => msg,
+            Err(ConfigError::NotFound { .. }) => {
+                ctx.warning("Could not find MSG. Setting to default");
+                String::from("No message for you!")
+            }
+            Err(other) => return Err(other.into()),
+        };
+        ctx.info(&msg);
+        Ok(())
+    }
+}
+```
+
+Matching on the variant is the point. `NotFound` is recoverable — fall back and *say so*, with a warning that leaves a trail in the log. Any other failure is not: a type mismatch means the value is there and you asked for it wrongly, and defaulting past it would bury a real bug under a polite default. Chapter 27 explained why SystemVerilog cannot draw this line — its `get()` collapses every failure into `return 0` — and pyuvm's `except UVMConfigItemNotFound` draws it the same way this `match` does. The difference is the last arm: the compiler makes you decide what happens to the errors you did *not* name.
+
+## Printing the database
+
+```rust
+// Chapter 28, Figure 5: Printing the ConfigDb
+#[rustdv::test]
+#[derive(Component, Default)]
+struct NiceMsgTest {
+    #[component(child)]
+    env: Option<NiceMsgEnv>,
 }
 
-fn main() {
-    let config = AluEnvConfig {
-        agent: AluAgentConfig { is_active: Active::Active, n_ops: 20 },
-        enable_coverage: true,
-    };
-    // pyuvm: ConfigDB() printed its store on demand. rustdv: one derive.
-    println!("{config:#?}");
+impl Component for NiceMsgTest {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        self.env = Some(NiceMsgEnv::default());
+        ConfigDb::set(Some(ctx), "env.loga", "MSG", String::from("LOG A msg"));
+    }
+
+    fn end_of_elaboration(&mut self, _ctx: &mut RustdvCtx) {
+        ConfigDb::print();
+    }
+}
+```
+
+`end_of_elaboration` is the right home for the dump, and knowing why is knowing the lifecycle: the hierarchy is final and nothing has run yet, so what you see is exactly what the run phase will resolve against. (The same reasoning put `print_config` calls there in both source books.)
+
+```rust
+// Chapter 28, Figure 6: Debugging the misspelled key by printing
+#[rustdv::test]
+#[derive(Component, Default)]
+struct NiceMsgTestAlmostFixed {
+    #[component(child)]
+    env: Option<NiceMsgEnv>,
+}
+
+impl Component for NiceMsgTestAlmostFixed {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        self.env = Some(NiceMsgEnv::default());
+        ConfigDb::set(Some(ctx), "env.loga", "MSG", String::from("LOG A msg"));
+        ConfigDb::set(Some(ctx), "env.logb", "MESG", String::from("LOG B msg"));
+    }
+
+    fn end_of_elaboration(&mut self, _ctx: &mut RustdvCtx) {
+        ConfigDb::print();
+    }
 }
 ```
 
 ```text
---
-AluEnvConfig {
-    agent: AluAgentConfig {
-        is_active: Active,
-        n_ops: 20,
-    },
-    enable_coverage: true,
+# Figure 7: The dump puts MSG and MESG side by side
+
+[TRANSCRIPT NEEDED — copy the NiceMsgTestAlmostFixed dump verbatim from a
+rerun of `sim-common/run_sim.sh ch28_config_debugging playground`.]
+```
+
+The dump is what finds the figure-3 bug: two entries under `env.logb`-shaped paths, one keyed `MSG` and one keyed `MESG`, and the mismatch is visible in a way it never is at the point of failure. A misspelling is invisible in the place you wrote it and obvious in a table.
+
+For contrast, the wildcard configuration from Chapter 27, working — worth running with the dump on simply to see what *healthy* looks like, since you will be reading these tables on bad days:
+
+```rust
+// Chapter 28, Figure 8: Wildcards behaving, for contrast
+#[rustdv::test]
+#[derive(Component, Default)]
+struct MultiMsgTest {
+    #[component(child)]
+    env: Option<MultiMsgEnv>,
+}
+
+impl Component for MultiMsgTest {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        self.env = Some(MultiMsgEnv::default());
+        ConfigDb::set(Some(ctx), "env.loga", "MSG", String::from("LOG A msg"));
+        ConfigDb::set(Some(ctx), "env.logb", "MSG", String::from("LOG B msg"));
+        ConfigDb::set(Some(ctx), "env.t*", "MSG", String::from("TALK TALK"));
+    }
 }
 ```
 
-Put `#[derive(Debug)]` on every config struct as a matter of policy, and log the tree at the top of every test (`log::info(&format!("{config:#?}"))`); when a run misbehaves, the first question — *what configuration actually ran?* — is answered in the transcript, next to the seed that reproduces it. Second, when a config value encodes a constraint (n_ops must be positive; a passive agent must not be handed a sequence), check it in the config's constructor and return `Result` — Chapter 9's machinery, pushing even value bugs as early as they can go, which is construction time rather than four hundred nanoseconds in.
+## Debugging a parent/child conflict
 
-And when a wrong *value* does slip through to the DUT? Then it is not a configuration bug anymore; it is a stimulus bug wearing configuration's clothes, and the tools are the ones the rest of this book teaches: the scoreboard that catches the consequence, the seed that reproduces it, and the logging levels (Chapter 26) that open the suspect component's mouth.
+Chapter 27 ended with the parent winning the write to `env.loga` and a promise: here, you can watch the contest instead of memorizing its outcome.
+
+```rust
+// Chapter 28, Figure 9: Both the env and the test configure env.loga
+#[derive(Component, Default)]
+struct ConflictEnv {
+    #[component(child)]
+    loga: Option<MsgLogger>,
+}
+
+impl Component for ConflictEnv {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        self.loga = Some(MsgLogger::default());
+        ConfigDb::set(Some(ctx), "loga", "MSG", String::from("CHILD RULES!"));
+    }
+}
+
+#[rustdv::test]
+#[derive(Component, Default)]
+struct ConflictTest {
+    #[component(child)]
+    env: Option<ConflictEnv>,
+}
+
+impl Component for ConflictTest {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        self.env = Some(ConflictEnv::default());
+        ConfigDb::set(Some(ctx), "env.loga", "MSG", String::from("PARENT RULES!"));
+    }
+
+    fn end_of_elaboration(&mut self, _ctx: &mut RustdvCtx) {
+        ConfigDb::print();
+    }
+}
+```
+
+```text
+# Figure 10: The dump shows the competition, with precedences
+
+PATH                        : KEY       : DATA
+ConflictTest.env.loga       : MSG       : {1000: "PARENT RULES!", 999: "CHILD RULES!"}
+```
+
+This is where the dump earns its keep. A resolved value tells you who won; it does not tell you anyone else was competing. The dump lists *every* value stored at a path with the precedence each was written at — the losing entry is right there, and the numbers explain the outcome instead of asking you to trust Chapter 27's rule. The test wrote at depth 0, precedence 1000; the env at depth 1, precedence 999; shallower wins, and now you can see by how much.
+
+## Tracing
+
+The dump is a snapshot; tracing is the film.
+
+```rust
+// Chapter 28, Figure 11: Tracing every ConfigDb operation
+#[rustdv::test]
+#[derive(Component, Default)]
+struct GlobalTest {
+    #[component(child)]
+    env: Option<GlobalEnv>,
+}
+
+impl Component for GlobalTest {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        ConfigDb::set_tracing(true);
+        self.env = Some(GlobalEnv::default());
+        ConfigDb::set(Some(ctx), "env.loga", "MSG", String::from("LOG A msg"));
+        ConfigDb::set(Some(ctx), "env.logb", "MSG", String::from("LOG B msg"));
+        ConfigDb::set(Some(ctx), "env.t*", "MSG", String::from("TALK TALK"));
+        ConfigDb::set(None, "*", "MSG", String::from("GLOBAL"));
+    }
+}
+```
+
+```text
+# Figure 12: Every set and get, as it happens
+
+CFGDB/SET context=GlobalTest offset="env.loga" -> GlobalTest.env.loga MSG="LOG A msg"
+CFGDB/SET context=<none> offset="*" -> * MSG="GLOBAL"
+CFGDB/GET context=GlobalTest.env.gtalk offset="" -> GlobalTest.env.gtalk MSG="GLOBAL"
+```
+
+Turn it on before building the hierarchy and every operation logs with the context, the offset, and the path they resolved to. Read the trace's structure: each line shows the *inputs* and the resolution. When a lookup misses, the thing you got wrong is almost always the resolved path — a context you did not expect, an offset that anchored somewhere else — and the trace shows exactly the resolution the database performed, not the one you imagined. This is the port of `+UVM_CONFIG_DB_TRACE`, as a call rather than a plusarg, so a test can scope it to the region under suspicion.
 
 ## Summary
 
-The ConfigDB's debugging chapter ported as a scorecard. Wrong path, wrong type, missing value: compile errors with the guilty line and often the fix in the message. Set-before-get and precedence shadowing: unrepresentable, because one-pass construction leaves no gap for ordering bugs and one-field-one-value leaves nothing to shadow. What remains is the debugging that no type system removes — wrong values, honestly configured — and its tools are `#[derive(Debug)]` on every config, the tree logged at test start, constructor-time validation returning `Result`, and, past that, the ordinary machinery of a checking testbench.
+Late binding traded away compile-time checking; this chapter is what it bought instead. A failed `get` is a `Result` whose variants distinguish the recoverable miss (`NotFound` — default and warn) from the genuine bugs (a type mismatch is never something to default past), and `expect_error` turns a deliberate failure into a regression asset that fails if it fails any *other* way. `ConfigDb::print()` at `end_of_elaboration` shows the database as the run phase will see it — misspellings side by side, conflicts with the precedence numbers that decide them — and `ConfigDb::set_tracing(true)` films every set and get with the resolution that the point of failure never shows you.
 
-The ConfigDB was one of pyuvm's two big runtime databases. The other — the factory, which turned class names into objects and let tests swap components by override — is next, and its rustdv fate is the same in outline and more interesting in detail: the job stays, the registry goes, and the replacement has been hiding in Chapter 12 all along.
+The ConfigDb carries values to components that nobody passed them to. The factory, next, does the same for *types*: it builds components a test can substitute without touching the environment that asks for them.

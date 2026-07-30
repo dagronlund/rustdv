@@ -32,7 +32,7 @@ Synchronous reset: hold `reset_n` low and `count` clears on each clock; raise it
 
 ## The dut handle, without the magic
 
-A rustdv test receives a `RustdvCtx`, and `ctx.dut()` returns a `HierarchyHandle` to the top of the hierarchy — the counterpart of cocotb's `dut` argument. Getting at a signal is where the languages part company. In Python, `dut.reset_n` worked because `__getattr__` invented the attribute on demand by asking the simulator — pure runtime dynamism, and if you typed `dut.rst_n`, you found out via `AttributeError` deep into the run. Rust cannot invent struct fields at runtime, and honestly would not want to: rustdv's spelling is `dut.signal("reset_n")`, and it returns — you knew before you read it — a `Result`:
+A rustdv test receives a `RustdvCtx`, and `ctx.dut()` returns a `HierarchyHandle` to the top of the hierarchy — the counterpart of cocotb's `dut` argument. Getting at a signal is where the languages part company. In Python, `dut.reset_n` worked because `__getattr__` invented the attribute on demand by asking the simulator — pure runtime dynamism, and if you typed `dut.rst_n`, you found out via `AttributeError` deep into the run. Rust cannot invent struct fields at runtime, and would not want to: rustdv's spelling is `dut.signal("reset_n")`, and it returns — you knew before you read it — a `Result`:
 
 ```rust
 // Figure 2: A typo'd signal name is an Err, not a surprise
