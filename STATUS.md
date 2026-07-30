@@ -532,6 +532,11 @@ default instead of 1ns/1ns and its watchdog fired. `smoke_tb.sv` now takes
 `wire clk = dut.clk`; `run_smoke.sh` compiles `timescale.v` first for every
 simulator entry.
 
+**Caveat on that verification: it was Linux only.** See the 2026-07-30 entry
+below on D113 — the macOS run was failing for an unrelated reason at the time
+these claims were made, and the claims were stated more broadly than the
+evidence supported.
+
 Verified: every `framework-tests` group (`clock`, `trig`, `sig_`, `conc`,
 `elab`, `runner_`) and the unfiltered all-39 run, all green, zero `VPI
 error`/`SCHEDULER ERROR` lines. `regress.py --suite unit` (110 tests),
@@ -542,3 +547,42 @@ their transcripts needed regenerating — D108's own scope note expected a wider
 blast radius than this turned out to need, because D112 (landed the same day)
 had already narrowed `Clock`'s real users down to `framework-tests` and one
 book chapter (ch17), neither of which this fix touches behaviorally.
+
+## 2026-07-30 — D113: `sim/build/` was poisoning the host's simulator
+
+`sim/run_rustdv.sh` failed on Ray's Mac with `Killed: 9` and **no output at
+all**, on the branch, while passing in the Linux sandbox against the same
+commit and passing on `master`. It read as a regression in D108/D112. It was
+not.
+
+`sim/run_rustdv.sh` and `sim/run_smoke.sh` were the last two scripts writing
+their build products into the repo (`mkdir -p build`, `cp "$LIB"
+build/tinyalu_tb.vpi`). `sim/build/` is gitignored, so it survives every branch
+switch, and the folder is shared with a Linux sandbox — so the file macOS `vvp`
+was told to `dlopen` was an **ELF shared object**, byte-identical (same
+BuildID) to the sandbox's `libtinyalu_tb.so`. macOS will not load a foreign
+image and on Apple Silicon says so with SIGKILL before anything prints, which
+is why there was no output to diagnose from. The branch/`master` split was the
+sync race resolving differently either side of a rebuild, not a property of the
+code.
+
+Both scripts now build under `/tmp/rustdv-$(id -u)/` with `SIM_BUILD_DIR`
+overriding — the convention `rustdv/framework-tests/run.sh` and
+`output/examples/sim-common/run_sim.sh` already followed, which is exactly why
+the 21 chapter entries and the six targeted groups never showed this. Verified
+after the change: `sim/run_rustdv.sh release` → `REGRESSION: PASS`,
+`sim/run_smoke.sh icarus` → `SMOKE: PASS`, `regress.py --suite custom` → 32
+passed / 0 failed, and `sim/build/` untouched by any of it.
+
+**Stale artifacts must be deleted by hand once**, on any machine that ran the
+old scripts: `rm -f sim/build/tinyalu_tb.vpi sim/build/tinyalu_rustdv.vvp
+sim/build/smoke.vvp` (individual files, not the directory — deleting a
+directory inside the synced folder forks a `dir 2/` duplicate).
+
+**The process lesson, recorded because it cost an afternoon.** The Linux
+verification of D108/D112 was real but was reported as if it covered the
+project's supported platforms; it did not, and the first macOS failure was
+argued away as environmental on evidence that could not support that. A green
+sandbox run is evidence about the sandbox. macOS/arm64 is a shipping platform
+for this project (STATUS, 2026-07-13) and nothing is verified there until it is
+run there.
