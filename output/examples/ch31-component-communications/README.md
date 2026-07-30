@@ -6,20 +6,30 @@ Run with:
 sim-common/run_sim.sh ch31_component_communications playground
 ```
 
+Figure numbers are the **book's** (D110: one numbering space per chapter, code
+and transcripts drawn from the same sequence); the `.rs` captions carry the same
+numbers. Figures 4, 8, 13, 15 and 17 are transcripts, which is why the code
+captions skip them.
+
 | Figure | Title | Where |
 |---|---|---|
 | 1 | A producer holds a put port and blocks on a full FIFO | `src/ch31_component_communications.rs` (`Producer`) |
 | 2 | A consumer that peeks, then gets | `src/ch31_component_communications.rs` (`Consumer`) |
 | 3 | The env builds the two components and a FIFO, then wires them | `src/ch31_component_communications.rs` (`PutGetPeekTest`) |
-| 4 | A non-blocking producer never waits | `src/ch31_component_communications.rs` (`NbProducer`) |
-| 5 | A non-blocking consumer | `src/ch31_component_communications.rs` (`NbConsumer`) |
-| 6 | Same wiring, non-blocking components | `src/ch31_component_communications.rs` (`NonBlockingTest`) |
-| 7 | A processing pipeline — y = 2x² | text + diagram |
-| 8 | The first stage squares its input | `src/ch31_component_communications.rs` (`SquareIt`) |
-| 9 | The second stage doubles what the first produced | `src/ch31_component_communications.rs` (`TimesTwo`) |
-| 10 | The test drives the pipeline and checks the answer | `src/ch31_component_communications.rs` (`MathTest`) |
-| 11 | A port left unconnected is an elaboration error | `src/ch31_component_communications.rs` (`UnconnectedTest`) |
-| 12 | A FIFO's built-in analysis taps | `src/ch31_component_communications.rs` (`FifoTapTest`) |
+| 4 | Put, peek, get, in order | transcript — `PutGetPeekTest` |
+| 5 | A non-blocking producer never waits | `src/ch31_component_communications.rs` (`NbProducer`) |
+| 6 | A non-blocking consumer | `src/ch31_component_communications.rs` (`NbConsumer`) |
+| 7 | Same wiring, non-blocking components | `src/ch31_component_communications.rs` (`NonBlockingTest`) |
+| 8 | Retrying a full FIFO, and the packet coming home | transcript — `NonBlockingTest` |
+| 9 | A processing pipeline — y = 2x² | `src/ch31_component_communications.rs` (comment block); the book renders it as an SVG drawing |
+| 10 | The first stage squares its input | `src/ch31_component_communications.rs` (`SquareIt`) |
+| 11 | The second stage doubles what the first produced | `src/ch31_component_communications.rs` (`TimesTwo`) |
+| 12 | The test drives the pipeline and checks the answer | `src/ch31_component_communications.rs` (`MathTest`) |
+| 13 | 2, 8, 18, 32 | transcript — `MathTest` |
+| 14 | A port left unconnected is an elaboration error | `src/ch31_component_communications.rs` (`UnconnectedTest`) |
+| 15 | The whole tree's connection errors, at once | transcript — `UnconnectedTest` |
+| 16 | A FIFO's built-in analysis taps | `src/ch31_component_communications.rs` (`FifoTapTest`) |
+| 17 | Every put and get, observed | transcript — `FifoTapTest` |
 
 Five tests, all ending `REGRESSION: PASS`.
 

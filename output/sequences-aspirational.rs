@@ -17,10 +17,11 @@
 //! ===========================================================================
 //!
 //! 1. `Sequencer<REQ, RSP>` is a **component**: a concrete child declared
-//!    `#[component(sequencer)]`, the same carve-out from D78 as
-//!    `#[component(fifo)]` (D84) and for the same reason — something concrete
-//!    must hand out the export, and a sequencer is plumbing, never a
-//!    factory-override target.
+//!    `#[component]`, carved out of D78 the same way a `TlmFifo` is (D84) and
+//!    for the same reason — something concrete must hand out the export, and a
+//!    sequencer is plumbing, never a factory-override target. The carve-out is
+//!    a property of the type, not of the attribute: D114 (§42) removed the
+//!    attribute's argument, since the derive never read it.
 //! 2. `#[port(seq_item)]` is a new port kind. `SeqItemPort<REQ, RSP>`
 //!    implements `PortField`, so `Driver::SEQ_ITEM_PORT` is generated and
 //!    `connect` resolves it through `ComponentNode::port_slot` like every
@@ -121,9 +122,11 @@ impl Component for Driver {
 
 // Chapter 36, Figure 3: The env owns the sequencer and connects it.
 //
-// `#[component(sequencer)]` is the same deliberate exception D84 made for
+// A concrete sequencer field is the same deliberate exception D84 made for
 // FIFOs: both endpoints of a connection are erased `RustdvComp` slots, so
 // something concrete has to make the call, and the sequencer is that thing.
+// The declaration says only `#[component]` — the exception lives in the field's
+// type, which is where it was always decided (D114, §42).
 // The connect line has the shape every connection in Chapters 31–34 had —
 // a concrete child, a named export, `connect(owner, PORT_NAME)`.
 //
@@ -135,21 +138,21 @@ impl Component for Driver {
 // a rename.
 #[derive(Component, Default)]
 struct AluEnv {
-    #[component(sequencer)]
+    #[component]
     seqr: Sequencer<AluCommand, AluResult>,
-    #[component(child)]
+    #[component]
     driver: RustdvComp,
-    #[component(child)]
+    #[component]
     cmd_mon: RustdvComp,
-    #[component(child)]
+    #[component]
     result_mon: RustdvComp,
-    #[component(child)]
+    #[component]
     scoreboard: RustdvComp,
-    #[component(child)]
+    #[component]
     coverage: RustdvComp,
-    #[component(fifo)]
+    #[component]
     cmd_bus: AnalysisBus<CmdTuple>,
-    #[component(fifo)]
+    #[component]
     result_bus: AnalysisBus<u64>,
 }
 
@@ -283,7 +286,7 @@ impl Sequence<AluCommand, AluResult> for MaxSeq {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct BaseTest {
-    #[component(child)]
+    #[component]
     env: RustdvComp,
 }
 
@@ -321,7 +324,7 @@ impl Component for BaseTest {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct RandomTest {
-    #[component(child)]
+    #[component]
     inner: RustdvComp,
 }
 
@@ -339,7 +342,7 @@ impl Component for RandomTest {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct MaxTest {
-    #[component(child)]
+    #[component]
     inner: RustdvComp,
 }
 
@@ -624,7 +627,7 @@ impl Sequence<AluCommand, AluResult> for FibonacciProgramSeq {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct AluTest {
-    #[component(child)]
+    #[component]
     env: RustdvComp,
 }
 

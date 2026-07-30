@@ -78,12 +78,16 @@ Nothing queued for you on the framework. In Ray's order:
    and `book-pdf/chapter-notes.md`. **You do not edit `book-pdf/`, and it does
    not edit code.** If you learn something the prose needs, append a line to
    `chapter-notes.md` and say so.
-2. **The renumbering pass, after the prose** — apply
-   `book-pdf/renumbering-spec.md` to the `.rs` captions, in place and
-   line-count-neutral, because transcripts embed `file:line`.
-3. **Ray's, not yours** — the licensing decision
-   (`output/rights-inventory.md`) and the
-   `#[component(fifo)]`/`#[component(sequencer)]` naming question (D106's tail).
+2. **README regeneration** — `book-pdf/renumbering-spec.md`'s last section lists
+   the stale ones: ch15–ch21 (they cite `src/lib.rs`, and their transcripts
+   embed pre-rename paths), plus ch27, ch36, ch37, ch38, ch39. Regenerate
+   transcripts **after** any file renames, never before, since log lines carry
+   paths. `HANDOFF.md` "Transcripts owed" is the checklist.
+
+**Closed 2026-07-30, so do not re-raise them:** the renumbering pass has run
+(eight crates, line-count-neutral); the child attribute is bare `#[component]`
+with no argument (D114, §42 — D106's tail is closed, and the answer was that
+the derive never read the word); and the licensing question is off the list.
 
 So: unless the verification above failed, **ask what he wants before starting
 anything.**

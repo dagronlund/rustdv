@@ -586,3 +586,97 @@ argued away as environmental on evidence that could not support that. A green
 sandbox run is evidence about the sandbox. macOS/arm64 is a shipping platform
 for this project (STATUS, 2026-07-13) and nothing is verified there until it is
 run there.
+
+## 2026-07-30 — the renumbering pass
+
+`book-pdf/renumbering-spec.md` applied to the `.rs` captions in the eight
+crates it lists: ch27, ch28, ch31, ch32, ch34, ch36, ch37, ch39. Every edit is
+a digit change inside an existing comment line, so each file's insertions equal
+its deletions — required, because transcripts embed `file:line` and a caption
+edit that moved a line would invalidate every transcript in that crate. All
+eight crates rebuilt clean afterwards (Linux sandbox).
+
+Two things the spec did not list, both handled: ch34's module doc comment said
+"Chapter 34 owns Figures 1–2" and used `// Chapter 34, Figure 1:` as a syntax
+example, both stale once the captions moved to 2–3; and ch37's "Figure 4 is a
+paragraph, not code" comment was reworded to drop the number, since the book
+renders that passage as prose rather than a numbered figure.
+
+**A consequence the spec did not anticipate.** The captions were renumbered into
+the *book's* numbering, but the chapter READMEs mapped the *crate's*. Every
+chapter the pass touched therefore had a README whose figure numbers no longer
+matched its own source — including ch28, ch31, ch32 and ch34, which the spec
+lists as needing no work. All eight were rebuilt in the book's numbering, so a
+README row number is now the figure number.
+
+## 2026-07-30 — sims rerun, transcripts and READMEs regenerated
+
+Ran on Linux (sandbox), `RUSTDV_RANDOM_SEED=1`, everything built under
+`/tmp/rustdv-$(id -u)/` per D113 — `sim/build/` was untouched and stayed empty.
+All green: ch27 (4 tests), ch28 (7), ch36 (3), ch37 (1), ch38 (1), ch39 (3),
+and `sim/run_rustdv.sh` (RandomTest + MaxTest, 4 compared / 0 mismatches on
+MaxTest, `REGRESSION: PASS`).
+
+Rebuilt the READMEs for ch27, ch28, ch31, ch32, ch34, ch36, ch37, ch38, ch39 —
+figure maps in book numbering, transcripts pasted verbatim under a labelled
+heading so the prose pass can copy them into the manuscript's 13
+`[TRANSCRIPT NEEDED]` markers.
+
+Two of them were badly wrong, not merely stale, and had already misled the prose
+pass once (HANDOFF.md records it): **ch37's README was titled "Fibonacci
+Testbench: 7.1"** and described `FibonacciSeq`/`RspDriver`/`FibEnv`, none of
+which exist in that crate — it is the repair desk. **ch38's was titled
+"get_response Testbench: 7.2"** and described a `CherryPickSeq` that does not
+exist either. Both now match their sources. ch37's run command was also wrong
+(`tinyalu`; the crate runs on `playground`).
+
+**ch15–ch21 done too.** All six sim chapters rerun; 52 `src/lib.rs` references
+across ch15–ch20 repointed at the real crate roots, and ch21's two repointed at
+`rustdv/rustdv-macros/src/rustdv_macros.rs`. Then every transcript line in those
+READMEs was checked against the fresh run, which caught three that were not
+merely mis-pathed but **wrong**: ch18, ch19 and ch20 carried simulated times 5ns
+early throughout (ch18 35/55/75/125 → 40/60/80/130; ch19 45→50 and so on; ch20
+145→150, 290→300). The data is identical — same operands, same results, same
+seed — so this is D112 landing: the DUT self-clocks now, and the first edge
+arrives 5ns later than it did against the externally-clocked version. All three
+replaced with the real output and re-verified line by line.
+
+`ch14-modules-crates-cargo/README.md` still says `src/lib.rs` and is **correct**
+— that crate really does have one, because it is the chapter that teaches Cargo's
+conventions. It is the one deliberate exception to D29, and Part I is frozen.
+
+*Platform note:* this is a Linux run. macOS/arm64 is a shipping platform and
+these transcripts go into the book, so they want confirming on the Mac — a diff,
+not a re-read. Fixed seed, single-threaded executor and simulated time should
+make them byte-identical; any line that differs is a real finding.
+
+## 2026-07-30 — D114: the child attribute takes no argument
+
+`#[component(child)]`, `#[component(fifo)]` and `#[component(sequencer)]` are
+gone; the attribute is bare `#[component]`. Full reasoning in
+`output/.design-decisions.md` §42; the short version is that the derive never
+read the word. It tested only that one of the three appeared in the attribute
+text and set a single flag; what a field becomes is decided by its Rust type
+(`RustdvComp` → factory slot, `Option<T>` → declared-but-not-yet-built,
+`Vec<T>` → list, otherwise a plain child), and that dispatch reads `f.ty`.
+
+This closes D106's tail, which had asked whether the D84 carve-out should get
+one role word or per-type spellings. Neither answer was available: both would
+have named something the compiler never saw. `AnalysisBus` declared
+`#[component(fifo)]` — the wart D106 recorded — was what prompted reading the
+macro, and it was wrong precisely because nothing could catch it.
+
+Changed: all 21 declaration sites under `rustdv/`, every site in the 20 example
+crates under `output/examples/`, `skills/rustdv-testbench/SKILL.md`,
+`.claude/skills/wire-an-env/SKILL.md`, and the derive itself. The workspace
+builds clean (Linux sandbox). The derive still matches on
+`starts_with("component")`, so an old spelling would compile; none survives in
+code and none should return.
+
+**The manuscript is deliberately not changed** — 17 files in `book-pdf/src`
+still print the old form, flagged in `book-pdf/chapter-notes.md` for the prose
+pass, which is the only pass that edits the book.
+
+*Noticed alongside, not fixed:* `#[component(no_factory)]` is now the only
+argument the derive parses, `struct_attr_contains` exists to serve it, and no
+struct in the tree applies it. Live logic, no call site.

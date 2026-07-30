@@ -13,10 +13,17 @@ captions in the source carry the chapter number, so both live here without
 colliding. Chapter 33's figure map is in
 [`../ch33-components-testbench-6.0/README.md`](../ch33-components-testbench-6.0/README.md).
 
+Figure numbers are the **book's** (D110: one numbering space per chapter, code
+and transcripts drawn from the same sequence); the `.rs` captions carry the same
+numbers. Figure 1 is the book's SVG architecture drawing, which is why the
+crate's first Chapter 34 caption is Figure 2.
+
 | Figure | Title | Where |
 |---|---|---|
-| 1 | Build the components and the FIFOs; connect in one place | `src/ch34_connections_testbench_6_0.rs` (`AluEnv`) |
-| 2 | The test is just the env | `src/ch34_connections_testbench_6_0.rs` (`AluTest`) |
+| 1 | The 6.0 architecture | book SVG drawing — no code |
+| 2 | Build the components and the FIFOs; connect in one place | `src/ch34_connections_testbench_6_0.rs` (`AluEnv`) |
+| 3 | The test is just the env | `src/ch34_connections_testbench_6_0.rs` (`AluTest`) |
+| 4 | Testbench 6.0 running | transcript — `AluTest` |
 
 One test, ending `REGRESSION: PASS`. The transcript below is the whole
 testbench — Chapter 33's components included — since they only run once

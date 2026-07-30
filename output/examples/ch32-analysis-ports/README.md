@@ -6,15 +6,23 @@ Run with:
 sim-common/run_sim.sh ch32_analysis_ports playground
 ```
 
+Figure numbers are the **book's** (D110: one numbering space per chapter, code
+and transcripts drawn from the same sequence); the `.rs` captions carry the same
+numbers. Figures 5, 7 and 10 are transcripts, which is why the code captions
+skip them.
+
 | Figure | Title | Where |
 |---|---|---|
 | 1 | A subscriber counts what it sees | `src/ch32_analysis_ports.rs` (`Counter`) |
 | 2 | A second subscriber on the same stream | `src/ch32_analysis_ports.rs` (`Collector`) |
 | 3 | A source holds an analysis port and writes to it | `src/ch32_analysis_ports.rs` (`NumberGen`) |
 | 4 | One publisher, two subscribers, one hub | `src/ch32_analysis_ports.rs` (`BroadcastTest`) |
-| 5 | A hub with no subscribers is legal | `src/ch32_analysis_ports.rs` (`NoSubscribersTest`) |
-| 6 | When the subscriber needs *time* | `src/ch32_analysis_ports.rs` (`Inbox`/`SlowChecker`) |
-| 7 | The publisher does not wait for the slow subscriber | `src/ch32_analysis_ports.rs` (`SlowSubscriberTest`) |
+| 5 | Both subscribers see every datum, all at `0.00ns` | transcript — `BroadcastTest` |
+| 6 | A hub with no subscribers is legal | `src/ch32_analysis_ports.rs` (`NoSubscribersTest`) |
+| 7 | Broadcasting to nobody | transcript — `NoSubscribersTest` |
+| 8 | When the subscriber needs *time* | `src/ch32_analysis_ports.rs` (`Inbox`/`SlowChecker`) |
+| 9 | The publisher does not wait for the slow subscriber | `src/ch32_analysis_ports.rs` (`SlowSubscriberTest`) |
+| 10 | Writes at `0.00ns`, checks at 5, 10 and 15ns | transcript — `SlowSubscriberTest` |
 
 Three tests, all ending `REGRESSION: PASS`.
 

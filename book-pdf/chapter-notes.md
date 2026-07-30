@@ -72,6 +72,11 @@ Read the transcript from a real run rather than composing one: the counts are
 RandomTest 20 compared / 0 mismatches and MaxTest 4 / 0, and every log line
 carries the component's path because the framework supplies it.
 
+The Interlude's listings print `#[component(child)]` / `#[component(fifo)]` /
+`#[component(sequencer)]` in eleven places. All three spellings are gone — the
+attribute is bare `#[component]`. See the cross-cutting note at the head of
+Part II.
+
 ---
 
 ## Part II onward — chapters 15–40: rustdv
@@ -79,6 +84,32 @@ carries the component's path because the framework supplies it.
 Every chapter below has one example crate under `output/examples/`, and that
 crate plus its `README.md` is the source of truth. Nothing checks these listings
 against the manuscript, so copy them carefully.
+
+**Cross-cutting, 2026-07-30: the child attribute is now bare `#[component]`.**
+`#[component(child)]`, `#[component(fifo)]` and `#[component(sequencer)]` are
+gone from the code — the argument never did anything. The macro only ever tested
+whether one of those three words was *present*; it never read which. What a
+field actually becomes is decided by its Rust type (a `RustdvComp` is a factory
+slot, an `Option<T>` is declared-but-not-yet-built, a `Vec<T>` is a list), so the
+word was decoration, and it had already gone wrong: `AnalysisBus` was declared
+`#[component(fifo)]` while being no such thing. This closes D106's tail — there
+is no per-type-versus-per-role naming question left, because there is no name.
+
+The manuscript prints the old spelling in **16 files**: chapters 21, 24, 25, 26,
+27, 28, 29, 30, 31, 32, 34, 36, 37, 38, 39, 40 and the Interlude. Every one is
+stale. Take the attribute from the crate, never from the old text.
+
+Two chapters owe more than a find-and-replace:
+
+- **ch21** teaches `#[derive(Component)]` itself. If it explains what the
+  argument means, that explanation has no subject now.
+- **ch24** introduces the attribute to a reader for the first time. `#[component]`
+  marks a field as a child in the tree — that is the whole rule, and it is now
+  the whole syntax.
+
+**Do not mention the change. The reader never knew the argument existed.** They
+are meeting `#[component]` for the first time; there is no before-and-after to
+explain, and explaining one would import a history the book does not have.
 
 | Ch | Source crate | What must change |
 |---|---|---|
@@ -88,10 +119,10 @@ against the manuscript, so copy them carefully.
 | 18 | `ch18-basic-testbench-1.0` | 11 listings. |
 | 19 | `ch19-tinyalubfm` | 6 listings. **There is no software clock.** The RTL self-clocks and the BFM only waits on edges. `Clock` is taught once, as a cocotb feature; chapters must stop opening with `Clock::new(...)`. The reason is emulation: a BFM that waits on edges ports to a transactor unchanged, one that drives them does not. |
 | 20 | `ch20-struct-based-testbench-2.0` | 11 listings. TB 2.0. **This is a destination, not a stepping stone** — a reader must be able to write a complete, useful testbench with a DUT handle and signals and no components at all. If Part II reads as training wheels for Part III, the learning-curve objection wins. |
-| 21 | `ch21-macros` | Listings are bins under `src/bin/`. No simulator test — it is a macro demonstration, and it is the one crate permanently outside the chapter runs. |
+| 21 | `ch21-macros` | Listings are bins under `src/bin/`. No simulator test — it is a macro demonstration, and it is the one crate permanently outside the chapter runs. **The attribute is bare `#[component]` now** (cross-cutting note above); this is the chapter that teaches `#[derive(Component)]`, so any passage explaining what the argument selects has lost its subject. |
 | 22 | *(none)* | No listings. Prose only. |
 | 23 | `ch23-uvm-test-testbench-3.0` | 6 listings. TB 3.0 — **the test is the only component.** The BFM and scoreboard are ordinary locals inside `run`; the tester is a plain value, not a component. Do not introduce a component tree here; that is ch24's job. **Two front doors, both first-class:** `#[rustdv::test]` annotates either a free `async fn` or a struct — cocotb decorates a coroutine, pyuvm decorates a class. Introduce the struct form without implying the function form was training wheels. **Classes are re-shown, not imported:** the file repeats `Tester`, `RandomTester`, `MaxTester` and `Scoreboard` under "copied from testbench 2.0", as the Python book does — say why, because those classes *evolve* (a plain trait at 3.0, a component at 4.0) and re-showing them is how the reader sees the change. **Paths are named after your test:** logs read `[HelloWorldTest]` where UVM always says `uvm_test_top`; worth a sentence, and it is where `ctx.info()` first earns its keep over bare `log::info`. **Tests register under the type name, verbatim** — `RandomTest`, not `random_test`. |
-| 24 | `ch24-components` | 4 listings. **Reversed argument — rewrite, do not edit.** The chapter currently says one-pass construction "has no gap for them to fill." The gap *was* the feature: the space between a component existing and its children existing is where configuration, factory overrides and TLM connection all live. `build` is top-down, `connect` is bottom-up, and both are real phase methods again. **Do not claim compile-time phase checking.** There is one context type, `RustdvCtx`; a phase-illegal operation is a run-time failure, exactly as in the UVM. Say that cost plainly. Also: `Component::run` is an `async fn` in a trait, so the trait is not object-safe and the framework carries a dyn-safe mirror users never write — invisible in every listing, but do not claim traits and `dyn` compose freely. It is a real edge Rust has not finished, and a good sidebar. **State the phase-direction divergence:** rustdv follows pyuvm's traversal order, which differs from SystemVerilog UVM for `end_of_elaboration`, `start_of_simulation`, `extract`, `check` and `report`. |
+| 24 | `ch24-components` | 4 listings. **Reversed argument — rewrite, do not edit.** The chapter currently says one-pass construction "has no gap for them to fill." The gap *was* the feature: the space between a component existing and its children existing is where configuration, factory overrides and TLM connection all live. `build` is top-down, `connect` is bottom-up, and both are real phase methods again. **Do not claim compile-time phase checking.** There is one context type, `RustdvCtx`; a phase-illegal operation is a run-time failure, exactly as in the UVM. Say that cost plainly. Also: `Component::run` is an `async fn` in a trait, so the trait is not object-safe and the framework carries a dyn-safe mirror users never write — invisible in every listing, but do not claim traits and `dyn` compose freely. It is a real edge Rust has not finished, and a good sidebar. **State the phase-direction divergence:** rustdv follows pyuvm's traversal order, which differs from SystemVerilog UVM for `end_of_elaboration`, `start_of_simulation`, `extract`, `check` and `report`. **This chapter introduces the child attribute**, now bare `#[component]` (cross-cutting note above): it marks a field as a child in the tree, and that is the entire rule. |
 | 25 | `ch25-uvm-env-testbench-4.0` | 10 listings. TB 4.0, the environment. **The BFM lives in the ConfigDb from here on — there is no singleton anywhere in the book.** The test does `ConfigDb::set(None, "*", "BFM", ...)` and any component asks for it by name. Introduce the ConfigDb briefly, enough to read the two lines; ch27 stays the full treatment. Owe the reader one sentence on *why* not a singleton: a singleton asserts there is exactly one BFM, which is false for any testbench with two interfaces — and say that the case which would prove it (two DUTs, two agents) is not a testbench this book builds. The cost, stated: at ch25 the reader meets a database, a path glob and a `Result` while still learning what an environment is. The singleton machinery is *deleted*, not merely unused — do not describe it as available. |
 | 26 | `ch26-logging` | 7 listings. Hierarchical logging through `ctx`. |
 | 27 | `ch27-configuration` | 9 listings. **Reversed at the premise — re-argue from scratch.** The chapter is currently titled "The ConfigDB Problem, Solved by Types." A path-addressed runtime ConfigDb exists. Retitle and rewrite. **The decisive exhibit runs the other way:** SystemVerilog *did* apply heavy typing here — `uvm_config_db#(T)` is parameterized and the type flows into the lookup — and what it bought was a bug class, the `int`/`bit`/`uvm_bitstream_t` mismatch where `set` and `get` never meet and the failure is a silent `return 0` indistinguishable from "never set." Dropping the type parameter, as pyuvm did, removes the failure mode outright. rustdv returns a `Result` naming the cause. Also **cut the line** claiming "nobody ever used `wait_modified` in anger" — both UVM 1800.2-2020 and pyuvm implement it. |

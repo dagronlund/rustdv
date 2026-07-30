@@ -379,8 +379,10 @@ that gets made silently.
 
 A concrete child, like a FIFO (D84): reachable so the parent can call
 `seq_item_export()` on it, never a factory-override target. In the aspirational
-example it is `#[component(sequencer)]`, which is the same carve-out from D78
-as `#[component(fifo)]` and for the same reason.
+example it is declared `#[component]`, the same carve-out from D78 a `TlmFifo`
+gets and for the same reason. The carve-out is a property of the field's type,
+not of the attribute — D114 (§42) removed the attribute's argument, because the
+derive never read it.
 
 ### 4.2 Connection through `port_slot` (D83b)
 

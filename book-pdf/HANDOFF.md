@@ -325,7 +325,7 @@ parentheses only; comparisons orient, never score; "we" works, "I" opines,
 | ch23 | done (EXEMPLAR, Part II) | blank-sheet rewrite from converted crate; two front doors; type-name registration; pathless-PASSED observation |
 | ch2–ch14 (pass) | done | dual-audience pass was already largely done in the old draft; this pass fixed stale forward refs (Part III/IV/V → chapter numbers; channels → queues/FIFOs; factory-by-closures → makers-in-registry; BFM-via-constructor → ConfigDb) and swept genuinely/honestly. ch5+ch23 are the exemplars |
 | Interlude | done, transcript owed (fig 7) | full rewrite from rustdv/tinyalu_tb (the converted crate); figs 1–6 verbatim excerpts; recognition-not-explanation; closing map updated to real chapter numbers |
-| ch15–ch21 (pass) | edits done; **transcripts stale repo-wide** | stale Part III/IV refs, tone words, and ch21's reversed no-registration claim fixed (derive now registers — matches D73). NOT fully re-verified against crates: ch15–21 READMEs and their transcripts still cite/embed `src/lib.rs` paths from before the crate-root renames; the manuscripts' listings+transcripts match those stale READMEs. When Ray regenerates them, file:line changes and transcripts must be re-copied. Flag raised. |
+| ch15–ch21 (pass) | edits done; **READMEs regenerated 2026-07-30 — manuscript needs re-checking against them** | stale Part III/IV refs, tone words, and ch21's reversed no-registration claim fixed (derive now registers — matches D73). The READMEs are now current: `src/lib.rs` citations repointed at the real crate roots, and **ch18/ch19/ch20 transcripts corrected — they were 5ns early throughout** (D112: the DUT self-clocks, so the first edge lands later; same operands, same results). The manuscript's listings and transcripts were copied from the *stale* READMEs, so ch18–20 quoted times are wrong and any ch15–21 path citation wants a look. |
 | ch22 | done | prose-only rewrite; the runtime-on-purpose paragraph is the chapter's spine; question list re-answered to the restored design |
 | ch25 | done | blank-sheet rewrite; ConfigDb two-line intro + no-singleton-anywhere + cost stated; 'static spawn = ch1's first compiler story landed; generics flagged for ch30's reversal |
 | ch26 | done | blank-sheet rewrite; no-path-anywhere lesson; runner-resets-between-tests evidence in the log file |
@@ -339,35 +339,67 @@ parentheses only; comparisons orient, never score; "we" works, "I" opines,
 | Appendix B | done | methodology rows rewritten to restored design |
 | Appendix C | done | methodology table rewritten to restored design |
 | renumbering-spec.md | done | in book-pdf/; constraints + per-chapter maps + README regeneration list |
+| caption pass | **applied 2026-07-30** | code thread ran it: 8 crates, line-count-neutral, crates rebuilt clean. No manuscript `file:line` invalidated |
+| `#[component]` sweep | **owed** | D114 removed the attribute's argument; 17 manuscript files still print the old form. ch21 + ch24 need rewriting, not substitution. See "New since the pass closed" |
 
 ## Next action
 
 **The prose pass is COMPLETE** (2026-07-30): all 40 chapters, the Interlude,
 the Toolkit page, and Appendices A–D are written or passed;
-`renumbering-spec.md` is written; mdbook builds green. The work now leaves
-the writer. Three steps remain, in order:
+`renumbering-spec.md` is written; mdbook builds green.
 
-1. **Ray reruns the sims and regenerates the stale READMEs** (ch15–21, 27,
-   36, 37, 38, 39 + the shipped testbench via `sim/run_rustdv.sh`), then the
-   transcripts get pasted into the manuscript at the `[TRANSCRIPT NEEDED]`
-   markers — the "Transcripts owed" section above is the checklist. For
-   ch15–21, re-copy any transcript whose `file:line` changed.
-2. **The mechanical caption pass** applies `book-pdf/renumbering-spec.md` to
-   the `.rs` files (in-place, line-count-neutral; Part I untouched).
-3. **The end-to-end read** against rendered output — a separate pass, after
-   numbering is final.
+### Status of the three closing steps (updated 2026-07-30, code thread)
 
-If more prose work is requested first, the open items below and the
-per-chapter routine under Exemplars are the method.
+1. **Transcripts — DONE 2026-07-30, and now waiting to be pasted.** The sims
+   were rerun and the READMEs for ch27, ch28, ch36, ch37, ch38 and ch39 were
+   rebuilt: each now carries its transcripts verbatim under a "Transcript(s)"
+   heading, labelled by figure number. Copy them into the 13
+   `[TRANSCRIPT NEEDED]` markers character for character. The Interlude's and
+   ch40's come from `sim/run_rustdv.sh` and are still Ray's to hand over.
+   **Those READMEs' figure maps were rebuilt too, in the book's numbering** —
+   a row number is now the figure number. **ch15–21 were regenerated as well**,
+   so no stale README is left: their `src/lib.rs` citations are repointed, and
+   ch18/ch19/ch20's transcripts were 5ns early throughout (D112 — the DUT
+   self-clocks, so the first edge lands later) and now carry real output. If
+   ch18–20 prose quotes a time, re-check it.
+2. **The mechanical caption pass — DONE 2026-07-30.** `renumbering-spec.md`
+   applied to the `.rs` captions in ch27, ch28, ch31, ch32, ch34, ch36, ch37,
+   ch39; every edit line-count-neutral, all eight crates rebuilt clean. Part I
+   untouched, as specified. **Every `file:line` the manuscript embeds is still
+   valid** — no transcript was invalidated by it.
+3. **The end-to-end read** against rendered output — still owed, still last,
+   and still best done after the transcripts land.
+
+### New since the pass closed: the child attribute lost its argument
+
+**D114 (`output/.design-decisions.md` §42), 2026-07-30.**
+`#[component(child)]`, `#[component(fifo)]` and `#[component(sequencer)]` are
+gone from the code. The attribute is bare `#[component]`. The derive never read
+the word — it tested only that one of the three was present — and what a field
+becomes is decided by its Rust type. `AnalysisBus` declared `#[component(fifo)]`
+was the wart that prompted reading the macro.
+
+**The manuscript still prints the old form in 17 files:** the Interlude and
+chapters 21, 24, 25, 26, 27, 28, 29, 30, 31, 32, 34, 36, 37, 38, 39, 40.
+Fifteen are substitution inside code blocks. **Two are real work:**
+
+- **ch21** teaches `#[derive(Component)]`. Any passage explaining what the
+  argument selects has lost its subject.
+- **ch24** introduces the attribute to the reader. `#[component]` marks a field
+  as a child in the tree — that is now the whole rule and the whole syntax.
+
+**Do not mention the change. The reader never knew the argument existed.** They
+meet `#[component]` for the first time, so there is no before-and-after to
+explain. The full note is at the head of Part II in `chapter-notes.md`.
+
+The open items below and the per-chapter routine under Exemplars are the method
+for any further prose work.
 
 ## Open questions for Ray
 
-- **ch24 README stale note?** `output/examples/ch24-components/README.md`
-  ends with "Run is sequential, not concurrent... a later increment," but
-  ch31's crate comment documents concurrent run phases (D82c) as the final
-  design. ch24's prose was written to be true either way (it defers
-  concurrency to ch31); the README line itself looks pre-D82. Ray may want
-  to fix the README (I can't — no code/output edits).
+- ~~ch24 README stale note~~ **Closed by Ray, 2026-07-30: not an issue, and
+  not to be raised again.** ch24's prose defers concurrency to ch31 and is
+  true either way.
 - ~~ch37/ch38 mismatch~~ **RESOLVED — and my first report was wrong.** The
   crates' .rs sources (the truth) contain exactly what chapter-notes said:
   ch37 = the repair desk (7.1, try_next_item, out-of-order, tickets), ch38 =

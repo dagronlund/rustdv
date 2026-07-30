@@ -73,7 +73,7 @@ closure), never baked into the type.
 
 ## Stage 4: Environment
 
-Children are struct fields with `#[component(child)]` and
+Children are struct fields with `#[component]` and
 `#[derive(rustdv::Component)]`. The constructor is build-and-connect:
 create sequencer/ports first, hand endpoints to children as constructor
 arguments (create fifo/subscriber connections **before** the moves that

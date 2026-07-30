@@ -156,9 +156,9 @@ or similar) and to nobody else:
 - `CLAUDE.md` has the standing rules; persistent memory notes point here.
   Deeper history: `STATUS.md` bottom-to-top.
 
-### Where the work stands (2026-07-29) — read this before proposing anything
+### Where the work stands (2026-07-30) — read this before proposing anything
 
-Branch `ch23_onwards`. **The restoration's code is done.** ch23–ch39 are
+Branch `rewrite-book`. **The restoration's code is done.** ch23–ch39 are
 converted, run on Icarus, and are out of quarantine — phases, the ConfigDb, the
 factory, the whole TLM layer, transactions, and all four sequence testbenches
 (TB 7.0, 7.1, 7.2, 8.0). The only quarantined package left is `ch21_macros`,
@@ -221,19 +221,22 @@ fixed by changing what the test's measurement window is bounded by, not by
 loosening its assertions). Full account: `output/.design-decisions.md` §36
 (D108), STATUS.md's 2026-07-30 entries.
 
-**Next up, in the order Ray set:**
+**Done 2026-07-30: the renumbering pass and the component attribute.**
 
-1. **A numeric renumbering pass, after the prose.** Q18 is settled (D110): one
-   figure sequence per chapter, everything in it called a "Figure", nothing
-   renamed. A drawing or table the prose pass inserts ahead of a listing shifts
-   the captions after it, so it owes a `renumbering-spec.md` and a mechanical
-   pass applies it — in place and line-count-neutral, because transcripts embed
-   `file:line`.
-2. **`#[component(fifo)]` names a type, not a role.** A child exempt from factory
-   override gets its own attribute per type — `fifo`, then `sequencer` — and
-   `AnalysisBus` is declared `#[component(fifo)]` while being no such thing. One
-   role word for all of them, or per-type spellings recorded as the design.
-   Ray's call, deferred to whoever next touches those declarations (D106's tail).
+1. **The renumbering pass has run.** Q18 was settled by D110 — one figure
+   sequence per chapter, everything in it called a "Figure", nothing renamed —
+   and `book-pdf/renumbering-spec.md` has been applied to the `.rs` captions in
+   eight crates (ch27, ch28, ch31, ch32, ch34, ch36, ch37, ch39), in place and
+   line-count-neutral, because transcripts embed `file:line`. The spec's
+   "stale READMEs" list is regeneration work and is *not* done.
+2. **The child attribute takes no argument (D114, §42).** `#[component(child)]`,
+   `#[component(fifo)]` and `#[component(sequencer)]` are gone; it is bare
+   `#[component]` everywhere. D106's tail asked which word should name the D84
+   carve-out, and the answer was that no word was ever read — the derive tested
+   only that one of the three was present, and what a field becomes is decided
+   by its Rust type. `AnalysisBus` declared `#[component(fifo)]` was the wart
+   that prompted reading the macro. The manuscript still prints the old form in
+   17 files, flagged in `book-pdf/chapter-notes.md` for the prose pass.
 
 **The manuscript waits (D77).** Part II+ prose is written from working code by a
 separate prose pass that **changes no code**; its instructions are

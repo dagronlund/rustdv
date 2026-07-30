@@ -211,28 +211,6 @@ struct Field {
     port: Option<String>,
 }
 
-/// Does a struct-level `#[component(...)]` (before the `struct` keyword)
-/// contain `word`? Field-level attributes come after `struct`, so scanning
-/// only the leading tokens keeps them out.
-fn struct_attr_contains(input: &TokenStream, word: &str) -> bool {
-    let mut prev_hash = false;
-    for tt in input.clone() {
-        match &tt {
-            TokenTree::Ident(i) if i.to_string() == "struct" => return false,
-            TokenTree::Punct(p) if p.as_char() == '#' => prev_hash = true,
-            TokenTree::Group(g) if prev_hash && g.delimiter() == Delimiter::Bracket => {
-                let text = g.stream().to_string();
-                if text.starts_with("component") && text.contains(word) {
-                    return true;
-                }
-                prev_hash = false;
-            }
-            _ => prev_hash = false,
-        }
-    }
-    false
-}
-
 /// Parse `struct Name { ... }` from the derive input token stream.
 /// Supported: structs with named fields, including simple generics
 /// (`struct Env<T: Tester + 'static> { ... }`).
@@ -437,12 +415,6 @@ fn make_field(
 /// hand-writable; the derive is convenience.
 #[proc_macro_derive(Component, attributes(component, port))]
 pub fn derive_component(input: TokenStream) -> TokenStream {
-    // A struct-level `#[component(no_factory)]` opts out of universal factory
-    // registration — for components that are not `Default` (they take
-    // constructor arguments) and so cannot be built by name. Detected before
-    // the `struct` keyword to distinguish it from field-level attributes.
-    let no_factory = struct_attr_contains(&input, "no_factory");
-
     let (name, impl_generics, type_params, fields) = match parse_struct(input) {
         Ok(v) => v,
         Err(e) => return compile_error(&e),
@@ -579,7 +551,7 @@ impl {impl_generics} ::rustdv::PortOwner for {name} {type_params} {{
     // the factory can build them by string. Generic components are skipped —
     // a `static` cannot be generic, and their monomorphs are not by-name
     // targets.
-    let registration = if type_params.is_empty() && !no_factory {
+    let registration = if type_params.is_empty() {
         format!(
             r#"
 const _: () = {{

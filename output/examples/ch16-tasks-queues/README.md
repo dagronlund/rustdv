@@ -1,6 +1,6 @@
 # Chapter 16: Tasks, Channels, and Sim-Aware Queues — figure map
 
-All figures are simulator figures in `src/lib.rs`; run the chapter with:
+All figures are simulator figures in `src/ch16_tasks_queues.rs`; run the chapter with:
 
 ```
 sim-common/run_sim.sh ch16_tasks_queues playground

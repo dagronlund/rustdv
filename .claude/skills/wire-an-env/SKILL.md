@@ -27,10 +27,10 @@ pub struct MyEnvConfig {
 #[derive(rustdv::Component)]
 pub struct MyEnv {
     seqr: Sequencer<MyCmd>,            // not a child — no lifecycle
-    #[component(child)] driver: Option<Driver>,   // passive = no driver
-    #[component(child)] monitor: Monitor,
-    #[component(child)] scoreboard: Scoreboard,
-    #[component(child)] coverage: Option<Coverage>,
+    #[component] driver: Option<Driver>,   // passive = no driver
+    #[component] monitor: Monitor,
+    #[component] scoreboard: Scoreboard,
+    #[component] coverage: Option<Coverage>,
 }
 ```
 
