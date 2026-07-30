@@ -52,6 +52,10 @@ README**, verbatim, under a "Transcript(s)" heading with the figure number on
 it. Copy them across character for character. Do not compose, approximate, or
 reconstruct one from STATUS.md.
 
+These are checked, not assumed: all 251 lines were verified on Linux/aarch64
+*and* on macOS/arm64, under two different Icarus versions, and they agree
+exactly. Trust them over anything the old manuscript says.
+
 | Chapter | Markers | Where the output now lives |
 |---|---|---|
 | ch27 | 4 (figs 4, 7, 10, 13) | `output/examples/ch27-configuration/README.md` |
@@ -60,7 +64,7 @@ reconstruct one from STATUS.md.
 | ch37 | 1 (fig 5) | `output/examples/ch37-repair-desk-testbench-7.1/README.md` |
 | ch38 | 1 (fig 6) | `output/examples/ch38-fibonacci-testbench-7.2/README.md` |
 | ch39 | 3 (figs 3, 5, 9) | `output/examples/ch39-virtual-sequence-testbench-8.0/README.md` |
-| Interlude, ch40 | 1 each | `sim/run_rustdv.sh` output — ask Ray; it is the shipped testbench and its README is the crate itself |
+| Interlude, ch40 | 1 each | `rustdv/tinyalu_tb/README.md` — **new file**, written for exactly this |
 
 **The figure maps in those READMEs were rebuilt too**, and they now use the
 **book's** numbering rather than the crate's. So a README row number is the

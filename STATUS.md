@@ -645,6 +645,49 @@ replaced with the real output and re-verified line by line.
 — that crate really does have one, because it is the chapter that teaches Cargo's
 conventions. It is the one deliberate exception to D29, and Part I is frozen.
 
+**New: `rustdv/tinyalu_tb/README.md`.** The shipped testbench had no README, so
+the Interlude's and ch40's transcripts had nowhere to be copied from. It now
+carries the full `sim/run_rustdv.sh` run verbatim, plus the file list and the
+counts, and it says plainly that the crate carries no figure captions.
+
+**New: `output/regression/verify-transcripts.sh`.** One command that reruns all
+13 sims and checks every transcript line in every README against the fresh
+output. It exists because these transcripts were generated on Linux and go into
+a printed book, while macOS/arm64 is a shipping platform.
+
+**Verified on both platforms, 2026-07-30 — 251 transcript lines, character for
+character:**
+
+| | Linux/aarch64 (sandbox) | Darwin/arm64 (Ray's Mac) |
+|---|---|---|
+| Icarus | 14.0 devel | **13.0 stable** |
+| Result | all match | all match |
+
+The two runs used *different Icarus versions* and still agreed on every line, so
+these transcripts are a property of the framework, not of one toolchain. That is
+a stronger result than the check was designed to get.
+
+**The first version of this script was broken, and the Mac run is what exposed
+it.** Two defects, both of the same family — a checker that cannot fail:
+
+1. **It compared against output that was never produced.** Every sim failed on
+   macOS (no `timeout`; it is GNU coreutils, and the script wrapped every run in
+   it), and the script proceeded to diff 13 READMEs against empty files, printing
+   a wall of "MISMATCH" that looked like a framework finding and was noise. It
+   now aborts before comparing and prints the tail of the failing log inline.
+2. **It passed vacuously.** ch16 and ch17 reported "all transcript lines match"
+   *in the same run where they had failed to execute* — their READMEs carry no
+   timestamped lines, so the comparison loop iterated zero times and reported
+   success. Zero transcript lines is now a failure everywhere else, and for those
+   two the script verifies the claim they do make ("All 9 tests end `REGRESSION:
+   PASS`" → the run must find exactly 9 and pass).
+
+The fixes were mutation-tested rather than assumed: corrupting one timestamp,
+inflating ch16's claimed test count, and deleting a transcript wholesale are each
+caught, and the clean run still exits 0. A verification script that has never
+been made to fail is not evidence — the same argument the mutation check in the
+regression rests on, applied to the tool doing the checking.
+
 *Platform note:* this is a Linux run. macOS/arm64 is a shipping platform and
 these transcripts go into the book, so they want confirming on the Mac — a diff,
 not a re-read. Fixed seed, single-threaded executor and simulated time should

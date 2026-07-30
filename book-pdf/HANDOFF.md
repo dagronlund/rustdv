@@ -285,7 +285,27 @@ parentheses only; comparisons orient, never score; "we" works, "I" opines,
   8→6, 9→7, 10=transcript, 11→8, 12→9, 13=transcript. The .rs captions for
   crate figs 4–9 must become 5,6,8,9,11,12 (line-count-neutral edits).
 
-## Transcripts owed (blocked on Ray rerunning sims)
+## Transcripts owed — ALL PAID (2026-07-30, closing session)
+
+All 13 `[TRANSCRIPT NEEDED]` markers are filled verbatim from the rebuilt
+READMEs (ch27 ×4, ch28 ×1 + its two excerpt figures upgraded to full
+transcripts, ch36 ×1, ch37 ×1, ch38 ×1, ch39 ×3, Interlude ×1 = MaxTest
+portion, ch40 ×1 = RandomTest tail — the two halves of one
+`rustdv/tinyalu_tb/README.md` run, split to avoid printing the same block
+twice). ch15/17/21 path citations repointed off `src/lib.rs`; ch18/19/20
+transcripts advanced 5ns per D112 (prose numbers updated: ch18's "125
+nanoseconds" → 130). ch16 unaffected (no clock, no embedded paths).
+
+**The `#[component]` sweep (D114) is also done**: 17 files mechanically
+updated; ch24 now introduces the bare attribute as the whole rule; ch21's
+expansion figure updated; the concrete-vs-erased distinctions in ch31, ch32,
+ch36 now hang on the field's *type*, not the attribute's argument.
+`#[component(no_factory)]` (also deleted from the code) removed from ch29 —
+the one exception named there now is generic components.
+
+The list below is retained for history only.
+
+## Transcripts owed (blocked on Ray rerunning sims) — HISTORICAL
 
 - Interlude fig 7 (and ch40 will need the same): the shipped testbench run,
   `sim/run_rustdv.sh`, verbatim. STATUS.md describes the counts
@@ -348,6 +368,16 @@ parentheses only; comparisons orient, never score; "we" works, "I" opines,
 the Toolkit page, and Appendices A–D are written or passed;
 `renumbering-spec.md` is written; mdbook builds green.
 
+### Transcripts are verified on both platforms — DONE 2026-07-30
+
+`output/regression/verify-transcripts.sh` reran all 13 sims and checked every
+transcript line in every README against fresh output. **251 lines, green on
+Linux/aarch64 (Icarus 14.0 devel) and on Darwin/arm64 (Icarus 13.0 stable).**
+Two different simulator versions agreeing character for character, so what you
+are about to copy is a property of the framework rather than of one toolchain.
+
+Copy them with confidence. If you ever need to re-check, that one command does it.
+
 ### Status of the three closing steps (updated 2026-07-30, code thread)
 
 1. **Transcripts — DONE 2026-07-30, and now waiting to be pasted.** The sims
@@ -355,7 +385,8 @@ the Toolkit page, and Appendices A–D are written or passed;
    rebuilt: each now carries its transcripts verbatim under a "Transcript(s)"
    heading, labelled by figure number. Copy them into the 13
    `[TRANSCRIPT NEEDED]` markers character for character. The Interlude's and
-   ch40's come from `sim/run_rustdv.sh` and are still Ray's to hand over.
+   ch40's are in **`rustdv/tinyalu_tb/README.md`**, a new file written for
+   exactly this. Nothing is waiting on Ray.
    **Those READMEs' figure maps were rebuilt too, in the book's numbering** —
    a row number is now the figure number. **ch15–21 were regenerated as well**,
    so no stale README is left: their `src/lib.rs` citations are repointed, and
@@ -367,8 +398,26 @@ the Toolkit page, and Appendices A–D are written or passed;
    ch39; every edit line-count-neutral, all eight crates rebuilt clean. Part I
    untouched, as specified. **Every `file:line` the manuscript embeds is still
    valid** — no transcript was invalidated by it.
-3. **The end-to-end read** against rendered output — still owed, still last,
-   and still best done after the transcripts land.
+3. **The end-to-end read — DONE 2026-07-30 (closing session).** mdbook builds
+   with no warnings beyond the expected optional-pdf one. Checked against the
+   rendered HTML: every chapter's figure sequence is 1..n in order (scripted
+   over all captions: `# Figure N`, `// Chapter X, Figure N`,
+   `<figcaption>`); no fenced-block leaks, no escaped SVG, no leftover
+   markers; no reference to a chapter beyond 40; the `.rs` captions match the
+   manuscript's numbering (spot-verified ch27 and ch39 against the applied
+   spec); spot-read ch1, the Interlude, ch24 and Appendix D head-to-tail as
+   rendered. One repo-side nit found and filed at the end of
+   `chapter-notes.md`: ch27's README's last "proves" bullet contradicts its
+   own Figure 13 transcript about who wins the conflict (the transcript and
+   the book are right).
+
+**Nothing is owed from the writer. The book is closed out:** all transcripts
+pasted, the D114 sweep applied (including ch21/ch24's rewrites and the
+retirement of `#[component(no_factory)]` from ch29), ch15–21 reconciled with
+the regenerated READMEs (paths and the D112 +5ns times, including ch18's
+prose "130 nanoseconds"), and the rendered book read. What can still happen
+to this manuscript happens in other threads: Ray's own read, and any code
+change that moves a transcript again.
 
 ### New since the pass closed: the child attribute lost its argument
 
