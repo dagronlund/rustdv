@@ -106,9 +106,12 @@ pre-push hook:
   design and is rewritten in one dedicated prose pass; its rules are
   `book-pdf/FABLE.md`, and that pass changes no code. A code thread records
   what the prose will need — in `chapter-notes.md` — and moves on.
-- Figure conventions belong to the code side: `// Chapter N, Figure M:`
-  captions, output after `--`, and the chapter READMEs in `output/examples` map
-  every figure to its runnable code.
+- **Figures are one numbering space** (D110): a chapter's code listings,
+  drawings, tables and transcripts all draw from the same sequence, in order of
+  appearance, and every one of them is a "Figure". If Figure 1 is a drawing, the
+  first listing is Figure 2. Captions read `// Chapter N, Figure M:` in the
+  example crates, output follows `--`, and each chapter README in
+  `output/examples` maps its figures to runnable code.
 
 ---
 
@@ -122,7 +125,10 @@ or similar) and to nobody else:
   trees in `/tmp` and `cp` over; file deletion needs the permission tool.
 - The Cowork VM has no network: toolchain comes from `toolchain-drop/`
   (extract from a `/tmp` copy — extracting off the mount is ~15× slower).
-  mdBook is **not** installed in the VM; rendering happens on Ray's Mac.
+  `mdbook` **is** in the drop and installs offline to `/tmp/rust/bin/mdbook` —
+  it builds the book's HTML in the VM, which is enough to catch a broken
+  `SUMMARY.md` or an orphaned chapter. The **PDF** backend is what needs a
+  Chromium the VM lacks, so PDF rendering happens on Ray's Mac.
 - Long shell commands: the VM kills background processes between calls
   and each call has a ~45 s budget — chunk accordingly. `regress.py` takes
   a few minutes from cold, so pre-build the example workspace first
@@ -209,11 +215,12 @@ It is now in the suite as `custom/sim-tinyalu-tb`, which it was not before.
    monitor pattern the book teaches. The second is the deeper one: writes
    scheduled from inside a ReadOnly callback have to be deferred to a region
    that permits them. Both land before release.
-2. **Q18**, the one open question left in `output/.design-decisions.md` §16:
-   whether to caption code listings "Example N" rather than "Figure N". The
-   process is set: the prose pass maps the book and hands Ray a renumbering
-   request (`book-pdf/figure-plan.md`), Ray has the code captions renumbered,
-   and only then does the prose land. Do not settle it silently.
+2. **A numeric renumbering pass, after the prose.** Q18 is settled (D110): one
+   figure sequence per chapter, everything in it called a "Figure", nothing
+   renamed. A drawing or table the prose pass inserts ahead of a listing shifts
+   the captions after it, so it owes a `renumbering-spec.md` and a mechanical
+   pass applies it — in place and line-count-neutral, because transcripts embed
+   `file:line`.
 3. **`#[component(fifo)]` names a type, not a role.** A child exempt from factory
    override gets its own attribute per type — `fifo`, then `sequencer` — and
    `AnalysisBus` is declared `#[component(fifo)]` while being no such thing. One

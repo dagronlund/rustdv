@@ -4,7 +4,23 @@ You are writing *Rust for RTL Verification* — 41 chapters, an interlude, and
 four appendices in `book-pdf/src/`. The framework it teaches (rustdv, in
 `rustdv/`) is finished and every example runs. Your job is the prose.
 
-Read this file once. Then read `chapter-notes.md` one row at a time.
+**This file is the standing reference: what the book argues, how it sounds, and
+what it must stop claiming.** Read it once, keep it, and come back to it when a
+sentence feels off.
+
+It deliberately says nothing about *sequencing* — what to do first, how the
+budget is spent, what to leave a successor. That is `fable-prompt.md`, which is
+handed to whoever runs the pass, and it is the only place the order of work is
+written down. If the two ever seem to disagree about what to do next, the prompt
+wins; if they disagree about what the book should *say*, this file wins.
+
+Three files, one job each:
+
+| File | Answers |
+|---|---|
+| `fable-prompt.md` | What do I do, in what order? |
+| `FABLE.md` (this) | What is the book arguing, and how does it sound? |
+| `chapter-notes.md` | What does *this chapter* need? |
 
 ---
 
@@ -26,43 +42,6 @@ exists to undo: prose driving design.
 chapter's `output/examples/*/README.md`. Do not retype, reformat, tidy, invent,
 or regenerate them, and do not run a simulator. A transcript that looks wrong
 is something you report.
-
----
-
-## Your two phases
-
-### Phase 0 — map the book, then ask for the numbers you want
-
-Before writing prose, walk every chapter and every example crate and produce
-**`book-pdf/figure-plan.md`**: the full inventory of code listings and the
-caption scheme you want.
-
-The problem you are solving: today `Figure N` means a code listing, so there is
-no free word for an actual drawing — which is why the pipeline in ch31, the
-architecture in ch34 and the sequencer handshake all exist as ASCII art inside
-code comments. The likely answer is to split the two numbering spaces:
-**Example N** for a code listing, **Figure N** for a drawing, each numbered
-independently, so a chapter can say "Example 5 wires the FIFO; Figure 5 shows
-the topology."
-
-`figure-plan.md` must contain:
-
-1. Every chapter, its code listings, and their current caption numbers.
-2. Your recommendation on the Example/Figure split — including the honest option
-   of leaving it alone.
-3. Whether Part II+ wants drawings at all, and where.
-4. **The exact renumbering you want**, as a list precise enough to execute:
-   file, current caption, new caption.
-
-Hand that to Ray. He will have the code captions renumbered for you. **You do
-not perform the rename** — captions live in `.rs` comments. Wait for it to
-land before writing any chapter whose numbers change.
-
-### Phase 1 — write the chapters
-
-Work in `SUMMARY.md` order. For each chapter: read its row in
-`chapter-notes.md`, read the example crate it names and that crate's
-`README.md`, then write.
 
 ---
 
@@ -131,6 +110,19 @@ So cut every sentence whose job is to be pleased about compile-time checking.
 Where a compile error is real, show it and let it speak. The frame is stated once,
 in ch1, and it is not "Rust catches your bugs" — it is the seam above.
 
+**The mirror error is just as bad, and it is easy to catch from the source.**
+*Python for RTL Verification* makes a case for *not* having types, with
+enthusiasm, and this book is the model's tone but not its position. Do not
+celebrate the absence of types either — no "you are freed from", no "without the
+ceremony of", no implication that the earlier book's stance was naive or that
+this one corrects it.
+
+Both moves are the same mistake: making the type system the subject. **The
+subject is verification.** Typing is a design trade with real costs on both
+sides, and this book is the first of the three that is in a position to say so
+without arguing a corner. Say it once, in ch1, and then get on with the
+testbench.
+
 **And do not disparage what came before.** Not Python, not SystemVerilog, not the
 UVM, not pyuvm or cocotb, and not the two earlier books. Specifically:
 
@@ -174,33 +166,29 @@ need re-argument, not sentence-level editing. Details are in `chapter-notes.md`.
 
 ## Voice
 
-Warm, first-person, concrete, honest about costs. Jokes stay.
+The model is *Python for RTL Verification*, in `../rustdv-reference/salemi_books/`.
+Read enough of it to absorb how it teaches, and write like that. What follows is
+not a style guide — you have the source — it is the two or three places this book
+must differ from it.
 
-**The recap device** is a blockquote opening `> **In the UVM...**`, written in
-UVM API terms that both dialects share (`start_item`, `get_next_item`,
-`raise_objection`). Where the dialects differ, one parenthetical, SystemVerilog
-first: *(SV: `uvm_config_db#(int)::set`; pyuvm: `ConfigDB().set`)*. Never two
-parentheticals in one sentence — if they diverge that much, describe the
-concept instead.
+**The reader.** That book was written for Python engineers. This one addresses a
+verification engineer who knows the UVM from *either* SystemVerilog or Python,
+with reading ability in both and no prior book. So nothing may assume the reader
+has run cocotb or pyuvm, or has read the earlier books. Naming them as sources is
+fine; leaning on shared memory of them is not.
 
-**Python and SystemVerilog references** are foils, not shared memory. "In
-Python, a typo'd attribute is a runtime `AttributeError`" is fine. Anything
-that assumes the reader has *lived* it is not. Prefer two sharp comparisons
-over none — dual-audience means both foils, not no foil.
+**Comparisons are foils, not nostalgia.** "In Python, a typo'd attribute is a
+runtime `AttributeError`" is useful. "As you saw in the Python book" is not.
+Prefer two sharp comparisons to none — a dual audience means both foils, not no
+foil — and where the dialects diverge, one parenthetical, SystemVerilog first:
+*(SV: `uvm_config_db#(int)::set`; pyuvm: `ConfigDB().set`)*.
 
-**Banned framings:** "the Python book taught you"; "as you learned in the Python
-book"; "you remember" + any Python/pyuvm/cocotb referent; "the last book" /
-"last time" meaning the Python book; "your Python testbench"; "the testbench you
-wrote"; "In Python we"; second-person Python nostalgia; any sentence that needs
-the reader to have run cocotb or pyuvm to parse it. Naming the books as
-*sources* is fine ("pyuvm, which *Python for RTL Verification* teaches").
+**SystemVerilog quotations** come only from `../rustdv-reference/uvmprimer-master/`,
+run ≤15 lines, carry a source label, never appear with simulation output, and
+total a handful across the whole book.
 
-**SystemVerilog quotations** come only from
-`../rustdv-reference/uvmprimer-master/`, run ≤15 lines, carry a source label,
-never appear with simulation output, and total 5–8 across the whole book.
-
-**Say the point plainly.** Avoid "honestly", "genuinely", "straightforward" —
-they read as persuasion, not statement.
+**Say the point plainly.** "Honestly", "genuinely" and "straightforward" read as
+persuasion rather than statement.
 
 ---
 
@@ -260,12 +248,33 @@ mdBook renders on Ray's machine, not in your sandbox.
 
 ---
 
+## Captions: one numbering space
+
+**A chapter has one figure sequence, and everything in it is a "Figure"** — code
+listings, drawings, tables and transcripts alike, numbered in order of appearance
+(D110, Ray's call). If Figure 1 is a drawing, the first code listing is Figure 2.
+
+Nothing is renamed and there is no scheme to choose. This is already the
+convention: ch19's code captions run 14–19 because its earlier figures are not
+code, and the manifest numbers transcript figures in the same sequence as
+listings. It was simply never written down.
+
+Two consequences for you:
+
+- **Drawings and tables are now first-class, so add them where they earn a
+  place.** The pipeline in ch31, the architecture in ch34 and the sequencer
+  handshake exist today as ASCII art inside code comments, which is what a book
+  with no word for a picture looks like. You have the word.
+- **A figure you insert ahead of a listing shifts that listing's number.** You do
+  not edit the `.rs` captions — you record the shift, and a mechanical pass
+  applies it after the book is done. `fable-prompt.md` covers the mechanics.
+
 ## When you are unsure
 
 Ask Ray. Do not invent an answer and write it as settled — that is precisely how
 the original design failed. This applies to anything in `chapter-notes.md`
-marked **ASK RAY**, and to any place a chapter needs a fact the examples do not
-contain.
+marked **ASK RAY**, to the caption question above, and to any place a chapter
+needs a fact the examples do not contain.
 
 Reference material — cocotb, pyuvm, four releases of the SystemVerilog UVM, and
 the example code from both earlier books — is outside the repo at

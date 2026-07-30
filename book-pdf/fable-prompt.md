@@ -1,351 +1,289 @@
 # The prompt for the prose pass
 
-*Paste everything below the line into a fresh Fable session opened on this repo.*
+*For Ray: paste this whole file, every time, whoever is reading it — a fresh
+Fable, a resumed Fable, or Opus picking up the pieces. The router below sends
+each of them to the right place, so you do not have to remember which is which.*
 
 ---
 
-You are writing the prose for *Rust for RTL Verification* — 41 chapters, an
-interlude, and appendices, in `book-pdf/src/`. The framework the book teaches
-(`rustdv/`) is finished, every example runs, and the manuscript was written
-against an earlier design that has since been reversed. Your job is the words.
+## First: which reader are you?
 
-## You wrote this book
+**Check whether `book-pdf/HANDOFF.md` exists and has content in it.**
 
-The manuscript is yours. An earlier Fable session wrote all 41 chapters — and an
-earlier Fable session also wrote the first version of the framework, the one that
-removed the UVM's dynamic build/connect phases and its TLM FIFOs and then argued
-in the book that they were unnecessary. Undoing that is why this pass exists.
+- **It does not exist, or it is empty.** You are starting this pass. Everything
+  below is addressed to you, in the order written. Begin with the tone study.
 
-Two consequences, one useful and one to guard against.
+- **It exists and has content.** A pass is already underway — whether or not you
+  are the model that began it. **Go straight to "Resuming: taking over a pass in
+  progress" at the end of this file** and follow it. Treat everything in between
+  as reference you consult when you need it, not instructions to execute: in
+  particular, the tone study has been done, chapters have been written, and the
+  section about having written the existing draft is not about you.
 
-**The voice is your own, so preserving it costs you nothing.** You are not
-imitating a stranger. When a paragraph reads well it reads well because you wrote
-it well — keep it. This is the strongest reason to read a chapter before revising
-it, and the reason the three modes below lean so hard on harvesting.
+Getting this wrong is expensive in both directions — redoing the tone study wastes
+the budget, and skipping it produces a chapter in the wrong voice. Thirty seconds
+checking `HANDOFF.md` settles it.
 
-**The arguments you have to reverse are also your own, and you made them with
-conviction.** Chapters 24, 27, 28, 29, 31, 32, 34, 36 and 39 argue for the design
-that turned out to be wrong. The belief behind it was that the UVM's runtime
-indirection was unsophistication to be compiled away; what it produced was a
-testbench compiler rather than a verification framework, because removing late
-binding is what made everything look statically decidable. Expect a pull to
-defend those passages. When you feel it, the rule is the one in `FABLE.md`: the
-code wins, and the code no longer does what the chapter claims.
+---
 
-Two ways that goes wrong, and both are worse than the original error:
+You are writing *Rust for RTL Verification* — 41 chapters, an interlude, and four
+appendices, in `book-pdf/src/`. The framework it teaches (`rustdv/`) is finished
+and every example runs. A draft of the manuscript exists and is stale: it was
+written against an earlier design that has since been reversed.
 
-- **Defending it.** "I argued this carefully" is not evidence. The framework
-  changed; the argument lost. Reverse it cleanly.
-- **Apologising for it.** Do not narrate the book's history, do not confess, and
-  do not add a sentence explaining that an earlier version said otherwise. The
-  reader does not know and has no reason to care. Write the correct argument as
-  though it had always been the argument. The record of what went wrong belongs
-  in the repo, and it is already there.
+## Read these two, then start
 
-One specific blind spot: **your own verbal habits are invisible to you.**
-`FABLE.md` bans "honestly", "genuinely" and "straightforward" because they were
-overused, and when you meet one in your own prose you will read straight past it.
-Grep for them instead of trusting your ear — and do the same for any phrasing you
-catch yourself reaching for twice.
+1. `book-pdf/FABLE.md` — what the book argues and what it must stop claiming.
+2. `book-pdf/chapter-notes.md` — one row per chapter. Read the header now, a row
+   when you reach that chapter.
 
-## The tone that ruined the last draft
+**Do not read `output/.design-decisions.md`.** It is 3,000 lines of internal
+history and everything you need from it is already in those two files. If you
+find yourself wanting it, they have a gap — say so.
 
-The previous draft was obnoxious in its joy at how a heavily typed language
-catches errors at compile time. Do not go back down that path. `FABLE.md` has the
-rule under "Do not sell types, and do not disparage what came before" — read it
-carefully, because this is the single thing Ray most wants changed.
+You may read anything in `rustdv/`, `output/examples/`, and
+`../rustdv-reference/` (cocotb, pyuvm, four releases of the SystemVerilog UVM,
+and the example code from both earlier books).
 
-The short version, and the reason it matters: **the reader already knows.** A
-SystemVerilog engineer has lived with types for their entire career and hears
-nothing new. A Python engineer either left types on purpose and can tell you why,
-or is agitating for them right now — hints, `mypy`, gradual typing. Either way
-they have thought about the trade-off longer than the paragraph you are about to
-write. A book that keeps announcing the discovery is a book talking to itself.
+## The source for how this book should sound
 
-Worse, the enthusiasm curdled into disparagement — of Python, of SystemVerilog,
-of the UVM, of pyuvm. **Do not shit on what came before.** The UVM's runtime
-indirection is not primitive: a statically-typed language chose it three separate
-times with the static option sitting right there, and this project spent a whole
-branch proving that judgement was correct. pyuvm's lack of typing was a
-deliberate decision by the author of this book and it removed a bug class SV
-still has. SystemVerilog's awkward corners follow from its object model, not from
-anyone being slow. And the two earlier books are sources, not the baseline this
-one beats.
+`../rustdv-reference/salemi_books/Python for RTL Verification.pdf` is Ray's
+previous book and the model for this one. **Read enough of it to absorb how it
+teaches** — the front matter, an early teaching chapter, the `uvm_test` chapter
+that maps to this book's ch23, and a sequences chapter. Not cover to cover; you
+are after approach and voice, not content.
 
-Foils are fine — the book needs them, and two sharp comparisons beat none. The
-banned move is the scoreboard: any sentence whose real payload is "and that is
-why this is better." A useful test before you keep a comparison: would it leave a
-pyuvm user feeling their tool is a toy, or a SystemVerilog engineer feeling
-patronised? Then cut it.
+What to take: how a chapter opens, how a mechanism is introduced before it is
+named, how much is explained before the first listing, how transcripts are used
+as evidence, the rhythm of the sentences, where the jokes sit.
 
-This is also the one place your authorship works against you hardest. You wrote
-the enthusiasm, so it will read to you as simply true rather than as a tone. Trust
-the grep in the book map over your ear.
+**What not to take, and this matters.** That book makes a case for *not* having
+types, and it makes it with enthusiasm. This book is not the rebuttal. The last
+draft of this manuscript did try to be the rebuttal, and it is why the whole pass
+is being redone. Both moves — celebrating types, celebrating their absence — make
+the type system the subject. **The subject is verification.** Typing is a design
+trade with real costs on both sides, and `FABLE.md` states the position the book
+actually takes. Take the pedagogy; leave the advocacy.
 
-## Read first, and only these
+Nor its audience. That book was written for Python readers; this one addresses
+SystemVerilog and Python engineers equally, so nothing may assume the reader has
+used cocotb or pyuvm.
 
-1. `book-pdf/FABLE.md` — the rules, the reader, the argument, the voice, the
-   claims that must not survive. Read it once, now, in full.
-2. `book-pdf/chapter-notes.md` — one row per chapter. Read the header now; read
-   a row when you reach that chapter, not before.
+**Write the study down** in `HANDOFF.md` before you write a chapter — what you
+took, in enough detail that someone who has not opened the PDF can write in the
+same voice. This is the highest-value thing you will produce all pass.
 
-Those two files were written for you and are complete. **Do not read
-`output/.design-decisions.md`** — it is 3,000 lines of internal history, and
-everything in it you need has already been lifted into the two files above. If
-you find yourself wanting it, that means the two files have a gap: say so, and
-ask.
+## You wrote the current draft, and you may throw it away
 
-You may read anything under `rustdv/` and `output/examples/` — that is where the
-truth is — and `../rustdv-reference/` for cocotb, pyuvm, four releases of the
-SystemVerilog UVM, and the example code from both earlier books.
+The existing manuscript is your own earlier work, so preserving it is not
+protecting an irreplaceable voice — it is protecting a first draft by the same
+writer. **A blank sheet is allowed, and for any chapter whose argument was wrong
+it is usually the better choice.** Patching around a broken premise produces
+prose with visible seams.
 
-## Read the chapter you are about to work on — always
+Read the current chapter before you decide — it may hold a good explanation or a
+joke worth keeping, and it tells you what ground the chapter has to cover. Then
+choose: revise it, or start clean. Your call, per chapter.
 
-**This is a revision, not a from-scratch write.** The manuscript is 85,700 words
-in an established voice — Ray's book, in your drafting: first-person, warm,
-concrete, with jokes and worked pedagogy that took a long time to get right. A
-chapter written without reading the existing one throws that away and replaces it
-with competent generic prose, which is a much worse book. So: **before you write a word of a chapter, read the current
-`book-pdf/src/chapter-NN-*.md` in full.**
+Judgement, not rules: chapters whose argument is intact and whose listings are
+frozen (all of Part I) rarely need a rewrite; chapters that argued for the
+reversed design almost always do.
 
-Read it one chapter at a time, when you reach it. **Never read the manuscript in
-bulk** — it does not fit in a budget, and a chapter you read six chapters early
-you will have forgotten by the time you need it.
+## The constraints
 
-That rule is right for *writing* and wrong for *planning*, which is why Phase 0
-below has you survey the whole book mechanically — grep and headings, not prose —
-before you write anything. Some facts only exist across chapters, and you cannot
-find them one chapter at a time.
+Everything else is yours. These are not.
 
-Three modes, and `chapter-notes.md` tells you which applies:
+- **You change no code. Ever.** You write only in `book-pdf/`. Not `rustdv/`, not
+  `output/`, not `sim/`, and no `.rs`, `.toml`, `.json`, `.sh` or HDL file.
+- **The code wins.** The examples are verified running; the manuscript is known
+  stale. If an example looks wrong, tell Ray — never "fix" it.
+- **Transcripts are copied verbatim** from the chapter READMEs in
+  `output/examples/` (and `STATUS.md` for the shipped testbench). Never retype,
+  tidy, invent or regenerate one. Never run a simulator.
+- **Part I listings are frozen.** `book-sync` compares chapters 1–14 against
+  their example files verbatim and the pre-push hook enforces it. Prose around
+  them is yours; a character inside a code block is not.
+- **Do not sell types, and do not disparage what came before** — Python,
+  SystemVerilog, the UVM, pyuvm, cocotb, or the earlier books. `FABLE.md` has the
+  reasoning. This is the note Ray most wants changed from the last draft.
+- **Ask rather than invent.** Anything marked ASK RAY in `chapter-notes.md`, and
+  any fact a chapter needs that the examples do not contain.
 
-- **Edit in place (all of Part I).** The technical content stands and the
-  listings are frozen. You are making targeted changes to existing sentences —
-  the recap blockquote, the Python references, the banned framings — and leaving
-  everything else alone. Most of the chapter should survive verbatim. If you find
-  yourself rewriting a paragraph that was not wrong, stop.
-- **Rewrite, but harvest first (the reversed-argument chapters).** The argument
-  is wrong at the premise, so it cannot be patched sentence by sentence. Read the
-  whole chapter anyway, and take from it everything that is still good: the
-  jokes, the analogies, the order the ideas arrive in, the sentence that explains
-  the hard part well. Then build the new argument around what you kept. You wrote
-  these chapters too — harvest generously, and defend nothing.
-- **Update (the ordinary Part II chapters).** The prose mostly stands and the
-  code moved under it. Read the chapter, read the example, and change what
-  disagrees.
+Do not run the regression.
 
-In all three: what you are preserving is voice and pedagogy; what you are hunting
-is the reversed claims listed in `FABLE.md` and the banned framings. Preserving
-a good sentence costs nothing and is the whole reason a human wrote it.
+**Do render, as a structural check.** Run `mdbook build book-pdf` whenever you
+touch `SUMMARY.md` or add a file — you are adding at least Appendix D — so a
+broken TOC entry or an orphaned chapter surfaces immediately. If `mdbook` is not
+on the path, it ships prebuilt and offline in the toolchain drop:
 
-## The absolute rule
+```sh
+tar -xzf toolchain-drop/mdbook-v*.tar.gz -C /tmp/rust/bin mdbook
+```
 
-**You change no code. Ever.** You write only in `book-pdf/`. Off limits without
-exception: `rustdv/`, `output/`, `sim/`, `skills/`, `toolchain-drop/`, and every
-`.rs`, `.toml`, `.json`, `.sh`, `.py` and HDL file anywhere.
+Expect `WARN The command mdbook-pdf ... was not found, but is marked as
+optional` — that is correct here and the build still exits 0. The PDF backend
+needs a Chromium the sandbox lacks. The rendered output under `book-pdf/book/`
+is generated and gitignored; never edit it, and do not be surprised that it
+changes.
 
-When code and manuscript disagree, **the code wins** — the examples are verified
-running and the manuscript is known stale. If an example looks wrong, stop and
-tell Ray. Do not "fix" it. Transcripts are copied verbatim from the chapter
-READMEs in `output/examples/` (and from `STATUS.md` for the shipped testbench);
-never retype, tidy, invent, or regenerate one, and never run a simulator.
+**Do not read the rendered output.** Reviewing the book as a reader sees it is a
+separate pass that happens after the numbering is final, because half of what it
+catches is references that no longer resolve. That pass is not yours.
 
-Do not run the regression. Do not try to render the book — mdBook is not
-installed here.
+## Figures: one sequence, reconciled at the end
 
-## The budget, and why it shapes the order
+**One numbering space per chapter.** Code listings, drawings, tables and
+transcripts all draw from the same sequence, in order of appearance, and every
+one of them is a "Figure" (D110). If Figure 1 is a drawing, the first listing is
+Figure 2. Nothing is renamed and there is no scheme for you to pick — `FABLE.md`
+has the reasoning.
 
-There is a fixed budget for this pass, and it may run out before the book is
-finished. If it does, **Opus 5 takes over from your notes.** So the work is
-ordered to put every judgement call early and every mechanical repetition late:
+So: **do not inventory the existing captions, and do not let their numbers
+constrain a chapter.** Write the chapter, put the figures where they belong, and
+number them as they appear. Add drawings and tables where they earn a place —
+that is now possible, and three things in Part II that are currently ASCII art
+inside code comments probably want to be pictures.
 
-- **Front-load the thinking.** Decide the voice, settle the arguments, and write
-  one full-quality *exemplar* for each kind of chapter before touching the bulk.
-- **Leave patterns, not problems.** Opus is good at "do to ch6 what was done to
-  ch5." It should never have to re-derive what the book is arguing.
-- **Never leave a chapter half-written.** Finish the one you are in before
-  starting the next, so a takeover always begins at a clean boundary.
-- **Keep `book-pdf/HANDOFF.md` current after every single chapter.** One
-  paragraph is enough. This is the only thing standing between a mid-sentence
-  stop and a wasted week. Assume you will not get a warning.
+When the book is finished, write **`book-pdf/renumbering-spec.md`**: for each
+chapter you changed, the figure numbers your prose now uses, mapped to the code
+they correspond to, and flagging any listing whose number moved because you
+inserted a figure ahead of it. A mechanical pass then edits the `.rs` captions to
+match. Note two constraints in the spec for whoever runs it: edits must be **in
+place and line-count-neutral**, because transcripts embed `file:line`; and Part
+I's numbering feeds `manifest.json` and `book-sync`, so say explicitly whether
+anything there moved.
 
-## Phase 0 — survey and plan, then ask for the figure numbers (before any prose)
+## Order of work, and why it is fixed
 
-Produce three files.
+There is a fixed budget and it may run out before the book is done. If it does,
+**Opus 5 takes over from your notes** — see the last section of this file, which
+is what it will read. So: every judgement call early, every repetition late.
 
-**A. `book-pdf/figure-plan.md`** — the inventory and the numbering request.
+1. **The tone study** above, written into `HANDOFF.md`.
+2. **Chapter 1.** It sets the frame once for the whole book. Get it right and
+   every later chapter gets shorter, because none of them has to re-argue it.
+3. **The rustdv catalogue and Appendix D** — the `prelude::*` debt in
+   `FABLE.md`. This gates all of Part II.
+4. **The chapters whose argument is reversed**: ch24, ch27, ch31, ch32, ch36,
+   ch39, then ch28, ch29, ch34. The most conceptually expensive work in the book
+   and the least suitable for a successor. Do it while you can.
+5. **Two exemplars, declared as such** — one Part I chapter and one ordinary
+   Part II chapter, written to full quality, with the routine you used recorded
+   in `HANDOFF.md` and both named in its Exemplars table. **A successor is told to
+   read these as its model for the voice**, so they matter more than their
+   position in this list suggests: they are the only place the voice exists as
+   prose rather than as description.
+6. **Everything else**, in `SUMMARY.md` order.
+7. **`renumbering-spec.md`**, last.
 
-Today `Figure N` means a code listing, so the book has no free word for an
-actual drawing, which is why the pipeline in ch31, the architecture in ch34 and
-the sequencer handshake all live as ASCII art inside code comments. The likely
-answer is to split the two numbering spaces — **Example N** for a code listing,
-**Figure N** for a drawing, numbered independently — so a chapter can say
-"Example 5 wires the FIFO; Figure 5 shows the topology."
+After that the work leaves you: a mechanical pass reconciles the `.rs` captions
+to your numbering, the book is rendered, and someone reads it end to end against
+the rendered output. Leave `HANDOFF.md` in a state that makes those three steps
+obvious.
 
-Collect the inventory with `grep`, not by reading chapters. The captions are
-mechanical — `// Chapter N, Figure M:` in the example crates, `Figure N` in the
-manuscript, and a figure table in each `output/examples/*/README.md` — so sweep
-them with a pattern and count. Phase 0 is the one part of this job where reading
-prose would be waste; you will read every chapter properly when you write it.
+Two notes. **ch41** is the missing-pieces inventory — ask Ray for the current
+list rather than inferring one. **The Interlude and ch40** present the shipped
+testbench in `rustdv/tinyalu_tb/`; its transcript is in the last entry of
+`STATUS.md`.
 
-Include:
+## The handoff
 
-1. Every chapter, its code listings, and their current caption numbers.
-2. Your recommendation on the split, including the honest option of leaving it.
-3. Whether Part II+ wants drawings at all, and where each one would go.
-4. **The exact renumbering you want**, precise enough to execute: file, current
-   caption, new caption.
-5. Anything else you want renamed on the code side while someone is in there —
-   for instance, `SUMMARY.md` still calls ch37 "Fibonacci Testbench: 7.1" and
-   ch38 "get_response Testbench: 7.2", which is backwards: ch37 is the repair
-   desk and ch38 is Fibonacci. Chapter titles are yours to fix; the manuscript
-   *filenames* still carry the old order, and renaming those is a request.
-
-Hand the figure plan and the book map to Ray and **wait**. He will have the code
-captions renumbered for you. You never perform the rename — captions live in `.rs` comments. Do not
-begin a chapter whose numbers are about to move.
-
-**B. `book-pdf/BOOK-MAP.md`** — the cross-chapter survey, and the reason a
-successor can work one chapter at a time.
-
-Everything in it is findable with `grep` and a look at each chapter's headings.
-**Do not read chapters in full for this.** What it must contain:
-
-1. **Every banned framing, with file and line.** The list is in `FABLE.md`:
-   "the Python book taught you", "as you learned in", "you remember" + a
-   Python/pyuvm/cocotb referent, "the last book", "your Python testbench", "In
-   Python we", second-person Python nostalgia. This is the punch list, and it is
-   the single most mechanical thing in the job — which makes it exactly what a
-   successor should inherit rather than re-derive.
-2. **Every recap blockquote**, with its chapter and what it currently recaps.
-   They all become `> **In the UVM...**`, and knowing how many there are and
-   where tells you the size of that job.
-3. **Every "the Python book" / "In Python" passage, classified** keep / pair /
-   neutralise, one line of reasoning each. There are roughly 204 of them. This
-   is a judgement call that depends on the *balance* across Part I — too many
-   keeps and the book still assumes a Python reader, too many neutralisations
-   and it reads as list-making with no foil at all. It cannot be decided one
-   chapter at a time, and it is the decision most likely to be made
-   inconsistently by a successor who was not told.
-4. **Callbacks and running examples that cross chapters** — a joke set up in one
-   chapter and paid off in another, a promise made in ch24 and kept in ch34, an
-   example that recurs. These are what break silently when chapters are revised
-   in isolation, and nothing in the code will warn you.
-5. **What ch1's typing pitch has to cover**, derived from the claims later
-   chapters actually make. Write ch1 against this list, not from memory.
-6. **Word count per chapter**, so a successor can tell a 1,200-word chapter from
-   a 4,000-word one before opening it.
-7. **Your own tics, counted.** Grep the manuscript for "honestly", "genuinely",
-   "straightforward" and any other phrasing that turns up far more often than a
-   human would choose it, and record the counts and locations. You wrote this
-   book, so these are invisible to you from the inside — a count is the only
-   honest way to see them, and a successor with the list can clear them without
-   having to develop an ear for your habits.
-8. **Every place the book sells types or talks down about Python, SystemVerilog,
-   pyuvm, cocotb or the UVM.** Sweep for the vocabulary this tone travels in —
-   "compile time", "compiler catches", "at compile time rather than", "type
-   safety", "unlike Python", "SystemVerilog cannot", "primitive", "clumsy",
-   "awkward", "verbose", "boilerplate", "finally", "no longer have to", "for
-   free" — and list each hit with its chapter and a one-word verdict: *keep*
-   (a real, specific, load-bearing observation), *soften* (true but pleased with
-   itself), or *cut* (a scoreboard sentence). This is the punch list Ray cares
-   most about, it is the one you are least able to see by reading, and it is
-   perfectly suited to a successor working from a list.
-
-Review this with Ray alongside the figure plan. It is the game plan; the
-per-chapter routine is only the execution of it.
-
-**C. `book-pdf/HANDOFF.md`** — start it now, in this shape, and keep it alive:
+**Never leave a chapter half-written**, so a takeover always starts at a clean
+boundary. **Update `book-pdf/HANDOFF.md` after every chapter** — a paragraph is
+enough. Assume you get no warning.
 
 ```
 # Handoff
 
-## Durable decisions (append-only; a successor obeys these)
-- <every judgement call you make, one line each, with the reason>
+## The tone study
+<what you took from Python for RTL Verification, in enough detail to write
+without the PDF>
 
-## Exemplars (the pattern to copy)
-| Archetype | Exemplar chapter | What to imitate in it |
+## Durable decisions (append-only)
+<every judgement call, one line each, with the reason>
+
+## Exemplars
+| Archetype | Chapter | What to imitate |
+
+## Cross-chapter threads
+<callbacks, running examples, promises made in one chapter and kept in another —
+the things that break silently when chapters are written in isolation>
 
 ## Progress
 | Chapter | State | Notes |
-(state = untouched / drafted / done)
 
 ## Next action
-<the single next thing to do, specific enough to start cold>
-
-## Where the cross-chapter answers live
-<`BOOK-MAP.md` sections a successor must consult before touching a chapter, and
-anything you have since learned that belongs in it — keep it a live document,
-not a Phase 0 artifact that rots>
+<the single next thing, specific enough to start cold>
 
 ## Open questions for Ray
-<anything you could not settle; never guess and write it as settled>
 ```
 
-## Phase 1 — the expensive thinking (do all of this before Phase 2)
+## Efficiency
 
-Work in this order. Each item either fixes the book's argument or creates a
-pattern the rest of the book copies.
+One chapter at a time. For each, read four things: its row in `chapter-notes.md`,
+its current file in `book-pdf/src/`, its example crate, and that crate's
+`README.md` for the transcript. **Never read the manuscript in bulk.**
 
-1. **Chapter 1.** It carries the typing theme once, for the whole book, as a
-   dual pitch. Everywhere else: show, don't sermonize. Get this right and every
-   later chapter gets shorter, because it can stop re-arguing.
-2. **The rustdv catalogue** — the `prelude::*` debt in `FABLE.md`. A chapter (or
-   a substantial opening section) before the first example that uses rustdv's
-   surface, plus `ctx` its own section. This gates all of Part II.
-3. **Appendix D: What rustdv Provides** — at least its structure and the entries
-   for everything ch15–ch20 touch. Fill it in as you go afterward.
-4. **One Part I exemplar: chapter 5, Ownership.** The full dual-audience
-   treatment. Part I's listings are frozen — `book-sync` compares them verbatim
-   and the pre-push hook enforces it — so this is purely prose, and it is the
-   template for the other thirteen. Record in `HANDOFF.md` exactly what you did:
-   how you rewrote the recap blockquote, how you judged each Python reference,
-   what you cut — and **roughly how much of the original survived untouched**.
-   That last number is the calibration a successor needs most: it is the
-   difference between "make these edits" and "rewrite this chapter," and getting
-   it wrong in either direction is expensive.
-5. **The chapters whose argument is reversed**, in this order: **ch24, ch27,
-   ch31, ch32, ch36, ch39**, then ch28, ch29, ch34. These cannot be edited
-   sentence by sentence — they argue *for* what the framework now does the
-   opposite of, so they are rewrites. This is the most conceptually expensive
-   work in the book and the least suitable for a successor. Do it while you can.
-6. **One Part II exemplar of the ordinary kind: chapter 26, Logging.** A chapter
-   with a working example, no reversed argument, and nothing new to invent.
-   Whatever routine you use — read the row, read the example crate, read its
-   README, write, copy the transcript — write that routine down in
-   `HANDOFF.md`. Steps 1–5 are the hard part; this is the assembly line, and
-   Opus will run it.
+A finished chapter and a one-line handoff update is the report — no summaries
+back to Ray beyond that.
 
-## Phase 2 — the assembly line
+Start with the tone study.
 
-Everything left, in `SUMMARY.md` order: Part I chapters 2–4 and 6–14, then the
-Interlude, then the remaining Part II chapters, then ch40, ch41, and appendices
-A–C. Follow your own recorded routine, working from `BOOK-MAP.md`'s punch list
-for each chapter. Update `HANDOFF.md` after each one, and tick items off the map
-as you clear them — a successor should be able to see what is left without
-opening a chapter.
+---
 
-Two notes. **ch41** is the missing-pieces inventory: the framework changed under
-it, so ask Ray for the current list rather than inferring one — an inventory that
-names the wrong gaps is worse than none. **The Interlude and ch40** both present
-the shipped testbench in `rustdv/tinyalu_tb/`, which was converted on 2026-07-29;
-its transcript and counts are in the last entry of `STATUS.md`.
+# Resuming: taking over a pass in progress
 
-## How to be efficient
+*The router at the top sent you here because `HANDOFF.md` has content. This
+section is yours whether you are Opus 5 taking over, or Fable returning in a
+fresh session with its context gone. Either way, two things above do not apply:
+the tone study is already done, and if you are not Fable you did not write the
+existing draft.*
 
-- One chapter at a time, and read exactly five things for it: its row in
-  `chapter-notes.md`, its lines in `BOOK-MAP.md`, its current `book-pdf/src/`
-  file, its example crate, and that crate's `README.md` for the transcript.
-  Nothing else. The map is what lets that short list be enough — every fact that
-  lives outside the chapter is already in it.
-- Do not re-read `FABLE.md` per chapter. Its rules go in your head once; if you
-  need a reminder, your own `HANDOFF.md` should have it.
-- Do not summarise your work back to Ray at length. A finished chapter and a
-  one-line `HANDOFF.md` update is the report.
-- Do not hedge in the prose. Say the thing. The book's voice is warm,
-  first-person, concrete, and honest about costs — and avoid "honestly",
-  "genuinely", "straightforward".
-- When you are unsure, ask. Do not invent an answer and write it as settled:
-  that is exactly how the design this book teaches went wrong the first time.
+## Cold start, in order
 
-Start with Phase 0. When `figure-plan.md` is ready, stop and tell Ray.
+1. **`book-pdf/HANDOFF.md`, in full.** It is the state of the world: what was
+   decided, what is written, what comes next. Read it before anything else.
+2. **`book-pdf/FABLE.md`, in full.** What the book argues and how it sounds. Not
+   optional — the tone rules in it are the ones Ray cares most about.
+3. **The exemplar chapters named in `HANDOFF.md`.** Read them as *finished
+   prose*, not as instructions. Two worked chapters teach the voice more reliably
+   than any description of it, and imitating them is your job.
+4. **The tone study section of `HANDOFF.md`.** If it reads thin, spend one
+   chapter of `../rustdv-reference/salemi_books/Python for RTL Verification.pdf`
+   on it rather than guessing — that book is the model, and a shallow imitation
+   of a summary of it is the worst of both.
+
+Then resume from `HANDOFF.md`'s **Next action**, one chapter at a time, with the
+same four reads per chapter listed under Efficiency above. That per-chapter rule
+is what makes this handoff possible: no chapter depends on context Fable
+accumulated, so you are not missing anything by having arrived late.
+
+## What carries over unchanged
+
+The constraints — no code edits, code wins, transcripts verbatim, Part I listings
+frozen, don't sell types, don't disparage what came before, ask rather than
+invent. The order of work. The figure convention. The `mdbook` structural check.
+Blank sheet is still permitted where a chapter's argument was wrong.
+
+## What is different for you
+
+- **You did not write the draft.** Where Fable was told it could throw away its
+  own work freely, you are revising *two* authors: the stale original and the
+  chapters Fable has already rewritten. **Do not re-litigate a finished
+  chapter.** If one looks wrong, note it for Ray and move on — rewriting
+  completed work is how a budget disappears with nothing to show.
+- **Consistency now matters more than flair.** Fable set the conventions; your
+  job is to extend them, not improve on them. A book of forty-one chapters in one
+  voice beats a book with six better ones.
+- **You inherit the handoff duty.** Keep `HANDOFF.md` current after every
+  chapter, and never leave a chapter half-written. You may be handing off too.
+- **`HANDOFF.md`'s open questions are Ray's**, not yours to settle. Same for
+  anything marked ASK RAY in `chapter-notes.md`.
+
+## If `HANDOFF.md` is missing or thin
+
+Then the handoff failed and you should say so rather than improvising. Read
+`FABLE.md`, `chapter-notes.md`, and the most recently modified chapters in
+`book-pdf/src/` to infer the conventions in use, write down what you inferred as
+the new Durable decisions, and tell Ray what you had to guess. Reconstructing the
+notes is cheaper than writing forty chapters that disagree with the first ten.

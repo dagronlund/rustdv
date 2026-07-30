@@ -14,6 +14,18 @@ cargo install mdbook       # the book builder
 cargo install mdbook-pdf   # the PDF backend
 ```
 
+**Offline / sandbox VM:** `cargo install` needs the network, which the VM does
+not have. `mdbook` ships prebuilt in `toolchain-drop/` instead:
+
+```sh
+tar -xzf toolchain-drop/mdbook-v*.tar.gz -C /tmp/rust/bin mdbook
+```
+
+That gives the HTML build, which is enough to check `SUMMARY.md` and catch an
+orphaned chapter. `mdbook-pdf` is *not* available there — it drives a headless
+Chromium the VM lacks — so `[output.pdf]` is marked `optional = true` in
+`book.toml` and is skipped with a warning rather than failing the build.
+
 `mdbook-pdf` produces the PDF by driving a headless Chrome/Chromium, so a
 Chrome or Chromium installation must be present on the machine.
 
