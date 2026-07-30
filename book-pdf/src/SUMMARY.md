@@ -46,7 +46,6 @@
 - [get_response Testbench: 7.2](chapter-38-get-response-testbench-7.2.md)
 - [Virtual Sequence Testbench: 8.0](chapter-39-virtual-sequence-testbench-8.0.md)
 - [The Complete TinyALU Testbench](chapter-40-complete-tinyalu-testbench.md)
-- [The Future of Rust in Verification](chapter-41-future-of-rust-in-verification.md)
 
 ---
 

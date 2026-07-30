@@ -26,7 +26,7 @@ checking `HANDOFF.md` settles it.
 
 ---
 
-You are writing *Rust for RTL Verification* — 41 chapters, an interlude, and four
+You are writing *Rust for RTL Verification* — 40 chapters, an interlude, and four
 appendices, in `book-pdf/src/`. The framework it teaches (`rustdv/`) is finished
 and every example runs. A draft of the manuscript exists and is stale: it was
 written against an earlier design that has since been reversed.
@@ -52,6 +52,8 @@ previous book and the model for this one. **Read enough of it to absorb how it
 teaches** — the front matter, an early teaching chapter, the `uvm_test` chapter
 that maps to this book's ch23, and a sequences chapter. Not cover to cover; you
 are after approach and voice, not content.
+
+(You may also refer to *The UVM Primer* if you have SystemVerilog questions.)
 
 What to take: how a chapter opens, how a mechanism is introduced before it is
 named, how much is explained before the first listing, how transcripts are used
@@ -188,10 +190,9 @@ to your numbering, the book is rendered, and someone reads it end to end against
 the rendered output. Leave `HANDOFF.md` in a state that makes those three steps
 obvious.
 
-Two notes. **ch41** is the missing-pieces inventory — ask Ray for the current
-list rather than inferring one. **The Interlude and ch40** present the shipped
-testbench in `rustdv/tinyalu_tb/`; its transcript is in the last entry of
-`STATUS.md`.
+One note. **The Interlude and ch40** both present the shipped testbench in
+`rustdv/tinyalu_tb/`; its transcript is in the last entry of `STATUS.md`. The book
+ends at ch40 — there is no chapter 41 (D111).
 
 ## The handoff
 

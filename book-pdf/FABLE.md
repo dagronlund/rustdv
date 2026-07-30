@@ -1,6 +1,6 @@
 # Brief for the prose pass
 
-You are writing *Rust for RTL Verification* — 41 chapters, an interlude, and
+You are writing *Rust for RTL Verification* — 40 chapters, an interlude, and
 four appendices in `book-pdf/src/`. The framework it teaches (rustdv, in
 `rustdv/`) is finished and every example runs. Your job is the prose.
 

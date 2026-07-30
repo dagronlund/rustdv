@@ -30,8 +30,8 @@ name `rustdv` is registered on crates.io (0.0.1 placeholder).
 
 **"Rust for RTL Verification"** is its book — the third in Ray Salemi's
 series after [*The UVM Primer*](https://www.uvmprimer.com) (SystemVerilog)
-and [*Python for RTL Verification*](https://a.co/d/0hTKAJvh): 41 chapters,
-an interlude, and three appendices in `book-pdf/src/` (mdBook), with Part II+
+and [*Python for RTL Verification*](https://a.co/d/0hTKAJvh): 40 chapters,
+an interlude, and appendices in `book-pdf/src/` (mdBook), with Part II+
 under revision as the restoration lands (see the callout above).
 The premise: the reader is a UVM verification engineer — from SystemVerilog
 or Python; neither earlier book is a prerequisite — who learns Rust chapter
@@ -90,9 +90,9 @@ pre-push hook:
   compile error" figures were removed (D68, and the reasoning in §0.4).
 - **Fibonacci on the TinyALU** (chapter 38 — TB 7.2) — stimulus that needs the
   DUT's answers: `Fibonacci Sequence: [0, 1, 1, 2, 3, 5, 8, 13, 21]`.
-- **The honest-gaps culture** — `STATUS.md` deviations, the design doc's
-  Open Questions, chapter 41's missing-pieces inventory. What this
-  project can't do yet is written down next to what it can.
+- **The honest-gaps culture** — `STATUS.md`'s deviations and the decision log's
+  open questions. What this project can't do yet is written down next to what it
+  can. (The book's own "future of Rust in verification" chapter was cut — D111.)
 
 ## Rules of the road
 
