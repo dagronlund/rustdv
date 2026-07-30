@@ -36,7 +36,7 @@
 //! The UVM broadcasts straight from a source's analysis port to subscribers.
 //! rustdv's components are erased, so neither side can reach the other, and
 //! analysis gets a **hub** for the same reason put/get has a FIFO: a concrete
-//! `#[component(fifo)]` child that the parent owns and can wire.
+//! `#[component]` child that the parent owns and can wire.
 //!
 //! ```ignore
 //! self.analysis_fifo.pub_export().connect(&self.mon, Monitor::AP);
@@ -204,7 +204,7 @@ impl<T: 'static> SubscribeExport<T> {
 /// traffic subscribes and keeps it — in a `Vec`, or in an unbounded `TlmFifo`
 /// it owns, if it wants to pull on its own schedule.
 ///
-/// Declare it as a child with `#[component(fifo)]`, like a `TlmFifo`, then hand
+/// Declare it as a child with `#[component]`, like a `TlmFifo`, then hand
 /// out its exports in `connect`: [`pub_export`](Self::pub_export) for the
 /// source, [`sub_export`](Self::sub_export) for each listener.
 pub struct AnalysisBus<T: 'static> {

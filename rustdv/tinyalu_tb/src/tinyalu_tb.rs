@@ -39,7 +39,7 @@ rustdv::vpi_bootstrap!();
 /// edges, which is what lets the same testbench run on an emulator (D42).
 #[derive(Component, Default)]
 pub struct BaseTest {
-    #[component(child)]
+    #[component]
     env: RustdvComp,
 }
 
@@ -77,7 +77,7 @@ impl Component for BaseTest {
 #[rustdv::test(timeout_time = 500, timeout_unit = "us")]
 #[derive(Component, Default)]
 struct RandomTest {
-    #[component(child)]
+    #[component]
     inner: RustdvComp,
 }
 
@@ -92,7 +92,7 @@ impl Component for RandomTest {
 #[rustdv::test(timeout_time = 500, timeout_unit = "us")]
 #[derive(Component, Default)]
 struct MaxTest {
-    #[component(child)]
+    #[component]
     inner: RustdvComp,
 }
 

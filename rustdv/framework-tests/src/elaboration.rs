@@ -35,9 +35,9 @@ impl Component for TwoOrphans {}
 
 #[derive(Component, Default)]
 struct OrphanNest {
-    #[component(child)]
+    #[component]
     one: RustdvComp,
-    #[component(child)]
+    #[component]
     two: RustdvComp,
 }
 
@@ -55,7 +55,7 @@ impl Component for OrphanNest {
 #[rustdv::test(expect_error = "tlm_unconnected_port")]
 #[derive(Component, Default)]
 struct ElabUnconnectedPortFailsElaboration {
-    #[component(child)]
+    #[component]
     orphan: RustdvComp,
 }
 
@@ -124,9 +124,9 @@ impl Component for Consumer {
 #[rustdv::test(timeout_time = 10, timeout_unit = "us")]
 #[derive(Component, Default)]
 struct ElabConnectedTreeIsClean {
-    #[component(fifo)]
+    #[component]
     fifo: TlmFifo<u8>,
-    #[component(child)]
+    #[component]
     consumer: RustdvComp,
 }
 

@@ -218,7 +218,7 @@ impl<T: 'static> PeekExport<T> {
 
 /// A bounded (or unbounded) FIFO that is also a component in the hierarchy.
 ///
-/// Declare it as a child with `#[component(fifo)]` so it appears in the tree,
+/// Declare it as a child with `#[component]` so it appears in the tree,
 /// then hand out its exports in `connect`.
 pub struct TlmFifo<T: 'static> {
     inner: Rc<FifoInner<T>>,

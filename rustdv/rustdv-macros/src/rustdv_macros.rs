@@ -6,7 +6,7 @@
 //!   link-time test registry (the `inventory`/`linkme` technique, hand
 //!   rolled for ELF: `#[link_section]` + `__start_`/`__stop_` symbols).
 //! - `#[derive(Component)]` (§6.3): generates the `ComponentNode`
-//!   traversal over `#[component(child)]` fields (`T`, `Option<T>`,
+//!   traversal over `#[component]` fields (`T`, `Option<T>`,
 //!   `Vec<T>`).
 //!
 //! **Implementation note (STATUS.md):** the zero-dependency constraint
@@ -353,14 +353,12 @@ fn parse_struct(input: TokenStream) -> Result<(String, String, String, Vec<Field
                 if let Some(TokenTree::Group(g)) = toks.peek() {
                     if g.delimiter() == Delimiter::Bracket {
                         let text = g.stream().to_string();
-                        if text.starts_with("component")
-                            && (text.contains("child") || text.contains("fifo") || text.contains("sequencer"))
-                        {
-                            // A `#[component(fifo)]` FIFO or `#[component(sequencer)]`
+                        if text.starts_with("component") {
+                            // A `#[component]` FIFO or `#[component]`
                             // sequencer is a child like any
                             // other — it is a component, and it belongs in the
-                            // hierarchy. The separate spelling says *what* it
-                            // is at the declaration, where the reader is.
+                            // hierarchy. We now also allow a bare `#[component]`
+                            // for brevity.
                             pending_child = true;
                         }
                         if text.starts_with("port") {
@@ -432,7 +430,7 @@ fn make_field(
 }
 
 /// Generates the `ComponentNode` impl (design-doc §6.3, revised per R2):
-/// traversal of `#[component(child)]` fields, including `Option<T>` and
+/// traversal of `#[component]` fields, including `Option<T>` and
 /// `Vec<T>`; names synthesized from field names. Emits **no** factory
 /// registration (R5) — but R5 is reversed: the factory returns in ch29,
 /// and this derive is where its registration will land. The impl is

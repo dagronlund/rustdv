@@ -165,9 +165,9 @@ impl Component for SecondChild {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct ConcParentAndChildrenRunTogether {
-    #[component(child)]
+    #[component]
     a: RustdvComp,
-    #[component(child)]
+    #[component]
     b: RustdvComp,
 }
 
@@ -263,11 +263,11 @@ impl Component for Verdict {
 #[rustdv::test(timeout_time = 10, timeout_unit = "us")]
 #[derive(Component, Default)]
 struct ConcObjectionRaceIsPerComponent {
-    #[component(child)]
+    #[component]
     forever: RustdvComp,
-    #[component(child)]
+    #[component]
     objector: RustdvComp,
-    #[component(child)]
+    #[component]
     verdict: RustdvComp,
 }
 

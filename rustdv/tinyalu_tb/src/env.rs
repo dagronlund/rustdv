@@ -34,21 +34,21 @@ use crate::components::{CmdMonitor, Coverage, Driver, ResultMonitor, Scoreboard}
 /// override target (D84).
 #[derive(Component, Default)]
 pub struct AluEnv {
-    #[component(sequencer)]
+    #[component]
     seqr: Sequencer<AluCommand, AluResult>,
-    #[component(child)]
+    #[component]
     driver: RustdvComp,
-    #[component(child)]
+    #[component]
     cmd_mon: RustdvComp,
-    #[component(child)]
+    #[component]
     result_mon: RustdvComp,
-    #[component(child)]
+    #[component]
     scoreboard: RustdvComp,
-    #[component(child)]
+    #[component]
     coverage: RustdvComp,
-    #[component(fifo)]
+    #[component]
     cmd_bus: AnalysisBus<AluCommand>,
-    #[component(fifo)]
+    #[component]
     result_bus: AnalysisBus<AluResult>,
     // What `build` resolved, kept for `connect` to read. `Active` is the
     // configured type — an enum, so an illegal value cannot be filed — and this
