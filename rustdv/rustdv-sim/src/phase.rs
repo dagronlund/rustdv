@@ -70,6 +70,36 @@ pub fn current_phase() -> SimPhase {
 }
 
 // ---------------------------------------------------------------------------
+// Leaving ReadOnly (D108)
+// ---------------------------------------------------------------------------
+
+/// Return to a region where writing is legal.
+///
+/// The ReadOnly region belongs to the simulator, not to the test that asked
+/// for it. `prime_ro`'s callback sets the phase, wakes the waiters, drains the
+/// executor and only *then* restores `Normal` — and the drain is not confined
+/// to the waiters it woke. Whatever else the executor has queued runs in the
+/// same drain, inside the same `cbReadOnlySynch` callback. When the test that
+/// awaited ReadOnly finishes there, the thing that runs next is the regression
+/// loop, and after that the next test's first statement (D108).
+///
+/// One precision step is the whole of it. There is no cheaper exit: a
+/// zero-delay `cbAfterDelay` registered from inside the ReadOnly callback
+/// would land in the current time step, and Icarus refuses that outright —
+/// `SCHEDULER ERROR: read-only sync events created RW events!` and the run
+/// stops. Once the read-only region of a time step has begun, that time step
+/// has no writable region left, so leaving costs time by construction.
+///
+/// A no-op when the simulation is not in ReadOnly, which is the usual case: a
+/// test whose predecessor ended normally starts exactly where it used to.
+pub async fn leave_read_only() {
+    if hub().phase.get() != SimPhase::ReadOnly {
+        return;
+    }
+    crate::triggers::Timer::steps(1).await;
+}
+
+// ---------------------------------------------------------------------------
 // Write scheduling
 // ---------------------------------------------------------------------------
 
@@ -80,13 +110,21 @@ fn apply_write(h: gpi::LogicHandle, v: &WriteVal) {
     }
 }
 
+/// The ReadOnly rule, in one place because both write paths owe it: the
+/// scheduled one below and the immediate one in `handle.rs` (D108).
+pub(crate) fn deny_write_in_read_only(h: gpi::LogicHandle) {
+    if hub().phase.get() == SimPhase::ReadOnly {
+        panic!(
+            "illegal write to '{}' during the ReadOnly phase (cocotb rule, design-doc §4.4)",
+            h.full_name()
+        );
+    }
+}
+
 fn schedule(h: gpi::LogicHandle, v: WriteVal) {
     let hub = hub();
     match hub.phase.get() {
-        SimPhase::ReadOnly => panic!(
-            "illegal write to '{}' during the ReadOnly phase (cocotb rule, design-doc §4.4)",
-            h.full_name()
-        ),
+        SimPhase::ReadOnly => deny_write_in_read_only(h),
         SimPhase::ReadWrite => apply_write(h, &v),
         SimPhase::Normal => {
             {

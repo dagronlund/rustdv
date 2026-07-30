@@ -451,3 +451,9 @@ rather than a fix I made unilaterally.
    callback". It is a VPI diagnostic and not a failure, and the pattern that
    provokes it is the monitor pattern the book teaches: await an edge, then
    `read_only()`. Worth deciding on before release.
+
+**Both decided and landed 2026-07-30 — see D108 in the decision log and
+STATUS.md.** `fresh_phase()` is gone; the runner does this for every test now
+(`rustdv_sim::phase::leave_read_only()`, called first in `run_one`). The
+"clock's write" turned out to be the same mechanism as finding 1, not a
+separate one — see D108 for why.

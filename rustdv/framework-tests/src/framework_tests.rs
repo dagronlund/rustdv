@@ -83,21 +83,6 @@ pub mod runner;
 /// silently the day someone changes the timescale — it would still pass, on
 /// the wrong numbers. Advancing a known 1ns and reading both clocks gives the
 /// ratio and proves the two time functions agree on the way past.
-/// Leave whatever simulator phase the previous test ended in.
-///
-/// The phase is the *simulator's*, not the test's, and it outlives the test
-/// that put the simulation there: a test ending inside ReadOnly leaves the
-/// next one starting inside ReadOnly, where a write is a panic (cocotb's
-/// rule, §4.4). Advancing by one step is the smallest thing that puts the
-/// simulation back somewhere a testbench may write.
-///
-/// Every test here that writes a signal calls this first, and the reason it
-/// has to is a real property of the runner rather than a quirk of these
-/// tests. See TESTING.md.
-pub async fn fresh_phase() {
-    Timer::ns(1).await;
-}
-
 pub async fn steps_per_ns() -> u64 {
     let (t0_steps, t0_ns) = (rustdv::sim_time_steps(), sim_time_ns());
     Timer::ns(1).await;

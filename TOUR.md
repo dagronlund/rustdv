@@ -9,8 +9,9 @@ regression suite, not aspirational.*
 > UVM's dynamic build/connect process and its TLM FIFOs. Branch
 > `ch23_onwards` restored them, one TinyALU testbench version at a time, and
 > **the code is done: ch23–ch39 are green, the test suite is built on top, and
-> the TinyALU refactor has landed — no known technical debt is left.** What
-> remains is D108's two runner fixes and the prose. The Part II+ manuscript is
+> the TinyALU refactor has landed, and D112/D108 closed out the last framework
+> work — no known technical debt is left.** What remains is the prose. The
+> Part II+ manuscript is
 > stale by design and is rewritten from the working code by a separate pass
 > (`book-pdf/FABLE.md`).
 >
@@ -206,22 +207,29 @@ tests that swap stimulus through the sequence factory. Behaviour is unchanged �
 same counts, same simulated times, same log text, only the component path added.
 It is now in the suite as `custom/sim-tinyalu-tb`, which it was not before.
 
+**Done 2026-07-30: D112 and D108.** `tinyalu_tb`'s bare-DUT exception is
+retired (`sim/hdl/tinyalu.sv` self-clocks, byte-for-byte the same file as
+`output/examples/sim-common/hdl/tinyalu.sv` now) and both runner bugs are
+fixed — they turned out to be one mechanism (a test ending on `read_only()`
+starting the next test inside the same executor drain, before the phase
+resets), not two. `rustdv_sim::phase::leave_read_only()` is the first thing
+`run_one` does now; `fresh_phase()` is gone. Along the way, a framework test
+(`clock_two_are_independent`) was found to be passing *because* of the bug
+(Icarus was silently dropping a write that the fix now applies for real,
+which exposed the test's own latent tie-break between two harmonic clocks —
+fixed by changing what the test's measurement window is bounded by, not by
+loosening its assertions). Full account: `output/.design-decisions.md` §36
+(D108), STATUS.md's 2026-07-30 entries.
+
 **Next up, in the order Ray set:**
 
-1. **The two runner behaviours — both now decided as bugs to fix (D108).** The
-   simulator phase must stop surviving a test (the fix goes in `run_one`'s
-   per-test reset, and `fresh_phase()` then goes away), and a `Clock` must stop
-   writing inside a ReadOnly callback — the pattern that provokes it is the
-   monitor pattern the book teaches. The second is the deeper one: writes
-   scheduled from inside a ReadOnly callback have to be deferred to a region
-   that permits them. Both land before release.
-2. **A numeric renumbering pass, after the prose.** Q18 is settled (D110): one
+1. **A numeric renumbering pass, after the prose.** Q18 is settled (D110): one
    figure sequence per chapter, everything in it called a "Figure", nothing
    renamed. A drawing or table the prose pass inserts ahead of a listing shifts
    the captions after it, so it owes a `renumbering-spec.md` and a mechanical
    pass applies it — in place and line-count-neutral, because transcripts embed
    `file:line`.
-3. **`#[component(fifo)]` names a type, not a role.** A child exempt from factory
+2. **`#[component(fifo)]` names a type, not a role.** A child exempt from factory
    override gets its own attribute per type — `fifo`, then `sequencer` — and
    `AnalysisBus` is declared `#[component(fifo)]` while being no such thing. One
    role word for all of them, or per-type spellings recorded as the design.

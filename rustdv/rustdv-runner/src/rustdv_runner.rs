@@ -167,6 +167,16 @@ fn seed_from_env() -> u64 {
 }
 
 async fn run_one(reg: &'static TestRegistration, seed: u64) -> Outcome {
+    // The simulator's phase outlives the test that put it there (D108). A test
+    // ending inside ReadOnly — `read_only().await` as its last act, which is
+    // exactly how a test that checks a settled value ends — hands the ReadOnly
+    // region straight to whatever the executor runs next, and what it runs next
+    // is this test, in the same drain of the same callback. Its first write
+    // would then be illegal for a reason that has nothing to do with it. Get
+    // out of the region first, which costs one precision step when it happens
+    // at all and nothing when the predecessor ended anywhere else.
+    rustdv_sim::phase::leave_read_only().await;
+
     // Each test starts clean — pyuvm's run_test does the same, so a test never
     // inherits the previous test's BFM (with its half-drained queues) or its
     // logging configuration. D16's rule; the ConfigDb clear is what carries it

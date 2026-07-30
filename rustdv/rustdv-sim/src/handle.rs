@@ -135,10 +135,21 @@ impl LogicHandle {
     }
 
     // ---- write: immediate (setimmediatevalue analog) ----
+    //
+    // Immediate skips the write *scheduler*, not the phase *rule* (D108). The
+    // rule is the simulator's: writing during ReadOnly is illegal however the
+    // write gets there. Left unchecked, these two went straight to
+    // `vpi_put_value` and Icarus swallowed them with a printed diagnostic —
+    // "attempted to put a value to variable 'x' during a read-only synch
+    // callback" — after which the run continued on values that were never
+    // applied. That is the worst kind of wrong: it looks like a warning and it
+    // silently changes results.
     pub fn set_u64_now(&self, v: u64) {
+        phase::deny_write_in_read_only(self.raw);
         self.raw.set_u64_now(v);
     }
     pub fn set_now(&self, v: &LogicArray) {
+        phase::deny_write_in_read_only(self.raw);
         self.raw.set_now(v);
     }
 

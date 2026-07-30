@@ -9,7 +9,7 @@ use std::rc::Rc;
 
 use rustdv::prelude::*;
 
-use crate::{fresh_phase, steps_per_ns};
+use crate::steps_per_ns;
 
 // ---------------------------------------------------------------------------
 // Timer
@@ -206,7 +206,6 @@ async fn trig_with_timeout_inner_wins(_ctx: RustdvCtx) -> Result<(), TestError> 
 // half-finished work. `set_u64_now` is the escape hatch that skips it.
 #[rustdv::test]
 async fn trig_writes_are_scheduled_not_immediate(ctx: RustdvCtx) -> Result<(), TestError> {
-    fresh_phase().await;
     let sig = ctx.dut().signal("byte_sig")?;
     sig.set_u64_now(0);
 

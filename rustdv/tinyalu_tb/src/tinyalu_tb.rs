@@ -50,18 +50,6 @@ impl Component for BaseTest {
         self.env = AluEnv::new_comp();
     }
 
-    fn start_of_simulation(&mut self, ctx: &mut RustdvCtx) {
-        // This testbench drives `clk` itself, because `sim/hdl/tinyalu.sv` is the
-        // bare DUT and takes a clock in. The book's copy of the design
-        // self-clocks, so its chapters do not do this and say why: a BFM that
-        // only ever *waits* on edges ports to an emulator unchanged, while one
-        // that drives them does not. Everything above this line is that kind of
-        // BFM — the clock is the one place the testbench is talking to a
-        // simulator rather than to a design.
-        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM").expect("build filed the BFM");
-        Clock::new(bfm.clk(), SimDuration::ns(10)).start();
-    }
-
     async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
         let _obj = ctx.raise_objection("stimulus");
 

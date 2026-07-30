@@ -1,9 +1,21 @@
 # Prompt for a new rustdv thread
 
+**STALE as of 2026-07-30 — do not paste this as-is.** D112 and both of D108's
+runner bugs, which this prompt was written around, are now done (see
+`output/.design-decisions.md` §36/§40 and STATUS.md's 2026-07-30 entries).
+The framework has no known queued work left except what TOUR.md's "Where the
+work stands" already calls "Mine, not yours" (the licensing decision, the
+`#[component(fifo)]`/`#[component(sequencer)]` naming question) and the
+renumbering pass, which waits on the prose. Whoever starts the next thread
+should write a fresh version of this prompt around whatever Ray wants worked
+on next, using TOUR.md's live section as the source of truth rather than the
+body below, which is kept only as the record of how the last one was framed.
+
 *Paste everything below the line into the new thread. Written 2026-07-29, at the
 end of the session that finished the TinyALU refactor and prepared the prose
-pass. Supersedes the 2026-07-28 version, whose reading list points at files that
-no longer exist.*
+pass; revised 2026-07-30 to add D112 (retiring `tinyalu_tb`'s bare-DUT
+exception) ahead of D108 in the work queue. Supersedes the 2026-07-28 version,
+whose reading list points at files that no longer exist.*
 
 ---
 
@@ -20,9 +32,10 @@ rather than assume them.
 
 The restoration is **finished**. Every chapter crate ch15–ch39 runs on Icarus,
 the three-tier test suite is built, and the TinyALU refactor — the last known
-technical debt — landed. There is no framework work queued except two runner
-bugs. The manuscript is being rewritten in a **separate session**, which brings
-one hard rule for you: see "Do not touch the book" below.
+technical debt — landed. There is no framework work queued except D112's
+self-clocking cleanup and D108's two runner bugs. The manuscript is being
+rewritten in a **separate session**, which brings one hard rule for you: see
+"Do not touch the book" below.
 
 ## Read these, in this order
 
@@ -30,11 +43,13 @@ one hard rule for you: see "Do not touch the book" below.
    at the bottom is the live status and is written for this moment.
 2. `CLAUDE.md`, then `CLAUDE.local.md` — the standing rules.
 3. `output/.design-decisions.md` — the decision log. Read **§0–§0.5** (premise,
-   mission, method, the typing thesis, status), then the four newest sections:
-   **§36 (D108, the two runner bugs — this is the work)**, **§37 (D109, the
-   TinyALU refactor)**, **§38 (D110, figure numbering)**, **§39 (D111, chapter
-   41 cut)**. Then **§16**, which should now be empty of open questions. Skim the
-   rest; the index table at the top maps sections to decision numbers.
+   mission, method, the typing thesis, status), then the five newest sections:
+   **§40 (D112, retiring `tinyalu_tb`'s bare-DUT exception — this lands
+   first)**, **§36 (D108, the two runner bugs — the work after D112)**, **§37
+   (D109, the TinyALU refactor)**, **§38 (D110, figure numbering)**, **§39
+   (D111, chapter 41 cut)**. Then **§16**, which should now be empty of open
+   questions. Skim the rest; the index table at the top maps sections to
+   decision numbers.
 4. `STATUS.md`, bottom-up. The last two entries — the test suite and the TinyALU
    refactor — are the current state.
 5. `output/regression/TESTING.md` — how the suite runs, and the two runner
@@ -55,7 +70,11 @@ one hard rule for you: see "Do not touch the book" below.
      beside it.
 8. `rustdv/tinyalu_tb/src/` — all six files. It is the shipped testbench, it was
    just converted, and it is the example every chapter's shape is measured
-   against.
+   against. **Do D112 here first**, before D108: this is the file with the
+   `Clock::new` line that D112 deletes, and `sim/hdl/tinyalu.sv` is the RTL
+   D112 makes self-clocking. Don't confuse this with D108's own `clock.rs` —
+   D112 removes a `Clock` *use*; D108 fixes the executor `Clock` itself is
+   built on.
 
 Do **not** follow `output/.design-doc.md`. It is the pre-restoration
 specification whose closed-world design caused the problems that were fixed; it
@@ -103,11 +122,20 @@ beats a confident wrong answer later.
 
 ## The work queued, in order
 
-1. **D108's two runner fixes.** Decided, not started. Both land before release.
-2. **After the prose pass finishes:** apply `book-pdf/renumbering-spec.md` to the
+1. **D112 first: retire `tinyalu_tb`'s bare-DUT exception.** Make
+   `sim/hdl/tinyalu.sv` self-clocking like every chapter's DUT (D42), delete
+   `tinyalu_tb`'s `Clock::new` line, rerun `custom/sim-tinyalu-tb` and the full
+   regression, and check whether the transcript timing shifts (it has before,
+   for an unrelated reason — STATUS.md, the `wait_idle` hardening). Small,
+   isolated, no scheduler involved.
+2. **Then D108's two runner fixes.** Decided, not started. D112 narrows the
+   second fix's scope to ch17's `Clock` idiom and
+   `framework-tests/hdl/probe.sv` — same executor-level fix, smaller surface to
+   verify against. Both land before release.
+3. **After the prose pass finishes:** apply `book-pdf/renumbering-spec.md` to the
    `.rs` captions — in place and line-count-neutral, because transcripts embed
    `file:line` — then render and read the book end to end against the render.
-3. **Mine, not yours:** the licensing decision (`output/rights-inventory.md`
+4. **Mine, not yours:** the licensing decision (`output/rights-inventory.md`
    has the five places and the current contradictions), and the
    `#[component(fifo)]`/`#[component(sequencer)]` naming question, which D106's
    tail defers to whoever next touches those declarations.

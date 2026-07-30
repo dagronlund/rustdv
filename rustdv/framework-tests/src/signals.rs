@@ -7,9 +7,6 @@
 
 use rustdv::prelude::*;
 
-use crate::fresh_phase;
-
-
 // Widths come from the design, not from the Rust type.
 #[rustdv::test]
 async fn sig_widths_match_the_design(ctx: RustdvCtx) -> Result<(), TestError> {
@@ -24,7 +21,6 @@ async fn sig_widths_match_the_design(ctx: RustdvCtx) -> Result<(), TestError> {
 // A value written is the value read back, at every width.
 #[rustdv::test]
 async fn sig_round_trips(ctx: RustdvCtx) -> Result<(), TestError> {
-    fresh_phase().await;
     let dut = ctx.dut();
     for (name, value) in [("byte_sig", 0xA5u64), ("word_sig", 0xBEEF), ("nibble", 0xC)] {
         let sig = dut.signal(name)?;
@@ -42,7 +38,6 @@ async fn sig_round_trips(ctx: RustdvCtx) -> Result<(), TestError> {
 // silent change to it would corrupt drivers rather than fail them.
 #[rustdv::test]
 async fn sig_truncates_to_width(ctx: RustdvCtx) -> Result<(), TestError> {
-    fresh_phase().await;
     let nibble = ctx.dut().signal("nibble")?;
     nibble.set_u64(0xFF);
     read_write().await;
@@ -81,7 +76,6 @@ async fn sig_x_is_an_error_not_a_zero(ctx: RustdvCtx) -> Result<(), TestError> {
 // A partly-unknown bus is still an error: one x poisons the integer.
 #[rustdv::test]
 async fn sig_partial_x_is_still_an_error(ctx: RustdvCtx) -> Result<(), TestError> {
-    fresh_phase().await;
     let sig = ctx.dut().signal("byte_sig")?;
 
     // Drive a known value, then write a pattern with unknown bits through

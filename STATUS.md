@@ -478,6 +478,14 @@ into the message (D49/D62).
   copy under `output/examples/sim-common/hdl/`, which self-clocks. So this
   testbench drives the clock and the chapters do not (D42). It is in
   `BaseTest::start_of_simulation` with the reason written next to it.
+  **Retired 2026-07-30 — see D112 in the decision log.** The exception closes:
+  `tinyalu_tb`'s DUT becomes self-clocking and the `Clock::new` line comes out.
+  This is also what narrows D108's bug 2 down to ch17's taught `Clock` idiom
+  and `framework-tests/hdl/probe.sv`. Transcript timings moved 5ns earlier
+  (RandomTest 635→630ns, MaxTest 195→190ns) because the software `Clock`
+  started high and the self-clocking RTL starts low; counts and coverage are
+  unchanged and `custom/sim-tinyalu-tb` doesn't assert timing, so nothing else
+  needed updating.
 
 **The shipped testbench is now in the regression** as `custom/sim-tinyalu-tb`.
 Until today nothing in the suite ran it: `cargo test --workspace` proved it
@@ -486,3 +494,51 @@ compiled, and "the TinyALU regression passes" rested on a human running
 above, so a scoreboard that stopped comparing fails instead of passing quietly.
 Regression: **237 entries** (unit 1, book-sync 108, examples 96, custom 32),
 green, `MUTATION: CAUGHT`.
+
+## 2026-07-30 — D108: both runner bugs, and a test that was passing because of one of them
+
+Both landed together — they turned out to be one mechanism, not two. Full
+reasoning and the two rejected approaches are in `output/.design-decisions.md`
+§36 (D108); this is the short version.
+
+`rustdv_sim::phase::leave_read_only()` (new) is the first thing `run_one`
+does: a no-op unless the simulator is currently in the ReadOnly region,
+otherwise one precision step's wait to leave it (fix 1, the phase leak).
+`deny_write_in_read_only()` (new, factored out of `schedule()`) is now called
+by `set_u64_now`/`set_now` (`rustdv-sim/src/handle.rs`) the same way it was
+already called for the scheduled-write path — an immediate write caught in
+ReadOnly now panics instead of silently reaching Icarus, which used to print
+a diagnostic and drop the write (fix 2). `framework_tests::fresh_phase()` and
+its four manual call sites are gone; the runner does it for every test now.
+
+**A real finding along the way:** `framework-tests/src/clocks.rs`'s
+`clock_two_are_independent` (a 2ns and a 10ns clock run together) was passing
+*because* of the bug — Icarus silently dropping both clocks' opening writes
+delayed the test's sync point just enough to dodge a tie between two
+harmonic clocks' coincident edges. Fixed the write-drop and the test's own
+latent tie-break showed up (9 edges instead of 10, not a flake — reproduced
+every run). The test now bounds its measurement window with the slow clock's
+falling edges instead of rising ones, which is 1ns clear of every fast edge
+on both sides; same assertions (`dt == 20.0`, `fast_edges == 10`), argued for
+instead of coincidental.
+
+**Also fixed, found while verifying the above, unrelated to D108:**
+`custom/sim-smoke-icarus` was red on arrival. `sim/tb/smoke_tb.sv` still drove
+its own `clk` into a DUT that no longer takes one as a port (D112 made
+`sim/hdl/tinyalu.sv` self-clocking — the smoke test has its own tiny DUT and
+had the same pre-D112 shape), and `sim/run_smoke.sh` never compiled
+`timescale.v` first, so the smoke test's own clock ran at Icarus's 1s/1s
+default instead of 1ns/1ns and its watchdog fired. `smoke_tb.sv` now takes
+`wire clk = dut.clk`; `run_smoke.sh` compiles `timescale.v` first for every
+simulator entry.
+
+Verified: every `framework-tests` group (`clock`, `trig`, `sig_`, `conc`,
+`elab`, `runner_`) and the unfiltered all-39 run, all green, zero `VPI
+error`/`SCHEDULER ERROR` lines. `regress.py --suite unit` (110 tests),
+`--filter sim-tinyalu-tb`, and `--filter sim-smoke-icarus` all green.
+`output/examples` has no `set_u64_now`/`set_now`/`read_only()` calls, so
+`leave_read_only()` is a no-op for every existing book chapter and none of
+their transcripts needed regenerating — D108's own scope note expected a wider
+blast radius than this turned out to need, because D112 (landed the same day)
+had already narrowed `Clock`'s real users down to `framework-tests` and one
+book chapter (ch17), neither of which this fix touches behaviorally.

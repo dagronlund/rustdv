@@ -75,6 +75,16 @@ async fn clock_drives_the_design(ctx: RustdvCtx) -> Result<(), TestError> {
 }
 
 // Two clocks run independently at their own rates.
+//
+// The window is bounded by the slow clock's *falling* edges, and that is not a
+// stylistic choice. A 2ns clock and a 10ns clock share a rising edge every
+// 10ns by construction, so a window running from one slow rising edge to
+// another both starts and ends on an instant where a fast edge also occurs.
+// The count then depends on which of two simultaneous callbacks the simulator
+// delivers first — the fast clock's toggle, or the slow one's toggle that
+// cancels the counting task — which is a tie-break, not a period. Half the
+// slow period puts both boundaries 1ns clear of every fast edge, so ten is ten
+// for a reason the test can state.
 #[rustdv::test]
 async fn clock_two_are_independent(ctx: RustdvCtx) -> Result<(), TestError> {
     // `flag` is not wired to anything in the design, so it serves as a second
@@ -86,7 +96,7 @@ async fn clock_two_are_independent(ctx: RustdvCtx) -> Result<(), TestError> {
 
     // Sync on the slow clock first, so the window below starts at one of its
     // edges rather than wherever the test happened to begin.
-    slow.rising_edge().await;
+    slow.falling_edge().await;
     let t0 = sim_time_ns();
     let mut fast_edges = 0;
     // Count the fast clock until the slow one has ticked twice more.
@@ -97,8 +107,8 @@ async fn clock_two_are_independent(ctx: RustdvCtx) -> Result<(), TestError> {
         }
     };
     let waiting = async {
-        slow.rising_edge().await;
-        slow.rising_edge().await;
+        slow.falling_edge().await;
+        slow.falling_edge().await;
     };
     let _ = first2(counting, waiting).await;
 

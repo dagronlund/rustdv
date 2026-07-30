@@ -10,7 +10,6 @@
 
 module smoke_tb;
 
-   logic        clk = 0;
    logic        reset_n;
    logic        start;
    logic [7:0]  A, B;
@@ -20,9 +19,12 @@ module smoke_tb;
 
    int          errors = 0;
 
-   tinyalu dut (.A, .B, .op, .clk, .reset_n, .start, .done, .result);
+   tinyalu dut (.A, .B, .op, .reset_n, .start, .done, .result);
 
-   always #5 clk = ~clk;
+   // The DUT supplies its own clock (D112), so this testbench watches it
+   // rather than driving one. Nothing here may drive `clk`: two sources on
+   // one signal is the bug this smoke test exists to rule out.
+   wire clk = dut.clk;
 
    // Hold start and operands until done asserts, then release.
    task do_op(input [7:0] a, input [7:0] b, input [2:0] o,

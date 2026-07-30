@@ -147,10 +147,16 @@ failing for an unrelated reason would keep passing and stop testing anything.
 
 Both are properties of the runner, not quirks of these tests:
 
-- **The simulator phase outlives the test.** A test ending inside ReadOnly
-  leaves the next one starting inside ReadOnly, where a write is a panic.
-  `framework_tests::fresh_phase()` advances one step to get out; any test that
-  writes a signal calls it first.
+- **The simulator phase outlives the test — the runner, not the test, deals
+  with it.** A test ending inside ReadOnly used to leave the next one starting
+  inside ReadOnly, where a write is a panic, and every test that wrote a signal
+  opened with a `fresh_phase()` call to step out. Since D108 the runner does it:
+  `run_one` awaits `phase::leave_read_only()` before anything else, which costs
+  one precision step when the predecessor ended in ReadOnly and nothing at all
+  otherwise. Write a test as if it were the only one running. The cost is
+  visible: a test that follows a ReadOnly-ending test starts one step later
+  than its own arithmetic suggests, so measure elapsed time between two
+  `sim_time_ns()` reads rather than from an assumed start.
 - **vvp exits when its event queue empties.** A test with no clock and no
   pending timer that awaits `next_time_step()` will not be woken — the
   simulator quits and the rest of the regression never runs. Keep a clock or a
