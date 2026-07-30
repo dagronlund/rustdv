@@ -1,7 +1,9 @@
 # Prompt for a new rustdv thread
 
-*Paste everything below the line into the new thread. Written 2026-07-28, at the
-end of the TLM work (ch23–ch34 converted and green).*
+*Paste everything below the line into the new thread. Written 2026-07-29, at the
+end of the session that finished the TinyALU refactor and prepared the prose
+pass. Supersedes the 2026-07-28 version, whose reading list points at files that
+no longer exist.*
 
 ---
 
@@ -9,91 +11,128 @@ You have two folders: `rustdv` (the repository) and `rustdv-reference`
 (read-only upstream sources — cocotb, pyuvm, the SystemVerilog UVM, and my two
 earlier books).
 
-**This turn is orientation only. Do not change any file, do not run any build,
-do not run the regression, do not propose a plan.** Read, then tell me what you
-understand. You may run `git status`, `git log`, and `ls` to establish facts
+**This turn is orientation only. Do not change any file, do not run a build, do
+not run the regression, do not propose a plan.** Read, then tell me what you
+understand. You may run `git status`, `git log` and `ls` to establish facts
 rather than assume them.
+
+## What changed since the last thread, so the shape is not a surprise
+
+The restoration is **finished**. Every chapter crate ch15–ch39 runs on Icarus,
+the three-tier test suite is built, and the TinyALU refactor — the last known
+technical debt — landed. There is no framework work queued except two runner
+bugs. The manuscript is being rewritten in a **separate session**, which brings
+one hard rule for you: see "Do not touch the book" below.
 
 ## Read these, in this order
 
-1. `TOUR.md` — start here. Its **"Where the work stands"** section, at the
-   bottom under "Notes for AI sessions", was written for exactly this moment.
-2. `CLAUDE.md` — the standing rules and the folder map.
-3. `CLAUDE.local.md` — my local notes.
-4. `output/.design-decisions.md` — the authoritative decision log. Read **§0
-   through §0.5** carefully (premise, mission, method, the typing thesis, and
-   the live status). Then read the sections covering the most recent work:
-   **§22 (concurrency), §23 (TLM connection), §24 (analysis), §25 (non-blocking
-   TLM), §26 (the analysis hub)**, plus **§16 (open questions)**. Skim the rest;
-   the index table at the top maps sections to decision numbers.
-5. `STATUS.md` — implementation history and the deviations log. It reads
-   bottom-up: the newest entry is last and is the one that matters most.
-6. The three chapters that were just finished, code first and then the README
-   beside each:
-   - `output/examples/ch31-component-communications/`
-   - `output/examples/ch32-analysis-ports/`
-   - `output/examples/ch34-connections-testbench-6.0/`
-7. The framework code those chapters exercise:
-   `rustdv/rustdv-methodology/src/` — `port.rs`, `fifo.rs`, `analysis.rs`,
-   `shared.rs`, `component.rs`, `factory.rs` — and the derive in
-   `rustdv/rustdv-macros/src/rustdv_macros.rs`.
-8. `book-pdf/fable-brief.md` — the brief for the prose pass. You are not Fable,
-   but you need to know what has been promised to the book.
+1. `TOUR.md` — start here, whole file. Its **"Where the work stands"** section
+   at the bottom is the live status and is written for this moment.
+2. `CLAUDE.md`, then `CLAUDE.local.md` — the standing rules.
+3. `output/.design-decisions.md` — the decision log. Read **§0–§0.5** (premise,
+   mission, method, the typing thesis, status), then the four newest sections:
+   **§36 (D108, the two runner bugs — this is the work)**, **§37 (D109, the
+   TinyALU refactor)**, **§38 (D110, figure numbering)**, **§39 (D111, chapter
+   41 cut)**. Then **§16**, which should now be empty of open questions. Skim the
+   rest; the index table at the top maps sections to decision numbers.
+4. `STATUS.md`, bottom-up. The last two entries — the test suite and the TinyALU
+   refactor — are the current state.
+5. `output/regression/TESTING.md` — how the suite runs, and the two runner
+   behaviours a simulator test has to work around. Those two behaviours **are**
+   D108.
+6. `output/test-plan.md` §8, "Two findings, for the record" — the same two
+   behaviours, written up when they were found rather than decided.
+7. The code D108 will touch, and only this much of it:
+   - `rustdv/rustdv-runner/src/rustdv_runner.rs` — `run_one`'s per-test reset,
+     where the first fix belongs, beside the `ConfigDb::clear()` already there.
+   - `rustdv/rustdv-sim/src/phase.rs` — the simulator phase and the ReadOnly
+     region, which is where the leak lives.
+   - `rustdv/rustdv-sim/src/clock.rs` and `triggers.rs` — the second, deeper
+     fix: a write scheduled from inside a ReadOnly callback has to be deferred
+     to a region that permits it.
+   - `rustdv/framework-tests/src/framework_tests.rs` (`fresh_phase()`, which the
+     first fix should make unnecessary), plus `clocks.rs` and `triggers.rs`
+     beside it.
+8. `rustdv/tinyalu_tb/src/` — all six files. It is the shipped testbench, it was
+   just converted, and it is the example every chapter's shape is measured
+   against.
 
 Do **not** follow `output/.design-doc.md`. It is the pre-restoration
-specification whose closed-world design caused the problems now being fixed; it
+specification whose closed-world design caused the problems that were fixed; it
 is kept only as the record of what went wrong.
+
+## Do not touch the book
+
+`book-pdf/` belongs to a separate prose pass that may be running right now. Its
+rules are `book-pdf/FABLE.md`, `book-pdf/chapter-notes.md` and
+`book-pdf/fable-prompt.md`. **You do not edit `book-pdf/`, and it does not edit
+code.** If you learn something the prose needs, append a line to
+`chapter-notes.md` and tell me — that file is the channel between the two
+threads. If you find a figure or transcript that looks wrong, report it; do not
+fix it from either side.
 
 ## Then tell me what you understand
 
-Answer in your own words — not by quoting the documents back at me. I am
-checking whether you have the model, so tell me the *why* behind each answer,
-not just the what.
+Answer in your own words, not by quoting the documents. I am checking whether you
+have the model, so give me the *why*, not just the what.
 
-1. **The mission.** What is being restored, what was destroyed, and what is the
-   one instinct you are supposed to resist? What is D3, and why does it settle
-   arguments?
-2. **The method.** In what order do code, prose, and design decisions get
-   written, and why that order?
-3. **Where the work stands.** Which chapters and which TinyALU testbench
-   versions are done and out of quarantine, which are still quarantined, and
-   what is the next piece of work?
-4. **The TLM layer as built.** How does a parent connect a port on a child it
-   cannot name the type of? Why does that mechanism also work for the parent's
-   own port, and what did it replace? What does `AnalysisBus` store?
-5. **Concurrency.** How can a parent's `run` be concurrent with its children's,
-   and where does the objection race happen? What went wrong when it happened in
-   the other place?
-6. **What is decided versus what is open.** List the questions currently parked
-   for me, and say which of them you must not settle on your own.
-7. **The book's constraints.** Who writes the prose, what may that pass touch,
-   and what does that imply about figure numbers and transcripts?
+1. **The mission.** What was destroyed, what belief caused it, and what is the
+   one instinct you are to resist? What is D3 and why does it settle arguments?
+2. **The method.** In what order do code, prose and decisions get written, and
+   why that order?
+3. **Where things stand.** What is done, what is the only framework work left,
+   and what is waiting on me rather than on you?
+4. **D108, in detail** — both behaviours, why each is a bug rather than a quirk,
+   why the second is the harder one, and what could break when it is fixed.
+   What has to happen to the affected transcripts?
+5. **The shipped testbench.** How does `tinyalu_tb` get its BFM, how are its
+   components built, how is its stimulus chosen, and where does its clock come
+   from — and why is that last answer different from every chapter's?
+6. **Verification.** What are the three tiers, what enforces the line between
+   the first two, and what does `sim-mutation` prove that a passing regression
+   does not?
+7. **What is checked and what is not.** Which parts of the book does the
+   regression compare against code, and which does it not touch at all?
 8. **Anything stale or contradictory.** If two documents disagree, or a document
    claims something the code does not do, say so plainly — including if it
-   contradicts something above. Do not smooth it over. Older entries in the
-   decision log and STATUS.md are historical records and can be superseded by
-   later ones; say which you think wins and why.
+   contradicts something above. Later entries in the log and STATUS.md supersede
+   earlier ones; say which you think wins and why.
 
-Finish with the two or three things you are least sure about. I would rather
-hear an honest gap now than a confident wrong answer later.
+Finish with the two or three things you are least sure about. An honest gap now
+beats a confident wrong answer later.
+
+## The work queued, in order
+
+1. **D108's two runner fixes.** Decided, not started. Both land before release.
+2. **After the prose pass finishes:** apply `book-pdf/renumbering-spec.md` to the
+   `.rs` captions — in place and line-count-neutral, because transcripts embed
+   `file:line` — then render and read the book end to end against the render.
+3. **Mine, not yours:** the licensing decision (`output/rights-inventory.md`
+   has the five places and the current contradictions), and the
+   `#[component(fifo)]`/`#[component(sequencer)]` naming question, which D106's
+   tail defers to whoever next touches those declarations.
 
 ## Working notes for when we do start
 
-Not for this turn, but so you are not surprised:
-
-- The environment has no network. The toolchain comes from
-  `toolchain-drop/install.sh`; the VM wipes `/tmp` between sessions, so it must
-  be re-run, then `export PATH="/tmp/rust/bin:/tmp/oss-cad-suite/bin:$PATH"`.
-  Use `CARGO_TARGET_DIR=/tmp/rustdv-target` for the framework and
-  `/tmp/rustdv-examples-target` for the examples.
-- Shell calls have a ~45 second budget and background processes are killed
-  between calls. The full regression takes a few minutes from cold — pre-build
-  the example workspace first, then run `python3 output/regression/regress.py`.
-- The VM's disk is ~9.6 GB and the two target directories reach ~1.5 GB. A full
-  disk surfaces as regression failures reading `No space left on device`, which
-  looks exactly like a real break and is not.
-- Never bulk-delete-and-recreate directories inside the mounted folder — the
-  desktop sync engine races and forks `dir 2/` duplicates. Build in `/tmp` and
-  copy over.
-- I make the commits. Never claim the branch state without checking
-  `git status`.
+- No network. The toolchain comes from `toolchain-drop/install.sh`; the VM wipes
+  `/tmp` between sessions, so re-run it and
+  `export PATH="/tmp/rust/bin:/tmp/oss-cad-suite/bin:$PATH"`. `mdbook` is in the
+  drop too and builds HTML offline; only the PDF backend needs a Chromium the VM
+  lacks.
+- **Keep all scratch under `/tmp/rustdv-$(id -u)/`.** Sessions share the VM under
+  different uids and cannot clean up after each other; a stale shared path blocks
+  builds with an unhelpful `Permission denied`. Use
+  `CARGO_TARGET_DIR=/tmp/rustdv-$(id -u)/target` for the framework and
+  `…/examples-target` for the examples.
+- Shell calls have a ~45 s budget and background processes die between them. The
+  full regression takes minutes from cold — pre-build the workspaces, then run
+  `regress.py` one suite at a time.
+- Disk is ~9.6 GB and fills up. `CARGO_PROFILE_DEV_DEBUG=0` cuts a debug build
+  from ~1.1 GB to ~240 MB and changes no transcript. A full disk reads as
+  `No space left on device` and looks exactly like a real regression.
+- Never bulk-delete-and-recreate a directory inside the mounted folder — the sync
+  engine races and forks `dir 2/` duplicates. Build in `/tmp` and copy over. The
+  same race can leave a stale `.git/index.lock`; check for one if git complains.
+- **I make the commits. Never claim branch state without running `git status`.**
+  As of 2026-07-29 both `fable-prep` and `master` are at `8af2f96`, pushed, with
+  the regression green at 237 entries.
