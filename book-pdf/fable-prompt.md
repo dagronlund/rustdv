@@ -162,6 +162,13 @@ is what it will read. So: every judgement call early, every repetition late.
 1. **The tone study** above, written into `HANDOFF.md`.
 2. **Chapter 1.** It sets the frame once for the whole book. Get it right and
    every later chapter gets shorter, because none of them has to re-argue it.
+
+**Then stop.** Show Ray the tone study and chapter 1, and wait. This is the only
+mandatory checkpoint in the pass, and it exists because voice is the one thing
+neither of you can verify in advance: everything else in this file can be checked
+against a file on disk, and how the prose *sounds* cannot. A wrong turn caught at
+chapter 1 costs one chapter; caught at chapter 30 it costs the budget. Do not
+treat silence as approval — wait for an answer.
 3. **The rustdv catalogue and Appendix D** — the `prelude::*` debt in
    `FABLE.md`. This gates all of Part II.
 4. **The chapters whose argument is reversed**: ch24, ch27, ch31, ch32, ch36,
@@ -224,8 +231,9 @@ One chapter at a time. For each, read four things: its row in `chapter-notes.md`
 its current file in `book-pdf/src/`, its example crate, and that crate's
 `README.md` for the transcript. **Never read the manuscript in bulk.**
 
-A finished chapter and a one-line handoff update is the report — no summaries
-back to Ray beyond that.
+After the chapter-1 checkpoint, a finished chapter and a one-line handoff update
+is the report — no summaries back to Ray beyond that. The exception is anything
+you had to guess: raise that immediately, however small, rather than saving it.
 
 Start with the tone study.
 
