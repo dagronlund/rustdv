@@ -234,7 +234,7 @@ impl Sequence for RepairSeq {
     }
 }
 
-// Chapter 37, Figure 4 is a paragraph, not code: **asking for a receipt that
+// Chapter 37, prose passage, not code, no figure number: **asking for a receipt that
 // will never exist.** A sequence that calls `get_response` for a ticket the
 // desk never issues waits forever — a ticket for a repair the shop does not
 // do. Nothing can tell "not ready yet" from "never coming", which is why it is
@@ -265,7 +265,7 @@ impl Component for ShopEnv {
     }
 }
 
-// Chapter 37, Figure 5: The test.
+// Chapter 37, Figure 4: The test.
 #[rustdv::test]
 #[derive(Component, Default)]
 struct RepairTest {

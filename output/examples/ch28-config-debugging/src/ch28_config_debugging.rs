@@ -199,7 +199,7 @@ impl Component for NiceMsgTestAlmostFixed {
 // Wildcards
 // ===========================================================================
 
-// Chapter 28, Figure 7: Wildcards behaving, for contrast with the failures.
+// Chapter 28, Figure 8: Wildcards behaving, for contrast with the failures.
 #[derive(Component, Default)]
 struct MultiMsgEnv {
     #[component(child)]
@@ -241,7 +241,7 @@ impl Component for MultiMsgTest {
 // Debugging a parent/child conflict
 // ===========================================================================
 
-// Chapter 28, Figure 8: Both the env and the test configure `env.loga`.
+// Chapter 28, Figure 9: Both the env and the test configure `env.loga`.
 //
 // This is where the dump earns its keep. A resolved value tells you who
 // won; it does not tell you that anyone else was competing. The dump lists
@@ -283,7 +283,7 @@ impl Component for ConflictTest {
 // Tracing
 // ===========================================================================
 
-// Chapter 28, Figure 9: Tracing every ConfigDb operation.
+// Chapter 28, Figure 11: Tracing every ConfigDb operation.
 //
 // The dump is a snapshot; tracing is the film. Turn it on before building
 // the hierarchy and every set and get is logged as it happens, with the

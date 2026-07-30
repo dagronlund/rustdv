@@ -115,7 +115,7 @@ impl Component for MsgTest {
 // Wildcards
 // ===========================================================================
 
-// Chapter 27, Figure 4: Adding talka and talkb to the environment.
+// Chapter 27, Figure 5: Adding talka and talkb to the environment.
 //
 // Python subclasses MsgEnv and calls `super().build_phase()`. Rust has no
 // inheritance and the difference here is *structural* — which children
@@ -142,7 +142,7 @@ impl Component for MultiMsgEnv {
     }
 }
 
-// Chapter 27, Figure 5: Using a wildcard to configure both talkers at once.
+// Chapter 27, Figure 6: Using a wildcard to configure both talkers at once.
 //
 // `set` takes a glob; `get` takes a concrete path. pyuvm enforces the same
 // asymmetry, and it is the right way round: you write to a *pattern* of
@@ -167,7 +167,7 @@ impl Component for MultiMsgTest {
 // Global data
 // ===========================================================================
 
-// Chapter 27, Figure 6: Adding gtalk, which nobody configures by name.
+// Chapter 27, Figure 8: Adding gtalk, which nobody configures by name.
 #[derive(Component, Default)]
 struct GlobalEnv {
     #[component(child)]
@@ -192,7 +192,7 @@ impl Component for GlobalEnv {
     }
 }
 
-// Chapter 27, Figure 7: Storing a message for everybody.
+// Chapter 27, Figure 9: Storing a message for everybody.
 //
 // A `None` context is the port of pyuvm's `ConfigDB().set(None, ...)` and
 // SystemVerilog's `set(null, ...)`: with no context to offset from, the
@@ -225,7 +225,7 @@ impl Component for GlobalTest {
 // Parent/child conflict
 // ===========================================================================
 
-// Chapter 27, Figure 8: The env configures its own child...
+// Chapter 27, Figure 11: The env configures its own child...
 #[derive(Component, Default)]
 struct ConflictEnv {
     #[component(child)]
@@ -239,7 +239,7 @@ impl Component for ConflictEnv {
     }
 }
 
-// Chapter 27, Figure 9: ...and the test configures the same component by a
+// Chapter 27, Figure 12: ...and the test configures the same component by a
 // longer path. Both resolve to exactly the same place. Which message prints?
 //
 // **The parent wins**, and not because it wrote first — it wrote *earlier*,

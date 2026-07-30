@@ -9,11 +9,11 @@
 //! file because D45 requires a chapter example to be self-contained: splitting
 //! the components into a crate that Chapter 34 imports is precisely the
 //! cross-chapter import D45 dissolved. The captions carry the chapter number,
-//! so `// Chapter 33, Figure 1:` and `// Chapter 34, Figure 1:` coexist here
+//! so `// Chapter 33, Figure 1:` and `// Chapter 34, Figure 2:` coexist here
 //! and each chapter's README maps its own figures.
 //!
 //! Chapter 33 owns Figures 1–6 (Tester, Driver, the two monitors, Scoreboard,
-//! Coverage); Chapter 34 owns Figures 1–2 (the env, and the test).
+//! Coverage); Chapter 34 owns Figures 2–3 (the env, and the test).
 //!
 //! Built and green on Icarus (2026-07-28). This is the payoff chapter: put/get
 //! (Chapter 31) and analysis broadcast (Chapter 32) wired into one working
@@ -280,7 +280,7 @@ impl Component for Coverage {
 // The environment wires it all together
 // ===========================================================================
 
-// Chapter 34, Figure 1: build the components and the FIFOs; connect in one
+// Chapter 34, Figure 2: build the components and the FIFOs; connect in one
 // place. **Every connection is the same shape** — a concrete FIFO, a named
 // export, and `connect(component, PORT_NAME)` — whether the traffic is
 // point-to-point (`TlmFifo`) or broadcast (`AnalysisBus`). Nothing reaches
@@ -342,7 +342,7 @@ impl Component for AluEnv {
     }
 }
 
-// Chapter 34, Figure 2: the test is just the env.
+// Chapter 34, Figure 3: the test is just the env.
 #[rustdv::test]
 #[derive(Component, Default)]
 struct AluTest {

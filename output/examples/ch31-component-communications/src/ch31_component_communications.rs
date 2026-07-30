@@ -171,7 +171,7 @@ impl Packet {
     }
 }
 
-// Chapter 31, Figure 4: A non-blocking producer never waits — `try_put` fails
+// Chapter 31, Figure 5: A non-blocking producer never waits — `try_put` fails
 // when the FIFO is full, and the producer decides what to do (here, yield and
 // retry).
 //
@@ -207,7 +207,7 @@ impl Component for NbProducer {
     }
 }
 
-// Chapter 31, Figure 5: A non-blocking consumer — `try_get` returns `None` when
+// Chapter 31, Figure 6: A non-blocking consumer — `try_get` returns `None` when
 // the FIFO is empty.
 //
 // `Option<Packet>` for the same reason `Result<(), Packet>` above: a get either
@@ -238,7 +238,7 @@ impl Component for NbConsumer {
     }
 }
 
-// Chapter 31, Figure 6: Same wiring, non-blocking components.
+// Chapter 31, Figure 7: Same wiring, non-blocking components.
 //
 // The FIFO now carries `Packet` rather than `u32`, and not one connect line
 // changed shape. That is the generic FIFO doing its job — and the typed
@@ -272,7 +272,7 @@ impl Component for NonBlockingTest {
 // The parent runs too — a three-stage pipeline
 // ===========================================================================
 
-// Chapter 31, Figure 7: A processing pipeline — y = 2x².
+// Chapter 31, Figure 9: A processing pipeline — y = 2x².
 //
 // Everything so far had a parent that only built and connected. Here the
 // **test itself is a stage**: it chooses x, sends it into the pipeline, and
@@ -300,7 +300,7 @@ impl Component for NonBlockingTest {
 // sequence while the driver waits for items), reduced to arithmetic with no
 // DUT and a self-checking answer.
 
-// Chapter 31, Figure 8: The first stage squares its input.
+// Chapter 31, Figure 10: The first stage squares its input.
 #[derive(Component, Default)]
 struct SquareIt {
     #[port(get)]
@@ -319,7 +319,7 @@ impl Component for SquareIt {
     }
 }
 
-// Chapter 31, Figure 9: The second stage doubles what the first produced.
+// Chapter 31, Figure 11: The second stage doubles what the first produced.
 #[derive(Component, Default)]
 struct TimesTwo {
     #[port(get)]
@@ -338,7 +338,7 @@ impl Component for TimesTwo {
     }
 }
 
-// Chapter 31, Figure 10: The test drives the pipeline and checks the answer.
+// Chapter 31, Figure 12: The test drives the pipeline and checks the answer.
 //
 // The test owns three FIFOs and two workers, and holds ports of its own: it
 // puts x and gets y. Its `run` is the stimulus *and* the comparison.
@@ -411,7 +411,7 @@ impl Component for MathTest {
 // Beyond the book — the checks declared ports make possible
 // ===========================================================================
 
-// Chapter 31, Figure 11: A port left unconnected is an elaboration error (D22).
+// Chapter 31, Figure 14: A port left unconnected is an elaboration error (D22).
 //
 // The book has no figure for this: pyuvm discovers a missing connection lazily,
 // at first use, as a Python attribute error. rustdv walks the tree at the end
@@ -436,7 +436,7 @@ impl Component for UnconnectedTest {
     // elaboration fails and names `UnconnectedTest.producer.put_port`.
 }
 
-// Chapter 31, Figure 12: A FIFO's built-in analysis taps (D23).
+// Chapter 31, Figure 16: A FIFO's built-in analysis taps (D23).
 //
 // Every `TlmFifo` publishes each item it accepts on `put_ap()` and each item it
 // releases on `get_ap()`. This is the port of `uvm_tlm_fifo`'s built-in taps,

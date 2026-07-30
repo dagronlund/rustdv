@@ -80,7 +80,7 @@ pub struct AluResult {
 // The driver
 // ===========================================================================
 
-// Chapter 36, Figure 1: The driver pulls items instead of being pushed them.
+// Chapter 36, Figure 2: The driver pulls items instead of being pushed them.
 //
 // The difference from 6.0 is not the direction of the data — it is who decides
 // when. `get_next_item()` returns only when a sequence has an item ready *and*
@@ -111,7 +111,7 @@ impl Component for Driver {
 // The sequences
 // ===========================================================================
 
-// Chapter 36, Figure 2: One body, three stimulus patterns.
+// Chapter 36, Figure 3: One body, three stimulus patterns.
 //
 // The Python book writes `BaseSeq` with a `body()` that loops the operations
 // and calls `self.set_operands(tr)`, then subclasses it twice to override that
@@ -143,7 +143,7 @@ async fn all_ops<S: Operands>(
     Ok(())
 }
 
-// Chapter 36, Figure 3: The base sequence sends zeros.
+// Chapter 36, Figure 4: The base sequence sends zeros.
 //
 // `create_seq::<BaseSeq>()` asks the factory for this type, so a test can
 // substitute another sequence for it — the same mechanism as Chapter 29's
@@ -167,7 +167,7 @@ impl Sequence for BaseSeq {
     }
 }
 
-// Chapter 36, Figure 4: Random and maximum operands.
+// Chapter 36, Figure 5: Random and maximum operands.
 //
 // The RNG comes from the context, so a run reproduces from its seed the way
 // every other part of the testbench does. pyuvm's sequences reach for the
@@ -312,7 +312,7 @@ impl Component for Scoreboard {
 // The environment
 // ===========================================================================
 
-// Chapter 36, Figure 5: The env owns the sequencer and files its handle.
+// Chapter 36, Figure 6: The env owns the sequencer and files its handle.
 //
 // `#[component(sequencer)]` is the same carve-out D84 made for FIFOs: both
 // endpoints of a connection are erased `RustdvComp` slots, so something
@@ -373,7 +373,7 @@ impl Component for AluEnv {
 // The tests
 // ===========================================================================
 
-// Chapter 36, Figure 6: The test starts a sequence on the sequencer.
+// Chapter 36, Figure 7: The test starts a sequence on the sequencer.
 //
 // It finds the sequencer in the ConfigDb — it does not know or care where in
 // the tree it lives. `start` is a method on the *sequence*, taking the
@@ -417,7 +417,7 @@ impl Component for BaseTest {
     }
 }
 
-// Chapter 36, Figure 7: Two more tests, one testbench, no new components.
+// Chapter 36, Figure 8: Two more tests, one testbench, no new components.
 //
 // This is what sequences bought. In Chapter 30 a new stimulus pattern meant a
 // new *component* and a factory override on a component slot. Here it is a

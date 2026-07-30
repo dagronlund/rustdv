@@ -221,7 +221,7 @@ impl Component for BroadcastTest {
 // Beyond the book
 // ===========================================================================
 
-// Chapter 32, Figure 5: A hub with no subscribers is legal (D22).
+// Chapter 32, Figure 6: A hub with no subscribers is legal (D22).
 //
 // Unlike a put/get port, an analysis `sub_export()` has min cardinality 0:
 // broadcasting to nobody is a valid state, so this elaborates and runs clean.
@@ -248,7 +248,7 @@ impl Component for NoSubscribersTest {
     }
 }
 
-// Chapter 32, Figure 6: When the subscriber needs *time*.
+// Chapter 32, Figure 8: When the subscriber needs *time*.
 //
 // Every subscriber so far did its whole job inside `write` — bump a counter,
 // push onto a `Vec`. Those finish in zero time, which is what `write` requires:
@@ -316,7 +316,7 @@ impl Component for SlowChecker {
     }
 }
 
-// Chapter 32, Figure 7: The publisher does not wait for the slow subscriber.
+// Chapter 32, Figure 9: The publisher does not wait for the slow subscriber.
 //
 // The transcript is the lesson. All three writes land at 0ns — the source is
 // never held up by what a subscriber does with an item — while the checker's

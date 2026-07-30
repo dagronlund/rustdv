@@ -155,7 +155,7 @@ impl Sequence for TestAllSeq {
     }
 }
 
-// Chapter 39, Figure 2: The same two sequences, at the same time.
+// Chapter 39, Figure 4: The same two sequences, at the same time.
 //
 // `join2` is SystemVerilog's `fork...join`, under the name the reader met at
 // Chapter 31 and will meet wherever two things must run together. The sequencer
@@ -189,7 +189,7 @@ impl Sequence for TestAllParallelSeq {
 // A programming interface
 // ===========================================================================
 
-// Chapter 39, Figure 3: One operation, as a sequence.
+// Chapter 39, Figure 6: One operation, as a sequence.
 //
 // A sequence with parameters, constructed the ordinary way rather than by the
 // factory — the factory's makers take no arguments (D80), so a sequence that
@@ -214,7 +214,7 @@ impl Sequence for OpSeq {
     }
 }
 
-// Chapter 39, Figure 4: The TinyALU programming interface.
+// Chapter 39, Figure 7: The TinyALU programming interface.
 //
 // This is the payoff. A test writer who has never opened the testbench gets
 // four functions that take numbers and return numbers; sequencer, driver,
@@ -250,7 +250,7 @@ async fn do_mul(seqr: &Sequencer<AluCommand, AluResult>, a: u8, b: u8) -> Result
     do_op(seqr, a, b, Ops::Mul).await
 }
 
-// Chapter 39, Figure 5: Fibonacci, written as a program.
+// Chapter 39, Figure 8: Fibonacci, written as a program.
 //
 // The same computation as Chapter 38, with no sequence machinery visible at
 // all. Compare the two side by side: this is what a programming interface is
@@ -433,7 +433,7 @@ impl Component for AluEnv {
     }
 }
 
-// Chapter 39, Figure 6: A test that starts a virtual sequence — no sequencer.
+// Chapter 39, Figure 2: A test that starts a virtual sequence — no sequencer.
 //
 // `start_virtual()` takes none, because a virtual sequence has none to take.
 // Everything it drives, it drives through sequencers it looked up itself.
