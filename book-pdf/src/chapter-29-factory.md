@@ -22,7 +22,7 @@ impl Component for TinyComponent {
 }
 ```
 
-Nothing here mentions the factory, and that is the first difference worth noticing: **registration is universal and automatic.** `#[derive(Component)]` enrolls every component by name, so `TinyComponent` can be created by type or by the string `"TinyComponent"`, and can be the target of an override, with no separate registration step and no "did I remember the utils macro?" This is the same promise pyuvm's metaclass makes, kept by the derive you were already writing. (A component whose constructor takes arguments opts out with `#[component(no_factory)]` — it simply cannot be built by name, because a registry of makers has no arguments to give it.)
+Nothing here mentions the factory, and that is the first difference worth noticing: **registration is universal and automatic.** `#[derive(Component)]` enrolls every component by name, so `TinyComponent` can be created by type or by the string `"TinyComponent"`, and can be the target of an override, with no separate registration step and no "did I remember the utils macro?" This is the same promise pyuvm's metaclass makes, kept by the derive you were already writing. 
 
 Now, two ways to build one:
 

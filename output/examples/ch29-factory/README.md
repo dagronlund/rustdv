@@ -68,9 +68,7 @@ as `ConfigDb::set` does.
 
 **Universal registration.** `#[derive(Component)]` enrols every component by
 name (D73), so `create_by_name("TinyComponent")` and
-`set_type_override_by_name` work with no separate registration step. A
-component that takes constructor arguments (not `Default`) opts out with
-`#[component(no_factory)]`; it simply cannot be built by name.
+`set_type_override_by_name` work with no separate registration step. 
 
 ## Verification
 
