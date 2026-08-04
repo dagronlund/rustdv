@@ -30,20 +30,20 @@ Port of the Python book's chapter 33.
 ## Transcript (seed 1)
 
 ```
-      0.00ns INFO     running TinyTest (1/7)
+      0.00ns INFO     running TinyTest (1/7)  [ch29-factory/src/ch29_factory.rs:71]
       0.00ns INFO     [TinyTest.tc]: I'm so tiny!
-      0.00ns INFO     running TinyFactoryTest (2/7)
+      0.00ns INFO     running TinyFactoryTest (2/7)  [ch29-factory/src/ch29_factory.rs:90]
       0.00ns INFO     [TinyFactoryTest.tc]: I'm so tiny!
-      0.00ns INFO     running CreateByNameTest (3/7)
+      0.00ns INFO     running CreateByNameTest (3/7)  [ch29-factory/src/ch29_factory.rs:109]
       0.00ns INFO     [CreateByNameTest.tc]: I'm so tiny!
-      0.00ns INFO     running MediumFactoryTest (4/7)
+      0.00ns INFO     running MediumFactoryTest (4/7)  [ch29-factory/src/ch29_factory.rs:151]
       0.00ns INFO     [MediumFactoryTest.tc]: I'm medium size.
-      0.00ns INFO     running MediumNameTest (5/7)
+      0.00ns INFO     running MediumNameTest (5/7)  [ch29-factory/src/ch29_factory.rs:171]
       0.00ns INFO     [MediumNameTest.tc]: I'm medium size.
-      0.00ns INFO     running TwoCompTest (6/7)
+      0.00ns INFO     running TwoCompTest (6/7)  [ch29-factory/src/ch29_factory.rs:218]
       0.00ns INFO     [TwoCompTest.env.tc1]: I'm medium size.
       0.00ns INFO     [TwoCompTest.env.tc2]: I'm so tiny!
-      0.00ns INFO     running PrintOverridesTest (7/7)
+      0.00ns INFO     running PrintOverridesTest (7/7)  [ch29-factory/src/ch29_factory.rs:241]
       0.00ns INFO     Factory overrides:
       0.00ns INFO       *                           : TinyComponent -> MediumComponent
       0.00ns INFO     [PrintOverridesTest.tc]: I'm medium size.

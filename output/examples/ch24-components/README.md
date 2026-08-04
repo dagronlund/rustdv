@@ -25,8 +25,8 @@ so the lines read `[PhaseTest]`.
 Port of the Python book's chapter 28 Figure 1. Transcript (seed 1):
 
 ```
-      0.00ns INFO     rustdv: found 1 test(s), RUSTDV_RANDOM_SEED=1
-      0.00ns INFO     running PhaseTest (1/1)  [ch24-components/src/ch24_components.rs:41]
+      0.00ns INFO     rustdv: found 2 test(s), RUSTDV_RANDOM_SEED=1
+      0.00ns INFO     running PhaseTest (1/2)  [ch24-components/src/ch24_components.rs:38]
       0.00ns INFO     [PhaseTest]: 1 build
       0.00ns INFO     [PhaseTest]: 2 connect
       0.00ns INFO     [PhaseTest]: 3 end_of_elaboration

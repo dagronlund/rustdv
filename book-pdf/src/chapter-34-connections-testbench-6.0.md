@@ -66,23 +66,23 @@ Three lanes, two mechanisms. The stimulus lane is Chapter 31: Tester puts, Drive
 // Chapter 34, Figure 2: Build the components and the FIFOs; connect in one place
 #[derive(Component, Default)]
 struct AluEnv {
-    #[component(child)]
+    #[component]
     tester: RustdvComp,
-    #[component(child)]
+    #[component]
     driver: RustdvComp,
-    #[component(child)]
+    #[component]
     cmd_mon: RustdvComp,
-    #[component(child)]
+    #[component]
     result_mon: RustdvComp,
-    #[component(child)]
+    #[component]
     scoreboard: RustdvComp,
-    #[component(child)]
+    #[component]
     coverage: RustdvComp,
-    #[component(fifo)]
+    #[component]
     cmd_fifo: TlmFifo<Command>,
-    #[component(fifo)]
+    #[component]
     cmd_bus: AnalysisBus<CmdTuple>, // the command broadcast, two subscribers
-    #[component(fifo)]
+    #[component]
     result_bus: AnalysisBus<u64>, // the result broadcast, one subscriber
 }
 
@@ -132,7 +132,7 @@ Two smaller notes. The `cmd_fifo` has depth 1, so the Tester cannot run ahead of
 #[rustdv::test]
 #[derive(Component, Default)]
 struct AluTest {
-    #[component(child)]
+    #[component]
     env: RustdvComp,
 }
 

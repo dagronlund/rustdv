@@ -31,7 +31,7 @@ Now, two ways to build one:
 #[rustdv::test]
 #[derive(Component, Default)]
 struct TinyTest {
-    #[component(child)]
+    #[component]
     tc: RustdvComp,
 }
 
@@ -56,7 +56,7 @@ impl Component for TinyTest {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct TinyFactoryTest {
-    #[component(child)]
+    #[component]
     tc: RustdvComp,
 }
 
@@ -83,7 +83,7 @@ The string form completes the set:
 #[rustdv::test]
 #[derive(Component, Default)]
 struct CreateByNameTest {
-    #[component(child)]
+    #[component]
     tc: RustdvComp,
 }
 
@@ -117,7 +117,7 @@ impl Component for MediumComponent {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct MediumFactoryTest {
-    #[component(child)]
+    #[component]
     tc: RustdvComp,
 }
 
@@ -147,7 +147,7 @@ When even the types are data, the override is too:
 #[rustdv::test]
 #[derive(Component, Default)]
 struct MediumNameTest {
-    #[component(child)]
+    #[component]
     tc: RustdvComp,
 }
 
@@ -174,9 +174,9 @@ A type override hits every flagged slot that asks for the type. Sometimes you wa
 // Chapter 29, Figure 12: An environment with two components of the same type
 #[derive(Component, Default)]
 struct TwoCompEnv {
-    #[component(child)]
+    #[component]
     tc1: RustdvComp,
-    #[component(child)]
+    #[component]
     tc2: RustdvComp,
 }
 
@@ -193,7 +193,7 @@ impl Component for TwoCompEnv {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct TwoCompTest {
-    #[component(child)]
+    #[component]
     env: Option<TwoCompEnv>,
 }
 
@@ -226,7 +226,7 @@ Chapter 28 gave the ConfigDb a dump because a resolved value doesn't show the co
 #[rustdv::test]
 #[derive(Component, Default)]
 struct PrintOverridesTest {
-    #[component(child)]
+    #[component]
     tc: RustdvComp,
 }
 

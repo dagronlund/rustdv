@@ -153,9 +153,9 @@ One failure mode deserves its paragraph, because no figure can show it: **asking
 // Chapter 37, Figure 4: The shop, assembled
 #[derive(Component, Default)]
 struct ShopEnv {
-    #[component(sequencer)]
+    #[component]
     seqr: Sequencer<RepairJob, RepairDone>,
-    #[component(child)]
+    #[component]
     desk: RustdvComp,
 }
 
@@ -174,7 +174,7 @@ impl Component for ShopEnv {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct RepairTest {
-    #[component(child)]
+    #[component]
     env: RustdvComp,
 }
 

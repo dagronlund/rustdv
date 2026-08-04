@@ -113,13 +113,13 @@ impl Component for NumberGen {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct BroadcastTest {
-    #[component(child)]
+    #[component]
     source: RustdvComp,
-    #[component(child)]
+    #[component]
     counter: RustdvComp,
-    #[component(child)]
+    #[component]
     collector: RustdvComp,
-    #[component(fifo)]
+    #[component]
     analysis_fifo: AnalysisBus<u32>,
 }
 
@@ -139,7 +139,7 @@ impl Component for BroadcastTest {
 }
 ```
 
-The `AnalysisBus` is the hub that brokers the broadcast, and its wiring reads exactly like Chapter 31's: a concrete `#[component(fifo)]` child, a named export, `connect(component, PORT_NAME)`. The publisher's port goes to `pub_export()`; every subscriber goes to the *same* `sub_export()`, and connecting several is what makes the write fan out. One connection idiom for both TLM shapes is a deliberate rustdv choice — the UVM broadcasts straight from port to subscribers with no intermediary, but with both endpoints factory-erased, neither side could drive the call, and one idiom for the reader to learn beats two.
+The `AnalysisBus` is the hub that brokers the broadcast, and its wiring reads exactly like Chapter 31's: a concrete `#[component]` child, a named export, `connect(component, PORT_NAME)`. The publisher's port goes to `pub_export()`; every subscriber goes to the *same* `sub_export()`, and connecting several is what makes the write fan out. One connection idiom for both TLM shapes is a deliberate rustdv choice — the UVM broadcasts straight from port to subscribers with no intermediary, but with both endpoints factory-erased, neither side could drive the call, and one idiom for the reader to learn beats two.
 
 ```text
 # Figure 5: One write, every subscriber hears it — all in zero time
@@ -157,16 +157,16 @@ Every line is at `0.00ns`. Three writes, both subscribers fully served, and the 
 
 ## The hub holds nothing
 
-Now the habit this chapter exists to correct. Despite living in a `#[component(fifo)]` slot, **an `AnalysisBus` is not a FIFO and stores no items**. `write` calls every subscribed sink and returns. There is no queue in the hub; a datum broadcast to nobody is *gone*.
+Now the habit this chapter exists to correct. Despite living in a `#[component]` slot, **an `AnalysisBus` is not a FIFO and stores no items**. `write` calls every subscribed sink and returns. There is no queue in the hub; a datum broadcast to nobody is *gone*.
 
 ```rust
 // Chapter 32, Figure 6: A hub with no subscribers is legal
 #[rustdv::test]
 #[derive(Component, Default)]
 struct NoSubscribersTest {
-    #[component(child)]
+    #[component]
     source: RustdvComp,
-    #[component(fifo)]
+    #[component]
     analysis_fifo: AnalysisBus<u32>,
 }
 
@@ -254,11 +254,11 @@ impl Component for SlowChecker {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct SlowSubscriberTest {
-    #[component(child)]
+    #[component]
     source: RustdvComp,
-    #[component(child)]
+    #[component]
     checker: RustdvComp,
-    #[component(fifo)]
+    #[component]
     analysis_fifo: AnalysisBus<u32>,
 }
 

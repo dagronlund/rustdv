@@ -131,6 +131,7 @@ struct Registration {
 fn hello() {
     println!("Hello, world.");
 }
+#[cfg(target_os = "linux")]
 #[used]
 #[link_section = "demo_tests"]
 static REG_HELLO: Registration = Registration { name: "hello", run: hello };
@@ -138,6 +139,7 @@ static REG_HELLO: Registration = Registration { name: "hello", run: hello };
 fn goodbye() {
     println!("Goodbye, world.");
 }
+#[cfg(target_os = "linux")]
 #[used]
 #[link_section = "demo_tests"]
 static REG_GOODBYE: Registration = Registration { name: "goodbye", run: goodbye };
@@ -191,9 +193,9 @@ rustdv ships exactly one derive of its own, and the rest of the book uses it eve
 #[derive(rustdv::Component)]
 pub struct AluEnv {
     seqr: Sequencer<AluCommand>,
-    #[component(child)]
+    #[component]
     driver: Option<Driver>,
-    #[component(child)]
+    #[component]
     scoreboard: Scoreboard,
 }
 

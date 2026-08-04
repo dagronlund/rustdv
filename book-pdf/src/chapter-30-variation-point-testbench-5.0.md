@@ -74,9 +74,9 @@ The scoreboard is testbench 4.0's, re-shown in the chapter's file and deliberate
 // Chapter 30, Figure 3: The environment builds its tester through the factory
 #[derive(Component, Default)]
 struct AluEnv {
-    #[component(child)]
+    #[component]
     scoreboard: RustdvComp,
-    #[component(child)]
+    #[component]
     tester: RustdvComp,
 }
 
@@ -102,7 +102,7 @@ Two build lines, and they encode the block author's whole policy. The scoreboard
 #[rustdv::test]
 #[derive(Component, Default)]
 struct RandomTest {
-    #[component(child)]
+    #[component]
     env: RustdvComp,
 }
 
@@ -121,7 +121,7 @@ impl Component for RandomTest {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct MaxTest {
-    #[component(child)]
+    #[component]
     env: RustdvComp,
 }
 

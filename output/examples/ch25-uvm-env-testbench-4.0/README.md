@@ -88,6 +88,7 @@ three levels down — nothing stores it.
 Not vacuous: with `alu_prediction`'s XOR sabotaged to OR, both tests report
 the offending transaction and the run ends `REGRESSION: FAIL`.
 
+<!-- verify-transcripts: skip -->
 ```
 150.00ns ERROR    FAILED: b9 Xor 80 = 0039 - predicted 00b9
 300.00ns ERROR    FAILED: ff Xor ff = 0000 - predicted 00ff

@@ -38,7 +38,7 @@ The test that starts it:
 #[rustdv::test]
 #[derive(Component, Default)]
 struct AluTest {
-    #[component(child)]
+    #[component]
     env: RustdvComp,
 }
 

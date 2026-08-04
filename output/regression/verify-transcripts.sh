@@ -76,12 +76,28 @@ run ch17 ch17_simulating_with_rustdv_sim      counter    sim-common/hdl/timescal
 run ch18 ch18_basic_testbench_1_0             tinyalu    "${HDL_TINYALU[@]}"
 run ch19 ch19_tinyalubfm                      tinyalu    "${HDL_TINYALU[@]}"
 run ch20 ch20_struct_based_testbench_2_0      tinyalu    "${HDL_TINYALU[@]}"
+run ch23 ch23_uvm_test_testbench_3_0          tinyalu    "${HDL_TINYALU[@]}"
+run ch24 ch24_components                      playground
+run ch25 ch25_uvm_env_testbench_4_0           tinyalu    "${HDL_TINYALU[@]}"
+run ch26 ch26_logging                         playground
 run ch27 ch27_configuration                   playground
 run ch28 ch28_config_debugging                playground
+run ch29 ch29_factory                         playground
+run ch30 ch30_variation_point_testbench_5_0   tinyalu    "${HDL_TINYALU[@]}"
+run ch31 ch31_component_communications        playground
+run ch32 ch32_analysis_ports                  playground
+run ch34 ch34_connections_testbench_6_0       tinyalu    "${HDL_TINYALU[@]}"
 run ch36 ch36_sequence_testbench_7_0          tinyalu    "${HDL_TINYALU[@]}"
 run ch37 ch37_repair_desk_testbench_7_1       playground
 run ch38 ch38_fibonacci_testbench_7_2         tinyalu    "${HDL_TINYALU[@]}"
 run ch39 ch39_virtual_sequence_testbench_8_0  tinyalu    "${HDL_TINYALU[@]}"
+
+# ch26's FileTest deliberately writes to a file instead of the console, and its
+# README quotes that file. Fold it into ch26's captured output so the quote is
+# checked rather than waved through.
+if [ -f "$EX/rustdv_ch26_log.txt" ]; then
+  cat "$EX/rustdv_ch26_log.txt" >> "$TMP/ch26.txt"
+fi
 
 printf '  %-34s' "tinyalu_tb (Interlude + ch40)"
 if (cd "$ROOT/sim" && TO 300 ./run_rustdv.sh release) > "$TMP/tinyalu.txt" 2>&1; then
@@ -137,10 +153,16 @@ check_claim() {
 echo
 echo "Comparing every README transcript line against the fresh run..."
 fail=0
-for n in ch15 ch16 ch17 ch18 ch19 ch20 ch27 ch28 ch36 ch37 ch38 ch39 tinyalu; do
+for n in ch15 ch16 ch17 ch18 ch19 ch20 ch23 ch24 ch25 ch26 ch27 ch28 ch29 \
+         ch30 ch31 ch32 ch34 ch36 ch37 ch38 ch39 tinyalu; do
   rm="$(readme_for "$n")"
   if [ ! -f "$rm" ]; then echo "  $n: NO README FOUND"; fail=1; continue; fi
 
+  # Some README blocks are counterfactual by design — a mutation demo showing
+  # what a sabotaged predictor prints. Those lines cannot appear in a clean run
+  # and must not be compared. A README opts a block out with the marker
+  #     <!-- verify-transcripts: skip -->
+  # on the line before its opening fence. Everything else is checked.
   total=0; miss=0
   while IFS= read -r line; do
     total=$((total+1))
@@ -149,7 +171,12 @@ for n in ch15 ch16 ch17 ch18 ch19 ch20 ch27 ch28 ch36 ch37 ch38 ch39 tinyalu; do
       echo "      README: $line"
       miss=$((miss+1)); fail=1
     }
-  done < <(grep -E "^ *[0-9]+\.[0-9]{2}ns (INFO|WARNING|ERROR)" "$rm")
+  done < <(awk '
+      /verify-transcripts: skip/ { armed=1; next }
+      /^```/ { if (armed && !inskip) { inskip=1; armed=0; next }
+               if (inskip) { inskip=0; next } }
+      !inskip
+    ' "$rm" | grep -E "^ *[0-9]+\.[0-9]{2}ns (INFO|WARNING|ERROR)")
 
   if [ $total -eq 0 ]; then
     if no_transcript_expected "$n"; then

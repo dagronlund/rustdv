@@ -23,38 +23,32 @@ in ch27, ch28, ch31, ch32, ch34, ch36, ch37, ch39. Every edit was line-count
 neutral, so **every `file:line` your manuscript embeds is still correct.** Your
 step 2 is done.
 
-**The child attribute lost its argument (D114).** `#[component(child)]`,
-`#[component(fifo)]` and `#[component(sequencer)]` are gone; it is bare
-`#[component]`. The derive never read the word. Your manuscript prints the old
-form in 17 files.
+**The code in your manuscript is now checked, and it has been corrected.**
+`output/regression/verify-book-listings.py` compares every ch15–40 listing
+against its crate — nothing did that before; `book-sync` covers ch1–14 only. It
+found and a code thread fixed: five `Clock::new(...)` openings that D112 had
+deleted (ch18, ch19, ch20, ch40, Interlude), a `start_of_simulation` phase in
+ch40 and the Interlude that no longer exists, a ch40 paragraph explaining a
+retired bare-DUT exception, and the `#[component(...)]` → `#[component]` sweep
+across all 17 files. **176 listings verbatim, 0 drift.** You do not need to do
+any of it.
+
+What this means for you: **a listing you write must match its crate, or the
+push fails.** `python3 output/regression/verify-book-listings.py` takes a
+second. Three exemptions are permanent and documented in the script — do not
+add a fourth to make a build pass.
 
 ## What to do
 
-**1. The `#[component]` sweep — 17 files.** Fifteen are substitution inside code
-blocks: the Interlude and ch25, 26, 27, 28, 29, 30, 31, 32, 34, 36, 37, 38, 39,
-40. **Two are real writing:**
-
-- **ch21** teaches `#[derive(Component)]`. Whatever it says the argument
-  selects, that explanation has lost its subject.
-- **ch24** introduces the attribute to the reader. The rule is now the whole
-  syntax: `#[component]` marks a field as a child in the component tree.
-
-Do not mention this. The reader never knew it existed.
-The reasoning, if you want it, is `output/.design-decisions.md` §42.
-
-**2. The end-to-end read** against rendered output — your step 3, and the last
-thing. `mdbook build book-pdf` works in the sandbox; PDF rendering does not
-(no Chromium), so read the HTML.
-
-**3. Fill the 13 `[TRANSCRIPT NEEDED]` markers.** The sims have been rerun
+**1. Fill the 13 `[TRANSCRIPT NEEDED]` markers.** The sims have been rerun
 (2026-07-30) and **every transcript you were owed is now in the chapter's
 README**, verbatim, under a "Transcript(s)" heading with the figure number on
 it. Copy them across character for character. Do not compose, approximate, or
 reconstruct one from STATUS.md.
 
-These are checked, not assumed: all 251 lines were verified on Linux/aarch64
-*and* on macOS/arm64, under two different Icarus versions, and they agree
-exactly. Trust them over anything the old manuscript says.
+These are checked, not assumed: **431 transcript lines across 22 chapters**,
+verified on Linux/aarch64 and on macOS/arm64 under two different Icarus
+versions, agreeing exactly. Trust them over anything the old manuscript says.
 
 | Chapter | Markers | Where the output now lives |
 |---|---|---|
@@ -79,6 +73,10 @@ current. Two things there may affect text you already wrote:
   early throughout (ch18's `35.00ns` is now `40.00ns`, and so on). Same
   operands, same results — the DUT self-clocks now (D112), so the first edge
   lands later. If those numbers appear in your prose, they are stale.
+
+**2. The end-to-end read** against rendered output — your step 3, and the last
+thing. `mdbook build book-pdf` works here; PDF rendering needs a Chromium the
+sandbox lacks, so read the HTML and Ray renders the PDF.
 
 ## Standing constraints
 

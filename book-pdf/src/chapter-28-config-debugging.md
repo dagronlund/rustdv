@@ -30,7 +30,7 @@ Now break it. The environment holds `loga` and `logb`; the test configures only 
 #[rustdv::test(expect_error = "config_not_found")]
 #[derive(Component, Default)]
 struct MsgTest {
-    #[component(child)]
+    #[component]
     env: Option<MsgEnv>,
 }
 
@@ -57,7 +57,7 @@ The second classic:
 #[rustdv::test(expect_error = "config_not_found")]
 #[derive(Component, Default)]
 struct MsgTestAlmostFixed {
-    #[component(child)]
+    #[component]
     env: Option<MsgEnv>,
 }
 
@@ -107,7 +107,7 @@ Matching on the variant is the point. `NotFound` is recoverable — fall back an
 #[rustdv::test]
 #[derive(Component, Default)]
 struct NiceMsgTest {
-    #[component(child)]
+    #[component]
     env: Option<NiceMsgEnv>,
 }
 
@@ -130,7 +130,7 @@ impl Component for NiceMsgTest {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct NiceMsgTestAlmostFixed {
-    #[component(child)]
+    #[component]
     env: Option<NiceMsgEnv>,
 }
 
@@ -163,7 +163,7 @@ For contrast, the wildcard configuration from Chapter 27, working — worth runn
 #[rustdv::test]
 #[derive(Component, Default)]
 struct MultiMsgTest {
-    #[component(child)]
+    #[component]
     env: Option<MultiMsgEnv>,
 }
 
@@ -185,7 +185,7 @@ Chapter 27 ended with the parent winning the write to `env.loga` and a promise: 
 // Chapter 28, Figure 9: Both the env and the test configure env.loga
 #[derive(Component, Default)]
 struct ConflictEnv {
-    #[component(child)]
+    #[component]
     loga: Option<MsgLogger>,
 }
 
@@ -199,7 +199,7 @@ impl Component for ConflictEnv {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct ConflictTest {
-    #[component(child)]
+    #[component]
     env: Option<ConflictEnv>,
 }
 
@@ -233,7 +233,7 @@ The dump is a snapshot; tracing is the film.
 #[rustdv::test]
 #[derive(Component, Default)]
 struct GlobalTest {
-    #[component(child)]
+    #[component]
     env: Option<GlobalEnv>,
 }
 

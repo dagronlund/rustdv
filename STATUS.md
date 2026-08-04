@@ -688,6 +688,110 @@ caught, and the clean run still exits 0. A verification script that has never
 been made to fail is not evidence — the same argument the mutation check in the
 regression rests on, applied to the tool doing the checking.
 
+## 2026-08-04 — the transcript check extended to every chapter, and what it found
+
+`verify-transcripts.sh` originally covered only the 13 chapters that *owed* new
+transcripts. Nine more carried README transcripts nothing checked. It now runs
+**22 chapters, 431 transcript lines**, and the extension immediately found four
+stale READMEs and two other problems:
+
+- **ch23, ch26** — `file:line` references had drifted (ch23 `:152`→`:149`,
+  ch26 `:117`→`:124`, and similarly through both files). The code moved; the
+  transcripts did not.
+- **ch24** — the README documented **one** test; the crate now has **two**
+  (`PhaseTest (1/1)` → `(1/2)`). A test was added and the README never caught up.
+- **ch29, ch31, ch32** — the READMEs had elided the `[file:line]` suffix from
+  their `running …` lines, so they were paraphrases rather than real output,
+  unlike every other chapter. Restored.
+- **ch25 — a false positive worth keeping.** Its "Verification" block is a
+  *mutation demo*: what the run prints with `alu_prediction`'s XOR sabotaged to
+  OR. That output cannot appear in a clean run, by design. Rather than
+  special-case the chapter, the script now honours an explicit
+  `<!-- verify-transcripts: skip -->` marker before a fenced block, and ch25
+  carries one. Counterfactual output stays in the README and stays out of the
+  comparison.
+- **ch26 — a block that could not be checked is now checked.** Its `FileTest`
+  deliberately writes to `rustdv_ch26_log.txt` instead of the console, and the
+  README quotes that file. The script now folds the log into ch26's captured
+  output, so the quote is verified against the real artifact rather than skipped.
+
+All 22 green on Linux/aarch64 after the fixes. **This wants rerunning on the Mac**
+— the nine newly-covered chapters have never been checked there.
+
+Also: `TOUR.md`'s "Notes for AI sessions" now carries D113, the
+platform-evidence rule, the line-count-neutral caption rule and the
+`book-pdf/src` ownership rule, so pointing a new thread at TOUR is sufficient
+and prompts no longer restate them.
+
+**The check is now a gate, not a habit.** `custom/readme-transcripts` runs
+`verify-transcripts.sh` in the regression, so the pre-push hook fails on
+README drift the day it happens. Verified to fail: corrupting one `file:line`
+in ch23's README turns the suite red, and restoring it turns it green.
+
+That is the actual lesson from this stretch of work, and it is now a standing
+rule in `CLAUDE.md`: **the drift went unnoticed for months while a full green
+regression ran over it every single push.** ch23/ch24/ch26 were wrong, and
+nothing in 237 passing entries was looking. A rule written in a document is one
+someone has to remember; a rule in the regression is enforced. When a class of
+error turns up that nothing catches, add the check — and make it fail once on
+purpose before trusting it.
+
+## 2026-08-04 — the manuscript's own listings are now checked (ch15–40)
+
+`book-sync` compares ch1–14 listings byte-for-byte against their example files
+and has run on every push for months. **It covers Part I only.** Nothing
+compared the ch15–40 manuscript — the part being finished right now — against
+the crates it quotes. `output/regression/verify-book-listings.py` closes that,
+wired in as `custom/book-listings`.
+
+The comparison is code-only: comments and indentation are dropped from both
+sides, because the book deliberately strips the crates' teaching comments and
+re-wraps. Of 185 listings, **168 verify**, 17 are exempt, 0 are new drift.
+
+**What it found on its first run — a factual error in five places.** The book
+still prints `Clock::new(...)` at the top of ch18, ch19, ch20, ch40 and the
+Interlude. D112 removed the software clock: the DUT self-clocks, the BFM only
+waits on edges, and no crate runs a `Clock` any more. `chapter-notes.md` had
+flagged it for ch19 alone. A reader typing any of those five openings gets a
+testbench that does not match the one that runs. Recorded for the prose pass in
+`chapter-notes.md` and `fable-restart.md`, and held in the script's debt
+register so it is counted rather than forgotten.
+
+Mutation-tested: changing one line of ch32's first listing turns the suite red.
+
+### Everything it found is fixed (same day)
+
+The first version of this script excused ten listings as "legitimate
+exemptions". Most were not — they were the checker being weak, and the register
+was hiding that. Fixed properly:
+
+- **The checker compares one whitespace-normalised token stream**, not
+  line-by-line, so the book re-wrapping a long signature is no longer "drift"
+  (that alone accounted for ch18/9 and ch35/5). `#[allow(...)]` and
+  `#[cfg_attr(...)]` are dropped from the crate side — they silence warnings
+  about example code and carry nothing a reader needs. A listing that presents
+  two non-adjacent excerpts now passes if **each** excerpt is real.
+- **The five `Clock::new(...)` openings are gone from the manuscript** —
+  ch18, ch19, ch20, ch40 and the Interlude now show what the crates show. ch40
+  and the Interlude also had a whole `start_of_simulation` phase that no longer
+  exists in `tinyalu_tb`, and ch40 carried a **paragraph** explaining that the
+  shipped testbench drives a clock because it runs against a bare DUT. D112
+  retired that exception; the paragraph was false and is rewritten.
+- **The D114 `#[component]` sweep is applied** to all 17 manuscript files, so
+  the temporary normalisation is deleted and those 50 listings are compared
+  strictly.
+- **ch21/3** omitted the `#[cfg(target_os = "linux")]` the crate carries;
+  added. **ch35/2** silently skipped a `Display` impl; the skip is now marked
+  `// ...` and is honest.
+
+**Result: 176 verbatim, 3 spliced-but-real, 3 exempt, 0 drift.** The three
+exemptions are permanent and each says why: std's `Future` trait quoted to
+explain `async`, ch21's deliberately tidied macro expansion, and ch19's
+three-line BFM skeleton with a placeholder comment.
+
+Full regression after all of it: unit 1, book-sync 108, examples 96, custom 34
+— **239 entries, 0 failed**, on Linux/aarch64.
+
 *Platform note:* this is a Linux run. macOS/arm64 is a shipping platform and
 these transcripts go into the book, so they want confirming on the Mac — a diff,
 not a re-read. Fixed seed, single-threaded executor and simulated time should

@@ -24,7 +24,7 @@ One file per concern, and the crate root named after the crate — no file in th
 // Figure 2: BaseTest — build files the BFM; run starts whatever the factory chose
 #[derive(Component, Default)]
 pub struct BaseTest {
-    #[component(child)]
+    #[component]
     env: RustdvComp,
 }
 
@@ -33,11 +33,6 @@ impl Component for BaseTest {
         let bfm = TinyAluBfm::new(&ctx.dut()).expect("TinyALU signals");
         ConfigDb::set(None, "*", "BFM", Rc::new(bfm));
         self.env = AluEnv::new_comp();
-    }
-
-    fn start_of_simulation(&mut self, ctx: &mut RustdvCtx) {
-        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM").expect("build filed the BFM");
-        Clock::new(bfm.clk(), SimDuration::ns(10)).start();
     }
 
     async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
@@ -60,16 +55,16 @@ impl Component for BaseTest {
 
 Every line is a chapter. `build` constructs the BFM from the DUT handle and files it in the ConfigDb under `"*"` — the whole tree gets this one, and there is no singleton anywhere in the crate: the database asserts "one BFM under this name for this subtree," which is a promise a two-interface testbench can keep, where a singleton's "one BFM in the world" is not (Chapter 25). `run` finds the sequencer by name, builds its sequence *through the factory*, and starts it (Chapter 36).
 
-Two details differ from the chapters, and each has its reason. First, `start_of_simulation` starts a `Clock` — the one place in the book's code that drives a clock rather than waits on one. The shipped testbench runs against `sim/hdl/tinyalu.sv`, the bare DUT, which takes `clk` as an input; the book's chapter examples run against a copy of the design that clocks itself, so their testbenches never touch a clock, and Chapter 19 told you why that discipline matters: a BFM that only ever *waits* on edges ports to an emulator unchanged, and one that drives them does not. Everything above this one line is that kind of BFM. The clock is the single place this testbench talks to a simulator rather than to a design.
+No clock appears anywhere in it, and that is the point Chapter 19 made: `sim/hdl/tinyalu.sv` clocks itself, exactly as the chapters' copy of the design does, so this testbench only ever *waits* on edges. A BFM built that way ports to an emulation transactor unchanged; one that drives edges does not. The shipped testbench is not an exception to the discipline the book taught — it is the discipline, running.
 
-Second, the end of stimulus is `bfm.wait_idle().await`, not the twenty-clock flush of Chapters 34 and 36. Counting clocks worked, but it encoded a magic number — twenty, because the multiply is slowest — that would quietly go stale if the DUT grew a slower operation. `wait_idle` asks the *protocol* instead: it watches for the driver queue empty and the handshake quiet for two consecutive falling edges (two, because a command already popped but not yet driven must not fool it), then gives the monitors one more edge to flush. Same job, no magic number, and it moves with the DUT.
+One detail does differ from the chapters. The end of stimulus is `bfm.wait_idle().await`, not the twenty-clock flush of Chapters 34 and 36. Counting clocks worked, but it encoded a magic number — twenty, because the multiply is slowest — that would quietly go stale if the DUT grew a slower operation. `wait_idle` asks the *protocol* instead: it watches for the driver queue empty and the handshake quiet for two consecutive falling edges (two, because a command already popped but not yet driven must not fool it), then gives the monitors one more edge to flush. Same job, no magic number, and it moves with the DUT.
 
 ```rust
 // Figure 3: Two tests, one testbench, no new components
 #[rustdv::test(timeout_time = 500, timeout_unit = "us")]
 #[derive(Component, Default)]
 struct RandomTest {
-    #[component(child)]
+    #[component]
     inner: RustdvComp,
 }
 
@@ -83,7 +78,7 @@ impl Component for RandomTest {
 #[rustdv::test(timeout_time = 500, timeout_unit = "us")]
 #[derive(Component, Default)]
 struct MaxTest {
-    #[component(child)]
+    #[component]
     inner: RustdvComp,
 }
 

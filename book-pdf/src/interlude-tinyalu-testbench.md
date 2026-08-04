@@ -225,21 +225,21 @@ A scoreboard that subscribes to two streams — commands and results — predict
 
 #[derive(Component, Default)]
 pub struct AluEnv {
-    #[component(sequencer)]
+    #[component]
     seqr: Sequencer<AluCommand, AluResult>,
-    #[component(child)]
+    #[component]
     driver: RustdvComp,
-    #[component(child)]
+    #[component]
     cmd_mon: RustdvComp,
-    #[component(child)]
+    #[component]
     result_mon: RustdvComp,
-    #[component(child)]
+    #[component]
     scoreboard: RustdvComp,
-    #[component(child)]
+    #[component]
     coverage: RustdvComp,
-    #[component(fifo)]
+    #[component]
     cmd_bus: AnalysisBus<AluCommand>,
-    #[component(fifo)]
+    #[component]
     result_bus: AnalysisBus<AluResult>,
     is_active: bool,
     with_coverage: bool,
@@ -299,7 +299,7 @@ Here is the whole restored vocabulary on one page: a `build` phase creating chil
 
 #[derive(Component, Default)]
 pub struct BaseTest {
-    #[component(child)]
+    #[component]
     env: RustdvComp,
 }
 
@@ -308,11 +308,6 @@ impl Component for BaseTest {
         let bfm = TinyAluBfm::new(&ctx.dut()).expect("TinyALU signals");
         ConfigDb::set(None, "*", "BFM", Rc::new(bfm));
         self.env = AluEnv::new_comp();
-    }
-
-    fn start_of_simulation(&mut self, ctx: &mut RustdvCtx) {
-        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM").expect("build filed the BFM");
-        Clock::new(bfm.clk(), SimDuration::ns(10)).start();
     }
 
     async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
@@ -335,7 +330,7 @@ impl Component for BaseTest {
 #[rustdv::test(timeout_time = 500, timeout_unit = "us")]
 #[derive(Component, Default)]
 struct RandomTest {
-    #[component(child)]
+    #[component]
     inner: RustdvComp,
 }
 
@@ -349,7 +344,7 @@ impl Component for RandomTest {
 #[rustdv::test(timeout_time = 500, timeout_unit = "us")]
 #[derive(Component, Default)]
 struct MaxTest {
-    #[component(child)]
+    #[component]
     inner: RustdvComp,
 }
 

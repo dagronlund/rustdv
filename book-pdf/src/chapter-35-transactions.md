@@ -72,6 +72,8 @@ impl PartialEq for PersonRecord {
     }
 }
 
+// ... (the Display impl from Figure 1, unchanged)
+
 fn main() {
     println!("-- derived: every field must match --");
     let a = StrictRecord { name: String::from("Batman"), id_number: 27 };

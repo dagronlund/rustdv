@@ -189,19 +189,19 @@ One detail with regression consequences: the random numbers come from `ctx.rng()
 // Chapter 36, Figure 6: The env owns the sequencer and files its handle
 #[derive(Component, Default)]
 struct AluEnv {
-    #[component(sequencer)]
+    #[component]
     seqr: Sequencer<AluCommand, AluResult>,
-    #[component(child)]
+    #[component]
     driver: RustdvComp,
-    #[component(child)]
+    #[component]
     cmd_mon: RustdvComp,
-    #[component(child)]
+    #[component]
     result_mon: RustdvComp,
-    #[component(child)]
+    #[component]
     scoreboard: RustdvComp,
-    #[component(fifo)]
+    #[component]
     cmd_bus: AnalysisBus<CmdTuple>,
-    #[component(fifo)]
+    #[component]
     result_bus: AnalysisBus<u64>,
 }
 
@@ -238,7 +238,7 @@ impl Component for AluEnv {
 
 Three things:
 
-- `#[component(sequencer)]` is the same carve-out `TlmFifo` got in Chapter 31: both endpoints of a connection are erased `RustdvComp` slots, so something concrete has to make the call, and a sequencer — like a FIFO — is infrastructure you will never factory-override. The connect line has the shape every connection since Chapter 31 has had.
+- `#[component]` is the same carve-out `TlmFifo` got in Chapter 31: both endpoints of a connection are erased `RustdvComp` slots, so something concrete has to make the call, and a sequencer — like a FIFO — is infrastructure you will never factory-override. The connect line has the shape every connection since Chapter 31 has had.
 - `ConfigDb::set(None, "*", "SEQR", self.seqr.handle())` files the sequencer where any test can find it. This is pyuvm's idiom, and the reason it beats searching the tree by path string is Chapter 27's: a hand-typed path goes stale, and the ConfigDb is how things that must find each other do. Note the sequencer goes in as a *handle* — every sequence must reach the same sequencer, the `Rc` case from Chapter 27's Clone-or-`Rc` rule.
 - The monitors, the two `AnalysisBus` buses, and the two-stream scoreboard are Chapters 33–34's, unchanged. That is the chapter's claim about structure made visible: sequences arrived, and the observation side did not move.
 
@@ -249,7 +249,7 @@ Three things:
 #[rustdv::test]
 #[derive(Component, Default)]
 struct BaseTest {
-    #[component(child)]
+    #[component]
     env: RustdvComp,
 }
 
@@ -287,7 +287,7 @@ The test finds the sequencer in the ConfigDb — it neither knows nor cares wher
 #[rustdv::test]
 #[derive(Component, Default)]
 struct RandomTest {
-    #[component(child)]
+    #[component]
     inner: RustdvComp,
 }
 
@@ -301,7 +301,7 @@ impl Component for RandomTest {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct MaxTest {
-    #[component(child)]
+    #[component]
     inner: RustdvComp,
 }
 

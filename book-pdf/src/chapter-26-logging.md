@@ -40,7 +40,7 @@ pub trait LogPolicy: Default {
 
 #[derive(Component, Default)]
 struct LogTest<P: LogPolicy + 'static> {
-    #[component(child)]
+    #[component]
     comp: Option<LogComp>,
     policy: P,
 }

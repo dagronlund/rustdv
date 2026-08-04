@@ -64,19 +64,19 @@ Real Icarus output (`RUSTDV_RANDOM_SEED=1`):
 
 ```
       0.00ns INFO     rustdv: found 3 test(s), RUSTDV_RANDOM_SEED=1
-      0.00ns INFO     running BroadcastTest (1/3)
+      0.00ns INFO     running BroadcastTest (1/3)  [ch32-analysis-ports/src/ch32_analysis_ports.rs:192]
       0.00ns INFO     [BroadcastTest.source]: wrote 0
       0.00ns INFO     [BroadcastTest.source]: wrote 1
       0.00ns INFO     [BroadcastTest.source]: wrote 2
       0.00ns INFO     [BroadcastTest.counter]: counted 3 items
       0.00ns INFO     [BroadcastTest.collector]: collected [0, 1, 2]
       0.00ns INFO     BroadcastTest PASSED
-      0.00ns INFO     running NoSubscribersTest (2/3)
+      0.00ns INFO     running NoSubscribersTest (2/3)  [ch32-analysis-ports/src/ch32_analysis_ports.rs:230]
       0.00ns INFO     [NoSubscribersTest.source]: wrote 0
       0.00ns INFO     [NoSubscribersTest.source]: wrote 1
       0.00ns INFO     [NoSubscribersTest.source]: wrote 2
       0.00ns INFO     NoSubscribersTest PASSED
-      0.00ns INFO     running SlowSubscriberTest (3/3)
+      0.00ns INFO     running SlowSubscriberTest (3/3)  [ch32-analysis-ports/src/ch32_analysis_ports.rs:324]
       0.00ns INFO     [SlowSubscriberTest.source]: wrote 0
       0.00ns INFO     [SlowSubscriberTest.source]: wrote 1
       0.00ns INFO     [SlowSubscriberTest.source]: wrote 2

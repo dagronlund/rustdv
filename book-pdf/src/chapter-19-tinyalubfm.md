@@ -234,7 +234,7 @@ async fn test_alu(ctx: RustdvCtx) -> Result<(), TestError> {
     // Test all TinyALU operations through the BFM
     let mut rng = ctx.rng();
     let mut passed = true;
-    Clock::new(&ctx.dut().signal("clk")?, SimDuration::ns(10)).start();
+    // The RTL self-clocks (tinyalu.sv); the BFM only waits on edges.
     let bfm = Rc::new(TinyAluBfm::new(&ctx.dut())?);
     bfm.reset().await;
     bfm.start_tasks();

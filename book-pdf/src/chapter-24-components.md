@@ -114,7 +114,7 @@ Each parent creates its child *in its own build phase*, and the phaser descends 
 #[rustdv::test]
 #[derive(Component, Default)]
 struct TestTop {
-    #[component(child)]
+    #[component]
     mc: Option<MiddleComp>,
 }
 
@@ -131,7 +131,7 @@ impl Component for TestTop {
 
 Three lines carry the design:
 
-- `#[component(child)]` — this attribute tells the derive which fields are children. The phase walk visits exactly the marked fields, in declaration order.
+- `#[component]` — this attribute tells the derive which fields are children. The phase walk visits exactly the marked fields, in declaration order.
 - `mc: Option<MiddleComp>` — the child is declared as an `Option` because before `build` runs there *is no child*. `None` is the type-level spelling of "declared but not yet built" — the state every UVM component is in between its own construction and its `build_phase`. The struct definition names what the tree can hold; `build` decides what it does hold.
 - `self.mc = Some(MiddleComp::default())` — building the child is an assignment. Compare `self.mc = MiddleComp("mc", self)`: no name string, because the field is named `mc` and the walk derives the path; no parent handle, because ownership already says whose field this is.
 
@@ -140,7 +140,7 @@ Three lines carry the design:
 // its own build phase, and announces itself at end of elaboration.
 #[derive(Component, Default)]
 struct MiddleComp {
-    #[component(child)]
+    #[component]
     bc: Option<BottomComp>,
 }
 

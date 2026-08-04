@@ -54,9 +54,9 @@ The environment holds two loggers; the test configures each by path.
 // Chapter 27, Figure 2: Two loggers in the environment
 #[derive(Component, Default)]
 struct MsgEnv {
-    #[component(child)]
+    #[component]
     loga: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     logb: Option<MsgLogger>,
 }
 
@@ -73,7 +73,7 @@ impl Component for MsgEnv {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct MsgTest {
-    #[component(child)]
+    #[component]
     env: Option<MsgEnv>,
 }
 
@@ -104,13 +104,13 @@ pyuvm configured a family of components at a stroke with `ConfigDB().set(self, "
 // Chapter 27, Figure 5: Adding talka and talkb to the environment
 #[derive(Component, Default)]
 struct MultiMsgEnv {
-    #[component(child)]
+    #[component]
     loga: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     logb: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     talka: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     talkb: Option<MsgLogger>,
 }
 
@@ -131,7 +131,7 @@ The Python version made `MultiMsgEnv` by subclassing and `super().build_phase()`
 #[rustdv::test]
 #[derive(Component, Default)]
 struct MultiMsgTest {
-    #[component(child)]
+    #[component]
     env: Option<MultiMsgEnv>,
 }
 
@@ -161,15 +161,15 @@ One more logger, `gtalk`, which nobody configures by name:
 // Chapter 27, Figure 8: Adding gtalk, which nobody configures by name
 #[derive(Component, Default)]
 struct GlobalEnv {
-    #[component(child)]
+    #[component]
     loga: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     logb: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     talka: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     talkb: Option<MsgLogger>,
-    #[component(child)]
+    #[component]
     gtalk: Option<MsgLogger>,
 }
 
@@ -189,7 +189,7 @@ impl Component for GlobalEnv {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct GlobalTest {
-    #[component(child)]
+    #[component]
     env: Option<GlobalEnv>,
 }
 
@@ -222,7 +222,7 @@ The database's most instructive scenario. The env configures its own child; the 
 // Chapter 27, Figure 11: The env configures its own child...
 #[derive(Component, Default)]
 struct ConflictEnv {
-    #[component(child)]
+    #[component]
     loga: Option<MsgLogger>,
 }
 
@@ -239,7 +239,7 @@ impl Component for ConflictEnv {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct ConflictTest {
-    #[component(child)]
+    #[component]
     env: Option<ConflictEnv>,
 }
 

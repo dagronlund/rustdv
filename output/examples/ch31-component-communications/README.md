@@ -60,7 +60,7 @@ Real Icarus output (`RUSTDV_RANDOM_SEED=1`):
 
 ```
       0.00ns INFO     rustdv: found 5 test(s), RUSTDV_RANDOM_SEED=1
-      0.00ns INFO     running PutGetPeekTest (1/5)
+      0.00ns INFO     running PutGetPeekTest (1/5)  [ch31-component-communications/src/ch31_component_communications.rs:124]
       0.00ns INFO     [PutGetPeekTest.producer]: put 0
       0.00ns INFO     [PutGetPeekTest.consumer]: peeked 0
       0.00ns INFO     [PutGetPeekTest.consumer]: got 0
@@ -71,7 +71,7 @@ Real Icarus output (`RUSTDV_RANDOM_SEED=1`):
       0.00ns INFO     [PutGetPeekTest.consumer]: peeked 2
       0.00ns INFO     [PutGetPeekTest.consumer]: got 2
       0.00ns INFO     PutGetPeekTest PASSED
-      0.00ns INFO     running NonBlockingTest (2/5)
+      0.00ns INFO     running NonBlockingTest (2/5)  [ch31-component-communications/src/ch31_component_communications.rs:247]
       0.00ns INFO     [NonBlockingTest.producer]: put 0
       0.00ns INFO     [NonBlockingTest.producer]: FIFO full, retrying
       0.00ns INFO     [NonBlockingTest.consumer]: got pkt0 (n=0)
@@ -81,7 +81,7 @@ Real Icarus output (`RUSTDV_RANDOM_SEED=1`):
       2.00ns INFO     [NonBlockingTest.producer]: put 2
       2.00ns INFO     [NonBlockingTest.consumer]: got pkt2 (n=2)
       2.00ns INFO     NonBlockingTest PASSED
-      2.00ns INFO     running MathTest (3/5)
+      2.00ns INFO     running MathTest (3/5)  [ch31-component-communications/src/ch31_component_communications.rs:345]
       2.00ns INFO     [MathTest.square_it]: 1² = 1
       2.00ns INFO     [MathTest.times_two]: 2 × 1 = 2
       2.00ns INFO     [MathTest]: PASSED: x=1, y=2
@@ -95,9 +95,9 @@ Real Icarus output (`RUSTDV_RANDOM_SEED=1`):
       2.00ns INFO     [MathTest.times_two]: 2 × 16 = 32
       2.00ns INFO     [MathTest]: PASSED: x=4, y=32
       2.00ns INFO     MathTest PASSED
-      2.00ns INFO     running UnconnectedTest (4/5)
+      2.00ns INFO     running UnconnectedTest (4/5)  [ch31-component-communications/src/ch31_component_communications.rs:421]
       2.00ns INFO     UnconnectedTest PASSED
-      2.00ns INFO     running FifoTapTest (5/5)
+      2.00ns INFO     running FifoTapTest (5/5)  [ch31-component-communications/src/ch31_component_communications.rs:482]
       2.00ns INFO     [FifoTapTest.producer]: put 0
       2.00ns INFO     [FifoTapTest.consumer]: peeked 0
       2.00ns INFO     [FifoTapTest.consumer]: got 0

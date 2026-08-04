@@ -57,5 +57,51 @@ repository at ../rustdv-reference, so the repo carries only its own product.
 - The pre-push hook runs the full regression; keep it green. Verify claims
   by running things — transcripts in the book/README files are real output
   and must stay in sync with reruns.
+
+### Leave no documentation debt — the rule that costs the most when ignored
+
+**When you change code, update the artifacts that quote it, in the same
+session.** This project's expensive failures have all been the same shape:
+something changed, the prose describing it did not, and nothing noticed for
+weeks. ch23/ch24/ch26 carried wrong `file:line` references and an undocumented
+test; ch18–20's transcripts were 5ns stale after the DUT began self-clocking;
+ch37's README described a chapter that does not exist. Each was cheap to fix at
+the time and expensive to find later — one session spent ~20% of its context
+paying that debt down.
+
+So, if you change:
+
+| this | then regenerate |
+|---|---|
+| an example crate's code | its `README.md` figure map **and** its transcript |
+| anything a transcript quotes (timing, paths, test count) | every README quoting it — `bash output/regression/verify-transcripts.sh` finds them |
+| a `.rs` figure caption | the README figure map — they must agree, and caption edits stay line-count-neutral |
+| framework syntax (an attribute, a name) | every call site, `skills/`, `.claude/skills/`, and a note in `book-pdf/chapter-notes.md` |
+
+**Prefer a check to a note.** A rule written down is a rule someone must
+remember; a rule in the regression is enforced. Two checks exist because the
+drift they catch went unnoticed for months while a full green regression ran
+over it every push:
+
+| check | what it gates |
+|---|---|
+| `custom/readme-transcripts` | every transcript in an example README is what the simulator prints (22 chapters, 431 lines) |
+| `custom/book-listings` | every Rust listing in ch15–40 is real code from that chapter's crate |
+| `book-sync` (pre-existing) | ch1–14 listings, byte-for-byte |
+
+`book-listings` has a **debt register** (`KNOWN_DRIFT` in
+`verify-book-listings.py`) — each entry carries a reason and an owner, and it
+must only ever shrink. Adding to it to make a build pass is how the debt came
+back.
+
+If you find a class of error nothing catches, add the check rather than only
+documenting the instance — and **make the check fail once on purpose before
+trusting it.** Both of the above were mutation-tested that way; the first
+version of `verify-transcripts.sh` reported success on chapters whose sims had
+not run at all.
+
+**Do not create per-thread prompt files.** Orientation lives in TOUR.md
+("Notes for AI sessions" has the sandbox hazards) and in this file. A new thread
+is pointed at those, not handed a restatement of them that will itself go stale.
 - Flag uncertainty openly (Open Questions / STATUS deviations) rather than
   presenting guesses as settled.

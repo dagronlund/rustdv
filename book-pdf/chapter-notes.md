@@ -85,7 +85,24 @@ Every chapter below has one example crate under `output/examples/`, and that
 crate plus its `README.md` is the source of truth. Nothing checks these listings
 against the manuscript, so copy them carefully.
 
-**Cross-cutting, 2026-07-30: the child attribute is now bare `#[component]`.**
+**Cross-cutting, 2026-08-04 — DONE, no action needed. The manuscript's code is
+now checked, and everything it flagged is fixed.**
+`output/regression/verify-book-listings.py` compares every ch15–40 listing
+against its crate and runs in the pre-push regression. On its first run it found
+`Clock::new(...)` printed in ch18, ch19, ch20, ch40 and the Interlude — code
+D112 deleted — plus a whole `start_of_simulation` phase in ch40 and the
+Interlude that no longer exists, and a ch40 paragraph explaining a bare-DUT
+exception that was retired. All corrected against the crates. The `#[component]`
+sweep is applied across all 17 files. **176 listings verbatim, 0 drift.**
+
+Standing consequence for the prose pass: **a listing you change must match its
+crate, or the build fails.** Run
+`python3 output/regression/verify-book-listings.py` — it takes a second. Three
+exemptions are permanent and documented in the script; do not add a fourth to
+make a build pass.
+
+**Cross-cutting, 2026-07-30: the child attribute is now bare `#[component]`
+— applied to the manuscript on 2026-08-04, nothing left to do.**
 `#[component(child)]`, `#[component(fifo)]` and `#[component(sequencer)]` are
 gone from the code — the argument never did anything. The macro only ever tested
 whether one of those three words was *present*; it never read which. What a

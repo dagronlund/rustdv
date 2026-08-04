@@ -75,8 +75,8 @@ Two whole classes of defensive code from the Python version are gone, not moved.
 async fn alu_test(ctx: RustdvCtx) -> Result<(), TestError> {
     let dut = ctx.dut();
     let mut rng = ctx.rng();
+    // The RTL self-clocks (tinyalu.sv); the BFM only waits on edges.
     let clk = dut.signal("clk")?;
-    Clock::new(&clk, SimDuration::ns(10)).start();
 
     let mut passed = true;
     let mut cvg: HashSet<Ops> = HashSet::new(); // functional coverage
@@ -209,15 +209,15 @@ The test's last expression is the test's verdict — no exception mechanism carr
 ```text
 # Figure 13: A successful test
 --
-     35.00ns INFO     PASSED: c1 Add 67 = 0128
-     55.00ns INFO     PASSED: 5e And 0b = 000a
-     75.00ns INFO     PASSED: b9 Xor 80 = 0039
-    125.00ns INFO     PASSED: a5 Mul 75 = 4b69
-    125.00ns INFO     Covered all operations
-    125.00ns INFO     alu_test PASSED
+     40.00ns INFO     PASSED: c1 Add 67 = 0128
+     60.00ns INFO     PASSED: 5e And 0b = 000a
+     80.00ns INFO     PASSED: b9 Xor 80 = 0039
+    130.00ns INFO     PASSED: a5 Mul 75 = 4b69
+    130.00ns INFO     Covered all operations
+    130.00ns INFO     alu_test PASSED
 ```
 
-Four operations, random operands, all compared against prediction, all covered — the same happy transcript as the Python book's figure 15, sixty-five microseconds of that book's simulated time compressed to 125 nanoseconds mostly because our clock is faster and our reset shorter. MUL takes its three cycles (watch the 50ns gap before it); the others take one.
+Four operations, random operands, all compared against prediction, all covered — the same happy transcript as the Python book's figure 15, sixty-five microseconds of that book's simulated time compressed to 130 nanoseconds mostly because our clock is faster and our reset shorter. MUL takes its three cycles (watch the 50ns gap before it); the others take one.
 
 ## Summary
 

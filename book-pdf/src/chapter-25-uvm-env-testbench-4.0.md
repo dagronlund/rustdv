@@ -177,9 +177,9 @@ Chapter 20's `check_results()` returned a `bool` and somebody had to remember to
 // Chapter 25, Figure 8: The environment builds the scoreboard and a tester
 #[derive(Component, Default)]
 pub struct AluEnv<T: Operands + Default + 'static> {
-    #[component(child)]
+    #[component]
     scoreboard: Option<Scoreboard>,
-    #[component(child)]
+    #[component]
     tester: Option<BaseTester<T>>,
 }
 
@@ -204,7 +204,7 @@ The environment is Chapter 24's pattern doing real work: `Option` children fille
 #[rustdv::test]
 #[derive(Component, Default)]
 struct RandomTest {
-    #[component(child)]
+    #[component]
     env: Option<RandomEnv>,
 }
 
@@ -219,7 +219,7 @@ impl Component for RandomTest {
 #[rustdv::test]
 #[derive(Component, Default)]
 struct MaxTest {
-    #[component(child)]
+    #[component]
     env: Option<MaxEnv>,
 }
 

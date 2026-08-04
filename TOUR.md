@@ -121,6 +121,21 @@ pre-push hook:
 Context that matters to an AI working in this folder (via Claude Cowork
 or similar) and to nobody else:
 
+- **Never write a loadable binary or compiled design into the repo folder
+  (D113).** This is the expensive one. The folder syncs to Ray's Mac, so a Linux
+  `.so` copied to `sim/build/tinyalu_tb.vpi` is what his `vvp` then tries to
+  `dlopen` — macOS refuses the foreign image with `Killed: 9` and **no output at
+  all**, which is indistinguishable from a crash in whatever code changed most
+  recently. It cost an afternoon once. The sim scripts build under
+  `/tmp/rustdv-$(id -u)/` now and `SIM_BUILD_DIR` overrides, but check where any
+  script writes its `.vpi`/`.vvp` before running it. Source and documents into
+  the repo, yes; `.vpi`, `.vvp`, `.so`, `.dylib`, object files and simulator
+  output directories, no.
+- **A green sandbox run is evidence about the sandbox.** macOS/arm64 is a
+  shipping platform for this project. Say "verified on Linux" when that is what
+  happened, and ask Ray to confirm on the Mac before calling anything done. The
+  same applies to a checker: `output/regression/verify-transcripts.sh` had two
+  bugs that only surfaced when it was run somewhere the sims genuinely failed.
 - **Never bulk-delete-and-recreate directories from the sandbox VM** —
   the desktop sync engine races and forks `dir 2/` duplicates. Build
   trees in `/tmp` and `cp` over; file deletion needs the permission tool.
@@ -153,8 +168,23 @@ or similar) and to nobody else:
   and `line!()` are compile-time macros), and
   `rm -rf /tmp/rustdv-$(id -u)/*-target/debug/incremental` reclaims a few
   hundred MB more.
+- **Editing captions must be line-count-neutral.** Transcripts embed `file:line`
+  (`…/ch25_uvm_env_testbench_4_0.rs:256`), so adding or removing a line in an
+  example crate invalidates every transcript in it. Change digits inside
+  existing comment lines.
+- **`book-pdf/src` belongs to the prose pass, not to code threads.** A code
+  thread that learns something the manuscript needs appends to
+  `book-pdf/chapter-notes.md` and moves on.
 - `CLAUDE.md` has the standing rules; persistent memory notes point here.
   Deeper history: `STATUS.md` bottom-to-top.
+
+**The fast checks, cheapest first:**
+
+```
+python3 output/regression/regress.py --suite unit    # 110 tests, ~2 s
+bash output/regression/verify-transcripts.sh          # 22 chapters, every README transcript
+python3 output/regression/regress.py                  # full, a few minutes
+```
 
 ### Where the work stands (2026-07-30) — read this before proposing anything
 

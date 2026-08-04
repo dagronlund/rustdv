@@ -88,13 +88,13 @@ A small pleasure, in passing: the sequence logs under its own name. pyuvm's sequ
 // Chapter 38, Figure 3: No result monitor
 #[derive(Component, Default)]
 struct FibEnv {
-    #[component(sequencer)]
+    #[component]
     seqr: Sequencer<AluCommand, AluResult>,
-    #[component(child)]
+    #[component]
     driver: RustdvComp,
-    #[component(fifo)]
+    #[component]
     result_bus: AnalysisBus<u64>,
-    #[component(child)]
+    #[component]
     watcher: RustdvComp,
 }
 
@@ -155,7 +155,7 @@ The sequence proves the numbers are Fibonacci; the watcher proves they came from
 #[rustdv::test]
 #[derive(Component, Default)]
 struct FibonacciTest {
-    #[component(child)]
+    #[component]
     env: RustdvComp,
 }
 
