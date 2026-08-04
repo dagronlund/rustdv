@@ -105,4 +105,24 @@ jobs:
 
       - name: Show the failing detail
         if: failure()
-        run: tail -n 300 sim.log || true
+        run: |
+          echo "=== last 300 lines of the regression log ==="
+          tail -n 300 sim.log || true
+          echo
+          echo "=== verilator version on this runner ==="
+          verilator --version || true
+          echo
+          echo "=== verilator lint, re-run directly for its own output ==="
+          # regress.py captures a test's stdout, so a lint failure reaches the
+          # log only as "exit 1, expected 0". Re-running prints the actual
+          # warnings. Verilator's lint set moves between releases, so the
+          # version above is the first thing to compare against a local pass.
+          bash sim/run_smoke.sh verilator || true
+
+      - name: Upload simulator log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sim-log
+          path: sim.log
+          if-no-files-found: ignore

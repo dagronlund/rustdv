@@ -912,6 +912,30 @@ today:* a test that decides pass/fail by pattern-matching human-readable output
 can be defeated by formatting. Ask the process, not the prose — the exit code
 was there the whole time.
 
+CI's environment confirms the diagnosis: the failing run's log shows
+`CARGO_TERM_COLOR: always` set for the step.
+
+### Open: `custom/sim-lint-verilator` fails on GitHub only
+
+`bash sim/run_smoke.sh verilator` gives `LINT: PASS`, exit 0, on the sandbox's
+Verilator (5.051 devel, from the oss-cad-suite drop). CI installs Ubuntu's apt
+`verilator`, which is a different and generally older release, and Verilator's
+lint set moves between releases — a warning this build does not raise can be an
+error there.
+
+**Not yet diagnosed, because the output was never captured.** `regress.py` takes
+a test's stdout, so the lint diagnostics never reached the CI log; the failure
+arrived as one line, `exit 1, expected 0`. The `sim-smoke` job now prints
+`verilator --version`, re-runs the lint directly so its own warnings appear, and
+uploads `sim.log` as an artifact. The next failing run will say what the warning
+is and which Verilator produced it.
+
+Once that is known the fix is one of: satisfy the warning in `sim/hdl/`, add the
+specific `/* verilator lint_off */` with a reason, or pin the CI Verilator the
+way the Rust toolchain is now pinned. Do **not** relax the lint globally —
+`LINT: PASS` on a stricter compiler than the one the author runs is the point of
+having it in CI at all.
+
 *Platform note:* this is a Linux run. macOS/arm64 is a shipping platform and
 these transcripts go into the book, so they want confirming on the Mac — a diff,
 not a re-read. Fixed seed, single-threaded executor and simulated time should
