@@ -2,22 +2,21 @@
 
 *New here — human or AI? This is the walk-around. Ten minutes, and you'll
 know what this project is, what's been proven, and where everything lives.
-Last verified 2026-07-29; the proven claims below are checked by the
+Last verified 2026-08-04; the proven claims below are checked by the
 regression suite, not aspirational.*
 
-> **Active work: the UVM restoration.** A prior pass wrongly stripped the
-> UVM's dynamic build/connect process and its TLM FIFOs. Branch
-> `ch23_onwards` restored them, one TinyALU testbench version at a time, and
-> **the code is done: ch23–ch39 are green, the test suite is built on top, and
-> the TinyALU refactor has landed, and D112/D108 closed out the last framework
-> work — no known technical debt is left.** What remains is the prose. The
-> Part II+ manuscript is
-> stale by design and is rewritten from the working code by a separate pass
-> (`book-pdf/FABLE.md`).
+> **Both products are complete (2026-08-04).** The framework is done —
+> ch23–ch39 green on Icarus, the three-tier test suite built on top, D112/D108
+> closing the last of it. **The book is done too:** every transcript is real
+> simulator output, every ch15–40 listing is checked against its crate, and the
+> end-to-end read has run. The UVM restoration that dominated this repo's
+> history is finished; `#[component]` and the phase/ConfigDb/factory/TLM layer
+> are the settled design, not work in progress.
 >
-> **"Where the work stands", at the bottom of this file, is the live status.**
-> `output/.design-decisions.md` is the decision log — read its §0 and
-> CLAUDE.local.md before proposing anything architectural.
+> **"Where the work stands", at the bottom of this file, is the live status** —
+> including the one thing still outstanding. `output/.design-decisions.md` is
+> the decision log; read its §0 and CLAUDE.local.md before proposing anything
+> architectural.
 
 ## What this project is
 
@@ -32,8 +31,8 @@ name `rustdv` is registered on crates.io (0.0.1 placeholder).
 **"Rust for RTL Verification"** is its book — the third in Ray Salemi's
 series after [*The UVM Primer*](https://www.uvmprimer.com) (SystemVerilog)
 and [*Python for RTL Verification*](https://a.co/d/0hTKAJvh): 40 chapters,
-an interlude, and appendices in `book-pdf/src/` (mdBook), with Part II+
-under revision as the restoration lands (see the callout above).
+an interlude, and appendices in `book-pdf/src/` (mdBook), complete as of
+2026-08-04.
 The premise: the reader is a UVM verification engineer — from SystemVerilog
 or Python; neither earlier book is a prerequisite — who learns Rust chapter
 by chapter while rebuilding the TinyALU testbench, versions 1.0 through 8.0.
@@ -51,7 +50,7 @@ pre-push hook:
 - **Mutation-checked**: with the DUT's XOR deliberately corrupted to OR,
   the scoreboard flags every affected transaction and the regression
   fails; restored, it passes. The checking has teeth.
-- `output/regression/regress.py` — **237 entries, 0 failed**, green on **both
+- `output/regression/regress.py` — **239 entries, 0 failed**, green on **both
   Linux and macOS/arm64**. One package is quarantined in `regress.json`:
   `ch21_macros`, a macro demonstration with no simulator test, which never
   comes off the list. Every chapter crate ch15–ch39 runs.
@@ -103,10 +102,12 @@ pre-push hook:
   sync with reruns — verify claims by running things.
 - `../rustdv-reference` (outside the repo) is read-only. `/output` holds
   generated deliverables.
-- **Do not edit `book-pdf/src` from a code thread.** The manuscript is stale by
-  design and is rewritten in one dedicated prose pass; its rules are
-  `book-pdf/FABLE.md`, and that pass changes no code. A code thread records
-  what the prose will need — in `chapter-notes.md` — and moves on.
+- **Do not edit `book-pdf/src` from a code thread.** The manuscript belongs to
+  a dedicated prose pass whose rules are `book-pdf/FABLE.md`; that pass changes
+  no code. A code thread records what the prose will need — in
+  `chapter-notes.md` — and moves on. Two checks now enforce the other
+  direction: `custom/book-listings` and `custom/readme-transcripts` fail the
+  push if the book and the code disagree.
 - **Figures are one numbering space** (D110): a chapter's code listings,
   drawings, tables and transcripts all draw from the same sequence, in order of
   appearance, and every one of them is a "Figure". If Figure 1 is a drawing, the
@@ -186,7 +187,7 @@ bash output/regression/verify-transcripts.sh          # 22 chapters, every READM
 python3 output/regression/regress.py                  # full, a few minutes
 ```
 
-### Where the work stands (2026-07-30) — read this before proposing anything
+### Where the work stands (2026-08-04) — read this before proposing anything
 
 Branch `rewrite-book`. **The restoration's code is done.** ch23–ch39 are
 converted, run on Icarus, and are out of quarantine — phases, the ConfigDb, the
@@ -205,7 +206,7 @@ reasoning; its §8 records where the built suite differs). Three tiers under the
 | targeted simulator | `rustdv/framework-tests/` | 38 tests in six named groups, plus `sim-mutation` |
 | compile-fail | `rustdv/framework-tests/compile-fail/` | 5 cases, each asserting its `error[E….]` |
 
-Regression: **237 entries, green**, and the pre-push hook runs all of it.
+Regression: **239 entries, green**, and the pre-push hook runs all of it.
 `output/regression/TESTING.md` is the operating manual, including the two
 runner behaviours a simulator test has to know about (the phase survives a
 test; vvp exits on an empty event queue).
@@ -251,25 +252,61 @@ fixed by changing what the test's measurement window is bounded by, not by
 loosening its assertions). Full account: `output/.design-decisions.md` §36
 (D108), STATUS.md's 2026-07-30 entries.
 
-**Done 2026-07-30: the renumbering pass and the component attribute.**
+**Done 2026-07-30: the renumbering pass and the component attribute.** D110
+settled the figure numbering (one sequence per chapter) and
+`book-pdf/renumbering-spec.md` was applied to eight crates' `.rs` captions,
+line-count-neutral. D114 (§42) removed the child attribute's argument:
+`#[component(child)]`/`(fifo)`/`(sequencer)` are all bare `#[component]` now,
+because the derive never read the word — a field's role is decided by its Rust
+type.
 
-1. **The renumbering pass has run.** Q18 was settled by D110 — one figure
-   sequence per chapter, everything in it called a "Figure", nothing renamed —
-   and `book-pdf/renumbering-spec.md` has been applied to the `.rs` captions in
-   eight crates (ch27, ch28, ch31, ch32, ch34, ch36, ch37, ch39), in place and
-   line-count-neutral, because transcripts embed `file:line`. The spec's
-   "stale READMEs" list is regeneration work and is *not* done.
-2. **The child attribute takes no argument (D114, §42).** `#[component(child)]`,
-   `#[component(fifo)]` and `#[component(sequencer)]` are gone; it is bare
-   `#[component]` everywhere. D106's tail asked which word should name the D84
-   carve-out, and the answer was that no word was ever read — the derive tested
-   only that one of the three was present, and what a field becomes is decided
-   by its Rust type. `AnalysisBus` declared `#[component(fifo)]` was the wart
-   that prompted reading the macro. The manuscript still prints the old form in
-   17 files, flagged in `book-pdf/chapter-notes.md` for the prose pass.
+## Done 2026-08-04 — the book is closed out, and three CI bugs are fixed
 
-**The manuscript waits (D77).** Part II+ prose is written from working code by a
-separate prose pass that **changes no code**; its instructions are
-`book-pdf/FABLE.md` plus `book-pdf/chapter-notes.md`. Figure numbers live in
-code comments and are final on the code side, which is why Q18 runs as a
-request-then-rename rather than an edit.
+**The manuscript is finished and machine-checked.** Every `[TRANSCRIPT NEEDED]`
+marker is filled from real simulator output; the `#[component]` sweep is applied
+across all 17 manuscript files; five `Clock::new(...)` openings that D112 had
+deleted are gone from ch18/19/20/40 and the Interlude, along with a
+`start_of_simulation` phase and a ch40 paragraph that described a retired
+bare-DUT exception. The end-to-end read is done. **Nothing is owed on the book.**
+
+**Two new checks, both in the pre-push regression, both mutation-tested:**
+
+| check | gates |
+|---|---|
+| `custom/readme-transcripts` | every transcript line in an example README *and in `book-pdf/src`* is what the simulator prints — 22 chapters, 549 lines in the book |
+| `custom/book-listings` | every Rust listing in ch15–40 is real code from that chapter's crate (`book-sync` covers ch1–14 only, which is how Part II+ drifted unseen) |
+
+Writing them found genuine errors: stale `file:line` in ch23/ch26, a ch24
+transcript documenting one test where the crate has two, ch29/31/32 transcripts
+that were paraphrases rather than output, and the five `Clock` openings.
+
+**Three CI failures, three different root causes, all fixed:**
+
+1. **The toolchain pin was ignored.** `rust-toolchain.toml` pins 1.97.0;
+   `dtolnay/rust-toolchain@stable` exports `RUSTUP_TOOLCHAIN`, which overrides
+   it. CI now reads the channel *from* the file and a guard step fails if
+   `rustc --version` disagrees.
+2. **ANSI colour defeated a text match.** GitHub sets `CARGO_TERM_COLOR=always`,
+   so a compile-fail case's `error[E0277]` line began with an escape sequence
+   and `grep -E '^error'` never matched — CI reported "compiled — no longer
+   rejected" while printing the error underneath. The check now uses cargo's
+   **exit status**; `regress.py` forces `CARGO_TERM_COLOR=never` and strips
+   escapes.
+3. **Verilator lint needed `--timing`.** D112's self-clocking `always #5 clk`
+   makes a delay, and Verilator ≥5.020 refuses to lint a design with delays
+   unless told how to handle them. The sandbox's 5.051 is lenient; Debian's
+   5.020 is not.
+
+**Regression: 239 entries, 0 failed**, and the transcripts are verified on both
+Linux/aarch64 and macOS/arm64 under two different Icarus versions.
+
+**Open, and the only thing known outstanding:** `output/examples/target/` is
+1.3 GB inside the repo holding both `.so` and `.dylib` builds — gitignored and
+untracked, but the same platform-mixing shape as D113. Delete it from the Mac
+(`rm -rf output/examples/target`); nothing recreates it, since the sim scripts
+build under `/tmp`.
+
+**The manuscript's rules still hold (D77).** `book-pdf/src` belongs to the prose
+pass, not to code threads; its instructions are `book-pdf/FABLE.md` and
+`book-pdf/chapter-notes.md`. A code thread that learns something the prose needs
+appends to `chapter-notes.md`.
