@@ -300,11 +300,6 @@ that were paraphrases rather than output, and the five `Clock` openings.
 **Regression: 239 entries, 0 failed**, and the transcripts are verified on both
 Linux/aarch64 and macOS/arm64 under two different Icarus versions.
 
-**Open, and the only thing known outstanding:** `output/examples/target/` is
-1.3 GB inside the repo holding both `.so` and `.dylib` builds — gitignored and
-untracked, but the same platform-mixing shape as D113. Delete it from the Mac
-(`rm -rf output/examples/target`); nothing recreates it, since the sim scripts
-build under `/tmp`.
 
 **The manuscript's rules still hold (D77).** `book-pdf/src` belongs to the prose
 pass, not to code threads; its instructions are `book-pdf/FABLE.md` and
