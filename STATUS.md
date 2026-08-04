@@ -879,6 +879,39 @@ mismatch instead of three grepped lines, with a note pointing at the pin as the
 first thing to check. Mutation-tested: changing an expected code to `E9999`
 produces the diagnosis and exits 1.
 
+### The actual cause, which the new logging exposed: ANSI colour
+
+The pin was a real bug but not this one. With full output visible, the next CI
+run reported `FAIL port_attr_on_non_port compiled — no longer rejected` **while
+printing `error[E0277]` directly underneath it.** The harness and its own log
+contradicted each other.
+
+`run.sh` decided "did it compile?" with `grep -E '^error'`. GitHub's cargo emits
+**ANSI colour**, so the line does not begin with `error` — it begins with an
+escape sequence, and `^error` never matches. Reproduced exactly:
+`CARGO_TERM_COLOR=always cargo build` in `port_attr_on_non_port` exits 101 while
+that grep finds nothing.
+
+The fix is to stop parsing text for a fact the process already reports:
+
+- **`run.sh` uses cargo's exit status** for "did it compile", passes
+  `--color=never`, and strips ANSI anyway before reading the error code. The
+  code match is now `E[0-9]{4}` rather than a literal `error[...]` string.
+- **`regress.py` had the identical latent bug** at its own compile-fail check —
+  `f"error[{code}]" not in r.stderr`, a literal that colour breaks the same way.
+  It has not fired yet, which is luck. `run()` now exports
+  `CARGO_TERM_COLOR=never` for every subprocess and a `decolour()` helper
+  strips escapes before matching.
+
+Verified by running both compile-fail suites with `CARGO_TERM_COLOR=always`,
+which is the condition that broke CI: 20 examples cases and the methodology
+case all pass. Before the fix, that same command reproduced the failure.
+
+*The general lesson, and it is the same one as the vacuous-checker bug earlier
+today:* a test that decides pass/fail by pattern-matching human-readable output
+can be defeated by formatting. Ask the process, not the prose — the exit code
+was there the whole time.
+
 *Platform note:* this is a Linux run. macOS/arm64 is a shipping platform and
 these transcripts go into the book, so they want confirming on the Mac — a diff,
 not a re-read. Fixed seed, single-threaded executor and simulated time should

@@ -48,6 +48,17 @@ GREEN, RED, YELLOW, OFF = "\033[32m", "\033[31m", "\033[33m", "\033[0m"
 if not sys.stdout.isatty():
     GREEN = RED = YELLOW = OFF = ""
 
+# Compiler output is matched for error codes, so it must not arrive coloured:
+# `error[E0277]` becomes `<esc>[1m<esc>[31merror<esc>[0m[E0277]` and every
+# literal match silently fails. That exact bug broke the compile-fail suite on
+# GitHub while it passed locally — the log showed E0277 and the harness
+# reported "compiled". Belt: ask cargo not to colour. Braces: strip anyway.
+ANSI_RE = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]")
+
+
+def decolour(s):
+    return ANSI_RE.sub("", s or "")
+
 results = []            # (test_id, ok, message)
 
 def record(test_id, ok, msg=""):
@@ -65,9 +76,10 @@ class Missing:
 
 def run(cmd, cwd=None, timeout=120, env=None):
     try:
-        full_env = None
+        full_env = dict(os.environ)
+        # Keep cargo/rustc output plain: see ANSI_RE above.
+        full_env["CARGO_TERM_COLOR"] = "never"
         if env:
-            full_env = dict(os.environ)
             full_env.update(env)
         return subprocess.run(cmd, cwd=cwd or ROOT, capture_output=True,
                               text=True, timeout=timeout, env=full_env)
@@ -260,8 +272,9 @@ def suite_examples(args):
         if r.returncode == 0:
             record(tid, False, "compiled, but this figure must fail to compile")
             continue
-        if m["error"] and m["error"] != "error" and f"error[{m['error']}]" not in r.stderr:
-            got = re.search(r"error\[(E\d+)\]", r.stderr)
+        stderr = decolour(r.stderr)
+        if m["error"] and m["error"] != "error" and f"error[{m['error']}]" not in stderr:
+            got = re.search(r"error\[(E\d+)\]", stderr)
             record(tid, False,
                    f"expected {m['error']}, got {got.group(1) if got else 'other error'}")
         else:

@@ -100,6 +100,15 @@ trusting it.** Both of the above were mutation-tested that way; the first
 version of `verify-transcripts.sh` reported success on chapters whose sims had
 not run at all.
 
+**Ask the process, not the prose.** A check that decides pass/fail by
+pattern-matching human-readable output can be defeated by formatting. The
+compile-fail suite tested "did it compile?" with `grep -E '^error'`; GitHub's
+cargo emits ANSI colour, so the line began with an escape sequence, `^error`
+never matched, and CI reported "compiled — no longer rejected" while printing
+`error[E0277]` underneath. Exit codes, structured output and
+`CARGO_TERM_COLOR=never` are not decoration — they are the difference between a
+check and a guess.
+
 **Do not create per-thread prompt files.** Orientation lives in TOUR.md
 ("Notes for AI sessions" has the sandbox hazards) and in this file. A new thread
 is pointed at those, not handed a restatement of them that will itself go stale.

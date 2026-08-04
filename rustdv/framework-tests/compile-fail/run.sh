@@ -40,8 +40,17 @@ echo "compile-fail: pinned to $(sed -n 's/^[[:space:]]*channel[[:space:]]*=[[:sp
 status=0
 for entry in "${CASES[@]}"; do
     IFS='|' read -r dir want desc <<< "$entry"
-    out=$(cd "$dir" && cargo build 2>&1)
-    if [ -z "$(grep -E '^error' <<< "$out")" ]; then
+
+    # "Did it compile?" is cargo's exit status, not a string in its output.
+    # This used to grep for a line beginning `error`, which broke on GitHub:
+    # cargo there emits ANSI colour, so the line begins with an escape
+    # sequence and `^error` never matched — the case was reported as "compiled
+    # — no longer rejected" while the log underneath plainly showed E0277.
+    # --color=never removes the colour and the exit code removes the guessing.
+    out=$(cd "$dir" && cargo build --color=never 2>&1); rc=$?
+    out=$(sed $'s/\x1b\\[[0-9;]*[a-zA-Z]//g' <<< "$out")   # belt and braces
+
+    if [ "$rc" -eq 0 ]; then
         echo "  FAIL $dir compiled — $desc is no longer rejected" >&2
         echo "  ---- full cargo output ----" >&2
         sed 's/^/  | /' <<< "$out" >&2
@@ -49,7 +58,7 @@ for entry in "${CASES[@]}"; do
         status=1
         continue
     fi
-    got=$(grep -oE 'error\[E[0-9]+\]' <<< "$out" | head -1 | tr -d 'error[]')
+    got=$(grep -oE 'E[0-9]{4}' <<< "$out" | head -1)
     if [ "$got" != "$want" ]; then
         echo "  FAIL $dir failed with ${got:-an unclassified error}, expected $want" >&2
         echo "         ($desc)" >&2
