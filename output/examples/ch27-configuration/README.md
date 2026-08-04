@@ -85,5 +85,11 @@ different paths. The parent's wins.
   the debugger's answer to it.
 - **A wildcard is a path glob, not a type.** `"*"` reaches every component whose
   path matches, which is how two talkers share one `set`.
-- **The nearest ancestor wins a conflict.** `ConflictTest` sets the same key on
-  the same component from two places; the env's `set` is the one that lands.
+- **The higher setter wins a conflict, not the later one.** `ConflictTest` and
+  `ConflictEnv` both set `MSG` on `env.loga` — the test by the longer path
+  `"env.loga"`, the env by `"loga"` — and both resolve to the same component.
+  The **test's** value lands: the transcript prints `PARENT RULES!`. Build runs
+  top-down, so the test wrote *first*, which under "last write wins" would make
+  it lose; precedence is by depth instead, and Chapter 28's dump shows the two
+  entries side by side with their numbers (1000 for the test at depth 0, 999
+  for the env at depth 1).

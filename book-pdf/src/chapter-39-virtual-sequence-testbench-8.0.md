@@ -64,10 +64,18 @@ One design question deserves an answer here, because a Rust-minded reader will a
 ```text
 # Figure 3: Random, then max
 
-[TRANSCRIPT NEEDED — ch39's README predates the conversion; copy the AluTest
-portion verbatim from a rerun of `sim-common/run_sim.sh
-ch39_virtual_sequence_testbench_8_0 tinyalu sim-common/hdl/timescale.v
-sim-common/hdl/tinyalu.sv`.]
+      0.00ns INFO     running AluTest (1/3)  [ch39-virtual-sequence-testbench-8.0/src/ch39_virtual_sequence_testbench_8_0.rs:440]
+    250.00ns INFO     [TestAllSeq]: ran random, then max
+    250.00ns INFO     [AluTest.env.scoreboard]: PASSED: c1 Add 67 = 0128
+    250.00ns INFO     [AluTest.env.scoreboard]: PASSED: 5e And 0b = 000a
+    250.00ns INFO     [AluTest.env.scoreboard]: PASSED: b9 Xor 80 = 0039
+    250.00ns INFO     [AluTest.env.scoreboard]: PASSED: a5 Mul 75 = 4b69
+    250.00ns INFO     [AluTest.env.scoreboard]: PASSED: ff Add ff = 01fe
+    250.00ns INFO     [AluTest.env.scoreboard]: PASSED: ff And ff = 00ff
+    250.00ns INFO     [AluTest.env.scoreboard]: PASSED: ff Xor ff = 0000
+    250.00ns INFO     [AluTest.env.scoreboard]: PASSED: ff Mul ff = fe01
+    250.00ns INFO     [AluTest.env.scoreboard]: Covered all operations
+    250.00ns INFO     AluTest PASSED
 ```
 
 ## The same two sequences, at the same time
@@ -102,7 +110,18 @@ One line of reasoning behind `join2` rather than `spawn`: a spawned task must ow
 ```text
 # Figure 5: The two sequences interleave at the sequencer
 
-[TRANSCRIPT NEEDED — same rerun, ParallelTest portion.]
+    250.00ns INFO     running ParallelTest (2/3)  [ch39-virtual-sequence-testbench-8.0/src/ch39_virtual_sequence_testbench_8_0.rs:461]
+    500.00ns INFO     [TestAllParallelSeq]: ran random and max together
+    500.00ns INFO     [ParallelTest.env.scoreboard]: PASSED: c1 Add 67 = 0128
+    500.00ns INFO     [ParallelTest.env.scoreboard]: PASSED: ff Add ff = 01fe
+    500.00ns INFO     [ParallelTest.env.scoreboard]: PASSED: 5e And 0b = 000a
+    500.00ns INFO     [ParallelTest.env.scoreboard]: PASSED: ff And ff = 00ff
+    500.00ns INFO     [ParallelTest.env.scoreboard]: PASSED: b9 Xor 80 = 0039
+    500.00ns INFO     [ParallelTest.env.scoreboard]: PASSED: ff Xor ff = 0000
+    500.00ns INFO     [ParallelTest.env.scoreboard]: PASSED: a5 Mul 75 = 4b69
+    500.00ns INFO     [ParallelTest.env.scoreboard]: PASSED: ff Mul ff = fe01
+    500.00ns INFO     [ParallelTest.env.scoreboard]: Covered all operations
+    500.00ns INFO     ParallelTest PASSED
 ```
 
 ## The testbench becomes a programming interface
@@ -200,8 +219,16 @@ Its test sets one extra ConfigDb value — `ConfigDb::set(None, "*", "CHECK_COVE
 ```text
 # Figure 9: The TinyALU computes Fibonacci through the interface
 
-[TRANSCRIPT NEEDED — same rerun, FibonacciProgramTest portion; expected
-final line is Fibonacci Sequence: [0, 1, 1, 2, 3, 5, 8, 13, 21].]
+    500.00ns INFO     running FibonacciProgramTest (3/3)  [ch39-virtual-sequence-testbench-8.0/src/ch39_virtual_sequence_testbench_8_0.rs:482]
+    670.00ns INFO     [FibonacciProgramSeq]: Fibonacci Sequence: [0, 1, 1, 2, 3, 5, 8, 13, 21]
+    670.00ns INFO     [FibonacciProgramTest.env.scoreboard]: PASSED: 00 Add 01 = 0001
+    670.00ns INFO     [FibonacciProgramTest.env.scoreboard]: PASSED: 01 Add 01 = 0002
+    670.00ns INFO     [FibonacciProgramTest.env.scoreboard]: PASSED: 01 Add 02 = 0003
+    670.00ns INFO     [FibonacciProgramTest.env.scoreboard]: PASSED: 02 Add 03 = 0005
+    670.00ns INFO     [FibonacciProgramTest.env.scoreboard]: PASSED: 03 Add 05 = 0008
+    670.00ns INFO     [FibonacciProgramTest.env.scoreboard]: PASSED: 05 Add 08 = 000d
+    670.00ns INFO     [FibonacciProgramTest.env.scoreboard]: saw 1 of 4 ops (coverage not required)
+    670.00ns INFO     FibonacciProgramTest PASSED
 ```
 
 ## The environment underneath

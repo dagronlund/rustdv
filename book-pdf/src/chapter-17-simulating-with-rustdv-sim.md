@@ -87,6 +87,8 @@ async fn no_count(ctx: RustdvCtx) -> Result<(), TestError> {
 
 `Clock::new(&clk, SimDuration::ns(2)).start()` is `Clock(dut.clk, 2, units="ns")` plus `start_soon` in one breath: it spawns the square-wave task and returns its handle, which we let fall — a free-running clock is the legitimate fire-and-forget from Chapter 16. `set_u64(0)` is the assignment `dut.reset_n.value = 0`, and it inherits cocotb's careful semantics: the write is *scheduled*, applied at the simulator's next read-write phase, not jammed into the middle of a delta cycle. (An immediate variant, `set_u64_now`, exists for the rare moment you need it — cocotb's `setimmediatevalue`, made greppable.)
 
+This is the only chapter that starts a clock, so it is worth saying why now rather than letting you notice its absence later. The counter here is a bare design with `clk` as an input, and something has to drive it. The TinyALU, from Chapter 18 onward, clocks itself — and every testbench in the rest of the book therefore only ever *waits* on edges. That is a deliberate discipline, not a property of the design: a BFM that waits on edges is the same code whether a simulator or an emulator supplies the edges, while one that drives them can only ever run in a simulator. `Clock` stays in the toolkit for the designs that need it. You will not see it again.
+
 ```rust
 // Figure 5: Wait for five clocks and check the output
 
@@ -163,7 +165,7 @@ async fn oops(ctx: RustdvCtx) -> Result<(), TestError> {
 ```text
 --
 warning: unused `Edge` that must be used
-  --> ch17-simulating-with-rustdv-sim/src/lib.rs:77:5
+  --> ch17-simulating-with-rustdv-sim/src/ch17_simulating_with_rustdv_sim.rs:77:5
    |
 77 |     clk.rising_edge(); // forgot .await
    |     ^^^^^^^^^^^^^^^^^

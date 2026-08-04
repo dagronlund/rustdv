@@ -150,8 +150,14 @@ impl Component for NiceMsgTestAlmostFixed {
 ```text
 # Figure 7: The dump puts MSG and MESG side by side
 
-[TRANSCRIPT NEEDED — copy the NiceMsgTestAlmostFixed dump verbatim from a
-rerun of `sim-common/run_sim.sh ch28_config_debugging playground`.]
+      0.00ns INFO     running NiceMsgTestAlmostFixed (4/7)  [ch28-config-debugging/src/ch28_config_debugging.rs:179]
+      0.00ns INFO     PATH                        : KEY       : DATA
+      0.00ns INFO     NiceMsgTestAlmostFixed.env.loga: MSG       : {1000: "LOG A msg"}
+      0.00ns INFO     NiceMsgTestAlmostFixed.env.logb: MESG      : {1000: "LOG B msg"}
+      0.00ns INFO     [NiceMsgTestAlmostFixed.env.loga]: LOG A msg
+      0.00ns WARNING  [NiceMsgTestAlmostFixed.env.logb]: Could not find MSG. Setting to default
+      0.00ns INFO     [NiceMsgTestAlmostFixed.env.logb]: No message for you!
+      0.00ns INFO     NiceMsgTestAlmostFixed PASSED
 ```
 
 The dump is what finds the figure-3 bug: two entries under `env.logb`-shaped paths, one keyed `MSG` and one keyed `MESG`, and the mismatch is visible in a way it never is at the point of failure. A misspelling is invisible in the place you wrote it and obvious in a table.

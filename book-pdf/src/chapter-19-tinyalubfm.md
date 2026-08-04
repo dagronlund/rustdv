@@ -284,12 +284,12 @@ The coverage check and final `Result` close the test exactly as 1.0 did, and:
 ```text
 # Figure 19: Another successful test
 --
-     45.00ns INFO     PASSED: c1 Add 67 = 0128
-     65.00ns INFO     PASSED: 5e And 0b = 000a
-     85.00ns INFO     PASSED: b9 Xor 80 = 0039
-    135.00ns INFO     PASSED: a5 Mul 75 = 4b69
-    135.00ns INFO     Covered all operations
-    135.00ns INFO     test_alu PASSED
+     50.00ns INFO     PASSED: c1 Add 67 = 0128
+     70.00ns INFO     PASSED: 5e And 0b = 000a
+     90.00ns INFO     PASSED: b9 Xor 80 = 0039
+    140.00ns INFO     PASSED: a5 Mul 75 = 4b69
+    140.00ns INFO     Covered all operations
+    140.00ns INFO     test_alu PASSED
 ```
 
 Same seed, same operands, same results as Chapter 18's transcript — `c1 Add 67` and friends — ten nanoseconds later apiece, the cost of the queue hop between test and driver. Two testbenches, one behavior, and the second one you could hand to a teammate.

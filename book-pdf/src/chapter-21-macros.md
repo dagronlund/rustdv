@@ -111,7 +111,7 @@ static __RUSTDV_TEST_REG: &TestRegistration = &TestRegistration {
 };
 ```
 
-Parts 1 and 2 are the decorator's *wrapping* job, done with types: your `async fn` stays exactly as you wrote it, and the shim adapts it to the one shape the regression runner stores. The attribute's arguments — `timeout_time`, `timeout_unit`, `expect_fail`, `skip`, `name` — are cocotb's `Test` options, parsed at compile time into that struct literal; a typo'd option is a compile error pointing at the attribute. `file!()` and `line!()` capture the source location the runner prints in `running hello_world (1/2) [ch15-.../src/lib.rs:12]` — you have been reading this macro's output in every transcript since Chapter 15.
+Parts 1 and 2 are the decorator's *wrapping* job, done with types: your `async fn` stays exactly as you wrote it, and the shim adapts it to the one shape the regression runner stores. The attribute's arguments — `timeout_time`, `timeout_unit`, `expect_fail`, `skip`, `name` — are cocotb's `Test` options, parsed at compile time into that struct literal; a typo'd option is a compile error pointing at the attribute. `file!()` and `line!()` capture the source location the runner prints in `running hello_world (1/2) [ch15-.../src/ch15_async_await_executor.rs:12]` — you have been reading this macro's output in every transcript since Chapter 15.
 
 Part 3 is the *registering* job, and it needs its own section, because there is no global list and no import time to fill one.
 

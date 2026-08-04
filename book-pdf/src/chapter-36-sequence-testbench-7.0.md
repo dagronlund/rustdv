@@ -318,9 +318,36 @@ This is what sequences bought. In Chapter 30, a new stimulus pattern meant a new
 ```text
 # Figure 9: Testbench 7.0 running
 
-[TRANSCRIPT NEEDED — ch36's README predates the conversion; copy verbatim
-from a rerun of `sim-common/run_sim.sh ch36_sequence_testbench_7_0 tinyalu
-sim-common/hdl/timescale.v sim-common/hdl/tinyalu.sv`.]
+      0.00ns INFO     rustdv: found 3 test(s), RUSTDV_RANDOM_SEED=1
+      0.00ns INFO     running BaseTest (1/3)  [ch36-sequence-testbench-7.0/src/ch36_sequence_testbench_7_0.rs:385]
+    280.00ns INFO     [BaseTest.env.scoreboard]: PASSED: 00 Add 00 = 0000
+    280.00ns INFO     [BaseTest.env.scoreboard]: PASSED: 00 And 00 = 0000
+    280.00ns INFO     [BaseTest.env.scoreboard]: PASSED: 00 Xor 00 = 0000
+    280.00ns INFO     [BaseTest.env.scoreboard]: PASSED: 00 Mul 00 = 0000
+    280.00ns INFO     [BaseTest.env.scoreboard]: Covered all operations
+    280.00ns INFO     BaseTest PASSED
+    280.00ns INFO     running RandomTest (2/3)  [ch36-sequence-testbench-7.0/src/ch36_sequence_testbench_7_0.rs:426]
+    560.00ns INFO     [RandomTest.inner.env.scoreboard]: PASSED: c1 Add 67 = 0128
+    560.00ns INFO     [RandomTest.inner.env.scoreboard]: PASSED: 5e And 0b = 000a
+    560.00ns INFO     [RandomTest.inner.env.scoreboard]: PASSED: b9 Xor 80 = 0039
+    560.00ns INFO     [RandomTest.inner.env.scoreboard]: PASSED: a5 Mul 75 = 4b69
+    560.00ns INFO     [RandomTest.inner.env.scoreboard]: Covered all operations
+    560.00ns INFO     RandomTest PASSED
+    560.00ns INFO     running MaxTest (3/3)  [ch36-sequence-testbench-7.0/src/ch36_sequence_testbench_7_0.rs:440]
+    840.00ns INFO     [MaxTest.inner.env.scoreboard]: PASSED: ff Add ff = 01fe
+    840.00ns INFO     [MaxTest.inner.env.scoreboard]: PASSED: ff And ff = 00ff
+    840.00ns INFO     [MaxTest.inner.env.scoreboard]: PASSED: ff Xor ff = 0000
+    840.00ns INFO     [MaxTest.inner.env.scoreboard]: PASSED: ff Mul ff = fe01
+    840.00ns INFO     [MaxTest.inner.env.scoreboard]: Covered all operations
+    840.00ns INFO     MaxTest PASSED
+******************************************************************************
+** TEST                                       STATUS  SIM TIME (ns)      **
+******************************************************************************
+** BaseTest                                     PASS         280.00      **
+** RandomTest                                   PASS         280.00      **
+** MaxTest                                      PASS         280.00      **
+******************************************************************************
+REGRESSION: PASS
 ```
 
 ## Summary

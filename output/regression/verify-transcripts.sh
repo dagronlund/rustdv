@@ -190,6 +190,26 @@ for n in ch15 ch16 ch17 ch18 ch19 ch20 ch23 ch24 ch25 ch26 ch27 ch28 ch29 \
   fi
 done
 
+# ---- the manuscript's own transcripts -------------------------------------
+# The book quotes simulator output too, and until 2026-08-04 nothing checked
+# it: ch15/19/20/23/26/29/31/32 carried 40 stale lines (renamed crate roots,
+# the D112 5ns shift, drifted file:line, elided [file:line] suffixes).
+echo
+echo "Comparing the manuscript's own transcript lines..."
+ALLRUN="$TMP/_all.txt"; cat "$TMP"/ch*.txt "$TMP"/tinyalu.txt > "$ALLRUN" 2>/dev/null
+mfail=0
+for md in "$ROOT"/book-pdf/src/*.md; do
+  miss=0
+  while IFS= read -r line; do
+    grep -Fqx "$line" "$ALLRUN" || {
+      [ $miss -eq 0 ] && echo "  $(basename "$md"): MISMATCH"
+      echo "      book: $line"
+      miss=$((miss+1)); mfail=1; fail=1
+    }
+  done < <(grep -E "^ *[0-9]+\.[0-9]{2}ns (INFO|WARNING|ERROR|CRITICAL)" "$md")
+done
+[ $mfail -eq 0 ] && echo "  every manuscript transcript line matches a real run"
+
 echo
 if [ $fail -eq 0 ]; then
   echo "ALL TRANSCRIPTS VERIFIED on $(uname -s)/$(uname -m)."

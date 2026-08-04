@@ -34,7 +34,7 @@ Here is the minimum needed to define and run a rustdv UVM test:
 # Figure 2: Hello, world!
 
       0.00ns INFO     rustdv: found 3 test(s), RUSTDV_RANDOM_SEED=1
-      0.00ns INFO     running HelloWorldTest (1/3)  [ch23-uvm-test-testbench-3.0/src/ch23_uvm_test_testbench_3_0.rs:152]
+      0.00ns INFO     running HelloWorldTest (1/3)  [ch23-uvm-test-testbench-3.0/src/ch23_uvm_test_testbench_3_0.rs:149]
       0.00ns INFO     [HelloWorldTest]: Hello, world.
       0.00ns INFO     HelloWorldTest PASSED
 ```
@@ -131,7 +131,7 @@ Where pyuvm's `RandomTest.build_phase()` set `self.tester = RandomTester()`, our
 ```text
 # Figure 6: RandomTest passes
 
-      0.00ns INFO     running RandomTest (2/3)  [ch23-uvm-test-testbench-3.0/src/ch23_uvm_test_testbench_3_0.rs:191]
+      0.00ns INFO     running RandomTest (2/3)  [ch23-uvm-test-testbench-3.0/src/ch23_uvm_test_testbench_3_0.rs:188]
     150.00ns INFO     PASSED: ce Add 42 = 0110
     150.00ns INFO     PASSED: 2f And 64 = 0024
     150.00ns INFO     PASSED: 29 Xor b3 = 009a
@@ -143,7 +143,7 @@ Where pyuvm's `RandomTest.build_phase()` set `self.tester = RandomTester()`, our
 ```text
 # Figure 7: MaxTest maxes all the operands
 
-    150.00ns INFO     running MaxTest (3/3)  [ch23-uvm-test-testbench-3.0/src/ch23_uvm_test_testbench_3_0.rs:202]
+    150.00ns INFO     running MaxTest (3/3)  [ch23-uvm-test-testbench-3.0/src/ch23_uvm_test_testbench_3_0.rs:199]
     300.00ns INFO     PASSED: ff Add ff = 01fe
     300.00ns INFO     PASSED: ff And ff = 00ff
     300.00ns INFO     PASSED: ff Xor ff = 0000

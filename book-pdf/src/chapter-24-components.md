@@ -62,8 +62,8 @@ Figure 2 is the run.
 ```text
 # Figure 2: The lifecycle runs in order
 
-      0.00ns INFO     rustdv: found 1 test(s), RUSTDV_RANDOM_SEED=1
-      0.00ns INFO     running PhaseTest (1/1)  [ch24-components/src/ch24_components.rs:41]
+      0.00ns INFO     rustdv: found 2 test(s), RUSTDV_RANDOM_SEED=1
+      0.00ns INFO     running PhaseTest (1/2)  [ch24-components/src/ch24_components.rs:38]
       0.00ns INFO     [PhaseTest]: 1 build
       0.00ns INFO     [PhaseTest]: 2 connect
       0.00ns INFO     [PhaseTest]: 3 end_of_elaboration
@@ -74,10 +74,12 @@ Figure 2 is the run.
       0.00ns INFO     [PhaseTest]: 8 report
       0.00ns INFO     [PhaseTest]: 9 final
       0.00ns INFO     PhaseTest PASSED
+      ... (TestTop, the second test in this crate, follows)
 ******************************************************************************
 ** TEST                                       STATUS  SIM TIME (ns)      **
 ******************************************************************************
 ** PhaseTest                                    PASS           0.00      **
+** TestTop                                      PASS           0.00      **
 ******************************************************************************
 REGRESSION: PASS
 ```

@@ -792,6 +792,59 @@ three-line BFM skeleton with a placeholder comment.
 Full regression after all of it: unit 1, book-sync 108, examples 96, custom 34
 — **239 entries, 0 failed**, on Linux/aarch64.
 
+## 2026-08-04 — the manuscript's transcripts, checked and then completed
+
+Extending the transcript gate to the book itself found that **the manuscript's
+own transcripts were stale in exactly the ways the READMEs had been** — nothing
+had ever compared them either. Forty lines across eight chapters: ch15 quoting
+the pre-rename `src/lib.rs`, ch19 and ch20 five nanoseconds early (D112), ch23
+and ch26 with drifted `file:line`, ch29/ch31/ch32 with the `[file:line]` suffix
+elided so the "transcript" was a paraphrase. **ch24 documented one test where
+the crate has two** — `PhaseTest (1/1)` against a real `(1/2)`, with a summary
+table listing one row. All corrected from verified output.
+
+`verify-transcripts.sh` now checks every timestamped line in `book-pdf/src`
+against the live runs, not just the READMEs. Both are gated by
+`custom/readme-transcripts`.
+
+**The 13 `[TRANSCRIPT NEEDED]` placeholders are filled.** Ray reserved the prose
+pass for writing, not clerical work, so a code thread ran every sim and pasted
+the real output: ch27 ×4, ch28, ch36, ch37, ch38, ch39 ×3, and the full
+`sim/run_rustdv.sh` run into both ch40 and the Interlude. The manuscript now
+carries **549 transcript lines, every one verified against a live run.** No
+placeholder of any kind remains in `book-pdf/src`.
+
+## 2026-08-04 — the end-to-end read
+
+Done mechanically where a machine can be exhaustive, by eye where it cannot.
+
+Checked and clean: figure numbering runs 1..N in order in **every** chapter once
+`<figcaption>` SVG figures are counted (ch31's fig 9, ch34's fig 1 and ch36's
+fig 1 are drawings, which is why the code captions appear to skip); `SUMMARY.md`
+matches the files on disk exactly both ways; no reference to the cut Chapter 41;
+no chapter reference out of range; every internal link resolves; every repo path
+quoted in the book exists; all 12 `error[EXXXX]` codes reconcile against the 20
+checked compile-fail cases; every name in Appendix D and the Toolkit page exists
+in the framework; no leftover editorial artifact anywhere; all 50 rendered HTML
+pages carry real content.
+
+Two things it found, both fixed:
+
+- **Two stale `src/lib.rs` references survived the crate-root renames** — ch17
+  quoting a compiler warning's path, ch21 quoting a runner log line. Neither is
+  a Rust listing, so `book-listings` could not see them.
+- **A hole the `Clock` fix opened.** Removing `Clock::new(...)` from ch18/19/20
+  left only a code comment explaining where the clock went; a reader who met
+  `Clock` in ch17 and never saw it again got no reason. Chapter 17 now closes
+  its `Clock` figure with the reason — the counter is a bare design, the TinyALU
+  clocks itself, and a BFM that waits on edges is the same code on an emulator
+  while one that drives them is not.
+
+`ch02`'s two figures both captioned "The corrected program" are intentional
+(two mistakes, two corrections) and match the frozen manifest.
+
+Final: unit 1, book-sync 108, examples 96, custom 34 — **239 entries, 0 failed**.
+
 *Platform note:* this is a Linux run. macOS/arm64 is a shipping platform and
 these transcripts go into the book, so they want confirming on the Mac — a diff,
 not a re-read. Fixed seed, single-threaded executor and simulated time should

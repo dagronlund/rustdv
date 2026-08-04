@@ -91,9 +91,10 @@ The paths are relative to the *setter*: `"env.loga"` resolves against the test's
 ```text
 # Figure 4: The loga and logb components have different things to say
 
-[TRANSCRIPT NEEDED — ch27's README predates the conversion and carries no
-transcripts; copy verbatim from a rerun of
-`sim-common/run_sim.sh ch27_configuration playground` (MsgTest).]
+      0.00ns INFO     running MsgTest (1/4)  [ch27-configuration/src/ch27_configuration.rs:99]
+      0.00ns INFO     [MsgTest.env.loga]: LOG A msg
+      0.00ns INFO     [MsgTest.env.logb]: LOG B msg
+      0.00ns INFO     MsgTest PASSED
 ```
 
 ## Wildcards
@@ -150,7 +151,12 @@ impl Component for MultiMsgTest {
 ```text
 # Figure 7: The "talk" components get the same message
 
-[TRANSCRIPT NEEDED — same rerun, MultiMsgTest.]
+      0.00ns INFO     running MultiMsgTest (2/4)  [ch27-configuration/src/ch27_configuration.rs:150]
+      0.00ns INFO     [MultiMsgTest.env.loga]: LOG A msg
+      0.00ns INFO     [MultiMsgTest.env.logb]: LOG B msg
+      0.00ns INFO     [MultiMsgTest.env.talka]: TALK TALK
+      0.00ns INFO     [MultiMsgTest.env.talkb]: TALK TALK
+      0.00ns INFO     MultiMsgTest PASSED
 ```
 
 ## Global data
@@ -211,7 +217,13 @@ Which raises the obvious question: `loga`'s path matches `env.loga`, `env.t*` do
 ```text
 # Figure 10: The default is matched only where nothing overrides it
 
-[TRANSCRIPT NEEDED — same rerun, GlobalTest.]
+      0.00ns INFO     running GlobalTest (3/4)  [ch27-configuration/src/ch27_configuration.rs:207]
+      0.00ns INFO     [GlobalTest.env.loga]: LOG A msg
+      0.00ns INFO     [GlobalTest.env.logb]: LOG B msg
+      0.00ns INFO     [GlobalTest.env.talka]: TALK TALK
+      0.00ns INFO     [GlobalTest.env.talkb]: TALK TALK
+      0.00ns INFO     [GlobalTest.env.gtalk]: GLOBAL
+      0.00ns INFO     GlobalTest PASSED
 ```
 
 ## The parent/child conflict
@@ -256,7 +268,9 @@ impl Component for ConflictTest {
 ```text
 # Figure 13: The parent wins
 
-[TRANSCRIPT NEEDED — same rerun, ConflictTest.]
+      0.00ns INFO     running ConflictTest (4/4)  [ch27-configuration/src/ch27_configuration.rs:256]
+      0.00ns INFO     [ConflictTest.env.loga]: PARENT RULES!
+      0.00ns INFO     ConflictTest PASSED
 ```
 
 ## Summary

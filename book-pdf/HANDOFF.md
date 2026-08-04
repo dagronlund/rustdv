@@ -380,7 +380,11 @@ Copy them with confidence. If you ever need to re-check, that one command does i
 
 ### Status of the three closing steps (updated 2026-07-30, code thread)
 
-1. **Transcripts — DONE 2026-07-30, and now waiting to be pasted.** The sims
+1. **Transcripts — DONE. All 13 markers are filled (2026-08-04).** A code
+   thread ran the sims and pasted the output; there is nothing left to copy.
+   The manuscript now carries 549 transcript lines and **every one of them is
+   checked against a real run** by `verify-transcripts.sh`, which gates the
+   push. Historical detail below. The sims
    were rerun and the READMEs for ch27, ch28, ch36, ch37, ch38 and ch39 were
    rebuilt: each now carries its transcripts verbatim under a "Transcript(s)"
    heading, labelled by figure number. Copy them into the 13

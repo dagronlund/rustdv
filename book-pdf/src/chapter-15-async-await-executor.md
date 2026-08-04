@@ -27,7 +27,7 @@ async fn hello_world(_ctx: RustdvCtx) -> Result<(), TestError> {
 
 ```text
 --
-      0.00ns INFO     running hello_world (1/2)  [ch15-async-await-executor/src/lib.rs:12]
+      0.00ns INFO     running hello_world (1/2)  [ch15-async-await-executor/src/ch15_async_await_executor.rs:12]
       0.00ns INFO     Hello, world.
       0.00ns INFO     hello_world PASSED
 ```
@@ -262,7 +262,7 @@ async fn wait_2ns(_ctx: RustdvCtx) -> Result<(), TestError> {
 
 ```text
 --
-      0.00ns INFO     running wait_2ns (2/2)  [ch15-async-await-executor/src/lib.rs:20]
+      0.00ns INFO     running wait_2ns (2/2)  [ch15-async-await-executor/src/ch15_async_await_executor.rs:20]
       2.00ns INFO     I am DONE waiting!
       2.00ns INFO     wait_2ns PASSED
 ```

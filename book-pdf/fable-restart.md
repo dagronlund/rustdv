@@ -40,43 +40,17 @@ add a fourth to make a build pass.
 
 ## What to do
 
-**1. Fill the 13 `[TRANSCRIPT NEEDED]` markers.** The sims have been rerun
-(2026-07-30) and **every transcript you were owed is now in the chapter's
-README**, verbatim, under a "Transcript(s)" heading with the figure number on
-it. Copy them across character for character. Do not compose, approximate, or
-reconstruct one from STATUS.md.
+**1. The end-to-end read** against rendered output — the last thing. `mdbook
+build book-pdf` works here; PDF rendering needs a Chromium the sandbox lacks,
+so read the HTML and Ray renders the PDF.
 
-These are checked, not assumed: **431 transcript lines across 22 chapters**,
-verified on Linux/aarch64 and on macOS/arm64 under two different Icarus
-versions, agreeing exactly. Trust them over anything the old manuscript says.
+All 13 `[TRANSCRIPT NEEDED]` markers are **already filled** — a code thread ran
+the sims and pasted real output. The manuscript carries 549 transcript lines
+and every one is checked against a live run by
+`bash output/regression/verify-transcripts.sh`, which gates the push. If a
+transcript looks wrong to you, run that rather than editing it: the check is
+the arbiter, and it covers the READMEs and the book alike, on Linux and macOS.
 
-| Chapter | Markers | Where the output now lives |
-|---|---|---|
-| ch27 | 4 (figs 4, 7, 10, 13) | `output/examples/ch27-configuration/README.md` |
-| ch28 | 1 (fig 7) | `output/examples/ch28-config-debugging/README.md` — figs 7, 10, 12 all there |
-| ch36 | 1 (fig 9) | `output/examples/ch36-sequence-testbench-7.0/README.md` |
-| ch37 | 1 (fig 5) | `output/examples/ch37-repair-desk-testbench-7.1/README.md` |
-| ch38 | 1 (fig 6) | `output/examples/ch38-fibonacci-testbench-7.2/README.md` |
-| ch39 | 3 (figs 3, 5, 9) | `output/examples/ch39-virtual-sequence-testbench-8.0/README.md` |
-| Interlude, ch40 | 1 each | `rustdv/tinyalu_tb/README.md` — **new file**, written for exactly this |
-
-**The figure maps in those READMEs were rebuilt too**, and they now use the
-**book's** numbering rather than the crate's. So a README row number is the
-figure number you should be printing. That was not true this morning.
-
-**ch15–21 have been regenerated too**, so every README in the book is now
-current. Two things there may affect text you already wrote:
-
-- Their `src/lib.rs` citations are gone — the crate roots are named after the
-  crate (D29). If any ch15–21 prose names a path, check it.
-- **ch18, ch19 and ch20's transcripts changed.** Their simulated times were 5ns
-  early throughout (ch18's `35.00ns` is now `40.00ns`, and so on). Same
-  operands, same results — the DUT self-clocks now (D112), so the first edge
-  lands later. If those numbers appear in your prose, they are stale.
-
-**2. The end-to-end read** against rendered output — your step 3, and the last
-thing. `mdbook build book-pdf` works here; PDF rendering needs a Chromium the
-sandbox lacks, so read the HTML and Ray renders the PDF.
 
 ## Standing constraints
 

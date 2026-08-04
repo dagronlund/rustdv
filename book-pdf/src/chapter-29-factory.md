@@ -45,7 +45,7 @@ impl Component for TinyTest {
 ```text
 # Figure 3: The normal way builds what it says
 
-      0.00ns INFO     running TinyTest (1/7)
+      0.00ns INFO     running TinyTest (1/7)  [ch29-factory/src/ch29_factory.rs:71]
       0.00ns INFO     [TinyTest.tc]: I'm so tiny!
 ```
 
@@ -70,7 +70,7 @@ impl Component for TinyFactoryTest {
 ```text
 # Figure 5: The factory way builds the same thing — until someone objects
 
-      0.00ns INFO     running TinyFactoryTest (2/7)
+      0.00ns INFO     running TinyFactoryTest (2/7)  [ch29-factory/src/ch29_factory.rs:90]
       0.00ns INFO     [TinyFactoryTest.tc]: I'm so tiny!
 ```
 
@@ -132,7 +132,7 @@ impl Component for MediumFactoryTest {
 ```text
 # Figure 9: The same create line builds something else
 
-      0.00ns INFO     running MediumFactoryTest (4/7)
+      0.00ns INFO     running MediumFactoryTest (4/7)  [ch29-factory/src/ch29_factory.rs:151]
       0.00ns INFO     [MediumFactoryTest.tc]: I'm medium size.
 ```
 
@@ -162,7 +162,7 @@ impl Component for MediumNameTest {
 ```text
 # Figure 11: Same substitution, by name
 
-      0.00ns INFO     running MediumNameTest (5/7)
+      0.00ns INFO     running MediumNameTest (5/7)  [ch29-factory/src/ch29_factory.rs:171]
       0.00ns INFO     [MediumNameTest.tc]: I'm medium size.
 ```
 
@@ -208,7 +208,7 @@ impl Component for TwoCompTest {
 ```text
 # Figure 14: The path picks the instance
 
-      0.00ns INFO     running TwoCompTest (6/7)
+      0.00ns INFO     running TwoCompTest (6/7)  [ch29-factory/src/ch29_factory.rs:218]
       0.00ns INFO     [TwoCompTest.env.tc1]: I'm medium size.
       0.00ns INFO     [TwoCompTest.env.tc2]: I'm so tiny!
 ```
@@ -245,7 +245,7 @@ impl Component for PrintOverridesTest {
 ```text
 # Figure 16: The overrides in force, listed
 
-      0.00ns INFO     running PrintOverridesTest (7/7)
+      0.00ns INFO     running PrintOverridesTest (7/7)  [ch29-factory/src/ch29_factory.rs:241]
       0.00ns INFO     Factory overrides:
       0.00ns INFO       *                           : TinyComponent -> MediumComponent
       0.00ns INFO     [PrintOverridesTest.tc]: I'm medium size.

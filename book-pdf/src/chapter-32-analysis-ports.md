@@ -144,7 +144,7 @@ The `AnalysisBus` is the hub that brokers the broadcast, and its wiring reads ex
 ```text
 # Figure 5: One write, every subscriber hears it — all in zero time
 
-      0.00ns INFO     running BroadcastTest (1/3)
+      0.00ns INFO     running BroadcastTest (1/3)  [ch32-analysis-ports/src/ch32_analysis_ports.rs:192]
       0.00ns INFO     [BroadcastTest.source]: wrote 0
       0.00ns INFO     [BroadcastTest.source]: wrote 1
       0.00ns INFO     [BroadcastTest.source]: wrote 2
@@ -186,7 +186,7 @@ impl Component for NoSubscribersTest {
 ```text
 # Figure 7: Broadcasting into the void
 
-      0.00ns INFO     running NoSubscribersTest (2/3)
+      0.00ns INFO     running NoSubscribersTest (2/3)  [ch32-analysis-ports/src/ch32_analysis_ports.rs:230]
       0.00ns INFO     [NoSubscribersTest.source]: wrote 0
       0.00ns INFO     [NoSubscribersTest.source]: wrote 1
       0.00ns INFO     [NoSubscribersTest.source]: wrote 2
@@ -281,7 +281,7 @@ Nothing in the wiring says this subscriber buffers — the same `sub_export()` a
 ```text
 # Figure 10: Writes at 0ns; checks at 5, 10, 15
 
-      0.00ns INFO     running SlowSubscriberTest (3/3)
+      0.00ns INFO     running SlowSubscriberTest (3/3)  [ch32-analysis-ports/src/ch32_analysis_ports.rs:324]
       0.00ns INFO     [SlowSubscriberTest.source]: wrote 0
       0.00ns INFO     [SlowSubscriberTest.source]: wrote 1
       0.00ns INFO     [SlowSubscriberTest.source]: wrote 2

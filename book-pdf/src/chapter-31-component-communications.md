@@ -101,7 +101,7 @@ There is one more thing to notice, and it is the quiet resolution of a problem t
 ```text
 # Figure 4: Alternating through a depth-1 FIFO
 
-      0.00ns INFO     running PutGetPeekTest (1/5)
+      0.00ns INFO     running PutGetPeekTest (1/5)  [ch31-component-communications/src/ch31_component_communications.rs:124]
       0.00ns INFO     [PutGetPeekTest.producer]: put 0
       0.00ns INFO     [PutGetPeekTest.consumer]: peeked 0
       0.00ns INFO     [PutGetPeekTest.consumer]: got 0
@@ -226,7 +226,7 @@ The FIFO now carries `Packet` rather than `u32`, and not one connect line change
 ```text
 # Figure 8: Nonblocking components spend time instead of waiting
 
-      0.00ns INFO     running NonBlockingTest (2/5)
+      0.00ns INFO     running NonBlockingTest (2/5)  [ch31-component-communications/src/ch31_component_communications.rs:247]
       0.00ns INFO     [NonBlockingTest.producer]: put 0
       0.00ns INFO     [NonBlockingTest.producer]: FIFO full, retrying
       0.00ns INFO     [NonBlockingTest.consumer]: got pkt0 (n=0)
@@ -400,7 +400,7 @@ Third, **every run phase must make progress together**. The test blocks waiting 
 ```text
 # Figure 13: The pipeline checks itself
 
-      2.00ns INFO     running MathTest (3/5)
+      2.00ns INFO     running MathTest (3/5)  [ch31-component-communications/src/ch31_component_communications.rs:345]
       2.00ns INFO     [MathTest.square_it]: 1² = 1
       2.00ns INFO     [MathTest.times_two]: 2 × 1 = 2
       2.00ns INFO     [MathTest]: PASSED: x=1, y=2
@@ -524,7 +524,7 @@ Note what is and is not mixed here. The FIFO's *data path* is still a queue: one
 ```text
 # Figure 17: The same three items, observed without being consumed
 
-      2.00ns INFO     running FifoTapTest (5/5)
+      2.00ns INFO     running FifoTapTest (5/5)  [ch31-component-communications/src/ch31_component_communications.rs:482]
       2.00ns INFO     [FifoTapTest.producer]: put 0
       2.00ns INFO     [FifoTapTest.consumer]: peeked 0
       2.00ns INFO     [FifoTapTest.consumer]: got 0

@@ -232,18 +232,18 @@ Two tests, differing in one constructed value — the components did all the wor
 ```text
 # Figure 13: Two tests, one testbench
 --
-    145.00ns INFO     PASSED: c1 Add 67 = 0128
-    145.00ns INFO     PASSED: 5e And 0b = 000a
-    145.00ns INFO     PASSED: b9 Xor 80 = 0039
-    145.00ns INFO     PASSED: a5 Mul 75 = 4b69
-    145.00ns INFO     Covered all operations
-    145.00ns INFO     random_test PASSED
-    290.00ns INFO     PASSED: ff Add ff = 01fe
-    290.00ns INFO     PASSED: ff And ff = 00ff
-    290.00ns INFO     PASSED: ff Xor ff = 0000
-    290.00ns INFO     PASSED: ff Mul ff = fe01
-    290.00ns INFO     Covered all operations
-    290.00ns INFO     max_test PASSED
+    150.00ns INFO     PASSED: c1 Add 67 = 0128
+    150.00ns INFO     PASSED: 5e And 0b = 000a
+    150.00ns INFO     PASSED: b9 Xor 80 = 0039
+    150.00ns INFO     PASSED: a5 Mul 75 = 4b69
+    150.00ns INFO     Covered all operations
+    150.00ns INFO     random_test PASSED
+    300.00ns INFO     PASSED: ff Add ff = 01fe
+    300.00ns INFO     PASSED: ff And ff = 00ff
+    300.00ns INFO     PASSED: ff Xor ff = 0000
+    300.00ns INFO     PASSED: ff Mul ff = fe01
+    150.00ns INFO     Covered all operations
+    300.00ns INFO     max_test PASSED
 ```
 
 Note the timestamps: unlike Chapters 18 and 19, where PASSED lines trickled out as results arrived, all four comparisons print at once — the scoreboard checks *after* the run, batch-style. Chapter 24 will give that timing a name (`check`, a lifecycle phase) and a guarantee (it runs after the run phase ends). Note also `ff Xor ff = 0000` and `ff Mul ff = fe01` doing what max-operand tests exist to do: probing the corners where a lazier predictor would have wrapped, zeroed, or overflowed.

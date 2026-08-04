@@ -181,11 +181,17 @@ No flush. Chapters 34 and 36 held their objections through twenty falling edges 
 ```text
 # Figure 6: The TinyALU computes Fibonacci
 
-[TRANSCRIPT NEEDED — ch38's README predates the conversion; copy verbatim
-from a rerun of `sim-common/run_sim.sh ch38_fibonacci_testbench_7_2 tinyalu
-sim-common/hdl/timescale.v sim-common/hdl/tinyalu.sv`. Expected final lines:
-Fibonacci Sequence: [0, 1, 1, 2, 3, 5, 8, 13, 21] and
-adder produced [1, 2, 3, 5, 8, 13, 21]. REGRESSION: PASS.]
+      0.00ns INFO     rustdv: found 1 test(s), RUSTDV_RANDOM_SEED=1
+      0.00ns INFO     running FibonacciTest (1/1)  [ch38-fibonacci-testbench-7.2/src/ch38_fibonacci_testbench_7_2.rs:228]
+    170.00ns INFO     [FibonacciSeq]: Fibonacci Sequence: [0, 1, 1, 2, 3, 5, 8, 13, 21]
+    170.00ns INFO     [FibonacciTest.env.watcher]: adder produced [1, 2, 3, 5, 8, 13, 21]
+    170.00ns INFO     FibonacciTest PASSED
+******************************************************************************
+** TEST                                       STATUS  SIM TIME (ns)      **
+******************************************************************************
+** FibonacciTest                                PASS         170.00      **
+******************************************************************************
+REGRESSION: PASS
 ```
 
 ## Summary

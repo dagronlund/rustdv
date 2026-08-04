@@ -129,22 +129,22 @@ type NoLog = LogTest<NoLogging>;
 # Figure 8: Four tests, four logging behaviors
 
       0.00ns INFO     rustdv: found 4 test(s), RUSTDV_RANDOM_SEED=1
-      0.00ns INFO     running LogTestDefault (1/4)  [ch26-logging/src/ch26_logging.rs:117]
+      0.00ns INFO     running LogTestDefault (1/4)  [ch26-logging/src/ch26_logging.rs:124]
       0.00ns INFO     [LogTestDefault.comp]: This is info
       0.00ns WARNING  [LogTestDefault.comp]: This is warning
       0.00ns ERROR    [LogTestDefault.comp]: This is error
       0.00ns CRITICAL [LogTestDefault.comp]: This is critical
       0.00ns INFO     LogTestDefault PASSED
-      0.00ns INFO     running DebugTest (2/4)  [ch26-logging/src/ch26_logging.rs:120]
+      0.00ns INFO     running DebugTest (2/4)  [ch26-logging/src/ch26_logging.rs:127]
       0.00ns DEBUG    [DebugTest.comp]: This is debug
       0.00ns INFO     [DebugTest.comp]: This is info
       0.00ns WARNING  [DebugTest.comp]: This is warning
       0.00ns ERROR    [DebugTest.comp]: This is error
       0.00ns CRITICAL [DebugTest.comp]: This is critical
       0.00ns INFO     DebugTest PASSED
-      0.00ns INFO     running FileTest (3/4)  [ch26-logging/src/ch26_logging.rs:123]
+      0.00ns INFO     running FileTest (3/4)  [ch26-logging/src/ch26_logging.rs:130]
       0.00ns INFO     FileTest PASSED
-      0.00ns INFO     running NoLog (4/4)  [ch26-logging/src/ch26_logging.rs:126]
+      0.00ns INFO     running NoLog (4/4)  [ch26-logging/src/ch26_logging.rs:133]
       0.00ns INFO     NoLog PASSED
 ******************************************************************************
 ** TEST                                       STATUS  SIM TIME (ns)      **
