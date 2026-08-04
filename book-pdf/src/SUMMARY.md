@@ -43,7 +43,7 @@
 - [Connections in Testbench 6.0](chapter-34-connections-testbench-6.0.md)
 - [Transactions](chapter-35-transactions.md)
 - [Sequence Testbench: 7.0](chapter-36-sequence-testbench-7.0.md)
-- [The Repair Desk: Testbench 7.1](chapter-37-repair-desk-testbench-7.1.md)
+- [Out-of-Order Transactions: Testbench 7.1](chapter-37-out-of-order-transaction-testbench-7.1.md)
 - [Fibonacci Testbench: 7.2](chapter-38-fibonacci-testbench-7.2.md)
 - [Virtual Sequence Testbench: 8.0](chapter-39-virtual-sequence-testbench-8.0.md)
 - [The Complete TinyALU Testbench](chapter-40-complete-tinyalu-testbench.md)

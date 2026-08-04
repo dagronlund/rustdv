@@ -88,7 +88,7 @@ run ch31 ch31_component_communications        playground
 run ch32 ch32_analysis_ports                  playground
 run ch34 ch34_connections_testbench_6_0       tinyalu    "${HDL_TINYALU[@]}"
 run ch36 ch36_sequence_testbench_7_0          tinyalu    "${HDL_TINYALU[@]}"
-run ch37 ch37_repair_desk_testbench_7_1       playground
+run ch37 ch37_out_of_order_transaction_testbench_7_1       playground
 run ch38 ch38_fibonacci_testbench_7_2         tinyalu    "${HDL_TINYALU[@]}"
 run ch39 ch39_virtual_sequence_testbench_8_0  tinyalu    "${HDL_TINYALU[@]}"
 

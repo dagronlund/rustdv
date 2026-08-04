@@ -15,10 +15,10 @@
 //! at a time, with the DUT's answer in hand. That is the reason the sequence
 //! system exists, reduced to nine lines.
 //!
-//! ## What is different from the repair desk
+//! ## What is different from Chapter 37
 //!
-//! Only the shape of the traffic. There, four jobs were in the shop at once and
-//! the ticket told you which receipt was yours. Here **one command is in flight
+//! Only the shape of the traffic. There, four requests were outstanding at once
+//! and the ticket said which answer was which. Here **one command is in flight
 //! at a time**, because the next one depends on this one's answer — so the
 //! ticket is never ambiguous.
 //!

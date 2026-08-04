@@ -201,7 +201,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ch37_repair_desk_testbench_7_1"
+name = "ch37_out_of_order_transaction_testbench_7_1"
 version = "0.1.0"
 dependencies = [
  "rustdv",

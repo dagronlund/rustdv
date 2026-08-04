@@ -41,7 +41,7 @@ Two books precede this one, and either prepares you for it: [*The UVM Primer*](h
 | Ch. 34: Connections in Testbench 6.0 | Ch. 18: Put and Get in Action; Ch. 22: UVM Agents | Connections in testbench 6.0 |
 | Ch. 35: Transactions | Ch. 20: Deep Operations; Ch. 21: UVM Transactions | uvm_object in Python |
 | Ch. 36: Sequence Testbench: 7.0 | Ch. 23: UVM Sequences | Sequence testbench: 7.0 |
-| Ch. 37: The Repair Desk: Testbench 7.1 | Ch. 23: UVM Sequences | Fibonacci testbench: 7.1 / get_response() testbench: 7.2 |
+| Ch. 37: Out-of-Order Transactions: Testbench 7.1 | Ch. 23: UVM Sequences | Fibonacci testbench: 7.1 / get_response() testbench: 7.2 |
 | Ch. 38: Fibonacci Testbench: 7.2 | Ch. 23: UVM Sequences | Fibonacci testbench: 7.1 |
 | Ch. 39: Virtual Sequence Testbench: 8.0 | Ch. 23: UVM Sequences | Virtual sequence testbench: 8.0 |
 | Ch. 40: The Complete TinyALU Testbench | *(no mirror)* | *(no mirror)* |

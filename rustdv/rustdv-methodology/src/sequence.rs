@@ -905,7 +905,7 @@ mod tests {
         });
     }
 
-    /// The repair desk's whole point: answers arrive out of order and each
+    /// Chapter 37's whole point: answers arrive out of order and each
     /// sequence still gets the one it asked for.
     #[test]
     fn get_response_picks_its_ticket_out_of_order() {
