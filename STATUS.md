@@ -915,26 +915,31 @@ was there the whole time.
 CI's environment confirms the diagnosis: the failing run's log shows
 `CARGO_TERM_COLOR: always` set for the step.
 
-### Open: `custom/sim-lint-verilator` fails on GitHub only
+### `custom/sim-lint-verilator` — D112's self-clocking needed `--timing`
 
-`bash sim/run_smoke.sh verilator` gives `LINT: PASS`, exit 0, on the sandbox's
-Verilator (5.051 devel, from the oss-cad-suite drop). CI installs Ubuntu's apt
-`verilator`, which is a different and generally older release, and Verilator's
-lint set moves between releases — a warning this build does not raise can be an
-error there.
+Fixed. The extra CI logging paid for itself immediately:
 
-**Not yet diagnosed, because the output was never captured.** `regress.py` takes
-a test's stdout, so the lint diagnostics never reached the CI log; the failure
-arrived as one line, `exit 1, expected 0`. The `sim-smoke` job now prints
-`verilator --version`, re-runs the lint directly so its own warnings appear, and
-uploads `sim.log` as an artifact. The next failing run will say what the warning
-is and which Verilator produced it.
+```
+%Error-NEEDTIMINGOPT: hdl/tinyalu.sv:15:11: Use --timing or --no-timing to
+   15 |    always #5 clk = ~clk;
+Verilator 5.020 2024-01-01 rev (Debian 5.020-1)
+```
 
-Once that is known the fix is one of: satisfy the warning in `sim/hdl/`, add the
-specific `/* verilator lint_off */` with a reason, or pin the CI Verilator the
-way the Rust toolchain is now pinned. Do **not** relax the lint globally —
-`LINT: PASS` on a stricter compiler than the one the author runs is the point of
-having it in CI at all.
+**D112 caused it.** Retiring the bare-DUT exception gave `tinyalu.sv` its own
+`always #5 clk = ~clk;`, and from Verilator 5.020 a design containing delays
+must state how they are handled or lint fails outright. The oss-cad-suite build
+in the sandbox (5.051 devel) is lenient about it, so the change looked clean
+locally and only Debian's 5.020 objected — the same shape as the toolchain pin:
+a version difference nobody had pinned or noticed.
+
+`sim/run_smoke.sh` now passes `--timing` to the lint. That is the correct
+answer rather than a suppression: the delay is real and deliberate, and the
+flag says so on every Verilator version instead of leaving it to the release.
+Verified `LINT: PASS` on 5.051, and `sim/hdl/tinyalu.sv` is byte-identical to
+`output/examples/sim-common/hdl/tinyalu.sv`, so the one lint covers both.
+
+The lint was **not** relaxed. Running it on a stricter tool than the author's
+is the reason it is in CI.
 
 *Platform note:* this is a Linux run. macOS/arm64 is a shipping platform and
 these transcripts go into the book, so they want confirming on the Mac — a diff,

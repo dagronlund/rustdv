@@ -32,7 +32,13 @@ case "$SIM" in
     vvp "$BUILD/smoke.vvp"
     ;;
   verilator)
-    verilator --lint-only -sv --top-module tinyalu "$HDL" -Mdir "$BUILD/obj_dir"
+    # --timing is required, not optional. The DUT self-clocks (D112:
+    # `always #5 clk = ~clk;`), and from Verilator 5.020 a design containing
+    # delays must say how they are handled or lint fails with
+    # %Error-NEEDTIMINGOPT. Newer builds are lenient, which is exactly how this
+    # reached CI green locally and red on Debian's 5.020 — the flag makes the
+    # answer explicit on every version instead of version-dependent.
+    verilator --lint-only -sv --timing --top-module tinyalu "$HDL" -Mdir "$BUILD/obj_dir"
     echo "LINT: PASS"
     ;;
   vcs)        # Synopsys — requires a license; untested in this repo's CI
