@@ -7,6 +7,6 @@
   "cwd": ".",
   "expect_exit": 0,
   "expect_in_output": [
-    "new drift"
+    "book listings (ch15-40 + Interlude):"
   ]
 }

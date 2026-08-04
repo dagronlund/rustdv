@@ -23,7 +23,7 @@ Digital systems act on clock edges. The TinyALU works on the rising edge, so —
 
 loop {
     clk.falling_edge().await;
-    // check signals and do the work
+    // ... check signals and do the work
 }
 ```
 

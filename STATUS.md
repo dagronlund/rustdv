@@ -784,10 +784,23 @@ was hiding that. Fixed properly:
   added. **ch35/2** silently skipped a `Display` impl; the skip is now marked
   `// ...` and is honest.
 
-**Result: 176 verbatim, 3 spliced-but-real, 3 exempt, 0 drift.** The three
-exemptions are permanent and each says why: std's `Future` trait quoted to
-explain `async`, ch21's deliberately tidied macro expansion, and ch19's
-three-line BFM skeleton with a placeholder comment.
+**Result: 176 verbatim, 3 spliced-but-real, 2 quoted, 4 elided, 0 drift.**
+
+**The debt register is empty, and the word "register" was itself doing harm.**
+It held ten entries, then three, then two — and Ray's objection to the last two
+was right: they are *quotations*, not debt. `ch15/2` is the `Future` trait's one
+method copied from the standard library; `ch21/2` is a macro expansion the
+chapter says outright is tidied. Neither has a crate to match because neither
+was ever rustdv's code, and parking them under "must only ever shrink" made
+permanent, legitimate content read as unfinished work — exactly the false signal
+that teaches people to stop reading a tool's output. They now sit in `QUOTED`,
+counted and reported as what they are. `KNOWN_DRIFT`, meaning book and crate
+genuinely disagree, is **empty**.
+
+`ch19/1` left by a better route: its BFM skeleton had a placeholder body, so
+marking it `// ...` let the generic elision rule take it. Prefer that to an
+allowlist entry — a listing that declares itself a fragment needs no
+bookkeeping at all.
 
 Full regression after all of it: unit 1, book-sync 108, examples 96, custom 34
 — **239 entries, 0 failed**, on Linux/aarch64.

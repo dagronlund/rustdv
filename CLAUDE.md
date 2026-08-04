@@ -89,10 +89,14 @@ over it every push:
 | `custom/book-listings` | every Rust listing in ch15–40 is real code from that chapter's crate |
 | `book-sync` (pre-existing) | ch1–14 listings, byte-for-byte |
 
-`book-listings` has a **debt register** (`KNOWN_DRIFT` in
-`verify-book-listings.py`) — each entry carries a reason and an owner, and it
-must only ever shrink. Adding to it to make a build pass is how the debt came
-back.
+`book-listings` separates two things that look alike and are not.
+`QUOTED` holds listings that were never ours — the `Future` trait from the
+standard library, a deliberately tidied macro expansion. Those are quotations,
+carry no debt, and will not shrink. `KNOWN_DRIFT` is the debt register: a book
+and a codebase disagreeing. **It is currently empty, and adding to it to make a
+build pass is how drift comes back.** Keep the two apart; listing permanent
+quotations as outstanding work makes a clean register look dirty and trains
+everyone to ignore it.
 
 If you find a class of error nothing catches, add the check rather than only
 documenting the instance — and **make the check fail once on purpose before

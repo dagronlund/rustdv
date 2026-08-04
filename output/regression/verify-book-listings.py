@@ -24,18 +24,26 @@ import re, sys, glob, os
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.chdir(ROOT)
 
+# Listings that are *quotations*, not rustdv code. There is no crate file for
+# them to match because they were never ours to match. This is not a debt
+# register and nothing here is owed — treating them as outstanding work made
+# two permanent quotes look like unfinished business.
+QUOTED = {
+    "ch15/2": "the `Future` trait's one method, copied from the standard library",
+    "ch21/2": "a hand-tidied expansion of `#[rustdv::test]`; the real output is "
+              "one unreadable line, and the chapter says it is tidied",
+}
+
+# Listings that *should* match a crate and do not. This one is debt: every
+# entry is a book and a codebase disagreeing, and it must only ever shrink.
+# Adding to it to make a build pass is how drift comes back.
 KNOWN_DRIFT = {
     # id: (reason, owner)
-    "ch15/2": ("std's `Future` trait, quoted from the standard library to explain "
-               "what `async` desugars to. Not project code and never will be.",
-               "none — permanent"),
-    "ch21/2": ("hand-tidied expansion of `#[rustdv::test]`. The macro's real "
-               "output is one unreadable line; the chapter says it is tidied.",
-               "none — permanent"),
-    "ch19/1": ("three-line skeleton of the BFM loop body, with a placeholder "
-               "comment where the work goes. A teaching shape, not a copy.",
-               "none — permanent"),
 }
+# ch19/1 used to be listed — a three-line BFM skeleton whose body is a
+# placeholder. Marking that placeholder `// ...` made it self-describing, so
+# the generic elision rule handles it. Prefer that: a listing that says it is
+# a fragment needs no entry anywhere.
 
 ELIDED = ("// ...", "// …")
 
@@ -88,7 +96,7 @@ def main():
     ok = new_drift = exempt = 0
     failures, register = [], []
 
-    spliced = 0
+    spliced = quoted = 0
     for ch, path in chapters():
         corpus = code_only("\n".join(
             open(s, encoding="utf-8").read() for s in sources_for(ch)))
@@ -103,6 +111,8 @@ def main():
                 spliced += 1                      # every excerpt real, presented together
             elif any(e in b for e in ELIDED):
                 exempt += 1
+            elif fid in QUOTED:
+                quoted += 1
             elif fid in KNOWN_DRIFT:
                 reason, owner = KNOWN_DRIFT[fid]
                 register.append(f"    {fid}: {reason}  [{owner}]")
@@ -112,9 +122,13 @@ def main():
                 failures.append(f"    {fid}: listing is not in the chapter's crate")
 
     print(f"book listings (ch15-40 + Interlude): {ok} verbatim, "
-          f"{spliced} spliced-but-real, {exempt} exempt, {new_drift} new drift")
-    if register and report:
-        print("  exemption register — must shrink, never grow:")
+          f"{spliced} spliced-but-real, {quoted} quoted from elsewhere, "
+          f"{exempt} elided, {new_drift} drift")
+    if report:
+        for fid, why in sorted(QUOTED.items()):
+            print(f"    quoted  {fid}: {why}")
+    if register:
+        print("  DEBT REGISTER — book and crate disagree; must only shrink:")
         print("\n".join(register))
     if failures:
         print("  NEW DRIFT — a listing changed on one side only:")
