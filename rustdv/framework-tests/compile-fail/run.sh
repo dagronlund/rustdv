@@ -28,19 +28,36 @@ CASES=(
     "port_attr_on_non_port|E0277|#[port(..)] on a field that is not a port"
 )
 
+# Error *codes* are asserted rather than error *text* because the text moves
+# between compiler releases and the codes do not. The toolchain is pinned in
+# rust-toolchain.toml all the same: if CI ignores that pin, a newer rustc can
+# still reclassify a diagnostic, and the failure is then about the compiler
+# rather than the code. Print the version so a CI log says which one ran.
+echo "compile-fail: $(rustc --version 2>/dev/null || echo 'rustc not found')"
+echo "compile-fail: pinned to $(sed -n 's/^[[:space:]]*channel[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' \
+    ../../../rust-toolchain.toml 2>/dev/null || echo '(rust-toolchain.toml not found)')"
+
 status=0
 for entry in "${CASES[@]}"; do
     IFS='|' read -r dir want desc <<< "$entry"
     out=$(cd "$dir" && cargo build 2>&1)
     if [ -z "$(grep -E '^error' <<< "$out")" ]; then
         echo "  FAIL $dir compiled — $desc is no longer rejected" >&2
+        echo "  ---- full cargo output ----" >&2
+        sed 's/^/  | /' <<< "$out" >&2
+        echo "  ---------------------------" >&2
         status=1
         continue
     fi
     got=$(grep -oE 'error\[E[0-9]+\]' <<< "$out" | head -1 | tr -d 'error[]')
     if [ "$got" != "$want" ]; then
         echo "  FAIL $dir failed with ${got:-an unclassified error}, expected $want" >&2
-        grep -E '^error' <<< "$out" | head -3 >&2
+        echo "         ($desc)" >&2
+        echo "  If this is a compiler upgrade rather than a code change, CI is not" >&2
+        echo "  honouring rust-toolchain.toml — check the version line above." >&2
+        echo "  ---- full cargo output ----" >&2
+        sed 's/^/  | /' <<< "$out" >&2
+        echo "  ---------------------------" >&2
         status=1
         continue
     fi

@@ -5,19 +5,77 @@ on:
     branches: [master, main]
   pull_request:
 
+# The toolchain is pinned in rust-toolchain.toml because this repository's
+# regression compares exact compiler output — book-sync checks listings, and
+# the compile-fail cases assert specific error codes (E0277, E0308, E0382,
+# E0599). A floating `stable` changes diagnostics and breaks them while the
+# code is perfectly correct.
+#
+# `dtolnay/rust-toolchain@stable` used to be used here, and it exports
+# RUSTUP_TOOLCHAIN, which takes precedence over rust-toolchain.toml — so CI
+# silently ignored the pin and eventually failed on
+# custom/compile-fail-methodology. The channel is now read *from* the file, so
+# the pin has exactly one home and CI cannot drift from a developer's machine.
+
 jobs:
-  # Book-sync + all 105 figure examples (build, run vs goldens, compile-fail,
+  # Book-sync + all figure examples (build, run vs goldens, compile-fail,
   # unit tests). Simulator tests auto-skip here (no iverilog installed).
   regress:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Read the pinned toolchain
+        id: pin
+        run: |
+          channel=$(sed -n 's/^[[:space:]]*channel[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' rust-toolchain.toml)
+          if [ -z "$channel" ]; then
+            echo "::error::could not read [toolchain] channel from rust-toolchain.toml"
+            exit 1
+          fi
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          echo "pinned toolchain: $channel"
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.pin.outputs.channel }}
+
+      - name: Confirm the pin took effect
+        run: |
+          want='${{ steps.pin.outputs.channel }}'
+          got=$(rustc --version | awk '{print $2}')
+          echo "rust-toolchain.toml wants $want; rustc reports $got"
+          if [ "$got" != "$want" ]; then
+            echo "::error::CI is running rustc $got but the repository pins $want."
+            echo "::error::Compile-fail error codes and book-sync listings are compared exactly, so they will drift."
+            exit 1
+          fi
+
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: output/examples
+
       - name: Run regression suite
-        run: python3 output/regression/regress.py
+        run: |
+          set -o pipefail
+          python3 output/regression/regress.py 2>&1 | tee regress.log
+
+      - name: Show the failing detail
+        if: failure()
+        run: |
+          echo "=== last 300 lines of the regression log ==="
+          tail -n 300 regress.log || true
+          echo
+          echo "=== compile-fail cases, re-run verbosely ==="
+          bash rustdv/framework-tests/compile-fail/run.sh || true
+
+      - name: Upload regression log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regress-log
+          path: regress.log
+          if-no-files-found: ignore
 
   # TinyALU smoke test on the free simulators (Icarus runs it, Verilator
   # lints it). Commercial simulators (VCS/Questa/Xcelium) cannot run in
@@ -26,7 +84,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Read the pinned toolchain
+        id: pin
+        run: |
+          channel=$(sed -n 's/^[[:space:]]*channel[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' rust-toolchain.toml)
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.pin.outputs.channel }}
+
       - name: Install Icarus Verilog and Verilator
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends iverilog verilator
+
       - name: Run simulator smoke tests
-        run: python3 output/regression/regress.py --suite custom --filter sim
+        run: |
+          set -o pipefail
+          python3 output/regression/regress.py --suite custom --filter sim 2>&1 | tee sim.log
+
+      - name: Show the failing detail
+        if: failure()
+        run: tail -n 300 sim.log || true

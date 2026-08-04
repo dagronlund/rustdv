@@ -845,6 +845,40 @@ Two things it found, both fixed:
 
 Final: unit 1, book-sync 108, examples 96, custom 34 — **239 entries, 0 failed**.
 
+## 2026-08-04 — GitHub CI never honoured the toolchain pin
+
+`custom/compile-fail-methodology` failed on GitHub while passing everywhere
+else. It is not a flaky test and the goldens are not stale.
+
+`rust-toolchain.toml` pins rustc to **1.97.0**, and its own comment says why:
+"the book's regression checks exact transcript output, so a floating compiler
+can break book-sync even when the code is correct." CI used
+`dtolnay/rust-toolchain@stable`, which exports `RUSTUP_TOOLCHAIN` — and that
+takes precedence over `rust-toolchain.toml`. **CI had therefore been building
+with whatever `stable` happened to be, ignoring the pin since the day it was
+written.** The compile-fail cases assert exact error codes (E0277, E0308,
+E0382, E0599), so they are the first thing a compiler upgrade reclassifies, and
+they were the first to break.
+
+Fixed in `.github/workflows/ci.yml`:
+
+- The channel is **read out of `rust-toolchain.toml`** and handed to
+  `dtolnay/rust-toolchain@master`, so the pin has one home and CI cannot drift
+  from a developer's machine.
+- A **guard step** compares `rustc --version` against the pin and fails with an
+  explicit message if they differ — the mismatch can no longer be silent.
+- `sim-smoke` installed **no Rust at all** and used whatever the runner image
+  shipped; it now uses the same pinned toolchain.
+- Both jobs `tee` their output, print the tail on failure, re-run the
+  compile-fail cases verbosely, and upload the log as an artifact. The original
+  failure gave one line — `exit 1, expected 0` — and nothing to diagnose from.
+
+`rustdv/framework-tests/compile-fail/run.sh` now prints the running rustc and
+the pinned channel on every run, and dumps the **full** cargo output on a
+mismatch instead of three grepped lines, with a note pointing at the pin as the
+first thing to check. Mutation-tested: changing an expected code to `E9999`
+produces the diagnosis and exits 1.
+
 *Platform note:* this is a Linux run. macOS/arm64 is a shipping platform and
 these transcripts go into the book, so they want confirming on the Mac — a diff,
 not a re-read. Fixed seed, single-threaded executor and simulated time should
