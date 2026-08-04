@@ -1,6 +1,8 @@
 <!-- After creating the GitHub repo, replace raysalemi below with your GitHub
      username (badges and the Codespaces link need the real path). -->
 
+Licensed under either of Apache License, Version 2.0 or MIT license at your option.
+
 # Rust for RTL Verification
 
 [![CI](https://github.com/raysalemi/rustdv/actions/workflows/ci.yml/badge.svg)](https://github.com/raysalemi/rustdv/actions/workflows/ci.yml)
