@@ -82,9 +82,41 @@ html.sidebar-visible #mdbook-menu-bar {
 
 .right-buttons {
     margin: 0 15px;
+    display: flex;
+    align-items: center;
 }
 .right-buttons a {
     text-decoration: none;
+}
+
+.coffee-button {
+    display: inline-flex;
+    align-items: center;
+    margin-inline-end: 12px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background-color: #FFDD00;
+    color: #222 !important;
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: nowrap;
+    transition: filter 0.2s;
+}
+.coffee-button:hover {
+    filter: brightness(0.92);
+}
+.coffee-emoji {
+    font-size: 1rem;
+}
+@media only screen and (max-width: 550px) {
+    .coffee-label {
+        display: none;
+    }
+    .coffee-button {
+        padding: 4px 8px;
+        margin-inline-end: 6px;
+    }
 }
 
 .left-buttons {
