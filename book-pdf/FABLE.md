@@ -55,9 +55,6 @@ If you change a listing for any reason, re-run
 `python3 output/regression/verify-book-listings.py` and
 `bash output/regression/verify-transcripts.sh` — they gate the push.
 
-# Buy me a coffee
-
-I want a Buy Me a Coffee link at the top of every page of the HTML version of the book. I want to put https://buymeacoffee.com/raysalemi in the header of every page.
 
 # Final step
 

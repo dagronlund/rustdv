@@ -1057,3 +1057,34 @@ deleted the skill on 2026-08-05** rather than repair it; `CLAUDE.md`'s folder
 map no longer lists it. Nothing replaced it, and nothing needs to: the current
 shape of an environment is in `rustdv/tinyalu_tb/src/` and
 `output/examples/ch31…ch34`, which the compiler checks.
+
+## The ch32 prose catches up with its vocabulary (2026-08-05)
+
+**The rewrite the previous entry left to the prose pass is done, same day.**
+ch32's section headings are now `## Subscriber: what an arriving item does` and
+`## subscribe and connect`, and the paragraphs under them, the counter/collector
+commentary, the bus section and the Summary all use the new names. The word
+"sink" is retired from the manuscript's running prose entirely (Ray's call,
+asked rather than assumed); the internal `SinkHandle`/`sink_of` keep it in
+code, deliberately, and appear in no listing. The `uvm_subscriber`-is-a-component
+/ rustdv-`Subscriber`-is-plain-data contrast is stated once in the trait
+section and echoed in the Summary, and the parent-`connect`s /
+component-`subscribe`s split is drawn where the two calls are compared. The
+retired-name paragraphs in ch33 (two spots — the FABLE note said one) and ch34
+are repaired; ch33's "promise kept" phrasing went with them, per FABLE's
+standing rule.
+
+**The FIFO-tap section is written**: "The FIFO's built-in taps" sits between
+the slow-subscriber section and the Summary, carrying Figures 11–13 — listings
+lifted from the crate, transcript copied verbatim from the README — with
+`Producer`/`Consumer` referred back to Chapter 31 rather than reprinted (D115).
+`chapter-notes.md`'s ch32 row and its long-form tap item are marked done.
+
+After the edits: `verify-book-listings.py` 0 drift, `verify-transcripts.sh`
+all lines match, full regression 239/0 — on the Linux sandbox; **not yet
+verified on macOS/arm64.** mdBook HTML builds clean (built to `/tmp`; the
+mount refuses deletion of its stale `book/` output). FABLE.md's ch32 top note
+is satisfied; striking it is Ray's. Its two remaining top items — the Buy Me a
+Coffee header and the final sweep — are untouched, and the coffee link cannot
+be done under the prose-pass file boundary: a per-page header lives in the
+mdBook theme, not in `src/*.md`.

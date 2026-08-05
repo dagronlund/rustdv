@@ -213,12 +213,12 @@ package is `ch21_macros`, a macro demonstration with no simulator test, marked
 `Subscriber`, its method is supplied with `subscribe()`, no identifier is
 named `analysis_fifo`, the legacy `Subscriber`/`AnalysisPort`/`connect_fifo`
 surface is deleted, and the FIFO-tap demonstration has moved from the ch31
-crate to ch32's as Figures 11–13. No directed code job is queued. What that
-work left behind is prose, not code: ch32's section headings and paragraphs
-(and one each in ch33 and ch34) still use the retired names, since the code
-thread changed listings and reference tables only. The book's prose pass is
-mid-flight and `book-pdf/FABLE.md`'s top note is Chapter 32, which is now
-unblocked.
+crate to ch32's as Figures 11–13. **The prose caught up the same day**: ch32's
+headings, paragraphs and Summary use the new vocabulary, the tap section is
+written as ch32 Figures 11–13, and the ch33/ch34 paragraphs are repaired —
+see STATUS.md's last entry. No directed code job is queued. The book's prose
+pass continues from `book-pdf/FABLE.md`'s remaining top notes (the ch32 note
+is satisfied and awaits Ray's strike).
 
 **The test suite**, in three tiers under the chapter runs
 (`output/regression/TESTING.md` is the operating manual, including the two
