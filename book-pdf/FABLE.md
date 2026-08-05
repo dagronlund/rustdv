@@ -1,28 +1,43 @@
 # Brief for the prose pass
+# Notes for RustDV Book.
 
-You are writing *Rust for RTL Verification* — 40 chapters, an interlude, and
-four appendices in `book-pdf/src/`. The framework it teaches (rustdv, in
-`rustdv/`) is finished and every example runs. Your job is the prose.
+# Previous versions of the testbench are unimportant
 
-**This file is the standing reference: what the book argues, how it sounds, and
-what it must stop claiming.** Read it once, keep it, and come back to it when a
-sentence feels off.
+The book occasionally talks about "a previous version of the testbench". This is a mistake. The reader doesn't care about our history or about the evolution of Rustdv.  Just explain what happens now.  Look through the book for this mistake and remove it.
 
-It deliberately says nothing about *sequencing* — what to do first, how the
-budget is spent, what to leave a successor. That is `fable-prompt.md`, which is
-handed to whoever runs the pass, and it is the only place the order of work is
-written down. If the two ever seem to disagree about what to do next, the prompt
-wins; if they disagree about what the book should *say*, this file wins.
+# TLM Chapter
 
-Three files, one job each:
+There is no need for story about the test being a component. This is the AI's revelation.  There should be no references to an earlier version of rustdv, the reader doesn't care.
 
-| File | Answers |
-|---|---|
-| `fable-prompt.md` | What do I do, in what order? |
-| `FABLE.md` (this) | What is the book arguing, and how does it sound? |
-| `chapter-notes.md` | What does *this chapter* need? |
+## No Analysis in FIFO chapter
 
----
+RustdvShared does not land as a name. I cannot remember what it is. 
+
+Move tlm_fifo analysis port to analysis port chapter.  It does not belong in the chapter on blocking and trying with TLM_fifos because the reader does not understand Analysis ports yet.
+
+# Analysis Chapter
+
+The Analysis chapter needs to be completely rewritten it has many problem.
+
+* The analysis chapter needs to explain this new concept of the `WriteSink` trait. There is no explanation, it just gets thrown at the reader. 
+
+* The chapter needs to start by explaining the concept of a publisher and many subscribers.
+
+* The chapter needs to warn the reader that the analysis layer in RustDV is a copy of the analysis layer in UVM, though it does require a write() function that takes no time.
+
+* It needs to describe the publisher port and subscriber port first.  It needs to discuss the WriteSink trait and how this contains the write function as in UVM. It needs a complete explanation of what `on_write` is and how it relates to `connect_write`.
+
+* The chapter needs a digression to discuss `RustdvShared` and how it works. 
+
+* The first example is excellent, but you need to do a good job explaining what it does since it is not a TinyALU testbench. There is a counter and a collector that do different things with the same data explain that.
+
+* The chapter needs to explain the AnalysisHub and how it is nothing like the analysis_fifo.  It has no storage, it simply connects function calls.  It is up to the subscriber to store information if it wants to. 
+
+* Now that all this has been explained, you can show the reader the example in action and repeat how `RustdvShared` fits into this.
+
+* "Now the habit this chapter exists to correct."  Whose habit?  Yours? The reader has no habit.  *an AnalysisBus is not a FIFO and stores no items* is just a fact. You are not correcting a misconception.
+
+
 
 ## The absolute rule: you change no code
 
@@ -43,124 +58,6 @@ chapter's `output/examples/*/README.md`. Do not retype, reformat, tidy, invent,
 or regenerate them, and do not run a simulator. A transcript that looks wrong
 is something you report.
 
----
-
-## What the book argues
-
-The reader is a verification engineer who knows the UVM — from SystemVerilog at
-work, from pyuvm, or from an earlier book. Assume fluency in verification
-concepts (driver, monitor, scoreboard, sequence, factory, config database,
-analysis port). Assume **reading ability only** in Python and SystemVerilog, and
-**no prior book**. The two earlier books are recommendations, never
-prerequisites.
-
-The honest frame for Rust, and the spine of the whole book:
-
-> **Types for data and ownership. Runtime indirection for topology and
-> binding.**
-
-Transactions are plain structs with derives; ownership and lifetimes are checked
-hard; and configuration, the factory and TLM connection are resolved at run
-time — deliberately, because that is what late binding *is*. A type system can
-only check what is known statically, and the entire purpose of those three
-layers is to defer decisions so that one environment serves many tests.
-
-So the book does **not** claim that Rust finds your UVM bugs at compile time.
-Where a compile error is real, show it and let it speak. Where rustdv gives
-something up, say so plainly — the project's credibility rests on that.
-
-Where types did real work, they did it on **memory and ownership**, not on
-binding: the `'static` bound on `spawn` refused an unsound concurrent design,
-and `async fn` in a trait forced an architectural decision early. Those are the
-wins worth naming.
-
-Two other honest justifications for Rust, neither of them bug-finding: types
-scale with codebase and team size, and monomorphization with no garbage
-collector is the emulation argument — throughput, not correctness.
-
-### Sameness is the goal, not superiority
-
-A UVM engineer should get the tool they already know, spelled in Rust. Before
-writing "rustdv's X is better than UVM's X," ask *better for whom*. Three places
-it genuinely is, and none is compile-time bug finding:
-
-- **Two analysis streams of the same type into one component** — two ports, two
-  `WriteSink` impls. SystemVerilog needs the `uvm_analysis_imp_decl` macros;
-  pyuvm cannot do it with one `write` per class.
-- **Elaboration-time cardinality** — every unconnected port named at once,
-  before any run phase. pyuvm discovers the first one lazily, at use.
-- **Loud config failures** — SystemVerilog's `get()` collapses four distinct
-  failures into a silent `return 0`; rustdv returns a `Result` naming the cause.
-
-### Do not sell types, and do not disparage what came before
-
-The previous draft of this book was obnoxious about compile-time type checking,
-and that is the failure mode most likely to return, because it is the easiest
-sentence in the world to write. The rule: **the reader already knows about types,
-and has thought about the trade-off longer than the paragraph you are writing.**
-
-- A SystemVerilog engineer has lived in a typed language their whole career.
-  Telling them types catch mistakes early tells them nothing they have not known
-  since their first compile.
-- A Python engineer either moved away from types deliberately and can say why, or
-  is actively agitating for them — hints, `mypy`, gradual typing. Either way, the
-  question is not news to them.
-
-So cut every sentence whose job is to be pleased about compile-time checking.
-Where a compile error is real, show it and let it speak. The frame is stated once,
-in ch1, and it is not "Rust catches your bugs" — it is the seam above.
-
-**The mirror error is just as bad, and it is easy to catch from the source.**
-*Python for RTL Verification* makes a case for *not* having types, with
-enthusiasm, and this book is the model's tone but not its position. Do not
-celebrate the absence of types either — no "you are freed from", no "without the
-ceremony of", no implication that the earlier book's stance was naive or that
-this one corrects it.
-
-Both moves are the same mistake: making the type system the subject. **The
-subject is verification.** Typing is a design trade with real costs on both
-sides, and this book is the first of the three that is in a position to say so
-without arguing a corner. Say it once, in ch1, and then get on with the
-testbench.
-
-**And do not disparage what came before.** Not Python, not SystemVerilog, not the
-UVM, not pyuvm or cocotb, and not the two earlier books. Specifically:
-
-- **The UVM's runtime indirection is not primitive.** A statically-typed language
-  with the static option in hand chose it three times — `mailbox#(T)` and yet
-  TLM, typed classes and yet a factory, parameters and yet a config DB. This
-  project spent an entire branch proving that judgement was right.
-- **pyuvm's lack of typing was a deliberate design decision** by the author of
-  this book, and it *removed* a bug class that SystemVerilog's typed config DB
-  still has.
-- **SystemVerilog's awkward corners** — the `imp_decl` macros, `$cast`, the
-  silent `return 0` — follow from its object and ownership model, not from
-  anyone's failure of intelligence. Where rustdv differs, say what its signature
-  *must* be, not what someone else got wrong.
-- **The two earlier books are sources and recommendations**, not the thing this
-  book improves on.
-
-Comparisons are welcome — the book needs foils, and two sharp comparisons beat
-none. What is banned is the scoreboard: any sentence whose real content is "and
-that is why this is better." If a paragraph would leave a pyuvm user feeling their
-tool is a toy, or a SystemVerilog engineer feeling patronised, cut it.
-
-### Claims in the current manuscript that must not survive
-
-These chapters argue *for* things the framework now does the opposite of. They
-need re-argument, not sentence-level editing. Details are in `chapter-notes.md`.
-
-- "Build/connect phases are unnecessary" — the gap between a component existing
-  and its children existing is where every late-binding mechanism lives.
-- "The ConfigDB problem, solved by types" — a path-addressed runtime ConfigDb
-  exists.
-- "Channels replace TLM-1" — TLM ports, exports and FIFOs are restored.
-- "A TLM mis-connection is a compile error" — connection errors are
-  **elaboration** errors, and that is correct.
-- "The objection is decorative" — run phases are concurrent, so the objection
-  is what ends the phase.
-- "Phase-illegal operations are caught at compile time" — they are run-time
-  failures, exactly as in the UVM. There is one context type, `RustdvCtx`.
 
 ---
 
@@ -190,84 +87,6 @@ total a handful across the whole book.
 **Say the point plainly.** "Honestly", "genuinely" and "straightforward" read as
 persuasion rather than statement.
 
----
-
-## Two writing debts to discharge
-
-**1. The `prelude::*` problem.** Every Part II example opens with `use
-rustdv::prelude::*`, importing about fifty identifiers. The reader then meets
-`Clock`, `SimDuration`, `RustdvCtx`, `spawn_named` and the rest with no
-declaration site on the page. Part I introduces every Rust concept before using
-it; Part II abandons that discipline exactly where the reader needs it most.
-
-Write a catalogue of what rustdv provides, placed before the first example that
-uses it — rustdv's surface first appears in ch15, so it belongs at the opening
-of Part II, either as its own chapter ahead of 15 or folded into ch17. For each
-name: what it is, which layer it comes from, and when you would reach for it.
-
-`ctx` needs its own section. rustdv has no globals — no `uvm_root`, no
-singletons, no parent pointers — so everything the UVM reaches for ambiently
-must be handed to the component. `ctx` *is* the framework, passed as a
-parameter; the nearest UVM analogy is the `uvm_phase phase` argument every phase
-method already receives. It is also how a component learns its own path.
-
-Then add **Appendix D: What rustdv Provides**, in the format Appendices B and C
-use — a reference table with a Chapter column pointing back to where each name
-was taught. Include the macros, which currently have no home anywhere:
-`#[rustdv::test]`, `#[derive(Component)]`, `first!`, `join!`,
-`vpi_bootstrap!`. Add the line to `SUMMARY.md` after Appendix C.
-
-**Standing rule from here on: no identifier appears in a listing before it has
-been introduced.**
-
-**2. The glob stays; the appendix carries it (Ray's call).** Every Part II
-listing keeps `use rustdv::prelude::*` — no listing is rewritten to spell out its
-imports. That means the catalogue section and Appendix D are the *only* things
-standing between the reader and fifty undeclared names, so they have to be good.
-Say plainly that the glob is the `from pyuvm import *` analog and what it brings
-in.
-
----
-
-## What is checked, and what is not
-
-`python3 output/regression/regress.py` guards the repo, and you should not need
-to run it — but you must know what it does and does not tell you:
-
-- Its `book-sync` suite compares book listings against example files **for
-  chapters 1–14 only.** For ch1–14, the code inside a listing is frozen: copy it
-  verbatim, or the suite goes red.
-- **No Part II+ listing has ever been compared against its code by anything.**
-  The `sim-ch*` tests prove the example crates compile and run; nothing relates
-  a manuscript listing to them. So a green suite is never evidence that a
-  Part II+ chapter's listings — or its argument — are right.
-- Log lines embed `file:line`, so a rename must happen *before* a transcript is
-  regenerated. Another reason you copy transcripts rather than making them.
-
-mdBook renders on Ray's machine, not in your sandbox.
-
----
-
-## Captions: one numbering space
-
-**A chapter has one figure sequence, and everything in it is a "Figure"** — code
-listings, drawings, tables and transcripts alike, numbered in order of appearance
-(D110, Ray's call). If Figure 1 is a drawing, the first code listing is Figure 2.
-
-Nothing is renamed and there is no scheme to choose. This is already the
-convention: ch19's code captions run 14–19 because its earlier figures are not
-code, and the manifest numbers transcript figures in the same sequence as
-listings. It was simply never written down.
-
-Two consequences for you:
-
-- **Drawings and tables are now first-class, so add them where they earn a
-  place.** The pipeline in ch31, the architecture in ch34 and the sequencer
-  handshake exist today as ASCII art inside code comments, which is what a book
-  with no word for a picture looks like. You have the word.
-- **A figure you insert ahead of a listing shifts that listing's number.** You do
-  not edit the `.rs` captions — you record the shift, and a mechanical pass
-  applies it after the book is done. `fable-prompt.md` covers the mechanics.
 
 ## When you are unsure
 
@@ -279,5 +98,4 @@ needs a fact the examples do not contain.
 Reference material — cocotb, pyuvm, four releases of the SystemVerilog UVM, and
 the example code from both earlier books — is outside the repo at
 `../rustdv-reference`, read-only. Use it to check what the UVM actually does
-rather than what a comment says it does. The Python book's chapter numbers map
-onto this book's: its `27_uvm_test_testbench_3.0` is ch23.
+rather than what a comment says it does. 

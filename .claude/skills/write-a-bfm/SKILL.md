@@ -70,4 +70,4 @@ impl MyBfm {
    before `run_extract_check_report`. Skipping this yields "orphaned
    command has no result" scoreboard errors on the last transaction.
 8. **Never synchronize with `Timer`-and-hope.** Use queues and `Event`s;
-   `NullTrigger` exists for parity but is a smell (design-doc §7.3).
+   `NullTrigger` exists for parity with cocotb but is a smell.

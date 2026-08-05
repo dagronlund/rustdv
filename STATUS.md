@@ -1,8 +1,8 @@
 # STATUS — rustdv implementation sprint
 
 **Date:** 2026-07-11 — **COMPLETE: REGRESSION PASSES ON ICARUS**
-**Scope:** complete rustdv code base per `output/.design-doc.md`, demonstrated
-against the TinyALU (`sim/hdl/tinyalu.sv`) on Icarus Verilog.
+**Scope:** complete rustdv code base, demonstrated against the TinyALU
+(`sim/hdl/tinyalu.sv`) on Icarus Verilog.
 **Environment:** Path B (offline toolchain drop into `toolchain-drop/`):
 rustc/cargo 1.97.0 aarch64-linux + oss-cad-suite 2026-07-11 (Icarus 14.0
 devel), both installed to the VM home directory.
@@ -30,7 +30,7 @@ cd rustdv && cargo test            # pure-Rust unit tests, no simulator
 
 ## What was built
 
-Cargo workspace at `rustdv/` per design-doc §2, zero external dependencies:
+Cargo workspace at `rustdv/`, zero external dependencies:
 
 | Crate | Contents | Design-doc |
 |---|---|---|
@@ -224,9 +224,8 @@ sim chapters now run on two platforms.
 
 ## 2026-07-21 — the UVM restoration, step 4: `RustdvCtx` and the test macro
 
-Branch `ch23_onwards`. Decisions and reasoning are in
-`output/.design-decisions.md` (D46–D49, which strike D8); this is the
-implementation record.
+Decisions and reasoning are in `output/.design-decisions.md` (D46–D49, which
+strike D8); this is the implementation record.
 
 **A test is now a component.** `Component` gained
 `async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError>`,
@@ -986,6 +985,9 @@ code and none should return.
 still print the old form, flagged in `book-pdf/chapter-notes.md` for the prose
 pass, which is the only pass that edits the book.
 
-*Noticed alongside, not fixed:* `#[component(no_factory)]` is now the only
+~~*Noticed alongside, not fixed:* `#[component(no_factory)]` is now the only
 argument the derive parses, `struct_attr_contains` exists to serve it, and no
-struct in the tree applies it. Live logic, no call site.
+struct in the tree applies it. Live logic, no call site.~~ **Struck 2026-08-05:
+both were deleted afterwards** — neither identifier survives anywhere in
+`rustdv/`, and the derive parses no argument. This note was later quoted as
+current fact; verify against the code, not against this file.

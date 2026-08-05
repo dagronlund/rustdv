@@ -7,35 +7,35 @@ two products (see TOUR.md for the tour):
 
 1. **rustdv** — the framework (crates in /rustdv), with a TinyALU regression
    passing on Icarus Verilog.
-2. **"Rust for RTL Verification"** — a 41-chapter book in /book-pdf/src
-   (mdBook), every figure verified running.
+2. **"Rust for RTL Verification"** — chapters 1–40 plus an Interlude and four
+   appendices in /book-pdf/src (mdBook), every figure verified running.
 
-**Active work: the UVM restoration.** A prior pass wrongly stripped the UVM's
-dynamic build/connect process and its TLM FIFOs; branch `ch23_onwards` is
-restoring them (build/connect phases, the ConfigDb, the factory, TLM), one
-TinyALU testbench version at a time. This is reworking the framework and, from
-the working code, the Part II+ prose — so treat the later chapters as under
-revision, not settled. `output/.design-decisions.md` is the authoritative
-decision log (its §0 is the mission and method); read it and CLAUDE.local.md
-before proposing anything architectural. Do **not** follow the older
-`output/.design-doc.md` — it is the pre-restoration spec whose closed-world
-design caused the problems now being fixed.
+**Both products are complete.** The framework's UVM restoration is finished —
+phases, the ConfigDb, the factory and the whole TLM layer are the settled
+design, not work in progress — and the manuscript is written, with every
+transcript real simulator output and every ch15–40 listing checked against its
+crate. Ongoing work is revision, not construction.
 
-**Where it stands (2026-07-29):** the restoration's code is done. ch23–ch39
-are converted and out of quarantine — phases, ConfigDb, factory, the whole TLM
-layer, transactions, and all four sequence testbenches (TB 7.0–8.0). The test
-suite is built on top: 110 no-simulator tests, 38 targeted simulator tests in
-`rustdv/framework-tests/`, 5 compile-fail cases, and `sim-mutation`; the
-regression is 237 and the pre-push hook runs all of it
-(`output/regression/TESTING.md`). **The TinyALU refactor is done too (D109),
-so there is no known technical debt left** — `tinyalu_tb` runs on phases, the
-ConfigDb, the factory and `AnalysisBus` like every chapter, and it is in the
-suite as `custom/sim-tinyalu-tb`. What remains is D108's two runner fixes and
-the book's prose pass. TOUR.md's "Where the work stands" section is the
-orientation for a new thread; the decisions that most shape new code are D83b
-(connection is a trait method, not a registry), D82b/D82c (children move out for
-the run phase; each component races the objection event, never the whole tree),
-and D90 (the analysis hub stores nothing — the subscriber owns its storage).
+**Never write a branch name into a document.** Branches are ephemeral; a branch
+named in a file is stale within days and has repeatedly sent threads to the
+wrong place. Run `git status` and `git branch --show-current` if you need to
+know where you are. Nothing in this repository's prose should answer that
+question.
+
+`output/.design-decisions.md` is the authoritative decision log — read its
+§0 (the mission and method) and CLAUDE.local.md before proposing anything
+architectural. The decisions that most shape new code: **D83b** (connection is
+a trait method, not a registry — if a mechanism works for a child but needs a
+second spelling for `self`, it has broken the UVM's uniformity), **D82b/D82c**
+(children move out of the parent for the run phase, and each component races
+the objection event individually, never the whole tree), **D90** (the analysis
+hub stores nothing — the subscriber owns its storage), and **D3** (where a
+statically-typed language with a static option in hand still chose runtime
+indirection, the indirection is load-bearing; resist the urge to make late
+binding static, which is the error this project exists to undo).
+
+TOUR.md is the orientation for a new thread — read it first; its "Notes for AI
+sessions" carries the sandbox hazards.
 
 Ground truth for the methodology — the cocotb, pyuvm and SystemVerilog UVM
 sources, plus the example code from the earlier books — lives outside this
@@ -69,6 +69,11 @@ ch37's README described a chapter that does not exist. Each was cheap to fix at
 the time and expensive to find later — one session spent ~20% of its context
 paying that debt down.
 
+**The same rule applies to this file and TOUR.md.** A stale orientation
+document costs more than stale prose, because every new thread reads it and
+acts on it. If you finish work these files describe, update them in the same
+session.
+
 So, if you change:
 
 | this | then regenerate |
@@ -85,9 +90,13 @@ over it every push:
 
 | check | what it gates |
 |---|---|
-| `custom/readme-transcripts` | every transcript in an example README is what the simulator prints (22 chapters, 431 lines) |
+| `custom/readme-transcripts` | every transcript in an example README **and in `book-pdf/src`** is what the simulator prints (22 chapters) |
 | `custom/book-listings` | every Rust listing in ch15–40 is real code from that chapter's crate |
 | `book-sync` (pre-existing) | ch1–14 listings, byte-for-byte |
+
+Run them directly while working — they are far cheaper than the full
+regression: `python3 output/regression/verify-book-listings.py` and
+`bash output/regression/verify-transcripts.sh`.
 
 `book-listings` separates two things that look alike and are not.
 `QUOTED` holds listings that were never ours — the `Future` trait from the
