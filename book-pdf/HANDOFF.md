@@ -275,10 +275,12 @@ parentheses only; comparisons orient, never score; "we" works, "I" opines,
 - ch40: figs 1 (layout tree, book-only), 2–5 (excerpts of tinyalu_tb — the
   crate has no figure captions of its own; ch40's numbering is book-defined),
   6 = transcript (owed; same run as Interlude fig 7).
-- ch37: book figs 1,2,3 = crate 1,2,3; crate's "Figure 4 is a paragraph"
+- ch37: ~~book figs 1,2,3 = crate 1,2,3; crate's "Figure 4 is a paragraph"
   stays prose (the hanging-get_response paragraph); book fig 4 = ShopEnv +
   RepairTest (crate captions the test as Figure 5 — .rs caption 5→4); fig 5 =
-  transcript (owed).
+  transcript (owed).~~ **Void 2026-08-05** — the example was replaced and the
+  chapter rewritten; the figure map lives in
+  `output/examples/ch37-out-of-order-transaction-testbench-7.1/README.md`.
 - ch38: figs 1–5 = crate 1–5 unchanged; fig 6 = transcript (owed). No shifts.
 - ch27: transcripts inserted into the sequence shifted the .rs captions.
   Book→crate map: 1→1, 2→2, 3→3, 4=transcript(new), 5→4, 6→5, 7=transcript,

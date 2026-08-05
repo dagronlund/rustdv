@@ -1,5 +1,12 @@
 # Renumbering spec — reconciling `.rs` captions to the manuscript's figures
 
+> **Historical: this work order was applied and is finished.** It is kept as the
+> record of what moved and why, not as a task. One section is also out of date:
+> **ch37's example was replaced on 2026-08-05** and its crate is now
+> `ch37-out-of-order-transaction-testbench-7.1`, with its own figure map in that
+> crate's `README.md`. Take ch37 figures from there, never from the ch37 section
+> below.
+
 Written at the end of the prose pass (2026-07-30). For each chapter the pass
 changed, this lists the figure numbers the prose now uses, mapped to the code
 they correspond to, and flags every `.rs` caption whose number must move.
