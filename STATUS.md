@@ -1049,9 +1049,11 @@ one paragraph each in ch33 and ch34. Only listings, code comments and mapping
 tables were touched here; the vocabulary rewrite is the prose pass's, and
 `book-pdf/FABLE.md` already carries the instruction.
 
-*Noticed alongside, not fixed:* `.claude/skills/wire-an-env/SKILL.md` still
-teaches the **pre-restoration** design wholesale — constructor injection, "no
-factory, no ConfigDB, no string paths", connection as a compile error. Its dead
-`AnalysisPort`/`connect_fifo` lines are a symptom, not the problem; the file
-was not editable from this session's sandbox, and patching only the names would
-have made a wrong document look freshly maintained.
+*Noticed alongside:* `.claude/skills/wire-an-env/SKILL.md` still taught the
+**pre-restoration** design wholesale — constructor injection, "no factory, no
+ConfigDB, no string paths", connection as a compile error. Its dead
+`AnalysisPort`/`connect_fifo` lines were a symptom, not the problem. **Ray
+deleted the skill on 2026-08-05** rather than repair it; `CLAUDE.md`'s folder
+map no longer lists it. Nothing replaced it, and nothing needs to: the current
+shape of an environment is in `rustdv/tinyalu_tb/src/` and
+`output/examples/ch31…ch34`, which the compiler checks.

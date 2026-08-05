@@ -51,7 +51,7 @@ repository at ../rustdv-reference, so the repo carries only its own product.
 - /skills — AI verification skills (rtl-spec-analysis, rustdv-testbench,
   rustdv-verify-cover).
 - /.claude/skills — skills for working *on* this repo: `close-out-thread`
-  (run before your session ends), `wire-an-env`, `write-a-bfm`,
+  (run before your session ends), `cleanup-tmp`, `write-a-bfm`,
   `debug-a-regression`, `new-rustdv-testbench`.
 - STATUS.md — authoritative implementation history and deviations log.
 - TOUR.md — orientation for new readers and new threads (start there).
