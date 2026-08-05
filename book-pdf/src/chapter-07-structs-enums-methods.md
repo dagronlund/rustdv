@@ -264,7 +264,7 @@ help: ensure that all possible cases are being handled by
       adding a match arm with an explicit pattern
 ```
 
-Stop and appreciate what just happened, because it is the concrete version of this book's central promise. We changed the specification — one line — and the compiler produced a complete list of every place in the testbench that has not yet heard the news, before any simulator license was checked out, before any simulation ran, before any test could pass for the wrong reason. In a runtime-checked flow, this bug costs a simulation run at minimum and a shipped escape at maximum. Here it costs one compile, a few seconds, and it *cannot* be skipped. This is the refactoring-without-fear argument from Chapter 1, delivered.²
+We changed the specification — one line — and the compiler produced a complete list of every place in the testbench that has not yet heard the news, before any simulator license was checked out, before any simulation ran, before any test could pass for the wrong reason. In a runtime-checked flow, this bug costs a simulation run at minimum and a shipped escape at maximum. Here it costs one compile, a few seconds, and it *cannot* be skipped.²
 
 > ² There is an escape hatch — a `_ => ...` wildcard arm matches everything not yet named, and using one forfeits this protection. The idiom this book follows: never use a wildcard when matching an enum you own. Spend the extra lines; they are the tripwire.
 

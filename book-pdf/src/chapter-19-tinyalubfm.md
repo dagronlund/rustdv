@@ -10,7 +10,7 @@ Same design here — the three loops, the three queues, the four-method surface 
 
 The Python `TinyAluBfm` was a singleton for a sensible reason: one TinyALU, therefore one BFM, and Python's easiest way to guarantee "the same object wherever you ask for it" was `metaclass=Singleton`. But look at what the singleton was really *doing*: providing shared access to a single owner of the DUT pins. That is an ownership sentence, and Rust has ownership in the type system. The rustdv BFM is a plain struct; the test creates exactly one and shares it as `Rc<TinyAluBfm>` — Chapter 13's counted handle, passed to whoever needs it. Sharing is explicit in the type instead of ambient in a global, which pays off the day your *next* DUT has two identical bus interfaces: two BFMs, two `Rc`s, no singleton to un-design.¹
 
-The BFM lives in `tinyalu_utils` — no longer a module smuggled in through `sys.path`, but an ordinary library crate that every remaining testbench version lists in its `[dependencies]` (Chapter 14's payoff, part two: `Ops`, `alu_prediction`, and `get_int` moved in with it).
+The BFM lives in `tinyalu_utils`, an ordinary library crate that every remaining testbench version lists in its `[dependencies]` — where Python smuggled the equivalent module in through `sys.path` (Chapter 14's payoff, part two: `Ops`, `alu_prediction`, and `get_int` moved in with it).
 
 > ¹ pyuvm's own documentation reached a similar conclusion over the years; singletons make testbenches easy to write and hard to reuse. Rust simply makes the reusable version the path of least resistance.
 

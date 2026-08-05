@@ -139,7 +139,7 @@ impl Component for Scoreboard {
 
 Why `start_of_simulation` and not `run`? Because this phase does not *consume time* — `spawn_named` schedules a task and returns, exactly as `cocotb.start_soon` did in the Python original — and the lifecycle guarantees `start_of_simulation` finishes across the *whole tree* before any `run` begins. The monitors are provably listening before the first stimulus. Spawn them in `run` instead and you are racing the tester for the first transaction. (Resist the urge to "correct" this on the grounds that the UVM starts processes in `run_phase` — pyuvm's version of this scoreboard makes the same choice for the same reason.)
 
-One ownership note, because it is Chapter 5's rule surfacing in framework clothes: a spawned task must own everything it touches — that is the `'static` bound Chapter 16 taught, and it is also the first of the two compiler stories Chapter 1 promised. The tasks here cannot borrow the scoreboard, so they clone `Rc` handles: each task owns a reference count, not a borrow of `self`. The compiler rejected the design where a task quietly reads a component that might be gone; this is what the accepted design looks like.
+One ownership note, because it is Chapter 5's rule surfacing in framework clothes: a spawned task must own everything it touches — that is the `'static` bound Chapter 16 taught. The tasks here cannot borrow the scoreboard, so they clone `Rc` handles: each task owns a reference count, not a borrow of `self`.
 
 ```rust
 // Chapter 25, Figure 7: Checking results in the check phase

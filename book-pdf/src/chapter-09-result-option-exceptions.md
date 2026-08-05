@@ -4,7 +4,7 @@
 
 Rust does not have exceptions. Not "discourages them," not "has them but calls them something else" — the mechanism does not exist. There is no `raise`, no `try`, no `except`, and nothing that silently unwinds through your function while it's minding its own business. SystemVerilog engineers may feel at home here — but hold the feeling, because SV's alternative was sentinel values nothing forced you to check and log messages nothing forced you to read. Rust's alternative has teeth.
 
-And before Python readers mourn, remember what the boss metaphor was papering over. In Python, when you call a function, *nothing about that function tells you it might raise*. `nice_div()` looks exactly like a function that always returns a number. The fact that it can instead fling a `ZeroDivisionError` through your code is invisible — undocumented control flow that you discover at runtime, in our world usually forty minutes into a simulation. Chapter 1 promised that Rust moves discoveries like this to the compile step. This chapter is where that promise gets paid for errors.
+And before Python readers mourn, remember what the boss metaphor was papering over. In Python, when you call a function, *nothing about that function tells you it might raise*. `nice_div()` looks exactly like a function that always returns a number. The fact that it can instead fling a `ZeroDivisionError` through your code is invisible — undocumented control flow that you discover at runtime, in our world usually forty minutes into a simulation.
 
 Rust's answer is almost embarrassingly simple: **errors are ordinary values, and functions that can fail say so in their return type.** Two enums from the standard library do all the work:
 

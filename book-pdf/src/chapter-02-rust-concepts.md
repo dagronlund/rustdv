@@ -48,7 +48,7 @@ error: could not compile `concepts` (bin "concepts") due to 1 previous error
 
 Compare this to what Python does with the same mistake. There, the program *runs*: it prints `True` for the string, creates the integer, and only then dies with an `AttributeError` at line 4. The first three lines execute; the trouble is discovered in the act of transgressing.
 
-Here, nothing ran. Not the broken line, and — look carefully — not the correct lines either. Rust refused to produce a program at all. That is the trade in its purest form: a dynamic language checks each operation the moment it happens, so a mistake costs you a run; Rust checks every operation before any of them happen, so a mistake costs you a compile. In Chapter 1 we noted that for verification work this trade is nearly a gift, because in our world "a run" is not a millisecond of interpreter time — it is a simulator license, an elaboration, and a lunch break. Delete the offending line, as in figure 2, and the program compiles and runs.
+Here, nothing ran. Not the broken line, and — look carefully — not the correct lines either. Rust refused to produce a program at all. That is the trade in its purest form: a dynamic language checks each operation the moment it happens, so a mistake costs you a run; Rust checks every operation before any of them happen, so a mistake costs you a compile. For verification work this trade is nearly a gift, because in our world "a run" is not a millisecond of interpreter time — it is a simulator license, an elaboration, and a lunch break. Delete the offending line, as in figure 2, and the program compiles and runs.
 
 ```rust
 // Figure 2: The corrected program

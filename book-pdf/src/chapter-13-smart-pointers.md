@@ -233,7 +233,7 @@ Transaction { op: "MUL", a: 5, b: 3 }
 same object: true
 ```
 
-Line for line, this is Chapter 5's figure 1: two names, one object, a mutation through `b` visible through `a`, and `Rc::ptr_eq` standing in for Python's `is`. What Python and SystemVerilog handles gave you invisibly and unconditionally, Rust sells you piecewise, each purchase named in the source: `Rc::new` (this value will be shared), `Rc::clone` (here is another owner), `borrow_mut()` (I want the marker, check me at the door), `borrow()` (just reading, count me). A reviewer can see every one of those decisions. In the old versions, there was nothing to see — which is precisely why Python needed conventions begging users not to touch `_temp`, and why SystemVerilog grew the `local` keyword.
+Line for line, this is Chapter 5's figure 1: two names, one object, a mutation through `b` visible through `a`, and `Rc::ptr_eq` standing in for Python's `is`. What Python and SystemVerilog handles gave you invisibly and unconditionally, Rust sells you piecewise, each purchase named in the source: `Rc::new` (this value will be shared), `Rc::clone` (here is another owner), `borrow_mut()` (I want the marker, check me at the door), `borrow()` (just reading, count me). A reviewer can see every one of those decisions. In your old languages there was nothing to see — which is precisely why Python needed conventions begging users not to touch `_temp`, and why SystemVerilog grew the `local` keyword.
 
 ## The bill
 

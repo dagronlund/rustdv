@@ -89,14 +89,14 @@ impl Component for PutGetPeekTest {
 }
 ```
 
-This is `connect` doing the job Chapter 24 restored it for, and each line deserves unpacking, because the shape is subtler than it looks.
+This is `connect` doing the job Chapter 24 gave it, and each line deserves unpacking, because the shape is subtler than it looks.
 
 - The children are `RustdvComp` — factory-built, type-erased, exactly as testbench 5.0 left them. Which means the parent *cannot* write `self.producer.put_port`: that field does not exist on a `RustdvComp`, and Rust has no `$cast`-to-concrete to recover it. Something else must make the port reachable.
 - That something is the port name. `#[port(put)]` on `Producer` generated an associated constant, `Producer::PUT_PORT`, and the derive taught `ComponentNode` to answer for it — through the same trait-object surface everything else uses. The export initiates: `fifo.put_export().connect(&self.producer, Producer::PUT_PORT)` says *this FIFO's put side serves that component's port of this name*.
 - The name is typed, not a string. `Producer::PUT_PORT` carries the port's interface in its type, so misspelling it does not compile, and aiming a `get` export at a `put` port does not compile either. What resolves at elaboration is the wiring; what the wiring *means* was settled earlier.
 - The FIFO itself is a `#[component]` child — concrete, not factory-erased, so its exports are reachable to call `connect` on. That is a deliberate carve-out, and it is the model closest to the UVM, where `uvm_tlm_fifo` is a real component with a path: a FIFO is plumbing. You will never override one through the factory, so it never pays the erasure that makes overriding possible.
 
-There is one more thing to notice, and it is the quiet resolution of a problem this framework once got wrong: the *same* `connect` call works when a component wires its own port. Figure 12 will show `connect(self, MathTest::X_OUT)` — `self`, not a child. An earlier design addressed ports through a registry keyed by hierarchical path; it could reach a child, but not the connecting component itself, because a component does not know its own path. If a mechanism works for a child but not for `self`, it has broken the UVM's uniformity — the property that `uvm_test` *is* a `uvm_component`, no cases, no exceptions. A trait method answers for whoever implements the trait, which is every component including the one doing the connecting. That uniformity is why the design stands.
+There is one more thing to notice: the *same* `connect` call works when a component wires its own port. Figure 12 will show `connect(self, MathTest::X_OUT)` — `self`, not a child. That is not luck; it rules out a whole family of designs. A registry keyed by hierarchical path, say, could reach a child but never the connecting component itself, because a component does not know its own path. A mechanism that works for a child but needs a second spelling for `self` has broken the UVM's uniformity — the property that `uvm_test` *is* a `uvm_component`, no cases, no exceptions. A trait method answers for whoever implements the trait, which is every component including the one doing the connecting. That uniformity is why connection is a trait method and not a lookup.
 
 ```text
 # Figure 4: Alternating through a depth-1 FIFO

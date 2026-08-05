@@ -24,7 +24,7 @@ impl Component for HelloWorldTest {
 
 Here is the minimum needed to define and run a rustdv UVM test:
 
-- `#[rustdv::test]` — the attribute you have used since Chapter 15, now on a *struct*. It registers the test with the runner under its type name, verbatim — `HelloWorldTest`, not `hello_world_test` — so the runner can select it by the name you see in the source. This is `run_test()` restored: the framework instantiates your test and drives it.
+- `#[rustdv::test]` — the attribute you have used since Chapter 15, now on a *struct*. It registers the test with the runner under its type name, verbatim — `HelloWorldTest`, not `hello_world_test` — so the runner can select it by the name you see in the source. This is the UVM's `run_test()`: the framework instantiates your test and drives it.
 - `#[derive(Component)]` — the test *is a component*, exactly as `uvm_test` extends `uvm_component`. Everything a component can do, a test can do, and Chapter 24 leans on that hard.
 - `impl Component for HelloWorldTest` — the test overrides the one phase it uses, `run`. It has no children, so no `build`; the trait's defaults cover every phase you don't write.
 - `ctx.raise_objection("saying hello")` — the UVM's objection, as a guard. The run phase continues until every objection is released, and releasing happens by *dropping the guard* — here, at the closing brace. Note what that deletes: the forgot-to-drop bug, which hangs a pyuvm run phase until the timeout fires, is unwritable. Scope ends, objection drops. (Chapter 16's `LockGuard`, Chapter 13's RAII — third verse.)

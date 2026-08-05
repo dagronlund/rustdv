@@ -290,7 +290,7 @@ impl Component for AluEnv {
 }
 ```
 
-Here is the whole restored vocabulary on one page: a `build` phase creating children top-down, a `connect` phase wiring them bottom-up, components built through something called a factory (`create_comp()`), an `IS_ACTIVE` knob read from the ConfigDb that decides whether a driver exists at all, and one broadcast bus per observed stream. If you have written a `uvm_env`, every line has a shape you have seen — down to the passive env that simply does not build its driver.
+Here is the whole UVM vocabulary on one page: a `build` phase creating children top-down, a `connect` phase wiring them bottom-up, components built through something called a factory (`create_comp()`), an `IS_ACTIVE` knob read from the ConfigDb that decides whether a driver exists at all, and one broadcast bus per observed stream. If you have written a `uvm_env`, every line has a shape you have seen — down to the passive env that simply does not build its driver.
 
 ## The tests
 
