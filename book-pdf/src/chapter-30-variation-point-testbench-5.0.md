@@ -8,31 +8,33 @@ Before the code, the design question this version answers, because it corrects C
 
 ## The testers
 
+The testers are the ones you have had since testbench 2.0. Chapter 20 wrote them as a trait with one required method and one provided one, which is how Rust says "abstract base class with a single overridden method":
+
 ```rust
-// Chapter 30, Figure 1: The stimulus every tester runs
-async fn drive_stimulus(
-    ctx: &mut RustdvCtx,
-    mut get_operands: impl FnMut(&mut Rng) -> (u8, u8),
-) -> Result<(), TestError> {
-    let _obj = ctx.raise_objection("tester stimulus");
-    let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM")?;
-    let mut rng = ctx.rng();
+// Chapter 30, Figure 1: The Tester trait — one method varies, the rest is shared
+trait Tester {
+    fn get_operands(&mut self) -> (u8, u8);
 
-    bfm.reset().await;
+    async fn execute(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let _obj = ctx.raise_objection("tester stimulus");
+        let bfm: Rc<TinyAluBfm> = ConfigDb::get(Some(ctx), "", "BFM")?;
 
-    for op in Ops::ALL {
-        let (aa, bb) = get_operands(&mut rng);
-        bfm.send_op(aa, bb, op).await;
+        bfm.reset().await;
+
+        for op in Ops::ALL {
+            let (aa, bb) = self.get_operands();
+            bfm.send_op(aa, bb, op).await;
+        }
+        // send two dummy operations to allow
+        // the last real operation to complete
+        bfm.send_op(0, 0, Ops::Add).await;
+        bfm.send_op(0, 0, Ops::Add).await;
+        Ok(())
     }
-    // send two dummy operations to allow
-    // the last real operation to complete
-    bfm.send_op(0, 0, Ops::Add).await;
-    bfm.send_op(0, 0, Ops::Add).await;
-    Ok(())
 }
 ```
 
-Only the operands differ between testers, so the shared body is a function — Chapter 23's `alu_test` move — and each tester passes in how it picks operands, as a closure. Which closure runs is decided by which tester the factory installs.
+One line of it is new. `execute` takes the context rather than a BFM handle, because a tester is now a component: nobody hands it a BFM, so it asks the ConfigDb for one and raises the objection that holds the run phase open. `get_operands` is untouched, and it is still the only thing a tester has to write.
 
 ```rust
 // Chapter 30, Figure 2: The abstract base and the two testers that fill its slot
@@ -46,25 +48,46 @@ impl Component for BaseTester {
 }
 
 #[derive(Component, Default)]
-struct RandomTester;
+struct RandomTester {
+    rng: Option<Rng>,
+}
+
+impl Tester for RandomTester {
+    fn get_operands(&mut self) -> (u8, u8) {
+        let rng = self.rng.as_mut().expect("build phase did not run");
+        (rng.u8(), rng.u8())
+    }
+}
 
 impl Component for RandomTester {
+    fn build(&mut self, ctx: &mut RustdvCtx) {
+        self.rng = Some(ctx.rng());
+    }
+
     async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
-        drive_stimulus(ctx, |rng| (rng.u8(), rng.u8())).await
+        self.execute(ctx).await
     }
 }
 
 #[derive(Component, Default)]
 struct MaxTester;
 
+impl Tester for MaxTester {
+    fn get_operands(&mut self) -> (u8, u8) {
+        (0xFF, 0xFF)
+    }
+}
+
 impl Component for MaxTester {
     async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
-        drive_stimulus(ctx, |_rng| (0xFF, 0xFF)).await
+        self.execute(ctx).await
     }
 }
 ```
 
-`BaseTester` is the type the environment names and the factory overrides — the analog of the Python book's abstract `BaseTester`, which raises an error if run un-overridden. Here that is a `panic!`: a test that forgets its override builds a `BaseTester`, and running one *is* the bug, reported in its own words. The derive registers all three types, so any of them can stand in the tester slot.
+Each tester now wears two traits. `Tester` gives it stimulus, exactly as before; `Component` gives it phases; and `run` is the one line that joins them — the phaser calls `run`, `run` calls `execute`, and `execute` calls back into `get_operands`. `RandomTester` picks up its seeded `Rng` in `build` because a component is created by its parent with nothing passed in, which is the same reason testbench 4.0's tester did.
+
+`BaseTester` is the type the environment names and the factory overrides — the analog of the Python book's abstract `BaseTester`, which raises an error if run un-overridden. Here that is a `panic!`: a test that forgets its override builds a `BaseTester`, and running one *is* the bug, reported in its own words. It implements `Component` but not `Tester`, because there is no stimulus it could sensibly run. The derive registers all three types, so any of them can stand in the tester slot.
 
 ## The environment
 
@@ -141,14 +164,14 @@ The build-order guarantee from Chapters 24 and 29, working: the test's `build` i
 # Figure 6: One env, two behaviors
 
       0.00ns INFO     rustdv: found 2 test(s), RUSTDV_RANDOM_SEED=1
-      0.00ns INFO     running RandomTest (1/2)  [ch30-variation-point-testbench-5.0/src/ch30_variation_point_testbench_5_0.rs:212]
+      0.00ns INFO     running RandomTest (1/2)  [ch30-variation-point-testbench-5.0/src/ch30_variation_point_testbench_5_0.rs:245]
     150.00ns INFO     [RandomTest.env.scoreboard]: PASSED: c1 Add 67 = 0128
     150.00ns INFO     [RandomTest.env.scoreboard]: PASSED: 5e And 0b = 000a
     150.00ns INFO     [RandomTest.env.scoreboard]: PASSED: b9 Xor 80 = 0039
     150.00ns INFO     [RandomTest.env.scoreboard]: PASSED: a5 Mul 75 = 4b69
     150.00ns INFO     [RandomTest.env.scoreboard]: Covered all operations
     150.00ns INFO     RandomTest PASSED
-    150.00ns INFO     running MaxTest (2/2)  [ch30-variation-point-testbench-5.0/src/ch30_variation_point_testbench_5_0.rs:229]
+    150.00ns INFO     running MaxTest (2/2)  [ch30-variation-point-testbench-5.0/src/ch30_variation_point_testbench_5_0.rs:262]
     300.00ns INFO     [MaxTest.env.scoreboard]: PASSED: ff Add ff = 01fe
     300.00ns INFO     [MaxTest.env.scoreboard]: PASSED: ff And ff = 00ff
     300.00ns INFO     [MaxTest.env.scoreboard]: PASSED: ff Xor ff = 0000

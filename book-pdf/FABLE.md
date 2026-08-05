@@ -25,7 +25,7 @@ The Analysis chapter needs to be completely rewritten it has many problem.
 
 * The chapter needs to warn the reader that the analysis layer in RustDV is a copy of the analysis layer in UVM, though it does require a write() function that takes no time.
 
-* It needs to describe the publisher port and subscriber port first.  It needs to discuss the WriteSink trait and how this contains the write function as in UVM. It needs a complete explanation of what `on_write` is and how it relates to `connect_write`.
+* It needs to describe the publisher port and subscriber port first.  It needs to discuss the WriteSink trait and how this contains the write function as in UVM. It needs a complete explanation of what `on_write` is and how it relates to `connect`.
 
 * The chapter needs a digression to discuss `RustdvShared` and how it works. 
 
