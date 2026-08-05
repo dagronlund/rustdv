@@ -208,8 +208,14 @@ cd output/examples && sim-common/run_sim.sh <crate_name> <top_module>
 crate ch15–ch39 runs on Icarus; `tinyalu_tb` runs on the same machinery as the
 chapters and is in the suite as `custom/sim-tinyalu-tb`. The only quarantined
 package is `ch21_macros`, a macro demonstration with no simulator test, marked
-`no_sim_test` in `regress.json`; it never comes off the list. There is no known
-technical debt and no open question (`.design-decisions.md` §16 is empty).
+`no_sim_test` in `regress.json`; it never comes off the list. `.design-decisions.md`
+§16 is empty. One directed code job is queued: **D116/D117 — rename
+`WriteSink` → `Subscriber` and `on_write()` → `subscribe()`, retire the
+`analysis_fifo` field names, and move the FIFO-tap example from the ch31 crate
+into ch32** — the work order is the ch32 row and long-form items in
+`book-pdf/chapter-notes.md`. The book's prose pass is mid-flight;
+`book-pdf/FABLE.md`'s top note is Chapter 32, which finishes after that code
+job lands.
 
 **The test suite**, in three tiers under the chapter runs
 (`output/regression/TESTING.md` is the operating manual, including the two

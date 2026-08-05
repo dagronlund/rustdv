@@ -26,32 +26,44 @@ ap: PublishPort<CmdTuple>,        // the publisher announces here
 input: SubscribePort<CmdTuple>,   // a subscriber listens here
 ```
 
-The publisher's side is the simpler of the two: it calls `self.ap.write(&item)` and is done. The subscriber's side needs two more ideas, and they are the only two new ideas in the chapter.
+The publisher's side is all there is on the publisher: it calls `self.ap.write(&item)` and moves on. Everything else belongs to the subscriber, and a rustdv subscriber is always the same three pieces. The next three sections introduce them one at a time.
 
-**The first is `WriteSink` — the trait that carries `write()`.** In the UVM, a subscriber extends `uvm_subscriber` and overrides its `write()` method. rustdv keeps the method and swaps the base class for a trait: `WriteSink<T>` has exactly one method, `fn write(&mut self, item: &T)`, and implementing the trait is how you say what an arriving item should do. Same word, same job, same rule — it returns nothing and must take no time.
+## `WriteSink`: what an arriving item does
 
-There is one twist, and it is deliberate: you implement `WriteSink` on the **state** the write updates — a small struct holding a count, a `Vec`, whatever the subscriber keeps — not on the subscriber component itself. The reason is ownership, and it gets the next section to itself.
+The first piece is the subscriber's data: a small struct holding whatever this subscriber keeps. For one subscriber that might be a count; for another, a `Vec` of the items themselves; for Chapter 34's scoreboard, the two lists it will compare. This chapter calls it the **state struct**. It is a plain struct, and the subscriber's real work happens in it.
 
-**The second is `on_write` — and how it relates to `connect`.** A subscriber's port needs two attachments, made by two different parties, in two different phases:
+The struct's `write()` lives there too. `WriteSink<T>` is a trait with a single method, `fn write(&mut self, item: &T)` — the port of `uvm_subscriber`'s `write()`, the same name doing the same job: it says what an arriving item does. You implement `WriteSink` **on the state struct** — the count's `write` increments the count, the `Vec`'s `write` pushes the item. A struct with a `write` method is called a **sink**: it is the thing items are poured into.
 
-- `connect`, in the *parent's* `connect` phase, attaches the port to a stream — *which broadcast this subscriber hears*. That is topology, decided from outside, exactly as it was for every port in Chapter 31.
-- `on_write`, in the *subscriber's own* `build` phase, hands the port the sink an arriving item should be delivered to — *what hearing it does*. That is behavior, decided by the component that owns the port, and no one else can decide it: only the subscriber holds a handle to its own state.
-
-So `connect` says *whose traffic*, `on_write` says *what happens to it*, and both must occur. Forgetting `connect` is legal — an unheard subscriber simply never runs, and the elaboration report will show the port unbound. Forgetting `on_write` is a wiring error, and it is loud: `connect` fails naming the port and telling you which component's `build` phase owes the call.
+A UVM engineer's instinct is to put `write()` on the subscriber component itself, because that is where `uvm_subscriber` puts it. In rustdv it cannot go there, and the reason is ownership. Think about the moment of delivery: the *publisher* is in the middle of its `run` phase, and the item has to land in a *sibling* component's data, right now, in zero time. Chapter 24's tree gives nobody `&mut` access to a sibling — the subscriber component is simply unreachable at the moment the item arrives. The state struct is the answer: it lives *outside* the component, so it can be reached at delivery time. What makes that sharing safe is the second piece.
 
 ## A digression: `RustdvShared`
 
-Now the ownership twist, because the first listing is unreadable without it.
+`RustdvShared<T>` is how the subscriber component and its port both hold the same state struct. It is Chapter 13's `Rc<RefCell<T>>` wrapped in a framework type: `clone()` produces a second handle to the *same* data — not a copy of it — and `get()`/`get_mut()` borrow the data to read or modify, checked at run time as `RefCell` always is.
 
-`write` takes `&mut self` — a tally must be incremented, a `Vec` pushed. But look at *when* delivery happens: the publisher is inside its `run` phase, which holds `&mut` on the publisher, and the item must reach a sibling component's data in the same instant. Chapter 24 built the tree so that a parent owns its children and siblings cannot reach into each other — a rule that has served every chapter since, and analysis delivery is the one place it would forbid the whole mechanism.
+The use never varies. The component declares its state as a field — `tally: RustdvShared<ItemCount>` — and so holds one handle. During setup it clones a second handle and gives the clone to its port. After that, the two ends never touch each other: the port pours arriving items into the state through its handle, in zero time, without going anywhere near the component; and the component reads through its own handle whenever it likes — usually in `check` or `report`, once the traffic is over. One habit keeps it friction-free: take `get()`'s borrow for a line at a time, never across an `await`.
 
-The way out is to share the **state**, not the component. The subscriber keeps its data in its own small struct — the one `WriteSink` is implemented on — behind a `RustdvShared<T>`:
+About the name: it wears the `Rustdv` prefix for the same reason `RustdvComp` and `RustdvCtx` do — it is the framework's type, not the language's. A reader who goes looking for `Shared<T>` in the standard library will find nothing; the name says where to look instead.
 
-- **What it is.** A cloneable handle to shared state: Chapter 13's `Rc<RefCell<T>>`, wrapped in a framework type. `clone()` produces another handle to the *same* data, not a copy of it; `get()` borrows the state to read and `get_mut()` to modify, checked at run time as `RefCell` always is.
-- **How it is used.** The component keeps one handle as a field. In `build`, it clones a second handle and passes the clone to `on_write`. From then on the port can deliver into the state directly — no `&mut` on any component, no sibling reaching into sibling — while the component reads the same state whenever it likes, typically in `check` or `report`.
-- **Why the name.** It wears the `Rustdv` prefix for the same reason `RustdvComp` and `RustdvCtx` do: it is the framework's type, not the language's. A reader who goes looking for `Shared<T>` in the standard library will find nothing; the name says where to look instead.
+## `on_write` and `connect`
 
-Keep the borrows short — take `get()`'s guard for a line, not across an `await` — and the pattern has no sharp edges. You will write these three lines (a state struct, a `WriteSink` impl, an `on_write` in `build`) in every subscriber from here to the end of the book, so the first listing is worth a slow read.
+The third piece is the setup, and it is two calls made by two different components:
+
+```rust,ignore
+// the subscriber, in its own build phase:
+let my_sink = self.tally.clone();   // a second handle to the state struct
+self.input.on_write(my_sink);       // "pour arriving items into this"
+
+// the parent, in its connect phase:
+bus.sub_export().connect(&self.counter, Counter::INPUT);
+```
+
+`on_write` is the subscriber configuring itself. It hands its port the cloned handle, so the port knows what to pour arriving items into. Only the subscriber can make this call — nobody else holds a handle to its state — which is why it happens in the subscriber's own `build`.
+
+`connect` is the parent wiring topology, with exactly the move used for every connection in Chapter 31: it attaches the subscriber's port to one particular broadcast. The parent decides who hears what; it neither knows nor cares what any subscriber does with an item.
+
+So the two calls answer two different questions. `connect`: *which items come here?* `on_write`: *what happens when they do?* Miss one and the failures differ: a port that was never `connect`ed is legal and silent — the elaboration report lists it as unbound and the subscriber hears nothing — while `connect`ing a port that was never given a sink fails loudly, naming the port and the `build` phase that owes the `on_write` call.
+
+Every subscriber from here to the end of the book is these three pieces — a state struct with a `write`, a `RustdvShared` holding it, and the `on_write`/`connect` pair — so the first listing repays a slow read.
 
 ## A counter and a collector
 
@@ -92,7 +104,7 @@ impl Component for Counter {
 }
 ```
 
-Read it against the last two sections. `ItemCount` is the state, and `WriteSink` is implemented there — `write` bumps the count, instantly, nothing awaited. `Counter` is the component: it declares the `SubscribePort`, keeps one `RustdvShared` handle in `tally`, and in `build` hands a clone of that handle to `on_write`. In `report`, it reads the same state back through `get()`. The component never sees an item arrive; arrival goes straight into `ItemCount`, and the component and the port simply share it.
+All three pieces are here. `ItemCount` is the state struct, and `WriteSink` is implemented there — `write` bumps the count, instantly, nothing awaited. `Counter` is the component: it declares the `SubscribePort`, keeps one `RustdvShared` handle in `tally`, and in `build` hands a clone of that handle to `on_write`. In `report`, it reads the same state back through `get()`. The component never sees an item arrive; arrival goes straight into `ItemCount`, and the component and the port simply share it.
 
 The collector is the same pattern with different state — a `Vec` where the counter had a number:
 

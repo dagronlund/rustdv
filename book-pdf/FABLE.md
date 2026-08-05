@@ -1,43 +1,49 @@
 # Brief for the prose pass
 # Notes for RustDV Book.
 
-# Previous versions of the testbench are unimportant
+# Chapter 32 — finish it after the rename thread lands
 
-The book occasionally talks about "a previous version of the testbench". This is a mistake. The reader doesn't care about our history or about the evolution of Rustdv.  Just explain what happens now.  Look through the book for this mistake and remove it.
+The chapter was restructured on 2026-08-05: the publisher/many-subscribers
+concept first, then the two ports, the `write` trait, a `RustdvShared`
+digression, the enrollment-versus-connection split, and only then the
+counter/collector example, the storing-nothing bus, and the slow-subscriber
+section. The bones are right. What remains is blocked on a **code thread**
+(the work order is the ch32 row and long-form items in
+`book-pdf/chapter-notes.md`), and the prose must follow it:
 
-# TLM Chapter
+* `WriteSink` becomes `Subscriber`, and `on_write()` becomes `subscribe()`.
+  Re-paste every affected listing, then rewrite the subscriber sections in the
+  new vocabulary: **the plain struct with `write()` is the subscriber; a
+  component hosts it.** The parent `connect`s (which stream); the component
+  `subscribe`s (which receiver). Stop calling the hosting component "the
+  subscriber", and say in one sentence that `uvm_subscriber` is a component
+  while rustdv's `Subscriber` is plain data — the same lesson the chapter
+  already teaches about where storage lives.
+* The identifier `analysis_fifo` appears nowhere. The crate's bus fields are
+  renamed; re-paste Figures 4, 6 and 9.
+* The `TlmFifo` tap demonstration (removed from ch31 on 2026-08-05) lands at
+  the end of ch32 once the code thread moves the example into the ch32 crate.
+  Teach it as the port of `uvm_tlm_fifo`'s built-in analysis ports,
+  `TlmFifo::put_ap()` / `TlmFifo::get_ap()`: the data path is still a queue —
+  one consumer takes each item, the producer blocks when full — while the taps
+  are observation alongside; every subscriber sees every item, nothing is
+  consumed, nobody is delayed. The move also changes every ch31 transcript's
+  test count, so ch31's transcripts get re-pasted from the regenerated README.
 
-There is no need for story about the test being a component. This is the AI's revelation.  There should be no references to an earlier version of rustdv, the reader doesn't care.
+Do not start until `python3 output/regression/verify-book-listings.py` and
+`bash output/regression/verify-transcripts.sh` are green against the renamed
+crates.
 
-## No Analysis in FIFO chapter
+# Buy me a coffee
 
-RustdvShared does not land as a name. I cannot remember what it is. 
+I want a Buy Me a Coffee link at the top of every page of the HTML version of the book. I want to put https://buymeacoffee.com/raysalemi in the header of every page.
 
-Move tlm_fifo analysis port to analysis port chapter.  It does not belong in the chapter on blocking and trying with TLM_fifos because the reader does not understand Analysis ports yet.
+# Final step
 
-# Analysis Chapter
-
-The Analysis chapter needs to be completely rewritten it has many problem.
-
-* The analysis chapter needs to explain this new concept of the `WriteSink` trait. There is no explanation, it just gets thrown at the reader. 
-
-* The chapter needs to start by explaining the concept of a publisher and many subscribers.
-
-* The chapter needs to warn the reader that the analysis layer in RustDV is a copy of the analysis layer in UVM, though it does require a write() function that takes no time.
-
-* It needs to describe the publisher port and subscriber port first.  It needs to discuss the WriteSink trait and how this contains the write function as in UVM. It needs a complete explanation of what `on_write` is and how it relates to `connect`.
-
-* The chapter needs a digression to discuss `RustdvShared` and how it works. 
-
-* The first example is excellent, but you need to do a good job explaining what it does since it is not a TinyALU testbench. There is a counter and a collector that do different things with the same data explain that.
-
-* The chapter needs to explain the AnalysisHub and how it is nothing like the analysis_fifo.  It has no storage, it simply connects function calls.  It is up to the subscriber to store information if it wants to. 
-
-* Now that all this has been explained, you can show the reader the example in action and repeat how `RustdvShared` fits into this.
-
-* "Now the habit this chapter exists to correct."  Whose habit?  Yours? The reader has no habit.  *an AnalysisBus is not a FIFO and stores no items* is just a fact. You are not correcting a misconception.
+The book is ready to go to market.  Make one final complete sweep of the book to make final edits for its publication.
 
 
+---
 
 ## The absolute rule: you change no code
 
@@ -74,6 +80,12 @@ with reading ability in both and no prior book. So nothing may assume the reader
 has run cocotb or pyuvm, or has read the earlier books. Naming them as sources is
 fine; leaning on shared memory of them is not.
 
+**The reader has no history with rustdv, and rustdv has no history worth
+telling.** Never explain the present design by contrast with an earlier design,
+an earlier draft, an earlier name, or "a previous version of the testbench"
+(the reader's own TB 2.0–8.0 climb is fine — that is their history). Explain
+what happens now, plainly, as if it were always so.
+
 **Comparisons are foils, not nostalgia.** "In Python, a typo'd attribute is a
 runtime `AttributeError`" is useful. "As you saw in the Python book" is not.
 Prefer two sharp comparisons to none — a dual audience means both foils, not no
@@ -84,8 +96,16 @@ foil — and where the dialects diverge, one parenthetical, SystemVerilog first:
 run ≤15 lines, carry a source label, never appear with simulation output, and
 total a handful across the whole book.
 
+**Do not celebrate the compiler.** No "promise kept", no "the seam at work", no
+selling types. State what a mechanism does and move on; where a compile error
+is real, show it and let it speak.
+
 **Say the point plainly.** "Honestly", "genuinely" and "straightforward" read as
 persuasion rather than statement.
+
+**Answer, then stop.** When Ray asks a question, give the verdict and the one
+or two reasons that decide it. No essays, no surveys of alternatives he did not
+ask for, no narration between steps of a task.
 
 
 ## When you are unsure
@@ -98,13 +118,4 @@ needs a fact the examples do not contain.
 Reference material — cocotb, pyuvm, four releases of the SystemVerilog UVM, and
 the example code from both earlier books — is outside the repo at
 `../rustdv-reference`, read-only. Use it to check what the UVM actually does
-rather than what a comment says it does. 
-
-# Buy me a coffee
-
-I want a Buy Me a Coffee link at the top of every page of the HTML version of the book. I want to put https://buymeacoffee.com/raysalemi in the header of every page. 
-
-
-# Final step
-
-The book is ready to go to market.  Make one final complete sweep of the book to make final edits for its publication.
+rather than what a comment says it does.
