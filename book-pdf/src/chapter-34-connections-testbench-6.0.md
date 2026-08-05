@@ -184,7 +184,7 @@ REGRESSION: PASS
 
 All the scoreboard lines carry timestamp 240ns — after the flush, in the `check` phase, where Chapter 33 put the comparison. Four commands driven, four results checked against predictions, coverage complete, and two components reporting on the same command stream without either knowing about the other.
 
-One paragraph on the scoreboard, because Chapter 32 promised it here: it subscribes to **two** streams with two `SubscribePort`s and two `WriteSink` impls — `CmdLog` for commands, `ResultLog` for results — and no macros anywhere. This is the multiple-analysis-input problem that SystemVerilog needs the `uvm_analysis_imp_decl` macros for, because a class gets one `write` method; and it works identically when both streams carry the *same* type, which is precisely the case those macros exist to solve. The `uvm_tlm_analysis_fifo`s that would sit inside a UVM scoreboard are absent for Chapter 32's reason: the subscriber owns its storage, and these two own a `Vec` each.
+One paragraph on the scoreboard, because Chapter 32 promised it here: it subscribes to **two** streams with two `SubscribePort`s and two `Subscriber` impls — `CmdLog` for commands, `ResultLog` for results — and no macros anywhere. This is the multiple-analysis-input problem that SystemVerilog needs the `uvm_analysis_imp_decl` macros for, because a class gets one `write` method; and it works identically when both streams carry the *same* type, which is precisely the case those macros exist to solve. The `uvm_tlm_analysis_fifo`s that would sit inside a UVM scoreboard are absent for Chapter 32's reason: the subscriber owns its storage, and these two own a `Vec` each.
 
 ## Summary
 

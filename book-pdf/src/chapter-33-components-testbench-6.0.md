@@ -181,7 +181,7 @@ impl Component for Scoreboard {
 }
 ```
 
-Here is Chapter 32's promise kept: **two streams, two `SubscribePort`s, two `WriteSink` impls** — one `write` per sink, each stream landing in the `Vec` its subscriber chose to keep, no macros minted and no buffer FIFOs routed. Compare the Chapter 25 scoreboard this replaces: gone are the spawned collector tasks and their `Rc<RefCell>` lists — delivery is synchronous now, so the sinks just push — and gone is any contact with the BFM at all. The scoreboard's inputs are *ports*. It would work unchanged against any DUT whose monitors publish these two types, which is what "single job, standard connections" buys.
+Here is Chapter 32's pattern at full size: **two streams, two `SubscribePort`s, two `Subscriber` impls** — one `write` per subscriber, each stream landing in the `Vec` it chose to keep, no macros minted and no buffer FIFOs routed. Compare the Chapter 25 scoreboard this replaces: gone are the spawned collector tasks and their `Rc<RefCell>` lists — delivery is synchronous now, so the subscribers just push — and gone is any contact with the BFM at all. The scoreboard's inputs are *ports*. It would work unchanged against any DUT whose monitors publish these two types, which is what "single job, standard connections" buys.
 
 The comparison itself is unchanged since 4.0: zip commands against results, predict, compare, tally coverage, and report failures to the `CheckSink` in the `check` phase.
 
@@ -226,6 +226,6 @@ A second subscriber on the command stream. The monitor does not know Coverage ex
 
 ## Summary
 
-Six components, one job each, and not a single one holds a reference to another: the Tester puts, the Driver gets and drives, two monitors publish, and the Scoreboard and Coverage subscribe — the scoreboard on two streams with two sinks, the pattern that needs no `imp_decl` machinery and no analysis FIFOs. Every input and output is a declared port; the BFM arrives by name; the flush comment in the Tester is a debt the objection story pays next chapter. Nothing here can run, because nothing here is connected.
+Six components, one job each, and not a single one holds a reference to another: the Tester puts, the Driver gets and drives, two monitors publish, and the Scoreboard and Coverage subscribe — the scoreboard on two streams with two `Subscriber` impls, the pattern that needs no `imp_decl` machinery and no analysis FIFOs. Every input and output is a declared port; the BFM arrives by name; the flush comment in the Tester is a debt the objection story pays next chapter. Nothing here can run, because nothing here is connected.
 
 Chapter 34 builds the environment that introduces them all to each other — seven connect lines, one idiom — and runs testbench 6.0.

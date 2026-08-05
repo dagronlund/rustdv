@@ -8,7 +8,7 @@ Analysis is a different mechanism from put/get, not a mode of it: one-to-many, n
 
 ## One publisher, many subscribers
 
-Start with the shape, because everything else in the chapter is machinery for it. One component — the **publisher** — has something to announce. In a real testbench it is a monitor: it has just decoded a bus transaction, and its job is to say so. Several components — the **subscribers** — want to hear it: a scoreboard to compare it against a prediction, a coverage collector to bin it, perhaps a logger to file it. Each does something *different* with the *same* item.
+Start with the shape, because everything else in the chapter is machinery for it. One component — the **publisher** — has something to announce. In a real testbench it is a monitor: it has just decoded a bus transaction, and its job is to say so. Several others — the **subscribers** — want to hear it: a scoreboard to compare it against a prediction, a coverage collector to bin it, perhaps a logger to file it. Each does something *different* with the *same* item.
 
 Two properties define the relationship. The publisher does not know its subscribers — not how many there are, not what they do, not whether there are any at all. It announces and moves on. And no subscriber can slow the publisher down or dictate to another: each is handed the item, does its own thing, and has no channel back. That is why analysis has no back-pressure and no return value; a broadcast is not a conversation.
 
@@ -28,13 +28,13 @@ input: SubscribePort<CmdTuple>,   // a subscriber listens here
 
 The publisher's side is all there is on the publisher: it calls `self.ap.write(&item)` and moves on. Everything else belongs to the subscriber, and a rustdv subscriber is always the same three pieces. The next three sections introduce them one at a time.
 
-## `WriteSink`: what an arriving item does
+## `Subscriber`: what an arriving item does
 
 The first piece is the subscriber's data: a small struct holding whatever this subscriber keeps. For one subscriber that might be a count; for another, a `Vec` of the items themselves; for Chapter 34's scoreboard, the two lists it will compare. This chapter calls it the **state struct**. It is a plain struct, and the subscriber's real work happens in it.
 
-The struct's `write()` lives there too. `WriteSink<T>` is a trait with a single method, `fn write(&mut self, item: &T)` — the port of `uvm_subscriber`'s `write()`, the same name doing the same job: it says what an arriving item does. You implement `WriteSink` **on the state struct** — the count's `write` increments the count, the `Vec`'s `write` pushes the item. A struct with a `write` method is called a **sink**: it is the thing items are poured into.
+The struct's `write()` lives there too. `Subscriber<T>` is a trait with a single method, `fn write(&mut self, item: &T)` — the port of `uvm_subscriber`'s `write()`, the same name doing the same job: it says what an arriving item does. You implement `Subscriber` **on the state struct** — the count's `write` increments the count, the `Vec`'s `write` pushes the item. That struct *is* the subscriber, and this is the one place the vocabulary shifts under a UVM engineer: `uvm_subscriber` is a component, while rustdv's `Subscriber` is plain data that a component hosts — the same lesson this chapter keeps teaching about where storage lives.
 
-A UVM engineer's instinct is to put `write()` on the subscriber component itself, because that is where `uvm_subscriber` puts it. In rustdv it cannot go there, and the reason is ownership. Think about the moment of delivery: the *publisher* is in the middle of its `run` phase, and the item has to land in a *sibling* component's data, right now, in zero time. Chapter 24's tree gives nobody `&mut` access to a sibling — the subscriber component is simply unreachable at the moment the item arrives. The state struct is the answer: it lives *outside* the component, so it can be reached at delivery time. What makes that sharing safe is the second piece.
+The instinct is to put `write()` on the hosting component itself, because that is where the UVM puts it. In rustdv it cannot go there, and the reason is ownership. Think about the moment of delivery: the *publisher* is in the middle of its `run` phase, and the item has to land in a *sibling* component's data, right now, in zero time. Chapter 24's tree gives nobody `&mut` access to a sibling — the hosting component is simply unreachable at the moment the item arrives. The state struct is the answer: it lives *outside* the component, so it can be reached at delivery time. What makes that sharing safe is the second piece.
 
 ## A digression: `RustdvShared`
 
@@ -44,7 +44,7 @@ The use never varies. The component declares its state as a field — `tally: Ru
 
 About the name: it wears the `Rustdv` prefix for the same reason `RustdvComp` and `RustdvCtx` do — it is the framework's type, not the language's. A reader who goes looking for `Shared<T>` in the standard library will find nothing; the name says where to look instead.
 
-## `on_write` and `connect`
+## `subscribe` and `connect`
 
 The third piece is the setup, and it is two calls made by two different components:
 
@@ -57,17 +57,17 @@ self.input.subscribe(my_subscriber);       // "pour arriving items into this"
 bus.sub_export().connect(&self.counter, Counter::INPUT);
 ```
 
-`on_write` is the subscriber configuring itself. It hands its port the cloned handle, so the port knows what to pour arriving items into. Only the subscriber can make this call — nobody else holds a handle to its state — which is why it happens in the subscriber's own `build`.
+`subscribe` supplies the receiver. The hosting component hands its port the cloned handle, so the port knows what to pour arriving items into. Only that component can make the call — nobody else holds a handle to its state — which is why it happens in its own `build`.
 
-`connect` is the parent wiring topology, with exactly the move used for every connection in Chapter 31: it attaches the subscriber's port to one particular broadcast. The parent decides who hears what; it neither knows nor cares what any subscriber does with an item.
+`connect` chooses the stream. It is the parent wiring topology, with exactly the move used for every connection in Chapter 31: it attaches the hosted port to one particular broadcast. The parent decides who hears what; it neither knows nor cares what any subscriber does with an item.
 
-So the two calls answer two different questions. `connect`: *which items come here?* `on_write`: *what happens when they do?* Miss one and the failures differ: a port that was never `connect`ed is legal and silent — the elaboration report lists it as unbound and the subscriber hears nothing — while `connect`ing a port that was never given a sink fails loudly, naming the port and the `build` phase that owes the `on_write` call.
+So the two calls answer two different questions. `connect`: *which items come here?* `subscribe`: *what happens when they do?* Keep the split straight by who makes each call: the parent `connect`s, the component `subscribe`s. Miss one and the failures differ: a port that was never `connect`ed is legal and silent — the elaboration report lists it as unbound and the subscriber hears nothing — while `connect`ing a port whose component never called `subscribe` fails loudly, naming the port and the `build` phase that owes the call.
 
-Every subscriber from here to the end of the book is these three pieces — a state struct with a `write`, a `RustdvShared` holding it, and the `on_write`/`connect` pair — so the first listing repays a slow read.
+Every subscriber from here to the end of the book is these three pieces — a state struct with a `write`, a `RustdvShared` holding it, and the `subscribe`/`connect` pair — so the first listing repays a slow read.
 
 ## A counter and a collector
 
-The chapter's example is deliberately not a TinyALU testbench. It is the publisher/subscriber shape with nothing else in the room: a number generator that publishes `0, 1, 2`, and two subscribers that hear the same three numbers and do different things with them — a **counter** that keeps a tally, and a **collector** that keeps the values. Chapter 33 will put monitors and scoreboards in these roles; today the data is plain `u32`s so the machinery has your whole attention.
+The chapter's example is deliberately not a TinyALU testbench. It is the publisher/subscriber shape with nothing else in the room: a number generator that publishes `0, 1, 2`, and two components that hear the same three numbers and do different things with them — a **counter** that keeps a tally, and a **collector** that keeps the values. Chapter 33 will put monitors and scoreboards in these roles; today the data is plain `u32`s so the machinery has your whole attention.
 
 Here is the counter, all three pieces of the pattern in one place:
 
@@ -104,7 +104,7 @@ impl Component for Counter {
 }
 ```
 
-All three pieces are here. `ItemCount` is the state struct, and `WriteSink` is implemented there — `write` bumps the count, instantly, nothing awaited. `Counter` is the component: it declares the `SubscribePort`, keeps one `RustdvShared` handle in `tally`, and in `build` hands a clone of that handle to `on_write`. In `report`, it reads the same state back through `get()`. The component never sees an item arrive; arrival goes straight into `ItemCount`, and the component and the port simply share it.
+All three pieces are here. `ItemCount` is the state struct and the subscriber — `Subscriber` is implemented there, and its `write` bumps the count, instantly, nothing awaited. `Counter` is the component hosting it: it declares the `SubscribePort`, keeps one `RustdvShared` handle in `tally`, and in `build` hands a clone of that handle to `subscribe`. In `report`, it reads the same state back through `get()`. The component never sees an item arrive; arrival goes straight into `ItemCount`, and the component and the port simply share it.
 
 The collector is the same pattern with different state — a `Vec` where the counter had a number:
 
@@ -218,7 +218,7 @@ Every line is at `0.00ns`. Three writes, both subscribers fully served, and the 
 
 ## The bus stores nothing
 
-Despite living in a `#[component]` slot, **an `AnalysisBus` is not a FIFO and stores no items.** It is a subscriber list and nothing more: `write` calls every enrolled sink and returns, connecting function calls rather than holding data, and a datum broadcast to nobody is *gone*.
+Despite living in a `#[component]` slot, **an `AnalysisBus` is not a FIFO and stores no items.** It is a subscriber list and nothing more: `write` calls every enrolled subscriber and returns, connecting function calls rather than holding data, and a datum broadcast to nobody is *gone*.
 
 ```rust
 // Chapter 32, Figure 6: A hub with no subscribers is legal
@@ -258,7 +258,7 @@ Where Chapter 31's unconnected put port failed elaboration, an analysis `sub_exp
 
 So "where does the traffic go?" has a simple answer: **wherever the subscriber decides to put it.** A tally (figure 1), a `Vec` (figure 2), a comparison against a prediction (Chapter 34's scoreboard) — the subscriber owns its storage, held in its `RustdvShared` state and shaped to its job. If you find yourself looking for the analysis FIFO, this paragraph is the answer: there isn't one, and nothing is missing.
 
-It is worth being precise about what that replaces, because the UVM's scoreboards buffer for a reason that is real *there*. A SystemVerilog class gets exactly one `write()` method. A scoreboard watching two streams — commands and results — therefore needs the `uvm_analysis_imp_decl` macros to mint two differently-named writes, and routing each stream into its own `uvm_tlm_analysis_fifo` is the standard way around the whole problem; pyuvm, with one `write` per class, routes into FIFOs for the same reason. A rustdv component declares two `SubscribePort`s and writes two `WriteSink` impls, one per stream — you will see it done in Chapter 34's scoreboard — so the workaround has nothing to work around, and the buffer that lived in every UVM scoreboard is simply absent. (Hence the name `AnalysisBus`: the type is the broadcast hub, a thing the UVM has no class for at all — emphatically not an analysis FIFO, which in the UVM names the subscriber-side buffer this design does without.)
+It is worth being precise about what that replaces, because the UVM's scoreboards buffer for a reason that is real *there*. A SystemVerilog class gets exactly one `write()` method. A scoreboard watching two streams — commands and results — therefore needs the `uvm_analysis_imp_decl` macros to mint two differently-named writes, and routing each stream into its own `uvm_tlm_analysis_fifo` is the standard way around the whole problem; pyuvm, with one `write` per class, routes into FIFOs for the same reason. A rustdv component declares two `SubscribePort`s and hosts two `Subscriber` impls, one per stream — you will see it done in Chapter 34's scoreboard — so the workaround has nothing to work around, and the buffer that lived in every UVM scoreboard is simply absent. (Hence the name `AnalysisBus`: the type is the broadcast hub, a thing the UVM has no class for at all — emphatically not an analysis FIFO, which in the UVM names the subscriber-side buffer this design does without.)
 
 ## When the subscriber needs time
 
@@ -354,8 +354,101 @@ Nothing in the wiring says this subscriber buffers — the same `sub_export()` a
 
 The transcript is the argument. All three writes land at `0.00ns` — the publisher is never held up by what a subscriber does with an item — and the checker's results come out at 5, 10, and 15ns as it works through its own queue in its own time.
 
+## The FIFO's built-in taps
+
+One piece of analysis machinery was left unexplained in Chapter 31, because it could not be explained before subscribers were: every `TlmFifo` carries a pair of publisher ports of its own. `put_ap()` announces each item the FIFO accepts; `get_ap()` announces each item it releases. They are the port of `uvm_tlm_fifo`'s built-in analysis ports — the same two names there — and they exist for the same reason: the components on a FIFO's data path are not the only ones with an interest in its traffic. A scoreboard may want to see every command a driver will eventually consume; a coverage collector may want to bin items as they pass through. The taps let them watch without joining the queue.
+
+There is nothing new to learn to use one. A watcher on a tap is the same shape as Figure 1's counter — a plain struct implementing `Subscriber`, a `SubscribePort`, and a `subscribe` call in the build phase:
+
+```rust
+// Chapter 32, Figure 11: A watcher on a FIFO's tap is an ordinary subscriber
+#[derive(Default)]
+struct TapLog {
+    items: Vec<u32>,
+}
+
+impl Subscriber<u32> for TapLog {
+    fn write(&mut self, item: &u32) {
+        self.items.push(*item);
+    }
+}
+
+#[derive(Component, Default)]
+struct TapWatcher {
+    #[port(subscribe)]
+    input: SubscribePort<u32>,
+    seen: RustdvShared<TapLog>,
+}
+
+impl Component for TapWatcher {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        let my_subscriber = self.seen.clone();
+        self.input.subscribe(my_subscriber);
+    }
+
+    fn report(&mut self, ctx: &mut RustdvCtx) {
+        let seen = self.seen.get();
+        ctx.info(&format!("tap saw {:?}", seen.items));
+    }
+}
+```
+
+To give the tap something to watch, the test reuses Chapter 31's `Producer` and `Consumer` verbatim — the producer that blocks on a full FIFO, the consumer that peeks and then gets. They are not reprinted here; the data path is Chapter 31's, unchanged. What is new is one line of wiring:
+
+```rust
+// Chapter 32, Figure 12: A tap is wired like any other subscription
+#[rustdv::test]
+#[derive(Component, Default)]
+struct FifoTapTest {
+    #[component]
+    producer: RustdvComp,
+    #[component]
+    consumer: RustdvComp,
+    #[component]
+    watcher: RustdvComp,
+    #[component]
+    fifo: TlmFifo<u32>,
+}
+
+impl Component for FifoTapTest {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        self.producer = Producer::new_comp();
+        self.consumer = Consumer::new_comp();
+        self.watcher = TapWatcher::new_comp();
+        self.fifo = TlmFifo::new(1);
+    }
+
+    fn connect(&mut self, _ctx: &mut RustdvCtx) {
+        // the data path: producer -> queue -> consumer
+        self.fifo.put_export().connect(&self.producer, Producer::PUT_PORT);
+        self.fifo.peek_export().connect(&self.consumer, Consumer::PEEK_PORT);
+        self.fifo.get_export().connect(&self.consumer, Consumer::GET_PORT);
+        // the observation tap: the watcher sees every item put, and takes none
+        self.fifo.put_ap().connect(&self.watcher, TapWatcher::INPUT);
+    }
+}
+```
+
+Note what is and is not mixed here. The FIFO's **data path** is still a queue: one consumer takes each item, and the producer blocks when it is full — this one holds a single item, so the transcript below alternates put and got. The taps are **observation** running alongside: every subscriber sees every item, nothing is consumed, and nobody is delayed. Two different jobs in one component, exactly as the UVM has it. And there is no `AnalysisBus` in the wiring, because the FIFO already is the hub for its own taps — `put_ap()` takes the watcher's port directly, in the same export-owner-name idiom as every other connection on the page.
+
+```text
+# Figure 13: Every item put, observed and not consumed
+
+     15.00ns INFO     running FifoTapTest (4/4)  [ch32-analysis-ports/src/ch32_analysis_ports.rs:444]
+     15.00ns INFO     [FifoTapTest.producer]: put 0
+     15.00ns INFO     [FifoTapTest.consumer]: got 0
+     15.00ns INFO     [FifoTapTest.producer]: put 1
+     15.00ns INFO     [FifoTapTest.consumer]: got 1
+     15.00ns INFO     [FifoTapTest.producer]: put 2
+     15.00ns INFO     [FifoTapTest.consumer]: got 2
+     15.00ns INFO     [FifoTapTest.watcher]: tap saw [0, 1, 2]
+     15.00ns INFO     FifoTapTest PASSED
+```
+
+The consumer got each item exactly once — the queue's contract, intact. The watcher's report says `tap saw [0, 1, 2]`: every item put, observed on the way in, and none of them taken. Had the test connected `get_ap()` instead, the log would read the same for this traffic — items released rather than accepted — and a component with an interest in both edges can subscribe to both.
+
 ## Summary
 
-Analysis is one publisher and many subscribers: the publisher `write`s, every subscriber's `write()` runs, delivery is synchronous and free, and zero listeners is legal — the UVM's analysis layer, carried over whole, including the rule that `write` takes no time. A subscriber implements `WriteSink` on the state its write updates, shares that state between component and port with a `RustdvShared` handle, and makes two attachments: `on_write` in its own `build` says what an arriving item does, `connect` in the parent's `connect` phase says whose traffic it hears. Two streams means two ports and two `WriteSink` impls, no macros. The `AnalysisBus` brokers the fan-out with the same connect idiom as every other wiring in the book, and it stores nothing: the subscriber owns the storage, shaped to its job, and the only reason to make that storage a queue is time — `write` cannot await, so a slow subscriber front-ends its `run` with an unbounded inbox and lets the transcript show writes at zero and checks at leisure.
+Analysis is one publisher and many subscribers: the publisher `write`s, every subscriber's `write()` runs, delivery is synchronous and free, and zero listeners is legal — the UVM's analysis layer, carried over whole, including the rule that `write` takes no time. A subscriber is a plain struct implementing `Subscriber` on the state its `write` updates — `uvm_subscriber` is a component; rustdv's subscriber is data a component hosts — shared between component and port with a `RustdvShared` handle and attached twice: `subscribe` in the component's own `build` says what an arriving item does, `connect` in the parent's `connect` phase says whose traffic it hears. Two streams means two ports and two `Subscriber` impls, no macros. The `AnalysisBus` brokers the fan-out with the same connect idiom as every other wiring in the book, and it stores nothing: the subscriber owns the storage, shaped to its job, and the only reason to make that storage a queue is time — `write` cannot await, so a slow subscriber front-ends its `run` with an unbounded inbox and lets the transcript show writes at zero and checks at leisure. And every `TlmFifo` publishes on two taps of its own, `put_ap()` and `get_ap()` — observation running alongside a data path that still blocks when full and still hands each item to exactly one consumer.
 
 Testbench 6.0 now has everything it needs: components that talk point-to-point, monitors that broadcast, and a scoreboard that subscribes to two streams at once. Chapter 33 builds those components; Chapter 34 wires them to the TinyALU.
