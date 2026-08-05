@@ -47,15 +47,27 @@ macOS/arm64 ships too, and only Ray can confirm it.
 This is about *text*, not about git. Delete no branches; delete the places a
 document names one.
 
+Ask git which names are branches and look for those. Do not hard-code a list of
+names in this file: they change, and a stale list here would be exactly the kind
+of rot this step exists to catch.
+
 ```
-git grep -n "$(git branch --show-current)" -- . ':!*.lock'
-git grep -nE "ch23_onwards|rewrite-book|put_uvm_back_in_rustdv|fable-prep" -- . ':!*.lock'
+git for-each-ref --format='%(refname:short)' refs/heads refs/remotes \
+  | sed 's|^origin/||' | sort -u | grep -Ev '^(main|master|HEAD)$' \
+  | while read -r b; do git grep -n -F -- "$b" -- . ':!*.lock'; done
 ```
 
-Both must come back empty. Branches are ephemeral; every one ever written into
-a file in this repo was wrong within days and misdirected a thread. If a branch
-name turns up, rewrite the sentence to say what is true without it — a thread
-that needs to know where it is runs `git branch --show-current`.
+Must come back empty. `main`/`master` are skipped because they appear
+legitimately in URLs like `blob/master/...`; if you want to check those, do it
+by eye.
+
+This finds mentions of branches that still exist, which is the case that
+matters — a document naming the branch you are on, or one you just merged. A
+name whose branch was deleted long ago is only a word, and no grep can
+distinguish it from prose. Branches are ephemeral; every one ever written into a
+file in this repo was wrong within days and misdirected a thread. If one turns
+up, rewrite the sentence to say what is true without it — a thread that needs to
+know where it is runs `git branch --show-current`.
 
 ## 3. Orientation documents must match reality
 
@@ -68,9 +80,12 @@ Read them and check each claim, do not skim:
 | `CLAUDE.local.md` | what the current work is |
 | `output/.design-decisions.md` §0.5 | the status paragraph |
 
-**Never write a count you did not just measure.** `regress.py --list` prints the
-entry count; the filesystem knows how many chapters there are. Prose numbers in
-this repo have gone stale more than once and were then quoted back as fact.
+**Never write a count you did not just measure**, and prefer not to write one at
+all. `regress.py --list` prints the test ids; the filesystem knows how many
+chapters there are. Prose numbers here have gone stale more than once and were
+then quoted back as fact. Note that `--list` and a full run do not report the
+same total — some entries expand at run time — so a number is ambiguous even
+when it is fresh. Point at the command instead.
 
 If your session finished something these files describe as outstanding, update
 them now. That is not tidying — it is the deliverable.
