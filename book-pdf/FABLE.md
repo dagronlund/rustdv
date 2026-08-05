@@ -99,3 +99,12 @@ Reference material — cocotb, pyuvm, four releases of the SystemVerilog UVM, an
 the example code from both earlier books — is outside the repo at
 `../rustdv-reference`, read-only. Use it to check what the UVM actually does
 rather than what a comment says it does. 
+
+# Buy me a coffee
+
+I want a Buy Me a Coffee link at the top of every page of the HTML version of the book. I want to put https://buymeacoffee.com/raysalemi in the header of every page. 
+
+
+# Final step
+
+The book is ready to go to market.  Make one final complete sweep of the book to make final edits for its publication.

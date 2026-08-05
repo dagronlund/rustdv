@@ -187,6 +187,15 @@ Then stop and tell me what you found. Don't edit anything.
 <the next job, in a sentence or two>
 ```
 
+## 10. Clean up session artifacts
+
+Run the cleanup-tmp skill before handing off:
+
+```
+/cleanup-tmp
+```
+
+This removes all `/tmp/rustdv-*/` directories and reports space freed.
 ## Report
 
 One message. What changed, what is verified and on what platform, what is left
