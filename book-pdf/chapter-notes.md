@@ -146,8 +146,8 @@ explain, and explaining one would import a history the book does not have.
 | 28 | `ch28-config-debugging` | 9 listings. **The four compile-fail figures were deleted and must not come back** — they proved nothing, because config resolves at run time by design. The chapter is about `dump`, tracing, and `expect_error`: a debugger's toolkit, which is what late binding buys in exchange for compile-time checking. |
 | 29 | `ch29-factory` | 10 listings. **Reversed argument.** The factory is restored: `Factory`, `RustdvComp`, `new_comp`/`create_comp`, universal registration. The chapter's ledger currently lists "`create()` + type override" as ported to a maker closure — **type override is not ported that way; split it into two rows.** This chapter's history is the cautionary tale for the whole book: four separate times the "rustdv is better than UVM here" instinct fired and was wrong. |
 | 30 | `ch30-variation-point-testbench-5.0` | 5 listings. TB 5.0. The generic `AluEnv<T>` is gone: a variation point chosen at *run* time is a factory `create_comp()` slot swapped by a type override, not a type parameter. A generic base survives only for variation chosen at *compile* time. The reason is concrete — a factory override cannot reach a type parameter. **The testers are Chapter 20's `Tester` trait and testbench 2.0's `RandomTester`/`MaxTester`, now also components (D115).** They used to be a free `drive_stimulus` async fn called with closures; both were new machinery arriving where the chapter's subject is the factory, and both are gone. Do not reintroduce a helper here — the trait's provided `execute` *is* the abstract base class, and the reader has had it since Part II. |
-| 31 | `ch31-component-communications` | 12 listings. **Reversed argument — "channels replace TLM-1" is wrong.** Ports, exports and FIFOs are restored. A TLM FIFO wraps a queue so two components connect to the *same FIFO* and **neither learns the other exists**; the FIFO is the point of decoupling, not a hierarchy ornament. Connection errors are **elaboration** errors, reported for the whole tree at once — that is correct and it is one of rustdv's three genuine wins. Its old `direction_mismatch` compile-fail figure is deleted; do not resurrect the idea. **Two things this chapter must carry**, both detailed below the table: the `try_put` ownership handback, and the y = 2x² pipeline. |
-| 32 | `ch32-analysis-ports` | 7 listings, 3 tests. **`AnalysisFifo` is now `AnalysisBus`** — renamed everywhere, including four manuscript files. **The chapter's central new lesson is that the hub holds nothing**; see below the table. The broadcast transcript is at `0.00ns`, which is the point; the slow-subscriber test then shows writes at `0.00ns` and checks at 5/10/15ns, which is the other point. |
+| 31 | `ch31-component-communications` | 12 listings. **Reversed argument — "channels replace TLM-1" is wrong.** Ports, exports and FIFOs are restored. A TLM FIFO wraps a queue so two components connect to the *same FIFO* and **neither learns the other exists**; the FIFO is the point of decoupling, not a hierarchy ornament. Connection errors are **elaboration** errors, reported for the whole tree at once — that is correct and it is one of rustdv's three genuine wins. Its old `direction_mismatch` compile-fail figure is deleted; do not resurrect the idea. **Two things this chapter must carry**, both detailed below the table: the `try_put` ownership handback, and the y = 2x² pipeline. **2026-08-05 (Ray): the FIFO-taps section (old Figures 16–17) is deleted from this chapter** — it used `WriteSink`/`SubscribePort`/`RustdvShared`/`on_write` before ch32 teaches them, so the manuscript now prints 11 of the crate's 12 listings and keeps one forward sentence naming `TlmFifo::put_ap()`/`TlmFifo::get_ap()`. The demonstration lands in ch32 — see the long-form item, which names the code-thread work that must happen first. |
+| 32 | `ch32-analysis-ports` | 7 listings, 3 tests. **`AnalysisFifo` is now `AnalysisBus`** — renamed everywhere, including four manuscript files. **The chapter's central new lesson is that the hub holds nothing**; see below the table. The broadcast transcript is at `0.00ns`, which is the point; the slow-subscriber test then shows writes at `0.00ns` and checks at 5/10/15ns, which is the other point. **2026-08-05 (Ray): the FIFO-tap demonstration moves here from ch31** — a code thread must move the example first; see the long-form item below. **Also 2026-08-05 (Ray, directive): the identifier `analysis_fifo` must not appear anywhere.** The ch32 crate still names its bus field `analysis_fifo: AnalysisBus<u32>` in the three test structs — the code thread renames it (e.g. `bus`), and the prose thread re-pastes Figures 4, 6 and 9. The field name never prints in a transcript, so only the listings move. |
 | 33 | `ch34-connections-testbench-6.0` | **ch33 has no crate of its own.** Its six listings are the component definitions inside ch34's crate, captioned `// Chapter 33, Figure N:`. Each chapter's README maps its own listings. This is deliberate — a separate ch33 crate would need a cross-chapter import, and the book re-shows evolving classes rather than importing them. |
 | 34 | `ch34-connections-testbench-6.0` | 10 listings; ch34 owns Figures 1–2 there, the env and the test. TB 6.0, the TinyALU wired with `TlmFifo` and two `AnalysisBus` buses. **Reversed argument.** Note for the prose: the Tester holds its objection for twenty clocks after its last put, where the Python testbench waits ten, because the multiply is last and slowest — without the wait the scoreboard silently checks fewer results than it saw commands. |
 | 35 | `ch35-transactions` | Listings are bins under `src/bin/`. **Rebuilt from scratch — the figure numbering changed completely. Take the map from the crate's README, never from the old manuscript.** Seven runnable listings (the old chapter had five, two of them unrunnable "fragments"). Structure follows the Python book's *uvm_object in Python*: a `PersonRecord`, then a `StudentRecord` owning a list of grades, walked through the four transaction operations; the grades list is the point, because three scalars cannot show shallow versus deep. The TinyALU transactions arrive last, as the payoff. Three specifics below the table. |
@@ -288,6 +288,35 @@ If the prose explains the name `AnalysisBus`, the reason is that the old name
 was borrowed from `uvm_tlm_analysis_fifo` — a *subscriber-side buffer*, the one
 thing this design decided rustdv does not need — while the type it named is the
 broadcast hub, which the UVM has no counterpart for at all.
+
+### ch32 — the FIFO-tap demonstration moves here from ch31 (Ray, 2026-08-05)
+
+ch31's "The FIFO's built-in taps" section is deleted from the manuscript: its
+demonstration (`TapLog`/`TapWatcher`/`FifoTapTest`) used `WriteSink`,
+`SubscribePort`, `RustdvShared` and `on_write` before this chapter teaches any
+of them. ch31 now carries a single forward sentence naming `TlmFifo::put_ap()`
+and `TlmFifo::get_ap()` and deferring the explanation here.
+
+The demonstration belongs near the end of this chapter, once subscribers are
+understood. **A code thread must move the example before the prose can print
+it** — the code still lives in the ch31 crate, captioned `// Chapter 31,
+Figure 16`. That thread owes:
+
+- Move the tap example (`TapLog`, `TapWatcher`, `FifoTapTest`, plus a
+  producer/consumer pair for the data path) from the ch31 crate into the ch32
+  crate, recaptioned into ch32's figure sequence (D110).
+- Removing `FifoTapTest` from the ch31 crate changes every ch31 transcript's
+  test count (`(1/5)` becomes `(1/4)`): regenerate all ch31 transcripts, the
+  ch31 README, and repaste into the manuscript.
+- Regenerate the ch32 README figure map and transcript with the new test.
+
+Then the prose: teach the taps as the port of `uvm_tlm_fifo`'s built-in
+analysis ports, wired like any other subscription, naming the accessors
+`TlmFifo::put_ap()` and `TlmFifo::get_ap()`. The sentence worth carrying over
+from the deleted section: the FIFO's data path is still a queue — one consumer
+takes each item, the producer blocks when it is full — while the taps are
+observation running alongside; every subscriber sees every item, nothing is
+consumed, and nobody is delayed.
 
 ### ch35 — a transaction is not an object
 
