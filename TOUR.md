@@ -177,6 +177,9 @@ or similar) and to nobody else:
   the crate README and the chapter.
 - **Never write a branch name into a document.** Branches are ephemeral and a
   branch named in a file is wrong within days. Ask git.
+- **Ending your session? Run the `close-out-thread` skill**
+  (`.claude/skills/close-out-thread/SKILL.md`) — the checklist that keeps this
+  file honest and produces the next thread's prompt.
 - `CLAUDE.md` has the standing rules; persistent memory notes point here.
   Deeper history: `STATUS.md`, newest at the bottom.
 

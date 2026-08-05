@@ -50,6 +50,9 @@ repository at ../rustdv-reference, so the repo carries only its own product.
 - /output/regression — regress.py, wired into the git pre-push hook.
 - /skills — AI verification skills (rtl-spec-analysis, rustdv-testbench,
   rustdv-verify-cover).
+- /.claude/skills — skills for working *on* this repo: `close-out-thread`
+  (run before your session ends), `wire-an-env`, `write-a-bfm`,
+  `debug-a-regression`, `new-rustdv-testbench`.
 - STATUS.md — authoritative implementation history and deviations log.
 - TOUR.md — orientation for new readers and new threads (start there).
 
@@ -125,5 +128,12 @@ check and a guess.
 **Do not create per-thread prompt files.** Orientation lives in TOUR.md
 ("Notes for AI sessions" has the sandbox hazards) and in this file. A new thread
 is pointed at those, not handed a restatement of them that will itself go stale.
+
+**Before your session ends, run the `close-out-thread` skill**
+(`.claude/skills/close-out-thread/SKILL.md`). It is the checklist that keeps
+this file and TOUR.md true: green tree, no document naming a branch, orientation
+documents matching reality, notes struck that your session made false, and the
+prompt for whoever comes next. It exists because three orientation files were
+found describing finished work as active, and a thread acted on all three.
 - Flag uncertainty openly (Open Questions / STATUS deviations) rather than
   presenting guesses as settled.
