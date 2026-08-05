@@ -48,7 +48,7 @@ For readers coming from cocotb and pyuvm (and *Python for RTL Verification*): th
 | TLM-1 put/get/peek port classes | `PutPort`/`GetPort`/`PeekPort`, wired export-to-port through a `TlmFifo` | 31 |
 | `UVMTLMConnectionError` (lazy, at first use) | elaboration sweep names every unwired port before run | 31 |
 | `uvm_analysis_port.write()` | `PublishPort<T>::write(&T)` through an `AnalysisBus` hub | 32 |
-| `uvm_subscriber` (one `write` per class) | a `WriteSink<T>` impl per stream — two streams, two impls | 32, 34 |
+| `uvm_subscriber` (one `write` per class) | a `Subscriber<T>` impl per stream — two streams, two impls | 32, 34 |
 | `uvm_tlm_analysis_fifo` | absent — the subscriber owns its storage | 32 |
 | `uvm_object` do_copy/do_compare/`__str__` | `#[derive(Clone, PartialEq, Debug)]` + hand-written `Display` | 35 |
 | `copy(other)` / `clone()` | `clone_from(&mut self, src)` / `clone()` | 35 |

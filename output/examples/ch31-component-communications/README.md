@@ -8,7 +8,7 @@ sim-common/run_sim.sh ch31_component_communications playground
 
 Figure numbers are the **book's** (D110: one numbering space per chapter, code
 and transcripts drawn from the same sequence); the `.rs` captions carry the same
-numbers. Figures 4, 8, 13, 15 and 17 are transcripts, which is why the code
+numbers. Figures 4, 8, 13 and 15 are transcripts, which is why the code
 captions skip them.
 
 | Figure | Title | Where |
@@ -28,10 +28,12 @@ captions skip them.
 | 13 | 2, 8, 18, 32 | transcript — `MathTest` |
 | 14 | A port left unconnected is an elaboration error | `src/ch31_component_communications.rs` (`UnconnectedTest`) |
 | 15 | The whole tree's connection errors, at once | transcript — `UnconnectedTest` |
-| 16 | A FIFO's built-in analysis taps | `src/ch31_component_communications.rs` (`FifoTapTest`) |
-| 17 | Every put and get, observed | transcript — `FifoTapTest` |
 
-Five tests, all ending `REGRESSION: PASS`.
+Four tests, all ending `REGRESSION: PASS`.
+
+The FIFO's built-in taps (`put_ap()`/`get_ap()`) were demonstrated here and now
+live in Chapter 32 (D117): they are analysis-layer machinery, and this chapter
+only names them in passing.
 
 ## What this chapter proves
 
@@ -59,8 +61,8 @@ Five tests, all ending `REGRESSION: PASS`.
 Real Icarus output (`RUSTDV_RANDOM_SEED=1`):
 
 ```
-      0.00ns INFO     rustdv: found 5 test(s), RUSTDV_RANDOM_SEED=1
-      0.00ns INFO     running PutGetPeekTest (1/5)  [ch31-component-communications/src/ch31_component_communications.rs:124]
+      0.00ns INFO     rustdv: found 4 test(s), RUSTDV_RANDOM_SEED=1
+      0.00ns INFO     running PutGetPeekTest (1/4)  [ch31-component-communications/src/ch31_component_communications.rs:124]
       0.00ns INFO     [PutGetPeekTest.producer]: put 0
       0.00ns INFO     [PutGetPeekTest.consumer]: peeked 0
       0.00ns INFO     [PutGetPeekTest.consumer]: got 0
@@ -71,7 +73,7 @@ Real Icarus output (`RUSTDV_RANDOM_SEED=1`):
       0.00ns INFO     [PutGetPeekTest.consumer]: peeked 2
       0.00ns INFO     [PutGetPeekTest.consumer]: got 2
       0.00ns INFO     PutGetPeekTest PASSED
-      0.00ns INFO     running NonBlockingTest (2/5)  [ch31-component-communications/src/ch31_component_communications.rs:247]
+      0.00ns INFO     running NonBlockingTest (2/4)  [ch31-component-communications/src/ch31_component_communications.rs:247]
       0.00ns INFO     [NonBlockingTest.producer]: put 0
       0.00ns INFO     [NonBlockingTest.producer]: FIFO full, retrying
       0.00ns INFO     [NonBlockingTest.consumer]: got pkt0 (n=0)
@@ -81,7 +83,7 @@ Real Icarus output (`RUSTDV_RANDOM_SEED=1`):
       2.00ns INFO     [NonBlockingTest.producer]: put 2
       2.00ns INFO     [NonBlockingTest.consumer]: got pkt2 (n=2)
       2.00ns INFO     NonBlockingTest PASSED
-      2.00ns INFO     running MathTest (3/5)  [ch31-component-communications/src/ch31_component_communications.rs:345]
+      2.00ns INFO     running MathTest (3/4)  [ch31-component-communications/src/ch31_component_communications.rs:345]
       2.00ns INFO     [MathTest.square_it]: 1² = 1
       2.00ns INFO     [MathTest.times_two]: 2 × 1 = 2
       2.00ns INFO     [MathTest]: PASSED: x=1, y=2
@@ -95,20 +97,8 @@ Real Icarus output (`RUSTDV_RANDOM_SEED=1`):
       2.00ns INFO     [MathTest.times_two]: 2 × 16 = 32
       2.00ns INFO     [MathTest]: PASSED: x=4, y=32
       2.00ns INFO     MathTest PASSED
-      2.00ns INFO     running UnconnectedTest (4/5)  [ch31-component-communications/src/ch31_component_communications.rs:421]
+      2.00ns INFO     running UnconnectedTest (4/4)  [ch31-component-communications/src/ch31_component_communications.rs:421]
       2.00ns INFO     UnconnectedTest PASSED
-      2.00ns INFO     running FifoTapTest (5/5)  [ch31-component-communications/src/ch31_component_communications.rs:482]
-      2.00ns INFO     [FifoTapTest.producer]: put 0
-      2.00ns INFO     [FifoTapTest.consumer]: peeked 0
-      2.00ns INFO     [FifoTapTest.consumer]: got 0
-      2.00ns INFO     [FifoTapTest.producer]: put 1
-      2.00ns INFO     [FifoTapTest.consumer]: peeked 1
-      2.00ns INFO     [FifoTapTest.consumer]: got 1
-      2.00ns INFO     [FifoTapTest.producer]: put 2
-      2.00ns INFO     [FifoTapTest.consumer]: peeked 2
-      2.00ns INFO     [FifoTapTest.consumer]: got 2
-      2.00ns INFO     [FifoTapTest.watcher]: tap saw [0, 1, 2]
-      2.00ns INFO     FifoTapTest PASSED
 ******************************************************************************
 ** TEST                                       STATUS  SIM TIME (ns)      **
 ******************************************************************************
@@ -116,7 +106,6 @@ Real Icarus output (`RUSTDV_RANDOM_SEED=1`):
 ** NonBlockingTest                              PASS           2.00      **
 ** MathTest                                     PASS           0.00      **
 ** UnconnectedTest                              PASS           0.00      **
-** FifoTapTest                                  PASS           0.00      **
 ******************************************************************************
 REGRESSION: PASS
 ```

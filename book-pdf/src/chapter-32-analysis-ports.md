@@ -50,8 +50,8 @@ The third piece is the setup, and it is two calls made by two different componen
 
 ```rust,ignore
 // the subscriber, in its own build phase:
-let my_sink = self.tally.clone();   // a second handle to the state struct
-self.input.on_write(my_sink);       // "pour arriving items into this"
+let my_subscriber = self.tally.clone();   // a second handle to the state struct
+self.input.subscribe(my_subscriber);       // "pour arriving items into this"
 
 // the parent, in its connect phase:
 bus.sub_export().connect(&self.counter, Counter::INPUT);
@@ -78,7 +78,7 @@ struct ItemCount {
     count: u32,
 }
 
-impl WriteSink<u32> for ItemCount {
+impl Subscriber<u32> for ItemCount {
     fn write(&mut self, _item: &u32) {
         self.count += 1;
     }
@@ -93,8 +93,8 @@ struct Counter {
 
 impl Component for Counter {
     fn build(&mut self, _ctx: &mut RustdvCtx) {
-        let my_sink = self.tally.clone();
-        self.input.on_write(my_sink);
+        let my_subscriber = self.tally.clone();
+        self.input.subscribe(my_subscriber);
     }
 
     fn report(&mut self, ctx: &mut RustdvCtx) {
@@ -115,7 +115,7 @@ struct SeenList {
     items: Vec<u32>,
 }
 
-impl WriteSink<u32> for SeenList {
+impl Subscriber<u32> for SeenList {
     fn write(&mut self, item: &u32) {
         self.items.push(*item);
     }
@@ -130,8 +130,8 @@ struct Collector {
 
 impl Component for Collector {
     fn build(&mut self, _ctx: &mut RustdvCtx) {
-        let my_sink = self.seen.clone();
-        self.input.on_write(my_sink);
+        let my_subscriber = self.seen.clone();
+        self.input.subscribe(my_subscriber);
     }
 
     fn report(&mut self, ctx: &mut RustdvCtx) {
@@ -181,7 +181,7 @@ struct BroadcastTest {
     #[component]
     collector: RustdvComp,
     #[component]
-    analysis_fifo: AnalysisBus<u32>,
+    bus: AnalysisBus<u32>,
 }
 
 impl Component for BroadcastTest {
@@ -189,13 +189,13 @@ impl Component for BroadcastTest {
         self.source = NumberGen::new_comp();
         self.counter = Counter::new_comp();
         self.collector = Collector::new_comp();
-        self.analysis_fifo = AnalysisBus::new();
+        self.bus = AnalysisBus::new();
     }
 
     fn connect(&mut self, _ctx: &mut RustdvCtx) {
-        self.analysis_fifo.pub_export().connect(&self.source, NumberGen::AP);
-        self.analysis_fifo.sub_export().connect(&self.counter, Counter::INPUT);
-        self.analysis_fifo.sub_export().connect(&self.collector, Collector::INPUT);
+        self.bus.pub_export().connect(&self.source, NumberGen::AP);
+        self.bus.sub_export().connect(&self.counter, Counter::INPUT);
+        self.bus.sub_export().connect(&self.collector, Collector::INPUT);
     }
 }
 ```
@@ -205,7 +205,7 @@ The wiring reads exactly like Chapter 31's: a concrete `#[component]` child, a n
 ```text
 # Figure 5: One write, every subscriber hears it — all in zero time
 
-      0.00ns INFO     running BroadcastTest (1/3)  [ch32-analysis-ports/src/ch32_analysis_ports.rs:192]
+      0.00ns INFO     running BroadcastTest (1/4)  [ch32-analysis-ports/src/ch32_analysis_ports.rs:193]
       0.00ns INFO     [BroadcastTest.source]: wrote 0
       0.00ns INFO     [BroadcastTest.source]: wrote 1
       0.00ns INFO     [BroadcastTest.source]: wrote 2
@@ -228,17 +228,17 @@ struct NoSubscribersTest {
     #[component]
     source: RustdvComp,
     #[component]
-    analysis_fifo: AnalysisBus<u32>,
+    bus: AnalysisBus<u32>,
 }
 
 impl Component for NoSubscribersTest {
     fn build(&mut self, _ctx: &mut RustdvCtx) {
         self.source = NumberGen::new_comp();
-        self.analysis_fifo = AnalysisBus::new();
+        self.bus = AnalysisBus::new();
     }
 
     fn connect(&mut self, _ctx: &mut RustdvCtx) {
-        self.analysis_fifo.pub_export().connect(&self.source, NumberGen::AP);
+        self.bus.pub_export().connect(&self.source, NumberGen::AP);
         // no sub_export() connection — legal for analysis
     }
 }
@@ -247,7 +247,7 @@ impl Component for NoSubscribersTest {
 ```text
 # Figure 7: Broadcasting into the void
 
-      0.00ns INFO     running NoSubscribersTest (2/3)  [ch32-analysis-ports/src/ch32_analysis_ports.rs:230]
+      0.00ns INFO     running NoSubscribersTest (2/4)  [ch32-analysis-ports/src/ch32_analysis_ports.rs:231]
       0.00ns INFO     [NoSubscribersTest.source]: wrote 0
       0.00ns INFO     [NoSubscribersTest.source]: wrote 1
       0.00ns INFO     [NoSubscribersTest.source]: wrote 2
@@ -271,7 +271,7 @@ struct Inbox {
     queue: TlmFifo<u32>,
 }
 
-impl WriteSink<u32> for Inbox {
+impl Subscriber<u32> for Inbox {
     fn write(&mut self, item: &u32) {
         let _ = self.queue.try_put(*item);
     }
@@ -288,7 +288,7 @@ impl Component for SlowChecker {
     fn build(&mut self, _ctx: &mut RustdvCtx) {
         self.inbox = RustdvShared::new(Inbox { queue: TlmFifo::unbounded() });
         let my_inbox = self.inbox.clone();
-        self.input.on_write(my_inbox);
+        self.input.subscribe(my_inbox);
     }
 
     async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
@@ -320,19 +320,19 @@ struct SlowSubscriberTest {
     #[component]
     checker: RustdvComp,
     #[component]
-    analysis_fifo: AnalysisBus<u32>,
+    bus: AnalysisBus<u32>,
 }
 
 impl Component for SlowSubscriberTest {
     fn build(&mut self, _ctx: &mut RustdvCtx) {
         self.source = NumberGen::new_comp();
         self.checker = SlowChecker::new_comp();
-        self.analysis_fifo = AnalysisBus::new();
+        self.bus = AnalysisBus::new();
     }
 
     fn connect(&mut self, _ctx: &mut RustdvCtx) {
-        self.analysis_fifo.pub_export().connect(&self.source, NumberGen::AP);
-        self.analysis_fifo.sub_export().connect(&self.checker, SlowChecker::INPUT);
+        self.bus.pub_export().connect(&self.source, NumberGen::AP);
+        self.bus.sub_export().connect(&self.checker, SlowChecker::INPUT);
     }
 }
 ```
@@ -342,7 +342,7 @@ Nothing in the wiring says this subscriber buffers — the same `sub_export()` a
 ```text
 # Figure 10: Writes at 0ns; checks at 5, 10, 15
 
-      0.00ns INFO     running SlowSubscriberTest (3/3)  [ch32-analysis-ports/src/ch32_analysis_ports.rs:324]
+      0.00ns INFO     running SlowSubscriberTest (3/4)  [ch32-analysis-ports/src/ch32_analysis_ports.rs:325]
       0.00ns INFO     [SlowSubscriberTest.source]: wrote 0
       0.00ns INFO     [SlowSubscriberTest.source]: wrote 1
       0.00ns INFO     [SlowSubscriberTest.source]: wrote 2

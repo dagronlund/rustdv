@@ -133,7 +133,7 @@ struct ResultWatcher {
 
 impl Component for ResultWatcher {
     fn build(&mut self, _ctx: &mut RustdvCtx) {
-        self.input.on_write(self.seen.clone());
+        self.input.subscribe(self.seen.clone());
     }
 
     fn check(&mut self, ctx: &mut RustdvCtx, errors: &mut CheckSink) {

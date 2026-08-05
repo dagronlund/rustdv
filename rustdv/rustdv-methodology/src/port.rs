@@ -101,8 +101,9 @@ pub trait PeekIf<T: 'static>: 'static {
 /// zero time, so there is no `async`, no back-pressure, and nothing to await.
 /// Implement it on the **state** a subscriber keeps, not on the component (a
 /// sibling cannot be reached from a `run` phase); see
-/// [`RustdvShared`](crate::RustdvShared).
-pub trait WriteSink<T>: 'static {
+/// [`RustdvShared`](crate::RustdvShared). The UVM makes the subscriber a
+/// component; here it is the plain struct the component hosts.
+pub trait Subscriber<T>: 'static {
     fn write(&mut self, item: &T);
 }
 
@@ -115,7 +116,7 @@ pub trait SinkHandle<T: 'static>: 'static {
     fn deliver(&self, item: &T);
 }
 
-impl<T: 'static, S: WriteSink<T>> SinkHandle<T> for crate::shared::RustdvShared<S> {
+impl<T: 'static, S: Subscriber<T>> SinkHandle<T> for crate::shared::RustdvShared<S> {
     fn deliver(&self, item: &T) {
         self.get_mut().write(item);
     }
@@ -195,8 +196,8 @@ pub type PeekPort<T> = Port<dyn PeekIf<T>>;
 pub type PublishPort<T> = Port<dyn PublishIf<T>>;
 /// A port that receives broadcast items. It is the odd one out: instead of
 /// the export writing an interface *into* it, the component fills it with its
-/// sink ([`on_write`](SubscribePort::on_write)) and the hub reads it out at
-/// connect time. Broadcast runs the other way, so the wiring does too.
+/// subscriber ([`subscribe`](SubscribePort::subscribe)) and the hub reads it
+/// out at connect time. Broadcast runs the other way, so the wiring does too.
 pub type SubscribePort<T> = Port<dyn SinkHandle<T>>;
 
 impl<I: ?Sized + 'static> Clone for Port<I> {
@@ -302,17 +303,18 @@ impl<T: 'static> PublishPort<T> {
 }
 
 impl<T: 'static> SubscribePort<T> {
-    /// Say what to do with each item: hand the port a handle to the state the
-    /// subscriber keeps.
+    /// Supply the receiver: hand the port a handle to the subscriber whose
+    /// `write` should run for every item.
     ///
     /// Called in the subscriber's `build`, before any connect phase runs, so
-    /// the sink is already in place when the hub comes looking for it.
-    pub fn on_write<S: WriteSink<T>>(&self, sink: crate::shared::RustdvShared<S>) {
-        *self.slot.borrow_mut() = Some(Rc::new(sink));
+    /// it is already in place when the hub comes looking for it. `connect`
+    /// chooses the stream; `subscribe` supplies the receiver.
+    pub fn subscribe<S: Subscriber<T>>(&self, subscriber: crate::shared::RustdvShared<S>) {
+        *self.slot.borrow_mut() = Some(Rc::new(subscriber));
     }
 
-    /// The sink this port was given, if `on_write` was called.
-    pub fn sink(&self) -> Option<Rc<dyn SinkHandle<T>>> {
+    /// The subscriber this port was given, if `subscribe` was called.
+    pub fn subscriber(&self) -> Option<Rc<dyn SinkHandle<T>>> {
         self.slot.borrow().clone()
     }
 }
@@ -334,7 +336,7 @@ pub(crate) fn sink_of<T: 'static>(
         .downcast::<RefCell<Option<Rc<dyn SinkHandle<T>>>>>()
         .map_err(|_| ConnectError::WrongInterface { owner: label, name: name.as_str() })?;
     let sink = slot.borrow().clone();
-    sink.ok_or(ConnectError::NoSink { owner: label, name: name.as_str() })
+    sink.ok_or(ConnectError::NoSubscriber { owner: label, name: name.as_str() })
 }
 
 impl<REQ: 'static, RSP: 'static> Port<dyn crate::sequence::SeqItemIf<REQ, RSP>> {
@@ -433,8 +435,8 @@ pub enum ConnectError {
     /// aimed at a `put` port, or a different transaction type.
     WrongInterface { owner: &'static str, name: &'static str },
     /// A subscribe port was connected but its component never said what to do
-    /// with the items — no `on_write` in its build phase.
-    NoSink { owner: &'static str, name: &'static str },
+    /// with the items — no `subscribe` in its build phase.
+    NoSubscriber { owner: &'static str, name: &'static str },
 }
 
 impl fmt::Display for ConnectError {
@@ -450,10 +452,10 @@ impl fmt::Display for ConnectError {
                 "connect: {owner}'s port '{name}' wants a different interface \
                  (put/get/peek mismatch, or a different transaction type)"
             ),
-            ConnectError::NoSink { owner, name } => write!(
+            ConnectError::NoSubscriber { owner, name } => write!(
                 f,
-                "connect: {owner}'s subscribe port '{name}' has no sink — call \
-                 `self.{name}.on_write(handle)` in {owner}'s build phase"
+                "connect: {owner}'s subscribe port '{name}' has no subscriber — call \
+                 `self.{name}.subscribe(handle)` in {owner}'s build phase"
             ),
         }
     }

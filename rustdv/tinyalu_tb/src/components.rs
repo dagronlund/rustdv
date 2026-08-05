@@ -108,7 +108,7 @@ struct CmdLog {
     cmds: Vec<AluCommand>,
 }
 
-impl WriteSink<AluCommand> for CmdLog {
+impl Subscriber<AluCommand> for CmdLog {
     fn write(&mut self, cmd: &AluCommand) {
         self.cmds.push(cmd.clone());
     }
@@ -119,7 +119,7 @@ struct ResultLog {
     results: Vec<AluResult>,
 }
 
-impl WriteSink<AluResult> for ResultLog {
+impl Subscriber<AluResult> for ResultLog {
     fn write(&mut self, res: &AluResult) {
         self.results.push(res.clone());
     }
@@ -142,8 +142,8 @@ pub struct Scoreboard {
 
 impl Component for Scoreboard {
     fn build(&mut self, _ctx: &mut RustdvCtx) {
-        self.cmd_in.on_write(self.cmd_log.clone());
-        self.result_in.on_write(self.result_log.clone());
+        self.cmd_in.subscribe(self.cmd_log.clone());
+        self.result_in.subscribe(self.result_log.clone());
     }
 
     fn check(&mut self, ctx: &mut RustdvCtx, errors: &mut CheckSink) {
@@ -199,7 +199,7 @@ struct CovCollector {
     seen: HashMap<Ops, usize>,
 }
 
-impl WriteSink<AluCommand> for CovCollector {
+impl Subscriber<AluCommand> for CovCollector {
     fn write(&mut self, cmd: &AluCommand) {
         *self.seen.entry(cmd.op).or_insert(0) += 1;
     }
@@ -217,7 +217,7 @@ pub struct Coverage {
 
 impl Component for Coverage {
     fn build(&mut self, _ctx: &mut RustdvCtx) {
-        self.cmd_in.on_write(self.collector.clone());
+        self.cmd_in.subscribe(self.collector.clone());
     }
 
     fn check(&mut self, _ctx: &mut RustdvCtx, errors: &mut CheckSink) {

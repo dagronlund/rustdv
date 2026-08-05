@@ -331,7 +331,7 @@ impl Component for CmdMonitor {
 struct CmdLog {
     cmds: Vec<CmdTuple>,
 }
-impl WriteSink<CmdTuple> for CmdLog {
+impl Subscriber<CmdTuple> for CmdLog {
     fn write(&mut self, cmd: &CmdTuple) {
         self.cmds.push(*cmd);
     }
@@ -341,7 +341,7 @@ impl WriteSink<CmdTuple> for CmdLog {
 struct ResultLog {
     results: Vec<u64>,
 }
-impl WriteSink<u64> for ResultLog {
+impl Subscriber<u64> for ResultLog {
     fn write(&mut self, r: &u64) {
         self.results.push(*r);
     }
@@ -360,8 +360,8 @@ struct Scoreboard {
 
 impl Component for Scoreboard {
     fn build(&mut self, _ctx: &mut RustdvCtx) {
-        self.cmd_in.on_write(self.cmd_log.clone());
-        self.result_in.on_write(self.result_log.clone());
+        self.cmd_in.subscribe(self.cmd_log.clone());
+        self.result_in.subscribe(self.result_log.clone());
     }
 
     fn check(&mut self, ctx: &mut RustdvCtx, errors: &mut CheckSink) {

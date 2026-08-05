@@ -257,9 +257,10 @@ one `&`.
   objects does not trigger pyuvm's "you never objected" warning.
 - **`#[derive(Component)]` learned unit structs** (`struct HelloWorldTest;`).
 - **`tinyalu_utils` is infrastructure only** (D45): `tb2`, `tb4`, `tb6`,
-  `tb7`, `env7`, `bfm7`, `alu_item` are no longer compiled. The files stay
+  `tb7`, `env7`, `bfm7`, `alu_item` are no longer compiled. ~~The files stay
   in `src/` so each chapter can lift its copy into the chapter file as it
-  converts; ch23 has done so.
+  converts; ch23 has done so.~~ **Struck 2026-08-05: every chapter converted
+  and the seven files were deleted** — see the D116/D117 entry at the end.
 - **Mechanical rename** of `TestCtx`/`RunCtx` → `RustdvCtx` across 49
   files: examples, `tinyalu_tb`, `getting-started-with-rustdv.md`, and the
   book chapters. No `file:line` moved, so no transcript regeneration (D31).
@@ -991,3 +992,66 @@ struct in the tree applies it. Live logic, no call site.~~ **Struck 2026-08-05:
 both were deleted afterwards** — neither identifier survives anywhere in
 `rustdv/`, and the derive parses no argument. This note was later quoted as
 current fact; verify against the code, not against this file.
+
+## The analysis layer gets the UVM's own word (D116/D117, 2026-08-05)
+
+`WriteSink` is now `Subscriber`, and `SubscribePort::on_write()` is now
+`subscribe()`. `WriteSink` was an invented name that mapped to nothing a UVM
+engineer knows; `uvm_subscriber` is the role's actual name, ch10's prose had
+been promising `Subscriber` all along, and a legacy `Subscriber<T>` trait with
+the identical signature was sitting in `analysis.rs` marked superseded — the
+good name was on the deprecated trait. Reasoning in `.design-decisions.md` §44.
+
+**The legacy surface was confirmed dead before deletion, not assumed dead.**
+`Subscriber`, `AnalysisPort`, `connect_fifo` and `FifoAdapter` had exactly
+three callers — `tinyalu-utils/src/{tb6,tb7,env7}.rs` — and D45 commented those
+modules out of the crate root, so none of them had compiled in months.
+
+**Those files, and the four beside them, are now deleted.** `tb2.rs`, `tb4.rs`,
+`tb6.rs`, `tb7.rs`, `alu_item.rs`, `bfm7.rs` and `env7.rs` were kept in `src/`
+under D45 so each chapter could lift its copy back as it converted; every
+chapter has converted. Their git log is the argument for removing them: `tb6`
+and `tb7` were edited on 2026-07-29 to follow the `AnalysisFifo` →
+`AnalysisBus` rename and `env7` on 2026-07-30 to follow the `#[component]`
+cleanup — maintenance paid on code no compiler ever checked, while `env7.rs`
+went on describing constructor injection ("Constructors do build and connect —
+review-memo R3") as the design, three months after the restoration reversed it.
+Dead code that is still being edited is worse than dead code.
+
+Renamed with the trait, for one vocabulary rather than two:
+`ConnectError::NoSink` → `NoSubscriber`, `SubscribePort::sink()` →
+`subscriber()`, and the forgot-to-call panic text, which now reads *"has no
+subscriber — call `self.<name>.subscribe(handle)` in <owner>'s build phase"*.
+**Not** renamed, deliberately: the internal `SinkHandle` trait and `sink_of()`,
+which name the erased handle rather than the role and appear in no listing.
+
+No identifier is named `analysis_fifo` (D116). The ch32 crate's three bus
+fields are `bus`. `uvm_tlm_analysis_fifo` survives throughout — it is UVM's
+class name, and the chapters contrast `AnalysisBus` against it.
+
+The FIFO-tap demonstration moved from the ch31 crate to ch32's (D117), now
+Figures 11–13. It reuses ch31's `Producer` and `Consumer` verbatim for its data
+path; they sit in the ch32 crate uncaptioned, because reprinting put/get inside
+the analysis chapter would re-teach the previous chapter's subject (D115). ch31
+is down to four tests and ch32 up to four, so both READMEs and all six affected
+transcripts were regenerated from real Icarus runs.
+
+Changed: `port.rs`, `analysis.rs`, `fifo.rs`, both re-export lists,
+`tinyalu_tb/components.rs`, six example crates, both example READMEs, the
+listings and reference tables in five manuscript files, and
+`skills/rustdv-testbench/SKILL.md`. Full regression green on Linux sandbox;
+**not yet verified on macOS/arm64.**
+
+**The manuscript's running prose is deliberately not changed.** ch32's section
+headings (`## WriteSink: what an arriving item does`, `## on_write and
+connect`) and the paragraphs under them still use the retired names, as does
+one paragraph each in ch33 and ch34. Only listings, code comments and mapping
+tables were touched here; the vocabulary rewrite is the prose pass's, and
+`book-pdf/FABLE.md` already carries the instruction.
+
+*Noticed alongside, not fixed:* `.claude/skills/wire-an-env/SKILL.md` still
+teaches the **pre-restoration** design wholesale — constructor injection, "no
+factory, no ConfigDB, no string paths", connection as a compile error. Its dead
+`AnalysisPort`/`connect_fifo` lines are a symptom, not the problem; the file
+was not editable from this session's sandbox, and patching only the names would
+have made a wrong document look freshly maintained.

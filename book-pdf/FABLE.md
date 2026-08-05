@@ -1,38 +1,59 @@
 # Brief for the prose pass
 # Notes for RustDV Book.
 
-# Chapter 32 — finish it after the rename thread lands
+# Chapter 32 — the code has landed; the prose is yours
 
 The chapter was restructured on 2026-08-05: the publisher/many-subscribers
 concept first, then the two ports, the `write` trait, a `RustdvShared`
 digression, the enrollment-versus-connection split, and only then the
 counter/collector example, the storing-nothing bus, and the slow-subscriber
-section. The bones are right. What remains is blocked on a **code thread**
-(the work order is the ch32 row and long-form items in
-`book-pdf/chapter-notes.md`), and the prose must follow it:
+section. The bones are right.
 
-* `WriteSink` becomes `Subscriber`, and `on_write()` becomes `subscribe()`.
-  Re-paste every affected listing, then rewrite the subscriber sections in the
-  new vocabulary: **the plain struct with `write()` is the subscriber; a
-  component hosts it.** The parent `connect`s (which stream); the component
-  `subscribe`s (which receiver). Stop calling the hosting component "the
-  subscriber", and say in one sentence that `uvm_subscriber` is a component
-  while rustdv's `Subscriber` is plain data — the same lesson the chapter
-  already teaches about where storage lives.
-* The identifier `analysis_fifo` appears nowhere. The crate's bus fields are
-  renamed; re-paste Figures 4, 6 and 9.
-* The `TlmFifo` tap demonstration (removed from ch31 on 2026-08-05) lands at
-  the end of ch32 once the code thread moves the example into the ch32 crate.
-  Teach it as the port of `uvm_tlm_fifo`'s built-in analysis ports,
-  `TlmFifo::put_ap()` / `TlmFifo::get_ap()`: the data path is still a queue —
-  one consumer takes each item, the producer blocks when full — while the taps
-  are observation alongside; every subscriber sees every item, nothing is
-  consumed, nobody is delayed. The move also changes every ch31 transcript's
-  test count, so ch31's transcripts get re-pasted from the regenerated README.
+**The code thread ran on 2026-08-05 (D116/D117). You are not blocked.** Both
+checkers are green — `verify-book-listings.py` reports 0 drift and
+`verify-transcripts.sh` passes — so **every code block and every transcript in
+ch32 is already correct**. Do not re-paste listings; they came from the crate.
+What is left is the vocabulary in the running prose around them, which the code
+thread deliberately did not touch.
 
-Do not start until `python3 output/regression/verify-book-listings.py` and
-`bash output/regression/verify-transcripts.sh` are green against the renamed
-crates.
+What changed under you, and what it obliges:
+
+* `WriteSink` is now `Subscriber`; `on_write()` is now `subscribe()`. The
+  listings say so; the prose does not. Still carrying the retired names in
+  ch32: the section headings `## WriteSink: what an arriving item does` and
+  `## on_write and connect`, the paragraphs beneath them, and the Summary.
+  One paragraph each in ch33 and ch34 too. Rewrite them in the new vocabulary:
+  **the plain struct with `write()` is the subscriber; a component hosts it.**
+  The parent `connect`s (which stream); the component `subscribe`s (which
+  receiver) — keep that distinction sharp, it is the whole reason the two
+  names differ. Stop calling the hosting component "the subscriber", and say
+  in one sentence that `uvm_subscriber` is a component while rustdv's
+  `Subscriber` is plain data — the same lesson the chapter already teaches
+  about where storage lives.
+* No identifier is named `analysis_fifo`. The crate's bus fields are `bus` and
+  Figures 4, 6 and 9 already show it. (`uvm_tlm_analysis_fifo` stays wherever
+  it appears — that is UVM's class name, and the contrast is the point.)
+* The `TlmFifo` tap demonstration has arrived from ch31 and **is in the crate
+  but not yet in the chapter.** It is ch32 Figures 11–13: `TapLog`/`TapWatcher`
+  (11), `FifoTapTest` (12), and the transcript ending `tap saw [0, 1, 2]` (13),
+  all in `output/examples/ch32-analysis-ports/` — the README figure map lists
+  them and its transcript is the real run. This is the one place you are
+  writing new prose rather than repairing old. Teach it as the port of
+  `uvm_tlm_fifo`'s built-in analysis ports, `TlmFifo::put_ap()` /
+  `TlmFifo::get_ap()`: the data path is still a queue — one consumer takes
+  each item, the producer blocks when full — while the taps are observation
+  alongside; every subscriber sees every item, nothing is consumed, nobody is
+  delayed. The section belongs at the end, once subscribers are understood.
+  `FifoTapTest` reuses Chapter 31's `Producer` and `Consumer` verbatim; they
+  are in the crate **uncaptioned on purpose**, so refer back to Chapter 31
+  rather than reprinting put/get inside the analysis chapter.
+* ch31 needs nothing. Its tap section is gone, its transcripts were
+  regenerated at four tests, and it keeps one forward sentence naming
+  `put_ap()`/`get_ap()` and deferring to Chapter 32.
+
+If you change a listing for any reason, re-run
+`python3 output/regression/verify-book-listings.py` and
+`bash output/regression/verify-transcripts.sh` — they gate the push.
 
 # Buy me a coffee
 

@@ -355,7 +355,7 @@ impl<T: 'static> ComponentNode for TlmFifo<T> {
 mod tests {
     use super::*;
     use crate::port::{
-        GetPort, PeekPort, PortField, PortName, PortOwner, PutPort, SubscribePort, WriteSink,
+        GetPort, PeekPort, PortField, PortName, PortOwner, PutPort, SubscribePort, Subscriber,
     };
     use crate::shared::RustdvShared;
     use rustdv_sim::testing::block_on;
@@ -514,7 +514,7 @@ mod tests {
         struct Log {
             seen: Vec<u8>,
         }
-        impl WriteSink<u8> for Log {
+        impl Subscriber<u8> for Log {
             fn write(&mut self, item: &u8) {
                 self.seen.push(*item);
             }
@@ -523,7 +523,7 @@ mod tests {
         block_on(async {
             let h = Holder::new();
             let log: RustdvShared<Log> = RustdvShared::default();
-            h.sub.on_write(log.clone());
+            h.sub.subscribe(log.clone());
 
             let fifo: TlmFifo<u8> = TlmFifo::unbounded();
             fifo.put_ap().connect(&h, Holder::SUB);
@@ -542,7 +542,7 @@ mod tests {
         struct Log {
             seen: Vec<u8>,
         }
-        impl WriteSink<u8> for Log {
+        impl Subscriber<u8> for Log {
             fn write(&mut self, item: &u8) {
                 self.seen.push(*item);
             }
@@ -551,7 +551,7 @@ mod tests {
         block_on(async {
             let h = Holder::new();
             let log: RustdvShared<Log> = RustdvShared::default();
-            h.sub.on_write(log.clone());
+            h.sub.subscribe(log.clone());
 
             let fifo: TlmFifo<u8> = TlmFifo::unbounded();
             fifo.get_ap().connect(&h, Holder::SUB);

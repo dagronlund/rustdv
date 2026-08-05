@@ -29,7 +29,7 @@
 //! - Variation points are constructor injection (R5) — no factory.
 //!   **Reversed, not yet implemented.** The factory returns in ch29
 //!   (D26 keeps it out of ch23 only because the book does).
-//! - Communication is channels + [`AnalysisPort`] + the sequencer
+//! - Communication is channels + [`AnalysisBus`] + the sequencer
 //!   handshake, preserved event-for-event from pyuvm (R6, §5.6).
 //!   **Stands, and is being extended:** TLM ports, exports and FIFOs
 //!   arrive per D17–D24, with ports in components and exports on FIFOs.
@@ -52,7 +52,7 @@ pub mod port;
 pub mod sequence;
 pub mod shared;
 
-pub use analysis::{AnalysisBus, AnalysisPort, PublishExport, Subscriber, SubscribeExport};
+pub use analysis::{AnalysisBus, PublishExport, SubscribeExport};
 pub use shared::RustdvShared;
 pub use channel::{channel, Receiver, Sender, TlmEmpty, TlmError, TlmFull};
 pub use component::{
@@ -68,7 +68,7 @@ pub use factory::{RustdvComp, ComponentReg, Factory, Maker};
 pub use fifo::{GetExport, PeekExport, PutExport, TapExport, TlmFifo};
 pub use port::{
     bind, ConnectError, GetIf, GetPort, PeekIf, PeekPort, Port, PortField, PortInfo, PortName,
-    PortOwner, PublishIf, PublishPort, PutIf, PutPort, SinkHandle, SubscribePort, WriteSink,
+    PortOwner, PublishIf, PublishPort, PutIf, PutPort, SinkHandle, SubscribePort, Subscriber,
 };
 pub use objection::{ObjectionGuard, ObjectionRegistry};
 pub use sequence::{

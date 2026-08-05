@@ -3,8 +3,8 @@
 //!     sim-common/run_sim.sh ch32_analysis_ports playground
 //!
 //! Built and green on Icarus (2026-07-28). This chapter replaced the
-//! pre-restoration `AnalysisPort::new()` / `ap.connect(rc)` design with the
-//! hub-and-declared-port model used across the TLM chapters (D83b).
+//! pre-restoration direct-broadcast design with the hub-and-declared-port
+//! model used across the TLM chapters (D83b). That surface is now deleted.
 //!
 //! ## The model (D17, D23, D24)
 //!
@@ -15,12 +15,13 @@
 //! put/get (Chapter 31), not a mode of it — in pyuvm it is a separate class
 //! whose `connect` appends to a subscriber list and whose `write` loops it.
 //!
-//! A subscriber declares a `SubscribePort<T>` with `#[port(subscribe)]`, and
-//! supplies a **sink**: a struct of its own that implements
-//! `WriteSink::write(&mut self, item)` — the port of `uvm_subscriber`'s
-//! `write()`, expressed as a trait rather than a base class.
+//! A component declares a `SubscribePort<T>` with `#[port(subscribe)]`, and
+//! supplies a **subscriber**: a struct of its own that implements
+//! `Subscriber::write(&mut self, item)` — the port of `uvm_subscriber`'s
+//! `write()`, expressed as a trait rather than a base class. The UVM makes the
+//! subscriber a component; here it is the plain struct the component hosts.
 //!
-//! ## Why the sink is separate from the component (D87)
+//! ## Why the subscriber is separate from the component (D87)
 //!
 //! `write()` must deliver **synchronously, in zero time**: the publisher calls
 //! it, every subscriber's handler runs, and control returns without the
@@ -46,8 +47,8 @@
 //! `#[component]` child with two named export accessors:
 //!
 //! ```ignore
-//! self.analysis_fifo.pub_export().connect(&self.mon, Monitor::PUB_PORT);
-//! self.analysis_fifo.sub_export().connect(&self.sb,  Scoreboard::SUB_PORT);
+//! self.bus.pub_export().connect(&self.mon, Monitor::PUB_PORT);
+//! self.bus.sub_export().connect(&self.sb,  Scoreboard::SUB_PORT);
 //! ```
 //!
 //! `pub_export()` takes the publisher's analysis port; `sub_export()` takes a
@@ -77,7 +78,7 @@
 //! `uvm_tlm_analysis_fifo` because a class gets one `write` method: a second
 //! stream needs the `uvm_analysis_imp_decl` macros to mint a differently-named
 //! one, and routing each stream into its own FIFO is the way around that. A
-//! rustdv subscriber declares two `SubscribePort`s and two `WriteSink` impls
+//! rustdv subscriber declares two `SubscribePort`s and two `Subscriber` impls
 //! and is done (D20/D88), so the workaround has nothing to work around.
 
 use rustdv::prelude::*;
@@ -91,14 +92,14 @@ rustdv::vpi_bootstrap!();
 // Chapter 32, Figure 1: A subscriber counts what it sees.
 //
 // The state that `write` touches lives in its own struct, and that struct
-// implements `WriteSink`. The method is `write(&mut self, item)` — ordinary
+// implements `Subscriber`. The method is `write(&mut self, item)` — ordinary
 // Rust, and the same word the UVM engineer already knows.
 #[derive(Default)]
 struct ItemCount {
     count: u32,
 }
 
-impl WriteSink<u32> for ItemCount {
+impl Subscriber<u32> for ItemCount {
     fn write(&mut self, _item: &u32) {
         self.count += 1;
     }
@@ -116,8 +117,8 @@ impl Component for Counter {
     // copy the ItemCount — it makes a second handle to the same one, so the
     // port's writes and the component's reads land on the same data.
     fn build(&mut self, _ctx: &mut RustdvCtx) {
-        let my_sink = self.tally.clone();
-        self.input.on_write(my_sink);
+        let my_subscriber = self.tally.clone();
+        self.input.subscribe(my_subscriber);
     }
 
     fn report(&mut self, ctx: &mut RustdvCtx) {
@@ -133,7 +134,7 @@ struct SeenList {
     items: Vec<u32>,
 }
 
-impl WriteSink<u32> for SeenList {
+impl Subscriber<u32> for SeenList {
     fn write(&mut self, item: &u32) {
         self.items.push(*item);
     }
@@ -148,8 +149,8 @@ struct Collector {
 
 impl Component for Collector {
     fn build(&mut self, _ctx: &mut RustdvCtx) {
-        let my_sink = self.seen.clone();
-        self.input.on_write(my_sink);
+        let my_subscriber = self.seen.clone();
+        self.input.subscribe(my_subscriber);
     }
 
     fn report(&mut self, ctx: &mut RustdvCtx) {
@@ -199,7 +200,7 @@ struct BroadcastTest {
     #[component]
     collector: RustdvComp,
     #[component]
-    analysis_fifo: AnalysisBus<u32>,
+    bus: AnalysisBus<u32>,
 }
 
 impl Component for BroadcastTest {
@@ -207,13 +208,13 @@ impl Component for BroadcastTest {
         self.source = NumberGen::new_comp();
         self.counter = Counter::new_comp();
         self.collector = Collector::new_comp();
-        self.analysis_fifo = AnalysisBus::new();
+        self.bus = AnalysisBus::new();
     }
 
     fn connect(&mut self, _ctx: &mut RustdvCtx) {
-        self.analysis_fifo.pub_export().connect(&self.source, NumberGen::AP);
-        self.analysis_fifo.sub_export().connect(&self.counter, Counter::INPUT);
-        self.analysis_fifo.sub_export().connect(&self.collector, Collector::INPUT);
+        self.bus.pub_export().connect(&self.source, NumberGen::AP);
+        self.bus.sub_export().connect(&self.counter, Counter::INPUT);
+        self.bus.sub_export().connect(&self.collector, Collector::INPUT);
     }
 }
 
@@ -233,17 +234,17 @@ struct NoSubscribersTest {
     #[component]
     source: RustdvComp,
     #[component]
-    analysis_fifo: AnalysisBus<u32>,
+    bus: AnalysisBus<u32>,
 }
 
 impl Component for NoSubscribersTest {
     fn build(&mut self, _ctx: &mut RustdvCtx) {
         self.source = NumberGen::new_comp();
-        self.analysis_fifo = AnalysisBus::new();
+        self.bus = AnalysisBus::new();
     }
 
     fn connect(&mut self, _ctx: &mut RustdvCtx) {
-        self.analysis_fifo.pub_export().connect(&self.source, NumberGen::AP);
+        self.bus.pub_export().connect(&self.source, NumberGen::AP);
         // no sub_export() connection — legal for analysis
     }
 }
@@ -270,14 +271,14 @@ impl Component for NoSubscribersTest {
 // `uvm_tlm_analysis_fifo` for a different reason: a class gets one `write`
 // method, so a second analysis stream needs the `uvm_analysis_imp_decl` macros,
 // and a FIFO per stream is the way around that. rustdv declares two
-// `SubscribePort`s and two `WriteSink`s (Chapter 34), so that reason is gone.
+// `SubscribePort`s and two `Subscriber`s (Chapter 34), so that reason is gone.
 // The reason here is time, and only time.
 #[derive(Default)]
 struct Inbox {
     queue: TlmFifo<u32>,
 }
 
-impl WriteSink<u32> for Inbox {
+impl Subscriber<u32> for Inbox {
     // Zero time, and it cannot block: an unbounded FIFO always has room. A
     // *bounded* inbox would be a bug — `write` has no way to wait for space,
     // and analysis has no back-pressure to push back with, so a full one could
@@ -298,7 +299,7 @@ impl Component for SlowChecker {
     fn build(&mut self, _ctx: &mut RustdvCtx) {
         self.inbox = RustdvShared::new(Inbox { queue: TlmFifo::unbounded() });
         let my_inbox = self.inbox.clone();
-        self.input.on_write(my_inbox);
+        self.input.subscribe(my_inbox);
     }
 
     async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
@@ -329,20 +330,144 @@ struct SlowSubscriberTest {
     #[component]
     checker: RustdvComp,
     #[component]
-    analysis_fifo: AnalysisBus<u32>,
+    bus: AnalysisBus<u32>,
 }
 
 impl Component for SlowSubscriberTest {
     fn build(&mut self, _ctx: &mut RustdvCtx) {
         self.source = NumberGen::new_comp();
         self.checker = SlowChecker::new_comp();
-        self.analysis_fifo = AnalysisBus::new();
+        self.bus = AnalysisBus::new();
     }
 
     fn connect(&mut self, _ctx: &mut RustdvCtx) {
-        self.analysis_fifo.pub_export().connect(&self.source, NumberGen::AP);
+        self.bus.pub_export().connect(&self.source, NumberGen::AP);
         // The same `sub_export()` as any other subscriber. Nothing in the
         // wiring says this one buffers — that is the checker's own business.
-        self.analysis_fifo.sub_export().connect(&self.checker, SlowChecker::INPUT);
+        self.bus.sub_export().connect(&self.checker, SlowChecker::INPUT);
+    }
+}
+
+// ===========================================================================
+// The FIFO's built-in taps (D23, D117 — moved here from Chapter 31)
+// ===========================================================================
+
+// Chapter 31's producer and consumer, unchanged, to give the FIFO below a real
+// data path. They are not new material and the chapter does not reprint them:
+// the producer blocks on a full FIFO, the consumer peeks and then gets.
+#[derive(Component, Default)]
+struct Producer {
+    #[port(put)]
+    put_port: PutPort<u32>,
+}
+
+impl Component for Producer {
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let _obj = ctx.raise_objection("producing");
+        for n in 0..3 {
+            self.put_port.put(n).await; // blocks while the FIFO is full
+            ctx.info(&format!("put {n}"));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Component, Default)]
+struct Consumer {
+    #[port(peek)]
+    peek_port: PeekPort<u32>,
+    #[port(get)]
+    get_port: GetPort<u32>,
+}
+
+impl Component for Consumer {
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let _obj = ctx.raise_objection("consuming");
+        for _ in 0..3 {
+            let seen = self.peek_port.peek().await; // blocks while empty
+            let got = self.get_port.get().await; // consumes the peeked item
+            assert_eq!(seen, got, "peek must not consume the item");
+            ctx.info(&format!("got {got}"));
+        }
+        Ok(())
+    }
+}
+
+// Chapter 32, Figure 11: A watcher on a FIFO's tap is an ordinary subscriber.
+//
+// Every `TlmFifo` carries a pair of publisher ports of its own: `put_ap()`
+// announces each item the FIFO accepts, `get_ap()` each item it releases. They
+// are the port of `uvm_tlm_fifo`'s built-in analysis ports, and there is
+// nothing new to learn to use them — this watcher is the same shape as the
+// `Counter` in Figure 1: a plain struct implementing `Subscriber`, a
+// `SubscribePort`, and `subscribe` in the build phase.
+#[derive(Default)]
+struct TapLog {
+    items: Vec<u32>,
+}
+
+impl Subscriber<u32> for TapLog {
+    fn write(&mut self, item: &u32) {
+        self.items.push(*item);
+    }
+}
+
+#[derive(Component, Default)]
+struct TapWatcher {
+    #[port(subscribe)]
+    input: SubscribePort<u32>,
+    seen: RustdvShared<TapLog>,
+}
+
+impl Component for TapWatcher {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        let my_subscriber = self.seen.clone();
+        self.input.subscribe(my_subscriber);
+    }
+
+    fn report(&mut self, ctx: &mut RustdvCtx) {
+        let seen = self.seen.get();
+        ctx.info(&format!("tap saw {:?}", seen.items));
+    }
+}
+
+// Chapter 32, Figure 12: A tap is wired like any other subscription.
+//
+// Note what is and is not mixed here. The FIFO's **data path** is still a queue
+// — one consumer takes each item, and the producer blocks when it is full. The
+// taps are **observation** running alongside: every subscriber sees every item,
+// nothing is consumed, and nobody is delayed. Two different jobs in one
+// component, exactly as the UVM has it.
+//
+// A `put_ap()` is a `PublishExport`, so it takes a subscriber's port directly.
+// There is no `AnalysisBus` here: the FIFO already is the hub for its own taps.
+#[rustdv::test]
+#[derive(Component, Default)]
+struct FifoTapTest {
+    #[component]
+    producer: RustdvComp,
+    #[component]
+    consumer: RustdvComp,
+    #[component]
+    watcher: RustdvComp,
+    #[component]
+    fifo: TlmFifo<u32>,
+}
+
+impl Component for FifoTapTest {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        self.producer = Producer::new_comp();
+        self.consumer = Consumer::new_comp();
+        self.watcher = TapWatcher::new_comp();
+        self.fifo = TlmFifo::new(1);
+    }
+
+    fn connect(&mut self, _ctx: &mut RustdvCtx) {
+        // the data path: producer -> queue -> consumer
+        self.fifo.put_export().connect(&self.producer, Producer::PUT_PORT);
+        self.fifo.peek_export().connect(&self.consumer, Consumer::PEEK_PORT);
+        self.fifo.get_export().connect(&self.consumer, Consumer::GET_PORT);
+        // the observation tap: the watcher sees every item put, and takes none
+        self.fifo.put_ap().connect(&self.watcher, TapWatcher::INPUT);
     }
 }

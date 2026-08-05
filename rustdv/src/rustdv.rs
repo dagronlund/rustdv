@@ -54,16 +54,16 @@ pub use rustdv_methodology::{
     build_all, channel, check_all, check_connections, connect_all, end_of_elaboration_all,
     extract_all, final_all, print_hierarchy, report_all, run_all, run_component_test,
     run_extract_check_report, start_all, start_of_simulation_all, unconnected_ports,
-    Active, AnalysisBus, AnalysisPort, CheckSink,
+    Active, AnalysisBus, CheckSink,
     Component as ComponentTrait, ComponentNode, DynPhases, ObjectionGuard, ObjectionRegistry,
     create_seq, set_seq_override,
     Receiver, ResponseQueue, RustdvSeq, Sender, SeqCtx, SeqError, SeqItem, SeqItemExport,
     SeqItemIf, SeqItemPort, Sequence, Sequencer,
-    RustdvComp, ComponentReg, ConfigDb, ConfigError, Factory, Maker, Subscriber, TestError, TlmEmpty,
+    RustdvComp, ComponentReg, ConfigDb, ConfigError, Factory, Maker, TestError, TlmEmpty,
     TlmError, TlmFifo, TlmFull, TxnId,
     ConnectError, GetExport, GetIf, GetPort, PeekExport, PeekIf, PeekPort, Port, PortField,
     PortInfo, PortName, PortOwner, PublishExport, PublishIf, PublishPort, PutExport, PutIf,
-    PutPort, RustdvShared, SinkHandle, SubscribeExport, SubscribePort, TapExport, WriteSink,
+    PutPort, RustdvShared, SinkHandle, SubscribeExport, SubscribePort, Subscriber, TapExport,
 };
 
 // The lifecycle trait under its design-doc name, in the type namespace.
@@ -77,7 +77,7 @@ pub mod prelude {
         build_all, channel, check_all, connect_all, end_of_elaboration_all, extract_all, final_all,
         first2, join2, next_time_step, print_hierarchy, read_only, read_write, report_all,
         run_component_test, run_extract_check_report, sim_time_ns, spawn, spawn_named, start_all,
-        start_of_simulation_all, with_timeout, Active, AnalysisBus, AnalysisPort, CheckSink, Clock,
+        start_of_simulation_all, with_timeout, Active, AnalysisBus, CheckSink, Clock,
         RustdvComp, Component, ComponentNode, Either, Event, Factory, HandleError, HierarchyHandle,
         Lock, Logic, LogicArray, LogicHandle, NullTrigger, ObjectionGuard, Queue, Receiver, Rng,
         create_seq, set_seq_override,
@@ -86,7 +86,7 @@ pub mod prelude {
         SimDuration,
         ConfigDb, Subscriber, TaskHandle, TestError, Timer, TlmFifo, TxnId,
         GetPort, PeekPort, PortName, PortOwner, PublishPort, PutPort, RustdvShared,
-        SubscribePort, WriteSink,
+        SubscribePort,
     };
     pub use crate::log;
 }

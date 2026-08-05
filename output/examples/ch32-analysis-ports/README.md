@@ -8,7 +8,7 @@ sim-common/run_sim.sh ch32_analysis_ports playground
 
 Figure numbers are the **book's** (D110: one numbering space per chapter, code
 and transcripts drawn from the same sequence); the `.rs` captions carry the same
-numbers. Figures 5, 7 and 10 are transcripts, which is why the code captions
+numbers. Figures 5, 7, 10 and 13 are transcripts, which is why the code captions
 skip them.
 
 | Figure | Title | Where |
@@ -23,8 +23,16 @@ skip them.
 | 8 | When the subscriber needs *time* | `src/ch32_analysis_ports.rs` (`Inbox`/`SlowChecker`) |
 | 9 | The publisher does not wait for the slow subscriber | `src/ch32_analysis_ports.rs` (`SlowSubscriberTest`) |
 | 10 | Writes at `0.00ns`, checks at 5, 10 and 15ns | transcript — `SlowSubscriberTest` |
+| 11 | A watcher on a FIFO's tap is an ordinary subscriber | `src/ch32_analysis_ports.rs` (`TapLog`/`TapWatcher`) |
+| 12 | A tap is wired like any other subscription | `src/ch32_analysis_ports.rs` (`FifoTapTest`) |
+| 13 | Every item put, observed and not consumed | transcript — `FifoTapTest` |
 
-Three tests, all ending `REGRESSION: PASS`.
+Four tests, all ending `REGRESSION: PASS`.
+
+Figures 11–13 came here from Chapter 31 (D117): the taps are analysis machinery
+and could not be explained before subscribers were. `FifoTapTest` reuses Chapter
+31's `Producer` and `Consumer` verbatim for its data path; they are in the crate
+but the chapter does not reprint them.
 
 ## What this chapter proves
 
@@ -42,41 +50,46 @@ Three tests, all ending `REGRESSION: PASS`.
   every subscriber and returns; there is no queue in the hub, and a datum
   broadcast to nobody is gone (D86/D90). A component that wants to keep the
   traffic keeps it — a tally (Figure 1), a `Vec` (Figure 2), a `TlmFifo` of its
-  own (Figure 6), a comparison against a prediction (Chapter 34). Two
+  own (Figure 8), a comparison against a prediction (Chapter 34). Two
   accessors, not three: `pub_export()` and `sub_export()`.
 - **A subscriber that needs time buffers for itself.** `write` is synchronous
   and cannot await, so a subscriber whose work *takes* simulation time splits
   the job: `write` does the one instant thing — `try_put` into an unbounded
   `TlmFifo` it owns — and its `run` gets from that FIFO and takes as long as it
-  likes. Figures 6–7. Note the FIFO is connected to no port at all; it is an
+  likes. Figures 8–9. Note the FIFO is connected to no port at all; it is an
   ordinary handoff inside one component, between a synchronous method and an
   asynchronous one.
 - **...but not for the UVM's reason.** A UVM scoreboard holds a
   `uvm_tlm_analysis_fifo` because a class gets one `write`, so a second stream
   needs the `uvm_analysis_imp_decl` macros and a FIFO per stream is the way
-  around them. rustdv declares two `SubscribePort`s and two `WriteSink` impls
-  (D20/D88), so that reason is gone. In Figure 6 the reason is time, and only
+  around them. rustdv declares two `SubscribePort`s and two `Subscriber` impls
+  (D20/D88), so that reason is gone. In Figure 8 the reason is time, and only
   time.
+- **A FIFO's taps are subscriptions like any other.** `put_ap()` and `get_ap()`
+  are the port of `uvm_tlm_fifo`'s built-in analysis ports (D23). The data path
+  stays a queue — one consumer takes each item, the producer blocks when it is
+  full — while the taps observe alongside: every subscriber sees every item,
+  nothing is consumed, nobody is delayed. Figures 11–13.
 
 ## Transcript
 
 Real Icarus output (`RUSTDV_RANDOM_SEED=1`):
 
 ```
-      0.00ns INFO     rustdv: found 3 test(s), RUSTDV_RANDOM_SEED=1
-      0.00ns INFO     running BroadcastTest (1/3)  [ch32-analysis-ports/src/ch32_analysis_ports.rs:192]
+      0.00ns INFO     rustdv: found 4 test(s), RUSTDV_RANDOM_SEED=1
+      0.00ns INFO     running BroadcastTest (1/4)  [ch32-analysis-ports/src/ch32_analysis_ports.rs:193]
       0.00ns INFO     [BroadcastTest.source]: wrote 0
       0.00ns INFO     [BroadcastTest.source]: wrote 1
       0.00ns INFO     [BroadcastTest.source]: wrote 2
       0.00ns INFO     [BroadcastTest.counter]: counted 3 items
       0.00ns INFO     [BroadcastTest.collector]: collected [0, 1, 2]
       0.00ns INFO     BroadcastTest PASSED
-      0.00ns INFO     running NoSubscribersTest (2/3)  [ch32-analysis-ports/src/ch32_analysis_ports.rs:230]
+      0.00ns INFO     running NoSubscribersTest (2/4)  [ch32-analysis-ports/src/ch32_analysis_ports.rs:231]
       0.00ns INFO     [NoSubscribersTest.source]: wrote 0
       0.00ns INFO     [NoSubscribersTest.source]: wrote 1
       0.00ns INFO     [NoSubscribersTest.source]: wrote 2
       0.00ns INFO     NoSubscribersTest PASSED
-      0.00ns INFO     running SlowSubscriberTest (3/3)  [ch32-analysis-ports/src/ch32_analysis_ports.rs:324]
+      0.00ns INFO     running SlowSubscriberTest (3/4)  [ch32-analysis-ports/src/ch32_analysis_ports.rs:325]
       0.00ns INFO     [SlowSubscriberTest.source]: wrote 0
       0.00ns INFO     [SlowSubscriberTest.source]: wrote 1
       0.00ns INFO     [SlowSubscriberTest.source]: wrote 2
@@ -84,12 +97,22 @@ Real Icarus output (`RUSTDV_RANDOM_SEED=1`):
      10.00ns INFO     [SlowSubscriberTest.checker]: checked 1
      15.00ns INFO     [SlowSubscriberTest.checker]: checked 2
      15.00ns INFO     SlowSubscriberTest PASSED
+     15.00ns INFO     running FifoTapTest (4/4)  [ch32-analysis-ports/src/ch32_analysis_ports.rs:444]
+     15.00ns INFO     [FifoTapTest.producer]: put 0
+     15.00ns INFO     [FifoTapTest.consumer]: got 0
+     15.00ns INFO     [FifoTapTest.producer]: put 1
+     15.00ns INFO     [FifoTapTest.consumer]: got 1
+     15.00ns INFO     [FifoTapTest.producer]: put 2
+     15.00ns INFO     [FifoTapTest.consumer]: got 2
+     15.00ns INFO     [FifoTapTest.watcher]: tap saw [0, 1, 2]
+     15.00ns INFO     FifoTapTest PASSED
 ******************************************************************************
 ** TEST                                       STATUS  SIM TIME (ns)      **
 ******************************************************************************
 ** BroadcastTest                                PASS           0.00      **
 ** NoSubscribersTest                            PASS           0.00      **
 ** SlowSubscriberTest                           PASS          15.00      **
+** FifoTapTest                                  PASS           0.00      **
 ******************************************************************************
 REGRESSION: PASS
 ```

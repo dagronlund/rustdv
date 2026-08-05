@@ -39,9 +39,9 @@
 //! `#[component]` child that the parent owns and can wire.
 //!
 //! ```ignore
-//! self.analysis_fifo.pub_export().connect(&self.mon, Monitor::AP);
-//! self.analysis_fifo.sub_export().connect(&self.sb, Scoreboard::INPUT);
-//! self.analysis_fifo.sub_export().connect(&self.cov, Coverage::INPUT);
+//! self.bus.pub_export().connect(&self.mon, Monitor::AP);
+//! self.bus.sub_export().connect(&self.sb, Scoreboard::INPUT);
+//! self.bus.sub_export().connect(&self.cov, Coverage::INPUT);
 //! ```
 //!
 //! Several subscribers on one `sub_export()` is what makes it a broadcast.
@@ -52,87 +52,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::component::{Component, ComponentNode};
-use crate::fifo::TlmFifo;
 use crate::port::{bind_or_panic, sink_of, PortName, PortOwner, PublishIf, SinkHandle};
-
-// ===========================================================================
-// The legacy direct port (pre-hub; still used by testbenches not yet rebuilt)
-// ===========================================================================
-
-/// Port of `uvm_subscriber`'s abstract `write` (mapping row 41).
-///
-/// Superseded by [`WriteSink`](crate::WriteSink), which is the same idea with
-/// the sharing worked out; this stays until the Part IV testbenches are
-/// rebuilt on the hub.
-pub trait Subscriber<T> {
-    fn write(&mut self, item: &T);
-}
-
-/// 1-to-many broadcast, connected directly rather than through a hub.
-pub struct AnalysisPort<T> {
-    subs: Rc<RefCell<Vec<Rc<RefCell<dyn Subscriber<T>>>>>>,
-}
-
-impl<T> Clone for AnalysisPort<T> {
-    fn clone(&self) -> Self {
-        AnalysisPort { subs: self.subs.clone() }
-    }
-}
-
-impl<T> Default for AnalysisPort<T> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<T> AnalysisPort<T> {
-    pub fn new() -> AnalysisPort<T> {
-        AnalysisPort { subs: Rc::new(RefCell::new(Vec::new())) }
-    }
-
-    pub fn connect(&self, sub: Rc<RefCell<dyn Subscriber<T>>>) {
-        self.subs.borrow_mut().push(sub);
-    }
-
-    /// Broadcast: non-blocking, fire-and-forget (pyuvm 12.2.8).
-    pub fn write(&self, item: &T) {
-        for sub in self.subs.borrow().iter() {
-            sub.borrow_mut().write(item);
-        }
-    }
-
-    pub fn subscriber_count(&self) -> usize {
-        self.subs.borrow().len()
-    }
-}
-
-impl<T: Clone + 'static> AnalysisPort<T> {
-    /// Attach a buffering FIFO to this broadcast (pyuvm
-    /// `uvm_tlm_analysis_fifo`) and hand it back to the caller.
-    ///
-    /// The FIFO is an ordinary unbounded [`TlmFifo`] — **not** an
-    /// [`AnalysisBus`], which keeps nothing (D90). A subscriber that wants to
-    /// pull the stream at its own pace owns the storage; the broadcast does
-    /// not. Unbounded, so a write never blocks the publisher.
-    pub fn connect_fifo(&self) -> TlmFifo<T> {
-        let fifo = TlmFifo::unbounded();
-        let adapter = Rc::new(RefCell::new(FifoAdapter { fifo: fifo.handle() }));
-        self.connect(adapter);
-        fifo
-    }
-}
-
-struct FifoAdapter<T: Clone + 'static> {
-    fifo: TlmFifo<T>,
-}
-
-impl<T: Clone + 'static> Subscriber<T> for FifoAdapter<T> {
-    fn write(&mut self, item: &T) {
-        // Unbounded, so this cannot fail and cannot block. The clone is the
-        // price of keeping a copy of something the publisher still owns.
-        let _ = self.fifo.try_put(item.clone());
-    }
-}
 
 // ===========================================================================
 // The hub
@@ -184,11 +104,11 @@ pub struct SubscribeExport<T: 'static> {
 }
 
 impl<T: 'static> SubscribeExport<T> {
-    /// Take the subscriber's sink and add it to the broadcast list.
+    /// Take the component's subscriber and add it to the broadcast list.
     ///
     /// Unlike a put/get connect, nothing is written *into* the port: the
-    /// subscriber already put its sink there with `on_write`, and the hub
-    /// collects it. Broadcast runs the other way, so the wiring does too.
+    /// component already put its subscriber there with `subscribe`, and the
+    /// hub collects it. Broadcast runs the other way, so the wiring does too.
     pub fn connect(&self, owner: &dyn PortOwner, name: PortName<dyn SinkHandle<T>>) {
         match sink_of(owner, name) {
             Ok(sink) => self.inner.subs.borrow_mut().push(sink),
@@ -270,7 +190,9 @@ impl<T: 'static> ComponentNode for AnalysisBus<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::port::{PortField, PortName, PortOwner, PublishPort, SinkHandle, SubscribePort, WriteSink};
+    use crate::port::{
+        PortField, PortName, PortOwner, PublishPort, SinkHandle, SubscribePort, Subscriber,
+    };
     use crate::shared::RustdvShared;
     use std::any::Any;
 
@@ -278,7 +200,7 @@ mod tests {
     struct Tally {
         seen: Vec<u8>,
     }
-    impl WriteSink<u8> for Tally {
+    impl Subscriber<u8> for Tally {
         fn write(&mut self, item: &u8) {
             self.seen.push(*item);
         }
@@ -307,7 +229,7 @@ mod tests {
         const INPUT: PortName<dyn SinkHandle<u8>> = PortName::new("input");
         fn new() -> Listener {
             let l = Listener { input: SubscribePort::default(), tally: RustdvShared::default() };
-            l.input.on_write(l.tally.clone());
+            l.input.subscribe(l.tally.clone());
             l
         }
     }
@@ -405,10 +327,10 @@ mod tests {
         assert_eq!(sub.tally.get().seen, vec![5], "already delivered, no scheduling in between");
     }
 
-    /// A subscriber that never called `on_write` has no sink, and connecting
-    /// it says so by name rather than dropping items silently.
+    /// A component that never called `subscribe` has nothing to receive with,
+    /// and connecting it says so by name rather than dropping items silently.
     #[test]
-    #[should_panic(expected = "has no sink")]
+    #[should_panic(expected = "has no subscriber")]
     fn connecting_a_subscriber_with_no_sink_is_a_named_error() {
         let bus: AnalysisBus<u8> = AnalysisBus::new();
         let bare = Listener { input: SubscribePort::default(), tally: RustdvShared::default() };

@@ -53,7 +53,7 @@ For readers coming from SystemVerilog UVM (and *The UVM Primer*): where each pie
 | `try_put()` returns a bit | `try_put(T)` → `Result<(), T>` — a refused item comes back | 31 |
 | unconnected port found at first use | elaboration sweep names every unwired port before run | 31 |
 | `uvm_analysis_port.write()` | `PublishPort<T>::write(&T)`, brokered by an `AnalysisBus` hub | 32 |
-| `uvm_subscriber` (one `write` per class) | a `WriteSink<T>` impl per stream — two streams, two impls, no `imp_decl` | 32, 34 |
+| `uvm_subscriber` (one `write` per class) | a `Subscriber<T>` impl per stream — two streams, two impls, no `imp_decl` | 32, 34 |
 | `uvm_tlm_analysis_fifo` in scoreboards | absent — the subscriber owns its storage | 32 |
 | `uvm_agent` + `is_active` | env reads `Active` from the ConfigDb; a passive env leaves the driver slot empty | 40 |
 | `do_copy` / `do_compare` / `convert2string` | `#[derive(Clone, PartialEq, Debug)]` + hand-written `Display` | 10, 35 |

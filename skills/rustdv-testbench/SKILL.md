@@ -60,16 +60,20 @@ closure), never baked into the type.
   for each result), which is correct for result-dependent stimulus and
   wrong for pipelined throughput — choose per the plan.
 - **Monitors**: spawn loops that read the BFM stream, log the transaction
-  (live narration is the debugging UI), and `AnalysisPort::write` it.
-- **Scoreboard**: owns `AnalysisBus`s from `ap.connect_fifo()`; compares
-  in `check(&mut CheckSink)` draining with `try_get`, handling all four
-  arms: matched pair, clean exhaustion, orphaned command, orphaned result.
-  Report counts in `report()`. Add a "nothing was compared" error — a
-  scoreboard that compared zero items is a broken testbench, not a pass.
-- **Coverage**: a `Subscriber<T>` collector (in `Rc<RefCell<...>>`,
-  connected to the command analysis port) wrapped in a `Component` whose
-  `check` errors on any uncovered plan item and whose `report` prints the
-  tally.
+  (live narration is the debugging UI), and `write` it to a `PublishPort`
+  declared with `#[port(publish)]`.
+- **Scoreboard**: declares one `#[port(subscribe)] SubscribePort<T>` per
+  stream and implements `Subscriber<T>` once per stream on a plain struct it
+  owns — two streams, two impls, no macros and no analysis FIFO; the
+  subscriber owns its storage (D90). Compare in `check(&mut CheckSink)`,
+  handling all four arms: matched pair, clean exhaustion, orphaned command,
+  orphaned result. Report counts in `report()`. Add a "nothing was compared"
+  error — a scoreboard that compared zero items is a broken testbench, not a
+  pass.
+- **Coverage**: a plain struct implementing `Subscriber<T>`, held in a
+  `RustdvShared` and handed to the port with `subscribe()` in the hosting
+  component's `build`. The component's `check` errors on any uncovered plan
+  item and its `report` prints the tally.
 
 ## Stage 4: Environment
 

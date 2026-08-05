@@ -8,7 +8,6 @@ Every Part II listing opens with `use rustdv::prelude::*` — the analog of `imp
 |---|---|---|
 | `Active` | the active/passive agent knob, read from the ConfigDb (pyuvm's `is_active` int, as an enum) | 40 |
 | `AnalysisBus` | the broadcast hub; it stores nothing | 32 |
-| `AnalysisPort` | the publishing end of an analysis stream | 32 |
 | `build_all` | drive `build` across a component tree (the runner's job) | 24 |
 | `channel` | make a `(Sender, Receiver)` queue pair with a capacity | 31 |
 | `check_all` | drive `check` across a tree | 24 |
@@ -66,7 +65,6 @@ Every Part II listing opens with `use rustdv::prelude::*` — the analog of `imp
 | `spawn`, `spawn_named` | launch a concurrent task; the named form stamps its log lines | 16 |
 | `start_all` | drive the run phase across a tree | 24 |
 | `start_of_simulation_all` | phase driver | 24 |
-| `Subscriber` | the ready-made analysis subscriber for the common case | 32 |
 | `SubscribePort` | the subscribing end a component declares | 32 |
 | `TaskHandle` | what `spawn` returns: await it for the result, or `cancel()` it | 16 |
 | `TestError` | the error a failing test returns; `Ok(())` is a pass | 15 |
@@ -74,7 +72,7 @@ Every Part II listing opens with `use rustdv::prelude::*` — the analog of `imp
 | `TlmFifo` | the FIFO two components share without learning each other's names | 31 |
 | `TxnId` | the ticket `finish_item` returns; claims a response | 37, 38 |
 | `with_timeout` | wrap an await with a deadline | — |
-| `WriteSink` | the trait a subscriber implements once per stream | 32 |
+| `Subscriber` | the trait a subscriber implements once per stream | 32 |
 
 ## The macros
 

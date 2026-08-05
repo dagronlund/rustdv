@@ -117,7 +117,7 @@ struct CmdLog {
     cmds: Vec<CmdTuple>,
 }
 
-impl WriteSink<CmdTuple> for CmdLog {
+impl Subscriber<CmdTuple> for CmdLog {
     fn write(&mut self, cmd: &CmdTuple) {
         self.cmds.push(*cmd);
     }
@@ -128,7 +128,7 @@ struct ResultLog {
     results: Vec<u64>,
 }
 
-impl WriteSink<u64> for ResultLog {
+impl Subscriber<u64> for ResultLog {
     fn write(&mut self, result: &u64) {
         self.results.push(*result);
     }
@@ -148,10 +148,10 @@ struct Scoreboard {
 impl Component for Scoreboard {
     fn build(&mut self, _ctx: &mut RustdvCtx) {
         let my_cmds = self.cmd_log.clone();
-        self.cmd_in.on_write(my_cmds);
+        self.cmd_in.subscribe(my_cmds);
 
         let my_results = self.result_log.clone();
-        self.result_in.on_write(my_results);
+        self.result_in.subscribe(my_results);
     }
 
     fn check(&mut self, ctx: &mut RustdvCtx, errors: &mut CheckSink) {
@@ -194,7 +194,7 @@ struct OpsSeen {
     ops: HashSet<Ops>,
 }
 
-impl WriteSink<CmdTuple> for OpsSeen {
+impl Subscriber<CmdTuple> for OpsSeen {
     fn write(&mut self, cmd: &CmdTuple) {
         if let Some(op) = Ops::from_u64(cmd.2) {
             self.ops.insert(op);
@@ -211,8 +211,8 @@ struct Coverage {
 
 impl Component for Coverage {
     fn build(&mut self, _ctx: &mut RustdvCtx) {
-        let my_sink = self.seen.clone();
-        self.cmd_in.on_write(my_sink);
+        let my_subscriber = self.seen.clone();
+        self.cmd_in.subscribe(my_subscriber);
     }
 
     fn report(&mut self, ctx: &mut RustdvCtx) {

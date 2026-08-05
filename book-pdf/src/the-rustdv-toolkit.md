@@ -97,9 +97,8 @@ From rustdv-methodology: the component tree and its lifecycle.
 | Name | What it is, and when you reach for it | Chapter |
 |---|---|---|
 | `AnalysisBus` | the broadcast hub — it stores nothing; `write` calls every subscriber and returns | 32 |
-| `AnalysisPort`, `PublishPort`, `SubscribePort` | the publishing and subscribing ends | 32 |
-| `WriteSink` | the trait a subscriber implements per stream — two streams, two impls, no macros | 32 |
-| `Subscriber` | the ready-made subscriber for the common case | 32 |
+| `PublishPort`, `SubscribePort` | the publishing and subscribing ends | 32 |
+| `Subscriber` | the trait a subscriber implements per stream — two streams, two impls, no macros | 32 |
 
 ## The sequence kit
 

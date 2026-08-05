@@ -10,7 +10,7 @@ sim-common/run_sim.sh ch23_uvm_test_testbench_3_0 tinyalu \
 The 2.0 classes (`Tester`, `RandomTester`, `MaxTester`, `Scoreboard`) are
 **re-shown in this chapter's file**, marked "Copied from testbench 2.0", as
 the Python book does (D45). They used to be imported from
-`../tinyalu-utils/src/tb2.rs`; that module is no longer compiled, because
+a `tb2` module in `tinyalu-utils`, since deleted; the import went because
 these classes evolve — `Tester` is a plain trait at 3.0 and a component at
 4.0 — and hiding them behind an import hides the change the book is about.
 `tinyalu_utils` now carries infrastructure only: the BFM, `Ops`,

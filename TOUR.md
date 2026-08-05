@@ -209,13 +209,16 @@ crate ch15–ch39 runs on Icarus; `tinyalu_tb` runs on the same machinery as the
 chapters and is in the suite as `custom/sim-tinyalu-tb`. The only quarantined
 package is `ch21_macros`, a macro demonstration with no simulator test, marked
 `no_sim_test` in `regress.json`; it never comes off the list. `.design-decisions.md`
-§16 is empty. One directed code job is queued: **D116/D117 — rename
-`WriteSink` → `Subscriber` and `on_write()` → `subscribe()`, retire the
-`analysis_fifo` field names, and move the FIFO-tap example from the ch31 crate
-into ch32** — the work order is the ch32 row and long-form items in
-`book-pdf/chapter-notes.md`. The book's prose pass is mid-flight;
-`book-pdf/FABLE.md`'s top note is Chapter 32, which finishes after that code
-job lands.
+§16 is empty. **D116/D117 landed on 2026-08-05**: the analysis trait is
+`Subscriber`, its method is supplied with `subscribe()`, no identifier is
+named `analysis_fifo`, the legacy `Subscriber`/`AnalysisPort`/`connect_fifo`
+surface is deleted, and the FIFO-tap demonstration has moved from the ch31
+crate to ch32's as Figures 11–13. No directed code job is queued. What that
+work left behind is prose, not code: ch32's section headings and paragraphs
+(and one each in ch33 and ch34) still use the retired names, since the code
+thread changed listings and reference tables only. The book's prose pass is
+mid-flight and `book-pdf/FABLE.md`'s top note is Chapter 32, which is now
+unblocked.
 
 **The test suite**, in three tiers under the chapter runs
 (`output/regression/TESTING.md` is the operating manual, including the two
