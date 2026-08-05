@@ -4,7 +4,7 @@ Testbench 4.0 had a flaw both earlier books flagged the moment it shipped: two t
 
 > **In the UVM...** we kept one `AluEnv` that created its tester through the factory — `base_tester::type_id::create("tester", this)` in SystemVerilog, `BaseTester.create("tester", self)` in pyuvm — and each test registered an override in `build_phase`: `set_type_override_by_type(BaseTester, RandomTester)`. Three lines that changed what the env built without the env knowing.
 
-Before the code, the design question this version answers, because it corrects Chapter 25 on purpose. `AluEnv<T>` chose its tester with a *type parameter* — a compile-time decision, which meant `RandomEnv` and `MaxEnv` were **different types**. That is the right tool when the variation is fixed at build time. But the whole point of a variation point is that a *test* chooses at *run* time — and a factory override cannot reach a type parameter: by the time any code runs, `AluEnv<RandomOperands>` simply *is* what it is, monomorphized and sealed. Runtime choice needs a runtime slot. So 5.0's env is one concrete type with a `create_comp()` line where the type parameter used to be, and the generic form survives for what it is good at: variation chosen at compile time, like Chapter 26's logging policies. Know which kind of variation you have, and you know which tool to reach for.
+Before the code, the design question this version answers. Testbench 4.0's `AluEnv<T>` chose its tester with a *type parameter* — a compile-time decision, which meant `RandomEnv` and `MaxEnv` were **different types**. That is the right tool when the variation is fixed at build time. But the whole point of a variation point is that a *test* chooses at *run* time — and a factory override cannot reach a type parameter: by the time any code runs, `AluEnv<RandomOperands>` simply *is* what it is, monomorphized and sealed. Runtime choice needs a runtime slot. So 5.0's env is one concrete type with a `create_comp()` line where the type parameter used to be, and the generic form survives for what it is good at: variation chosen at compile time, like Chapter 26's logging policies. Know which kind of variation you have, and you know which tool to reach for.
 
 ## The testers
 
@@ -34,7 +34,7 @@ trait Tester {
 }
 ```
 
-One line of it is new. `execute` takes the context rather than a BFM handle, because a tester is now a component: nobody hands it a BFM, so it asks the ConfigDb for one and raises the objection that holds the run phase open. `get_operands` is untouched, and it is still the only thing a tester has to write.
+Only the opening has changed since Chapter 20. A tester is now a component, so `execute` takes the context rather than a BFM handle: it raises the objection that holds the run phase open, asks the ConfigDb for the BFM nobody handed it, and does its own reset — setup that Chapter 20's `execute_test` handled before calling it. `get_operands` is untouched, and it is still the only thing a tester has to write.
 
 ```rust
 // Chapter 30, Figure 2: The abstract base and the two testers that fill its slot
@@ -85,7 +85,7 @@ impl Component for MaxTester {
 }
 ```
 
-Each tester now wears two traits. `Tester` gives it stimulus, exactly as before; `Component` gives it phases; and `run` is the one line that joins them — the phaser calls `run`, `run` calls `execute`, and `execute` calls back into `get_operands`. `RandomTester` picks up its seeded `Rng` in `build` because a component is created by its parent with nothing passed in, which is the same reason testbench 4.0's tester did.
+Each tester now wears two traits. `Tester` gives it stimulus, exactly as before; `Component` gives it phases; and `run` is the one line that joins them — the phaser calls `run`, `run` calls `execute`, and `execute` calls back into `get_operands`. `RandomTester` picks up its seeded `Rng` in `build` because a component is created by its parent with nothing passed in.
 
 `BaseTester` is the type the environment names and the factory overrides — the analog of the Python book's abstract `BaseTester`, which raises an error if run un-overridden. Here that is a `panic!`: a test that forgets its override builds a `BaseTester`, and running one *is* the bug, reported in its own words. It implements `Component` but not `Tester`, because there is no stimulus it could sensibly run. The derive registers all three types, so any of them can stand in the tester slot.
 
@@ -116,7 +116,7 @@ impl Component for AluEnv {
 }
 ```
 
-Two build lines, and they encode the block author's whole policy. The scoreboard is `new_comp()` — fixed, not a variation point, no test may swap it. The tester is `create_comp()` — the one slot a reuser may fill differently. Same field type on both (`RustdvComp` says nothing about overridability); the build line carries the decision, exactly as Chapter 29 taught. Note also that starting the BFM's tasks moved here from the tester — once, for the whole environment, matching the Python book's `AluEnv`.
+Two build lines, and they encode the block author's whole policy. The scoreboard is `new_comp()` — fixed, not a variation point, no test may swap it. The tester is `create_comp()` — the one slot a reuser may fill differently. Same field type on both (`RustdvComp` says nothing about overridability); the build line carries the decision, exactly as Chapter 29 taught. Note also that the env is what starts the BFM's tasks — once, for the whole environment, matching the Python book's `AluEnv`.
 
 ## The tests
 
