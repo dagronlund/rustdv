@@ -224,7 +224,7 @@ answer = 25
 
 Read it as: compare `operation` against each *pattern* on the left of a `=>`; run the code on the right of the first pattern that fits. The underscore `_` is the wildcard — it matches anything, playing the role of `else` or `default`. Three things to notice, each an upgrade over both `elif` and `case`:
 
-1. **`match` is an expression.** Like `if` and `loop`, the whole construct produces a value — here it computes `answer` directly, where Figure 3 could only print from inside each branch. Every arm must produce the same type, same rule as `if`.
+1. **`match` is an expression.** Like `if` and `loop`, the whole construct produces a value — here it computes `answer` directly, where figure 3 could only print from inside each branch. Every arm must produce the same type, same rule as `if`.
 2. **There is no fallthrough.** C and SystemVerilog programmers carry decades of missing-`break` scar tissue; `match` arms are separate, always, no `break` required or even possible.
 3. **The compiler checks that the patterns cover every case.** This one gets its own section.
 

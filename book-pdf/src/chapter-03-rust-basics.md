@@ -201,7 +201,7 @@ pi: 3.14159
 
 The first `pi` is a string; the second `pi` is a brand-new binding, a `f64`, whose value came from parsing the first. From that line on, the name `pi` means the number; the string version is shadowed — inaccessible, retired with honors. This is not mutation (nothing was `mut`) and it is not a type change (each binding kept its type); it is the "same idea, new type" idiom, done with two immutable bindings instead of one shape-shifting variable. You will see it constantly in testbench code: parse a string into a number, convert raw bits into a transaction, and keep the natural name at every step.
 
-Two small notes on Figure 8. First, `parse` can fail — `"pi".parse()` has nowhere good to go — so it returns a `Result`, Rust's replacement for exceptions; `.expect("...")` says "give me the value, and halt with this message if it failed." That is a blunt instrument we will trade for proper tools in Chapter 9; Python's version has the same rough edge, raising `ValueError` on `int("3.14159")`. Second, the annotation `: f64` is doing real work: it is how `parse` knows *what* to parse the string into.
+Two small notes on figure 8. First, `parse` can fail — `"pi".parse()` has nowhere good to go — so it returns a `Result`, Rust's replacement for exceptions; `.expect("...")` says "give me the value, and halt with this message if it failed." That is a blunt instrument we will trade for proper tools in Chapter 9; Python's version has the same rough edge, raising `ValueError` on `int("3.14159")`. Second, the annotation `: f64` is doing real work: it is how `parse` knows *what* to parse the string into.
 
 ## `println!` and format strings
 
@@ -229,9 +229,9 @@ aa in binary: 0b00101010
 sum: 49
 ```
 
-The format specifiers after the colon will feel familiar from both Python and `$display`: `{aa:#04x}` means hexadecimal, `#` for the `0x` prefix, padded to width 4. The hex and binary forms in Figure 9 are the ones you will reach for when a scoreboard mismatch needs to be read against a waveform.
+The format specifiers after the colon will feel familiar from both Python and `$display`: `{aa:#04x}` means hexadecimal, `#` for the `0x` prefix, padded to width 4. The hex and binary forms in figure 9 are the ones you will reach for when a scoreboard mismatch needs to be read against a waveform.
 
-One genuine difference from f-strings: the braces capture *names only*, not arbitrary expressions. Python lets you write `f"{aa + bb}"`; Rust makes you write the expression as an argument, as in the last line of Figure 9. And the exclamation point still means what Chapter 1 said it means: `println!` is a macro, which is precisely *why* it can type-check your format string against your arguments at compile time — pass one argument too few, or hand `%d` the wrong-shaped value in spirit, and the program does not build, where Python's `"{} {}".format(x)` and a mismatched `$display` wait until runtime to complain.
+One genuine difference from f-strings: the braces capture *names only*, not arbitrary expressions. Python lets you write `f"{aa + bb}"`; Rust makes you write the expression as an argument, as in the last line of figure 9. And the exclamation point still means what Chapter 1 said it means: `println!` is a macro, which is precisely *why* it can type-check your format string against your arguments at compile time — pass one argument too few, or hand `%d` the wrong-shaped value in spirit, and the program does not build, where Python's `"{} {}".format(x)` and a mismatched `$display` wait until runtime to complain.
 
 ## Expressions vs. statements
 

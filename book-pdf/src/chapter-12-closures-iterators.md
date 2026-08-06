@@ -288,7 +288,7 @@ fn main() {
 
 Line for line, the body *is* the Python: the same two loops, in the same order. Exactly one thing changed, at the end. Python's `yield` handed each pair back the instant it was made; stable Rust has no `yield`, so instead you fill a `Vec` and hand back its iterator. `pairs.into_iter()` turns the vector into a stream of the same `(u8, u8)` items the signature promised, and the caller's `for` loop cannot tell it apart from a generator. That is the whole lesson of this figure: a function that returns `impl Iterator` is how Rust writes "a function that produces a stream of values."
 
-There is one price, and paying it is the next figure. This version builds the entire vector before it returns a single pair, where Python's generator produced each pair on demand. For nine operand pairs that costs nothing — but the lazy form is worth seeing on its own, both because it is what you will meet in other people's code and because it is where the two `move` keywords from Figure 4 stop being a curiosity and start earning their keep:
+There is one price, and paying it is the next figure. This version builds the entire vector before it returns a single pair, where Python's generator produced each pair on demand. For nine operand pairs that costs nothing — but the lazy form is worth seeing on its own, both because it is what you will meet in other people's code and because it is where the two `move` keywords from figure 4 stop being a curiosity and start earning their keep:
 
 ```rust
 // Figure 10: The operand-pair stream, built lazily from adapters

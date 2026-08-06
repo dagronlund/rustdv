@@ -3,11 +3,6 @@
 
 # Chapter 32 — the code has landed; the prose is yours
 
-The chapter was restructured on 2026-08-05: the publisher/many-subscribers
-concept first, then the two ports, the `write` trait, a `RustdvShared`
-digression, the enrollment-versus-connection split, and only then the
-counter/collector example, the storing-nothing bus, and the slow-subscriber
-section. The bones are right.
 
 **The code thread ran on 2026-08-05 (D116/D117). You are not blocked.** Both
 checkers are green — `verify-book-listings.py` reports 0 drift and

@@ -53,12 +53,12 @@ From rustdv-sim. These are the names of a coroutine testbench, UVM or not.
 | `Clock` | a software clock driver — taught once and then retired, because rustdv BFMs wait on edges rather than make them | 17 |
 | `LogicHandle` | a named signal in the design: read it, drive it; asking for a signal that does not exist is an `Err`, not a surprise | 17 |
 | `Logic`, `LogicArray` | four-state values, kept out of your arithmetic until you decide what x means | 17 |
-| `HandleError` | what signal access returns instead of a crash | 17 |
+| `HandleError` | what signal access returns instead of a crash | 17, 19 |
 | `SimDuration` | an amount of simulated time | 17 |
 | `Rng` | the deterministic random source behind `ctx.rng()` — one seed, one reproducible test | 20 |
 | `log` | the logging facade the framework routes through `ctx`; policy is set per hierarchy | 15, 26 |
 
-A handful of scheduler corners — `with_timeout`, `sim_time_ns`, `next_time_step`, `read_only`, `read_write`, `Either`, `HierarchyHandle` — are in the prelude for completeness and catalogued in Appendix D.
+A handful of scheduler corners — `with_timeout`, `sim_time_ns`, `next_time_step`, `read_only`, `read_write`, `Either`, `HierarchyHandle` — are in the prelude for completeness and cataloged in Appendix D.
 
 ## The structure kit
 
@@ -68,10 +68,10 @@ From rustdv-methodology: the component tree and its lifecycle.
 |---|---|---|
 | `Component` (trait) | the lifecycle: `build`, `connect`, and the other phase methods a component may implement | 24 |
 | `#[derive(Component)]` | writes the tree-traversal plumbing so your struct's children are found by the phases | 21, 24 |
-| `ComponentNode` | what the derive implements — the thing a tree of components is made of | 24 |
+| `ComponentNode` | what the derive implements — the thing a tree of components is made of | 21, 24 |
 | `ObjectionGuard` | returned by `ctx.raise_objection`; the run phase ends when the last one drops | 23 |
 | `CheckSink` | the collector a `check` phase writes failures into; one error in it fails the test | 24 |
-| `start_all` | drives a phase across a whole tree — the runner's job, met once when the lifecycle is taught (its siblings `build_all`, `connect_all`, and the rest are in Appendix D) | 24 |
+| `start_all` | drives a phase across a whole tree — the runner's job, never yours to call (its siblings `build_all`, `connect_all`, and the rest are in Appendix D) | 24 |
 | `Active` | the active/passive knob an agent reads from the ConfigDb *(pyuvm's `is_active` int, as an enum)* | 40 |
 
 ## Configuration and the factory
@@ -88,8 +88,7 @@ From rustdv-methodology: the component tree and its lifecycle.
 |---|---|---|
 | `PutPort`, `GetPort`, `PeekPort` | the directional ends a component declares; `connect` wires them at elaboration | 31 |
 | `TlmFifo` | the FIFO two components share without ever learning each other's names — the point of decoupling | 31 |
-| `channel`, `Sender`, `Receiver` | a bare queue pair, for plumbing that needs no ports | 31 |
-| `RustdvShared` | a cloneable handle to one shared object — `Rc<RefCell>` wearing the framework's name | 31 |
+| `RustdvShared` | a cloneable handle to one shared object — `Rc<RefCell>` wearing the framework's name | 32 |
 | `PortName`, `PortOwner` | how the elaboration check names an unconnected port when it reports the whole tree at once | 31 |
 
 ## The analysis kit
@@ -108,7 +107,7 @@ From rustdv-methodology: the component tree and its lifecycle.
 | `Sequencer` | the component that grants sequences their turns and feeds the driver | 36 |
 | `SeqItem`, `SeqCtx`, `SeqError` | the item's bounds, the sequence's context, and what can go wrong | 36 |
 | `SeqItemPort`, `SeqItemExport` | the driver's side of the handshake | 36 |
-| `TxnId`, `ResponseQueue` | tickets and the responses they claim, in order or out of it | 37, 38 |
+| `TxnId` | the ticket `finish_item` returns; `get_response` claims its answer, in order or out of it | 37, 38 |
 
 ## The macros
 

@@ -13,7 +13,7 @@ For readers coming from cocotb and pyuvm (and *Python for RTL Verification*): th
 | `await task` | `task.await` → `Result<T, TaskError>` | 16 |
 | `task.kill()` | `handle.cancel()` — the future is dropped; cleanup in `Drop` | 16 |
 | `Combine(...)` / `First(...)` | `join2`/`join!` / `first2`/`first!` | 16 |
-| `try/except QueueFull` | `try_send` → `Result<(), TlmFull<T>>` (item returned) | 16, 31 |
+| `try/except QueueFull` | `try_put` → `Result<(), T>` (rejected item handed back) | 16, 31 |
 | decorator registration at import time | link-section registration at compile time | 21 |
 | metaclass class registration | not needed — constructor injection | 21, 29 |
 | `getattr(obj, name)` dispatch | pass the function/closure itself | 33 |

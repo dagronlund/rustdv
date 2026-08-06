@@ -9,12 +9,12 @@ Every Part II listing opens with `use rustdv::prelude::*` — the analog of `imp
 | `Active` | the active/passive agent knob, read from the ConfigDb (pyuvm's `is_active` int, as an enum) | 40 |
 | `AnalysisBus` | the broadcast hub; it stores nothing | 32 |
 | `build_all` | drive `build` across a component tree (the runner's job) | 24 |
-| `channel` | make a `(Sender, Receiver)` queue pair with a capacity | 31 |
+| `channel` | make a `(Sender, Receiver)` queue pair with a capacity | — |
 | `check_all` | drive `check` across a tree | 24 |
 | `CheckSink` | the collector `check` phases write failures into | 24 |
 | `Clock` | a software clock driver — taught once, then retired in favor of BFMs that wait on edges | 17 |
 | `Component` | the lifecycle trait: `build`, `connect`, `run`, and the other phase methods | 24 |
-| `ComponentNode` | the tree-traversal trait `#[derive(Component)]` implements | 24 |
+| `ComponentNode` | the tree-traversal trait `#[derive(Component)]` implements | 21, 24 |
 | `ConfigDb` | path-addressed runtime configuration; `get` returns a `Result` naming the cause | 25, 27 |
 | `connect_all` | drive `connect` across a tree | 24 |
 | `create_seq` | build a sequence through the sequence factory | 36 |
@@ -26,7 +26,7 @@ Every Part II listing opens with `use rustdv::prelude::*` — the analog of `imp
 | `final_all` | phase driver | 24 |
 | `first2`, `first!` | race futures; the first to finish wins (SV: `fork...join_any`) | 16 |
 | `GetPort` | the consuming end of a TLM connection | 31 |
-| `HandleError` | what signal access returns instead of a crash | 17 |
+| `HandleError` | what signal access returns instead of a crash | 17, 19 |
 | `HierarchyHandle` | a handle to a scope in the design hierarchy | — |
 | `join2`, `join!` | run futures together; wait for all (SV: `fork...join`) | 16 |
 | `Lock` | mutual exclusion with an RAII guard (SV: a one-key `semaphore`) | 16 |
@@ -43,7 +43,7 @@ Every Part II listing opens with `use rustdv::prelude::*` — the analog of `imp
 | `PutPort` | the producing end of a TLM connection | 31 |
 | `Queue` | the sim-aware mailbox: bounded puts and empty gets block in simulated time (SV: `mailbox#(T)`) | 16 |
 | `read_only`, `read_write` | scheduler-region triggers (cocotb's `ReadOnly`/`ReadWrite`) | — |
-| `Receiver` | the getting end `channel` returns | 31 |
+| `Receiver` | the getting end `channel` returns | — |
 | `report_all` | phase driver | 24 |
 | `Rng` | the deterministic per-test random source behind `ctx.rng()` | 20 |
 | `run_component_test` | run a component tree as a self-contained test | — |
@@ -51,8 +51,8 @@ Every Part II listing opens with `use rustdv::prelude::*` — the analog of `imp
 | `RustdvComp` | a slot holding any factory-built component | 29 |
 | `RustdvCtx` | the context: path, logging, rng, DUT handle, objection — the framework, handed as an argument | 15 |
 | `RustdvSeq` | a slot holding any factory-built sequence — `RustdvComp`'s parallel | 36 |
-| `RustdvShared` | a cloneable handle to one shared object — `Rc<RefCell>` wearing the framework's name | 31 |
-| `Sender` | the putting end `channel` returns | 31 |
+| `RustdvShared` | a cloneable handle to one shared object — `Rc<RefCell>` wearing the framework's name | 32 |
+| `Sender` | the putting end `channel` returns | — |
 | `SeqCtx` | the context a sequence `body` receives | 36 |
 | `SeqError` | what a sequence can fail with | 36 |
 | `SeqItem` | the bounds a sequence-item type must meet | 36 |
@@ -66,13 +66,13 @@ Every Part II listing opens with `use rustdv::prelude::*` — the analog of `imp
 | `start_all` | drive the run phase across a tree | 24 |
 | `start_of_simulation_all` | phase driver | 24 |
 | `SubscribePort` | the subscribing end a component declares | 32 |
+| `Subscriber` | the trait a subscriber implements once per stream | 32 |
 | `TaskHandle` | what `spawn` returns: await it for the result, or `cancel()` it | 16 |
 | `TestError` | the error a failing test returns; `Ok(())` is a pass | 15 |
 | `Timer` | the simulated-time trigger: `Timer::ns(2).await` | 15 |
 | `TlmFifo` | the FIFO two components share without learning each other's names | 31 |
 | `TxnId` | the ticket `finish_item` returns; claims a response | 37, 38 |
 | `with_timeout` | wrap an await with a deadline | — |
-| `Subscriber` | the trait a subscriber implements once per stream | 32 |
 
 ## The macros
 
@@ -89,11 +89,11 @@ A few names live on the crate but not in the prelude; reach them as `rustdv::Nam
 
 | Name | What it is | Chapter |
 |---|---|---|
-| `ConfigError` | why a ConfigDb `get` failed, as a value | 27 |
+| `ConfigError` | why a ConfigDb `get` failed, as a value | 28 |
 | `ConnectError` | why a connection could not be made | 31 |
-| `TlmFull`, `TlmEmpty`, `TlmError` | the answers `try_put` and `try_get` can give | 31 |
+| `TlmFull`, `TlmEmpty`, `TlmError` | the channel layer's refusals: what `Sender::try_send` and `Receiver::try_recv` answer | — |
 | `Maker` | the closure type the factory stores per registration | 29 |
-| `ResponseQueue` | responses, retrievable in order or by ticket (pyuvm's `ResponseQueue`) | 37, 38 |
+| `ResponseQueue` | the store behind `get_response` — responses held for claiming, in order or by ticket (pyuvm's `ResponseQueue`) | — |
 | `TimeoutError`, `TaskError`, `ValueError`, `AnyHandle`, `Executor`, `TestRegistration`, `top_module` | infrastructure corners a testbench rarely touches | — |
 
 The whole of each layer is also re-exported for power users: `rustdv::sim`, `rustdv::runner`, `rustdv::gpi`.

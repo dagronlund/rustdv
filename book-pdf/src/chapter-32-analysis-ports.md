@@ -358,7 +358,7 @@ The transcript is the argument. All three writes land at `0.00ns` — the publis
 
 One piece of analysis machinery was left unexplained in Chapter 31, because it could not be explained before subscribers were: every `TlmFifo` carries a pair of publisher ports of its own. `put_ap()` announces each item the FIFO accepts; `get_ap()` announces each item it releases. They are the port of `uvm_tlm_fifo`'s built-in analysis ports — the same two names there — and they exist for the same reason: the components on a FIFO's data path are not the only ones with an interest in its traffic. A scoreboard may want to see every command a driver will eventually consume; a coverage collector may want to bin items as they pass through. The taps let them watch without joining the queue.
 
-There is nothing new to learn to use one. A watcher on a tap is the same shape as Figure 1's counter — a plain struct implementing `Subscriber`, a `SubscribePort`, and a `subscribe` call in the build phase:
+There is nothing new to learn to use one. A watcher on a tap is the same shape as figure 1's counter — a plain struct implementing `Subscriber`, a `SubscribePort`, and a `subscribe` call in the build phase:
 
 ```rust
 // Chapter 32, Figure 11: A watcher on a FIFO's tap is an ordinary subscriber

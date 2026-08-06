@@ -170,9 +170,9 @@ fn main() {
 Scoreboard checking 42
 ```
 
-The only change from Figure 3 is the order of the lines — the monitor finishes its writing *before* the scoreboard's borrow begins — and that is the entire point. The fix for an unordered write/read conflict is an ordering, in Rust as in Python; the difference is that Rust would not let you skip it.
+The only change from figure 3 is the order of the lines — the monitor finishes its writing *before* the scoreboard's borrow begins — and that is the entire point. The fix for an unordered write/read conflict is an ordering, in Rust as in Python; the difference is that Rust would not let you skip it.
 
-One subtlety in Figure 4 deserves a sentence, because it will save you fights with the compiler later: `monitor`'s borrow ended at its *last use* (the write on the line above), not at the closing brace of its scope. The borrow checker tracks how long each borrow is actually needed, not merely where the variable was declared. If it worked scope-to-brace, Figure 4 would not compile either; because it works use-to-use, tidy sequential code like this passes without ceremony.
+One subtlety in figure 4 deserves a sentence, because it will save you fights with the compiler later: `monitor`'s borrow ended at its *last use* (the write on the line above), not at the closing brace of its scope. The borrow checker tracks how long each borrow is actually needed, not merely where the variable was declared. If it worked scope-to-brace, figure 4 would not compile either; because it works use-to-use, tidy sequential code like this passes without ceremony.
 
 And one note of caution, so you do not over-generalize: when the monitor and scoreboard become concurrent tasks in Chapter 16, they cannot simply take turns borrowing a local variable — each task needs its own durable handle to shared state, which is exactly the situation `&`/`&mut` alone cannot express. Rust's answers there are the queue (the two tasks never share the value at all — Chapter 16) and, when sharing truly is the design, the `Rc<RefCell<T>>` escape hatch, which moves this chapter's rule from compile time to runtime checking (Chapter 13). Both of those tools are built on top of the rule you just learned, not exemptions from it. The rule is the constant; only the enforcement point moves.
 
