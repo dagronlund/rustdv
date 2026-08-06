@@ -3,6 +3,10 @@
 
 # Chapter 32 — the code has landed; the prose is yours
 
+> **Done 2026-08-05.** Verified against the manuscript, not this note: no
+> `WriteSink`/`on_write`/`analysis_fifo` anywhere in `book-pdf/src`, the tap
+> section is ch32 Figures 11–13, and the ch33/ch34 paragraphs use the new
+> vocabulary. Kept for the record; nothing below is outstanding.
 
 **The code thread ran on 2026-08-05 (D116/D117). You are not blocked.** Both
 checkers are green — `verify-book-listings.py` reports 0 drift and
@@ -54,6 +58,11 @@ If you change a listing for any reason, re-run
 # Final step
 
 The book is ready to go to market.  Make one final complete sweep of the book to make final edits for its publication.
+
+> **Done 2026-08-05.** The sweep ran: TOC titles, appendix cross-references
+> and chapter pointers checked against the crates, spelling and
+> figure-reference conventions unified. Regression, both book checkers and
+> the mdBook HTML build green on Linux; macOS confirmation is Ray's.
 
 
 ---

@@ -9,8 +9,11 @@ framework on 2026-07-29 — phases, the ConfigDb, the factory, `AnalysisBus`, a
 sequencer, and two struct tests that swap stimulus through the sequence factory.
 Both chapters can be written from it as it stands. Its files are
 `tinyalu_tb.rs`, `env.rs`, `components.rs`, `sequences.rs`, `alu_item.rs` and
-`alu_bfm.rs`; the manuscript currently cites a `tinyalu_tb/src/lib.rs`, which has
-not existed for some time.
+`alu_bfm.rs`. ~~The manuscript currently cites a `tinyalu_tb/src/lib.rs`, which has
+not existed for some time.~~ (Struck 2026-08-05: no `tinyalu_tb/src/lib.rs`
+citation remains anywhere in `book-pdf/src` — ch40 Figure 1 shows the real
+file list, and the only `lib.rs` mentions left are ch14/ch40 explaining the
+convention.)
 
 ---
 

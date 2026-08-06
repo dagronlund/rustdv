@@ -216,9 +216,12 @@ surface is deleted, and the FIFO-tap demonstration has moved from the ch31
 crate to ch32's as Figures 11–13. **The prose caught up the same day**: ch32's
 headings, paragraphs and Summary use the new vocabulary, the tap section is
 written as ch32 Figures 11–13, and the ch33/ch34 paragraphs are repaired —
-see STATUS.md's last entry. No directed code job is queued. The book's prose
-pass continues from `book-pdf/FABLE.md`'s remaining top notes (the ch32 note
-is satisfied and awaits Ray's strike).
+see STATUS.md's last entry. No directed code job is queued. **The final
+publication sweep of the manuscript ran on 2026-08-05** — TOC titles, appendix
+cross-references and chapter pointers verified against the crates, spelling and
+figure-reference conventions unified — and `book-pdf/FABLE.md`'s top notes are
+satisfied (marked done in place). Verified on Linux; macOS confirmation is
+Ray's.
 
 **The test suite**, in three tiers under the chapter runs
 (`output/regression/TESTING.md` is the operating manual, including the two
