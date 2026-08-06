@@ -48,7 +48,7 @@ Before touching your own core, run the known-good example. This isolates
 distinction in verification.
 
 ```sh
-git clone https://github.com/raysalemi/rustdv.git
+git clone https://github.com/rustdv/rustdv.git
 cd rustdv
 sim/run_smoke.sh icarus      # checks the simulator alone   → SMOKE: PASS
 sim/run_rustdv.sh            # full Rust testbench on TinyALU → REGRESSION: PASS
