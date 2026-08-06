@@ -33,11 +33,12 @@ exclude = [
 # ---------------------------------------------------------------------------
 [package]
 name = "rustdv"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "A hardware verification framework in Rust: cocotb-style simulator coroutines plus a UVM-analog testbench library."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rustdv/rustdv"
+readme = "getting-started-with-rustdv.md"
 keywords = ["verification", "testbench", "rtl", "hardware", "dv"]
 categories = ["development-tools::testing", "simulation"]
 
