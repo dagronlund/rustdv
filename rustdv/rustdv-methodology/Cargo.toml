@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "The verification methodology layer: component lifecycle and phases, ConfigDb, factory, objections, channels, analysis broadcast, TLM FIFOs, and the sequencer handshake (design-doc §5)."
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/rustdv/rustdv"
 
 [lib]
 # Crate root named after the crate, not lib.rs (D29).

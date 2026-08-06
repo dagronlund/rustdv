@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "Proc macros for rustdv: #[rustdv::test] and #[derive(Component)] (design-doc §6). Zero dependencies: token parsing is hand-written (no syn/quote) per the offline-toolchain constraint."
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/rustdv/rustdv"
 
 [lib]
 # Crate root named after the crate, not lib.rs (D29).

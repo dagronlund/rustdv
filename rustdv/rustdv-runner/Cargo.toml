@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "Regression manager: link-time test registry, sequential test execution, seed handling, result table, VPI bootstrap entry (design-doc D2.4, §4.5)."
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/rustdv/rustdv"
 
 [lib]
 # Crate root named after the crate, not lib.rs (D29).
