@@ -46,11 +46,11 @@ categories = ["development-tools::testing", "simulation"]
 path = "src/rustdv.rs"
 
 [dependencies]
-rustdv-gpi = { path = "rustdv-gpi" }
-rustdv-sim = { path = "rustdv-sim" }
-rustdv-methodology = { path = "rustdv-methodology" }
-rustdv-macros = { path = "rustdv-macros" }
-rustdv-runner = { path = "rustdv-runner" }
+rustdv-gpi = { path = "rustdv-gpi", version = "0.1.0" }
+rustdv-sim = { path = "rustdv-sim", version = "0.1.0" }
+rustdv-methodology = { path = "rustdv-methodology", version = "0.1.0" }
+rustdv-macros = { path = "rustdv-macros", version = "0.1.0" }
+rustdv-runner = { path = "rustdv-runner", version = "0.1.0" }
 
 [profile.release]
 panic = "unwind"   # panics must be catchable at the task boundary (§0.6)

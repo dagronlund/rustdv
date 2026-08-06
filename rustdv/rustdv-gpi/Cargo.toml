@@ -10,7 +10,7 @@ license = "MIT OR Apache-2.0"
 path = "src/rustdv_gpi.rs"
 
 [dependencies]
-rustdv-gpi-sys = { path = "../rustdv-gpi-sys" }
+rustdv-gpi-sys = { path = "../rustdv-gpi-sys", version = "0.1.0" }
 
 [dev-dependencies]
-rustdv-vpi-stubs = { path = "../rustdv-vpi-stubs" }
+rustdv-vpi-stubs = { path = "../rustdv-vpi-stubs", version = "0.1.0" }
