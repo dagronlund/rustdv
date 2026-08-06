@@ -53,7 +53,7 @@ fn noop_waker() -> Waker {
 ///
 /// Each round polls the future once and then drains the run queue, so a
 /// future waiting on an `Event` makes progress as soon as a spawned task sets
-/// it. Panics if the future is still pending after [`MAX_ROUNDS`].
+/// it. Panics if the future is still pending after 10,000 rounds.
 pub fn block_on<F: Future>(fut: F) -> F::Output {
     let ex = executor::init();
     let mut fut = Box::pin(fut);

@@ -10,7 +10,7 @@
 //! # Ports and exports
 //!
 //! A component that needs a FIFO it does not own declares a **port**
-//! ([`PutPort`], [`GetPort`], [`PeekPort`]). The component that *owns* the
+//! ([`crate::port::PutPort`], [`crate::port::GetPort`], [`crate::port::PeekPort`]). The component that *owns* the
 //! FIFO hands out **exports** and connects them:
 //!
 //! ```ignore

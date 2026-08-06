@@ -316,7 +316,7 @@ pub trait Component {
         full.rsplit("::").next().unwrap_or(full)
     }
 
-    /// Build this component the normal way and drop it in an [`RustdvComp`]
+    /// Build this component the normal way and drop it in an [`crate::factory::RustdvComp`]
     /// slot — the analogue of UVM's `new` (D75). Not overridable.
     fn new_comp() -> crate::factory::RustdvComp
     where
@@ -447,7 +447,7 @@ pub trait ComponentNode: DynPhases {
     /// lets [`run_all`] drive a parent's own `run` concurrently with its
     /// children's. The derive generates this for `RustdvComp` fields; other
     /// child shapes (`Option<T>`, `Vec<T>`, plain `T`) stay in place and are
-    /// reached through [`children_mut`] as before.
+    /// reached through [`ComponentNode::children_mut`] as before.
     ///
     /// The default returns nothing, so a hand-written `ComponentNode` keeps the
     /// old behaviour and still compiles.
@@ -455,7 +455,7 @@ pub trait ComponentNode: DynPhases {
         Vec::new()
     }
 
-    /// Put back what [`take_children`] removed, in the same order.
+    /// Put back what [`ComponentNode::take_children`] removed, in the same order.
     /// Called unconditionally after the run phase — including on error — so the
     /// post-run phases walk a whole tree.
     fn restore_children(&mut self, taken: Vec<(String, Box<dyn ComponentNode>)>) {

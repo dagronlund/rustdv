@@ -382,7 +382,7 @@ impl<REQ: 'static, RSP: 'static> ComponentNode for Sequencer<REQ, RSP> {
 // ===========================================================================
 
 /// What a running sequence is handed. Its equivalent of a component's
-/// [`RustdvCtx`]: it can log, it has a seeded RNG, and it knows its sequencer
+/// [`crate::RustdvCtx`]: it can log, it has a seeded RNG, and it knows its sequencer
 /// — if it has one.
 pub struct SeqCtx<REQ: 'static, RSP: 'static = REQ> {
     inner: Option<Rc<SeqrInner<REQ, RSP>>>,
@@ -496,7 +496,7 @@ impl<REQ: 'static, RSP: 'static> SeqCtx<REQ, RSP> {
 ///
 /// Not a component — no place in the tree, no path, no phases. The request
 /// and response types are **associated**, not parameters, so that
-/// [`Factory::set_seq_override`](crate::Factory::set_seq_override) can pair
+/// [`set_seq_override`] can pair
 /// two sequences without being told them again.
 pub trait Sequence: Sized + 'static {
     type Req: 'static;

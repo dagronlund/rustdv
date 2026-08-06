@@ -77,12 +77,12 @@ impl RustdvComp {
     /// so both futures can be driven together.
     ///
     /// The slot is empty only for the duration of the run phase;
-    /// [`put_node`] restores it before the post-run phases walk the tree.
+    /// [`RustdvComp::put_node`] restores it before the post-run phases walk the tree.
     pub fn take_node(&mut self) -> Option<Box<dyn ComponentNode>> {
         self.inner.take()
     }
 
-    /// Put a component taken by [`take_node`] back into the slot.
+    /// Put a component taken by [`RustdvComp::take_node`] back into the slot.
     pub fn put_node(&mut self, node: Box<dyn ComponentNode>) {
         self.inner = Some(node);
     }

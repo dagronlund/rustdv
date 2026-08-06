@@ -55,7 +55,7 @@ impl ObjectionRegistry {
 
     /// Wait for the run phase to end by objection consensus (D82/D82b).
     ///
-    /// Unlike [`wait_all_dropped`], this takes no shortcut: it waits on the
+    /// Unlike [`ObjectionRegistry::wait_all_dropped`], this takes no shortcut: it waits on the
     /// `drained` event, which is set only when a raised objection count falls
     /// back to zero. That is exactly the semantics the phaser needs to *race*
     /// against the run tree:
