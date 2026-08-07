@@ -2,7 +2,7 @@
 
 *New here — human or AI? This is the walk-around. Ten minutes, and you'll
 know what this project is, what's been proven, and where everything lives.
-Last verified 2026-08-05; the proven claims below are checked by the
+Last verified 2026-08-07; the proven claims below are checked by the
 regression suite, not aspirational.*
 
 > **Both products are complete.** The framework is done — every chapter crate

@@ -5,9 +5,9 @@ description: Run a rustdv testbench regression, prove the checking is not vacuou
 
 # Verification, Mutation Check, and Coverage Report
 
-A green regression proves nothing by itself — a checker you have never
-seen fail is a checker you should not trust. This skill turns "it passes"
-into evidence, then writes the report.
+Make every checker fail on purpose before you report coverage, then write the
+report from what you saw. A checker you have never seen fail is a checker you
+should not trust, so a green regression on its own is not evidence.
 
 ## Step 1: Clean regression, reproducibly
 

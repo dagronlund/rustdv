@@ -5,13 +5,10 @@ description: Use when a rustdv session is ending, or when the user says to close
 
 # Close out a thread
 
-A new thread starts by running `start-thread`, which reads TOUR.md, CLAUDE.md
-and CLAUDE.local.md and acts on them. If those are stale it will act on stale
-information, and the cost lands on Ray, who has to notice and correct each
-wrong conclusion. That has happened often enough to be worth a checklist
-rather than good intentions.
+**Do every step below, then report once.** No narration between steps.
 
-**Do the whole list. Report once at the end** — no narration between steps.
+The job is to leave TOUR.md, CLAUDE.md and CLAUDE.local.md true, because the
+next thread runs `start-thread`, reads them, and acts on whatever they say.
 
 ## 0. Toolchain
 

@@ -5,12 +5,10 @@ description: Use when a rustdv session is starting, or when the user says to com
 
 # Start a rustdv thread
 
-This is the other half of `close-out-thread`. That skill used to end by handing
-Ray a prompt to paste into a fresh thread; this skill *is* that prompt, run
-directly instead of retyped.
+**Do every step below, then report once.** No narration between steps.
 
-**Do the whole list. Report once at the end** — no narration between steps.
-This skill only orients and verifies; it does not edit anything.
+**Edit nothing.** This skill orients and verifies; it does not repair. Anything
+red gets reported, not fixed.
 
 ## 1. Read the orientation files, in order
 
