@@ -85,6 +85,7 @@ So, if you change:
 | anything a transcript quotes (timing, paths, test count) | every README quoting it — `bash output/regression/verify-transcripts.sh` finds them |
 | a `.rs` figure caption | the README figure map — they must agree, and caption edits stay line-count-neutral |
 | framework syntax (an attribute, a name) | every call site, `skills/`, `.claude/skills/`, and a note in `book-pdf/chapter-notes.md` |
+| `tinyalu_tb`'s code | the repository `README.md`, which walks it — both checks below cover it, so this one is enforced rather than remembered |
 
 **Prefer a check to a note.** A rule written down is a rule someone must
 remember; a rule in the regression is enforced. Two checks exist because the
@@ -93,8 +94,8 @@ over it every push:
 
 | check | what it gates |
 |---|---|
-| `custom/readme-transcripts` | every transcript in an example README **and in `book-pdf/src`** is what the simulator prints (22 chapters) |
-| `custom/book-listings` | every Rust listing in ch15–40 is real code from that chapter's crate |
+| `custom/readme-transcripts` | every transcript in an example README, **in `book-pdf/src`, and in the repository `README.md`** is what the simulator prints (22 chapters) |
+| `custom/book-listings` | every Rust listing in ch15–40 **and in the repository `README.md`** (ids `chRM/N`) is real code from that chapter's crate |
 | `book-sync` (pre-existing) | ch1–14 listings, byte-for-byte |
 
 Run them directly while working — they are far cheaper than the full

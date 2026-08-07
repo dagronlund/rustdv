@@ -26,8 +26,10 @@ pyuvm story retold with a compiler: a simulator-driven async executor,
 triggers, a UVM-style component methodology (ownership tree, typed
 configs, maker-closure factories, channels/analysis ports, the full
 sequencer handshake), running testbenches as native shared libraries
-loaded by Icarus Verilog over VPI. Zero external dependencies. The crate
-name `rustdv` is registered on crates.io (0.0.1 placeholder).
+loaded by Icarus Verilog over VPI. Zero external dependencies. **v0.1 is
+publicly live** (2026-08-06/07): `rustdv` 0.1.1 is published on crates.io,
+the `rustdv/rustdv` GitHub repo is public with Discussions on and
+Issues/PRs off, and the companion site is up at rustdv.org.
 
 **"Rust for RTL Verification"** is its book — the third in Ray Salemi's
 series after [*The UVM Primer*](https://www.uvmprimer.com) (SystemVerilog)
@@ -108,6 +110,9 @@ pre-push hook:
   `chapter-notes.md` carries one row per chapter. Two checks enforce agreement:
   `custom/book-listings` and `custom/readme-transcripts` fail the push if the
   book and the code disagree. Run them directly; they are seconds, not minutes.
+  **Both also cover the repository `README.md`**, which walks `tinyalu_tb` the
+  way the Interlude does: its listings are compared against the crate (ids
+  `chRM/N`) and its transcript against a fresh run.
 - **Figures are one numbering space** (D110): a chapter's code listings,
   drawings, tables and transcripts all draw from the same sequence, in order of
   appearance, and every one of them is a "Figure". If Figure 1 is a drawing, the

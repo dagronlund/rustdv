@@ -1088,3 +1088,58 @@ is satisfied; striking it is Ray's. Its two remaining top items — the Buy Me a
 Coffee header and the final sweep — are untouched, and the coffee link cannot
 be done under the prose-pass file boundary: a per-page header lives in the
 mdBook theme, not in `src/*.md`.
+
+## The repository README becomes a teaching document, and two checks grow to cover it (2026-08-07)
+
+**The landing page was the stalest document in the tree.** It described the
+manuscript as "chapters 1–14", called rustdv "the groundwork for" a framework,
+and said nothing about what a rustdv testbench looks like — written before the
+restoration, never revisited through it. Ray's comparison was pyuvm's README,
+which teaches: it walks a working testbench from the test down to the sequence
+item and explains each piece as it goes.
+
+`README.md` is now that walk, built from `rustdv/tinyalu_tb/`. It opens with
+what rustdv is and why it keeps the UVM's late binding rather than replacing it
+with types (§0.1–0.4, D3, in reader-facing words), carries a UVM-concept map —
+capability by capability, **no 1800.2 section numbers and no conformance claim**
+(D118) — then installation, a real `sim/run_rustdv.sh` transcript, and fifteen
+listings taken verbatim from the crate: the test, the two factory-overriding
+tests, the env's `build`/`connect`/`start_of_simulation`, a monitor, the two
+`Subscriber` logs, the scoreboard, coverage, the driver, the three sequences,
+the transactions, the predictor and the BFM's handles.
+
+**No version numbers in the prose.** Ray's point mid-session: a version written
+into a file is a staleness source. The crates.io badge carries the current
+version, `rust-toolchain.toml` carries the compiler, and the README points at
+both instead of restating them. The MSRV sentence inherited from
+`getting-started-with-rustdv.md` ("1.75 or newer") was unverifiable against
+anything in the tree and is gone rather than corrected.
+
+**Both drift checks now sweep the file**, because a teaching README quoting a
+crate rots exactly the way a chapter does:
+
+- `verify-book-listings.py` yields `("RM", "README.md")` from `chapters()` and
+  maps `RM` to `rustdv/tinyalu_tb/src/*.rs`, so README listings compare against
+  the crate under ids `chRM/N`. It caught two of them on its first run — the env
+  and coverage listings had been trimmed mid-`impl`, which the contiguity rule
+  correctly rejects; both were extended to the real block ends rather than
+  exempted, and nothing went into `KNOWN_DRIFT`, which stays empty.
+- `verify-transcripts.sh`'s manuscript sweep now iterates
+  `book-pdf/src/*.md README.md`.
+
+**Both were mutation-tested.** `pub result: u16` → `u32` in a README listing
+produced `chRM/13: listing is not in the chapter's crate`, exit 1; `20 compared`
+→ `21 compared` in the README transcript produced a MISMATCH naming the line.
+Restored, both pass. The two `test.json` files were updated in the same edit —
+`book-listings` matches on the summary line, which changed to
+`book listings (ch15-40 + Interlude + README):`, and asserting on human-readable
+output is the thing that made that a one-line fix rather than a silent pass.
+
+Full regression 239/0 afterward, **on the Linux sandbox; not yet verified on
+macOS/arm64.**
+
+**Left standing, deliberately:** `rustdv/getting-started-with-rustdv.md` is the
+crates.io front page and still says the published crate is "the 0.0.1 name
+reservation" and that `cargo add rustdv` works "once rustdv 0.1 ships". Both
+sentences were true when written and are not now. Out of scope for this
+session's brief; it is the next obvious documentation job.

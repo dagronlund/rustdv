@@ -72,7 +72,7 @@ def segments(block):
 
 
 def sources_for(ch):
-    if ch in ("40", "IL"):
+    if ch in ("40", "IL", "RM"):
         return glob.glob("rustdv/tinyalu_tb/src/*.rs")
     lookup = "34" if ch == "33" else ch          # ch33's listings live in ch34's crate
     d = glob.glob(f"output/examples/ch{lookup}-*/src")
@@ -89,6 +89,10 @@ def chapters():
         if ch != "IL" and int(ch) < 15:
             continue                              # ch1-14 belong to book-sync
         yield ch, f
+    # The repository README walks `tinyalu_tb` the way the Interlude does, so
+    # its listings are quotations of the same crate and rot the same way. It is
+    # the first thing anyone reads; nothing checked it until now.
+    yield "RM", "README.md"
 
 
 def main():
@@ -121,7 +125,7 @@ def main():
                 new_drift += 1
                 failures.append(f"    {fid}: listing is not in the chapter's crate")
 
-    print(f"book listings (ch15-40 + Interlude): {ok} verbatim, "
+    print(f"book listings (ch15-40 + Interlude + README): {ok} verbatim, "
           f"{spliced} spliced-but-real, {quoted} quoted from elsewhere, "
           f"{exempt} elided, {new_drift} drift")
     if report:
