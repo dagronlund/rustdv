@@ -1,4 +1,4 @@
-# Template: rustdv testbench crate manifest. Replace <names>.
+# Template: rustdv testbench crate manifest. Replace <names> and the two paths.
 [package]
 name = "<dut>_tb"
 version = "0.1.0"
@@ -9,23 +9,16 @@ edition = "2021"
 # rlib: lets `cargo test` run the pure-Rust unit tests.
 crate-type = ["cdylib", "rlib"]
 
-# Let cargo write both dependency lines. A version typed by hand is right on
-# the day it is typed and wrong at the next release, and nothing about that
-# release reminds anyone to come back and fix it:
-#
-#     cargo add rustdv
-#     cargo add --dev rustdv-vpi-stubs
-#
-# rustdv-vpi-stubs supplies panicking vpi_* symbols so `cargo test` executables
-# link. It is a dev-dependency only and is never linked into the cdylib the
-# simulator loads, where the real symbols come from the simulator.
-#
-# To build against a clone of the repository instead — to read the framework's
-# source alongside your testbench, or to try a change to it — replace the two
-# generated lines with path dependencies:
-#
-#     [dependencies]
-#     rustdv = { path = "<path-to>/rustdv/rustdv" }
-#
-#     [dev-dependencies]
-#     rustdv-vpi-stubs = { path = "<path-to>/rustdv/rustdv/rustdv-vpi-stubs" }
+# Paths into your clone of the rustdv repository, relative to this file.
+[dependencies]
+rustdv = { path = "<path-to>/rustdv/rustdv" }
+
+# Panicking vpi_* symbols so `cargo test` executables link. Never linked into
+# the cdylib the simulator loads, where the real symbols come from the simulator.
+[dev-dependencies]
+rustdv-vpi-stubs = { path = "<path-to>/rustdv/rustdv/rustdv-vpi-stubs" }
+
+# Not working from a clone? Run `cargo add rustdv` and
+# `cargo add --dev rustdv-vpi-stubs` instead, and delete the two path lines
+# above. Let cargo write those lines; a version typed by hand is wrong at the
+# next release and nothing reminds you to fix it.

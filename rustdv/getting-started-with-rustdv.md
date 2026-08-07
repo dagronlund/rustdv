@@ -6,22 +6,14 @@ from nothing to a running regression, step by step. It assumes you have
 never used rustdv before; it does not assume you know Rust well (the book
 *Rust for RTL Verification* teaches that part).
 
-Two things carry the name rustdv, and this guide uses both. They are not
-alternatives:
+Start by cloning the repository, in Step 1. It brings the framework, the
+TinyALU design and its worked testbench, starter templates, the book's runnable
+figures, the regression suite, and the skills that let Claude write a testbench
+for you. Every step here uses it.
 
-- **The crate**, on crates.io. This is the framework your testbench compiles
-  against. Getting it is one line — `cargo add rustdv`, in Step 2 — and you
-  never think about it again.
-- **The repository**, cloned. This is everything the crate does not ship: the
-  TinyALU design and its worked testbench, the starter templates, the book's
-  runnable figures, the regression suite, and the skills that let Claude write
-  a testbench for you. Every step below draws on it, starting with Step 1,
-  where you run its known-good example to prove your tools work before writing
-  a line of your own.
-
-There is one real choice to make and it comes later: whether you write the
-testbench yourself or have Claude write it. Both are covered at the end, and
-they mix well.
+There is one choice to make and it comes later: whether you write the testbench
+yourself or have Claude write it. Both are covered at the end, and they mix
+well.
 
 ---
 
@@ -90,21 +82,18 @@ Ready-made starting files live in the repository at
 `lib.rs`, `run.sh`, and `timescale.v`. Copy them and rename the
 placeholders.
 
-Your testbench depends on rustdv the ordinary way, so let cargo write the
-line and keep it current:
-
-```sh
-cd my_core_tb && cargo add rustdv
-```
-
-If instead you want to build against your clone — to read the framework's
-source alongside your testbench, or to try a change to it — point the
-dependency at the clone's workspace directory rather than at crates.io:
+Your testbench points at the clone. Two lines in `my_core_tb/Cargo.toml`, and
+the paths are relative to that file:
 
 ```toml
 [dependencies]
 rustdv = { path = "../../rustdv/rustdv" }   # → the clone's rustdv/ workspace dir
+
+[dev-dependencies]
+rustdv-vpi-stubs = { path = "../../rustdv/rustdv/rustdv-vpi-stubs" }
 ```
+
+The second one only matters for `cargo test`; Step 3 explains it.
 
 ## Step 3: The five files of a first testbench
 

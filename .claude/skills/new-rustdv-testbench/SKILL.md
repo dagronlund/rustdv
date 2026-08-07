@@ -23,13 +23,12 @@ this repository; the templates in `templates/` are minimal versions of it.
    does nothing. Two calls → duplicate-symbol link error.
 
 3. **cargo-test linking.** Test *executables* cannot carry the undefined
-   `vpi_*` symbols the cdylib is allowed to have. Add the stub crate — let
-   cargo write the line rather than pinning a version by hand:
-   ```sh
-   cargo add --dev rustdv-vpi-stubs
+   `vpi_*` symbols the cdylib is allowed to have. Add the stub crate:
+   ```toml
+   [dev-dependencies]
+   rustdv-vpi-stubs = { path = "<path-to>/rustdv/rustdv/rustdv-vpi-stubs" }
    ```
-   (against a clone instead: `rustdv-vpi-stubs = { path =
-   "<path-to>/rustdv/rustdv/rustdv-vpi-stubs" }`)
+   (not working from a clone: `cargo add --dev rustdv-vpi-stubs`)
 
    and in `lib.rs`:
    ```rust
