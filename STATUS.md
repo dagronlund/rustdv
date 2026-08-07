@@ -1155,10 +1155,12 @@ crates.io held "the 0.0.1 name reservation" and that `cargo add rustdv` would
 work "once rustdv 0.1 ships" — the two sentences most likely to make a new
 reader take the long path for no reason.
 
-That file is rewritten around the live mechanisms. `cargo add rustdv` leads and
-the clone follows, described by what it carries that the crate does not (the
+That file is rewritten around the live mechanisms. ~~`cargo add rustdv` leads
+and the clone follows, described by what it carries that the crate does not (the
 DUT, the worked testbench, the figures, the regression, the skills) rather than
-by a release that has already happened. The two options had been lettered
+by a release that has already happened.~~ **Struck the same day — see the next
+entry. Ray's call: the guide is for beginners and offers one path, the clone.**
+The two options had been lettered
 **A**/**B**; the letters are gone. They were referenced exactly three times,
 all inside the two sentences under the table, so they were a lookup key for a
 table nobody needed to look back at — and worse, **`Path A`/`Path B` already
@@ -1217,3 +1219,61 @@ install source is blocked. `toolchain-drop/` solved that, and the file is a
 record of a sprint that is over. It is internal rather than reader-facing, so
 it is out of `no-stale-versions`' scope; it wants either a rewrite or deletion,
 and which one is Ray's call.
+
+## The getting-started guide gets one path, and the notes learn to lead with the instruction (2026-08-07)
+
+**`getting-started-with-rustdv.md` offers exactly one way in: clone the
+repository.** Ray's call, and the reasoning is that it is a beginner guide —
+someone who has never written a rustdv testbench does not need a choice, and
+`cargo add rustdv` is a distinction they cannot yet evaluate. The earlier
+rewrite this same day had presented the crate and the clone as two things the
+guide used together; before that, the file had presented them as two lettered
+alternatives. Both framings are gone. Step 2 now gives the two path
+dependencies outright — `../../rustdv/rustdv` for the facade and
+`../../rustdv/rustdv/rustdv-vpi-stubs` for the test-linking stub, both resolved
+against the tree and confirmed. The template `Cargo.toml` and
+`new-rustdv-testbench/SKILL.md` were flipped to match, since the guide tells the
+reader to copy them; `cargo add` survives in both only as a trailing comment for
+someone not working from a clone. Ray: crates.io readers can get their own
+instructions later.
+
+**The larger job was the writing itself.** Ray, on finding a memory whose header
+said `.claude/` could not be edited while its own appended correction said the
+opposite: *"You seem to have a writing style that likes to say, 'there is this
+problem, but I cleverly fixed it,' and then later you read 'there is this
+problem' and stop reading. Stop writing stories about your own cleverness and
+start plainly telling future threads what to do."* He is right, and the failure
+mode is mechanical: a narrative's opening sentence is a problem statement, so a
+reader who stops after one sentence has read the problem and not the answer.
+
+Every memory file and every instruction document was swept. Sixteen memories
+opened with a story and now open with the instruction, with the reason — where
+it survives — as one `Why:` line at the end. Three were worse than badly
+written: `rustdv-open-questions-for-ray` told each session to open by putting a
+list of resolved questions to Ray; `dual-audience-book-edit` described a
+finished July edit, pointed at three retired style documents, and named a git
+branch twice; `book-completion-workflow` claimed "chapters 15–41 + Appendix A,
+B" when ch41 was cut by D111 and there are four appendices. The two dead files
+are tombstones reading "Ignore this file" and are out of the index. Hard-coded
+counts came out of `rustdv-test-suite` — it said 236 regression entries against
+an actual 240 — replaced by a pointer to `regress.py --list`, the same move as
+`no-stale-versions` makes for version numbers.
+
+In the repo, only two documents offended, and they are the two every session
+runs: `start-thread` opened with the history of how it replaced a handoff
+prompt, and `close-out-thread` with a paragraph on why a checklist beats good
+intentions. Both now open with "Do every step below, then report once."
+`skills/rustdv-verify-cover` was reordered from "a green regression proves
+nothing" to "make every checker fail on purpose before you report coverage."
+CLAUDE.md, `write-a-bfm`, `debug-a-regression` and `rtl-spec-analysis` already
+led with instructions and were left alone.
+
+Also struck this session: the word "honest" in `getting-started-with-rustdv.md`
+and TOUR.md's three uses. Ray: *"Do you want praise for being honest? Were you
+lying before?"* `book-pdf/FABLE.md` has forbidden it since the prose pass. About
+29 instances survive in `book-pdf/src` and `output/`; no check was added for
+it, because some are direct address the manuscript earns and a check failing on
+all of them would be ignored.
+
+Full regression 240/0, both drift checks and `index-decisions.py` green, **on
+the Linux sandbox; not yet verified on macOS/arm64.**
