@@ -1143,3 +1143,77 @@ crates.io front page and still says the published crate is "the 0.0.1 name
 reservation" and that `cargo add rustdv` works "once rustdv 0.1 ships". Both
 sentences were true when written and are not now. Out of scope for this
 session's brief; it is the next obvious documentation job.
+
+## Version numbers leave the prose, and a check keeps them out (2026-08-07)
+
+**Ray's rule, stated mid-session and worth recording as a rule rather than a
+correction: a version written into a file is a staleness source.** It is right
+the day it is typed and wrong at the next release, and nothing about releasing
+prompts anyone to go and fix it. `getting-started-with-rustdv.md` is the
+crates.io front page and had been telling readers since the 0.1 launch that
+crates.io held "the 0.0.1 name reservation" and that `cargo add rustdv` would
+work "once rustdv 0.1 ships" — the two sentences most likely to make a new
+reader take the long path for no reason.
+
+That file is rewritten around the live mechanisms. `cargo add rustdv` leads and
+the clone follows, described by what it carries that the crate does not (the
+DUT, the worked testbench, the figures, the regression, the skills) rather than
+by a release that has already happened. The two options had been lettered
+**A**/**B**; the letters are gone. They were referenced exactly three times,
+all inside the two sentences under the table, so they were a lookup key for a
+table nobody needed to look back at — and worse, **`Path A`/`Path B` already
+mean something else in this repository**: the sandbox toolchain choice in
+`output/environment-setup.md` (A = open network access, B = the offline drop),
+cited that way three times in this file and in `toolchain-drop/install.sh`.
+Reversing the letters while a second meaning was live in the same tree was a
+collision waiting to mislead somebody. The neighbouring "use model 1 / model 2"
+numbering stays: it is a real forward reference to two section headings.
+Also gone from the file:
+the unverifiable `rustc --version # expect 1.75 or newer` (no `rust-version`
+field exists anywhere in the tree to check it against — `rust-toolchain.toml`
+is the real answer and the text now points there); `iverilog -V # expect
+version 11 or newer`, replaced by the actual constraint, which is that the run
+scripts pass `-g2012`; "Verilator and commercial simulators are on the roadmap
+(see `/STATUS.md`)", which pointed at a roadmap this file has never contained —
+STATUS.md is a record of what ran, and now says so; and "the four `SKILL.md`
+files under `.claude/skills/`", of which there are six. CLAUDE.md's folder map
+listed five and is corrected in the same pass (it was missing `start-thread`).
+
+**`custom/no-stale-versions` is the new check** —
+`output/regression/verify-no-stale-versions.py`, instant and needing no
+toolchain. It scans 95 reader-facing documents for two shapes of the same
+mistake: a pinned `rustdv = "0.x"` a reader would copy, and a `rustdv 0.x.y` in
+running prose. **`STATUS.md` and the design log are deliberately out of scope**
+— they are dated records and are supposed to name the version that ran; scoping
+them in would have made every historical entry a violation and trained everyone
+to ignore the check. Its `ALLOW` list is empty, is documented as not being a
+debt register, and had its one speculative entry removed when the file it
+exempted turned out not to contain a version at all.
+
+Mutation-tested both ways before being trusted: appending
+`rustdv 0.1.1 is published on crates.io.` to README.md and a
+`rustdv = "0.1"` TOML block to the getting-started file each produced exit 1
+naming the file, line and reason; restored, both pass.
+
+**The git-lock hazard is now in TOUR.md's "Notes for AI sessions".** Until file
+deletion is granted for the mounted folder, the sandbox denies `unlink` there,
+and `unlink` is how git removes the lock it takes for *any* index operation —
+`git status` included. The failed cleanup prints one warning line and the
+leftover zero-byte `.git/index.lock` then fails every later
+`git add`/`commit`/`checkout` with `File exists.` Ray does the commits, so the
+breakage lands on him with nothing pointing back at a sandbox session. This
+session stranded one and, while probing it, briefly turned one stranded file
+into three: a same-directory `mv` renames the lock without removing it, a
+cross-device `mv` copies and then fails to unlink, and `: > file` makes a fresh
+one. All cleared; the note says to request deletion and `rm` rather than
+improvise, and records that read-only git never takes the lock.
+
+Full regression 240/0 afterward (239 + the new check), **on the Linux sandbox;
+not yet verified on macOS/arm64.**
+
+**Known stale, not touched:** `output/environment-setup.md` still opens by
+saying the Cowork VM "has no Rust toolchain and no Icarus" and that every
+install source is blocked. `toolchain-drop/` solved that, and the file is a
+record of a sprint that is over. It is internal rather than reader-facing, so
+it is out of `no-stale-versions`' scope; it wants either a rewrite or deletion,
+and which one is Ray's call.

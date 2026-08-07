@@ -96,13 +96,20 @@ cd rustdv
 If you would rather not install anything, click the Codespaces badge above:
 you get Rust, Icarus Verilog, and Verilator, ready to run.
 
-A testbench is a `cdylib` crate, so its `Cargo.toml` needs one line of
-configuration on top of what `cargo add` wrote for you:
+A testbench is a library the simulator loads, so its `Cargo.toml` needs a
+`[lib]` section on top of what `cargo add` wrote for you:
 
 ```toml
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 ```
+
+`cdylib` is what the simulator dlopens; `rlib` is what lets `cargo test` run
+your transaction and predictor unit tests with no simulator at all, which is
+where a testbench is cheapest to debug. Those test executables cannot carry the
+undefined `vpi_*` symbols the cdylib is allowed to have, so add the stub crate
+that satisfies them — `cargo add --dev rustdv-vpi-stubs` — and `use
+rustdv_vpi_stubs as _;` under `#[cfg(test)]`.
 
 [`rustdv/getting-started-with-rustdv.md`](rustdv/getting-started-with-rustdv.md)
 walks the whole path from an empty directory to a passing regression.

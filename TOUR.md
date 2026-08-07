@@ -74,7 +74,7 @@ pre-push hook:
 | Why it's designed this way | `output/.design-decisions.md` — the authoritative decision log (§0 = mission + method). Internal: never cite it in reader-facing output. |
 | Runnable book figures | `/output/examples` (`README.md` has per-chapter run commands) |
 | The regression suite | `/output/regression/regress.py` (`--help` works; wired into pre-push) |
-| Implementation history & honest deviations | `STATUS.md` (chronological, bottom-up) |
+| Implementation history & the deviations log | `STATUS.md` (chronological, bottom-up) |
 | The book's prose pass | `book-pdf/FABLE.md` (the rules) and `book-pdf/chapter-notes.md` (one row per chapter). These supersede the older `fable-brief.md`, `notes-for-fable.md` and `dual-audience-style.md`. |
 | AI verification skills | `/skills` (spec+RTL → testbench → verified coverage report) |
 | Upstream sources | `../rustdv-reference` — **read-only, outside the repo** (cocotb, pyuvm, SystemVerilog UVM, both earlier books) |
@@ -92,9 +92,9 @@ pre-push hook:
   compile error" figures were removed (D68, and the reasoning in §0.4).
 - **Fibonacci on the TinyALU** (chapter 38 — TB 7.2) — stimulus that needs the
   DUT's answers: `Fibonacci Sequence: [0, 1, 1, 2, 3, 5, 8, 13, 21]`.
-- **The honest-gaps culture** — `STATUS.md`'s deviations and the decision log's
-  open questions. What this project can't do yet is written down next to what it
-  can. (The book's own "future of Rust in verification" chapter was cut — D111.)
+- **The gaps inventory** — `STATUS.md`'s deviations and the decision log's open
+  questions. What this project can't do yet is written down next to what it can.
+  (The book's own "future of Rust in verification" chapter was cut — D111.)
 
 ## Rules of the road
 
@@ -113,6 +113,12 @@ pre-push hook:
   **Both also cover the repository `README.md`**, which walks `tinyalu_tb` the
   way the Interlude does: its listings are compared against the crate (ids
   `chRM/N`) and its transcript against a fresh run.
+- **Never write a version number into reader-facing prose.** It is right the
+  day you type it and wrong at the next release. The crates.io badge carries
+  the version, `cargo add rustdv` writes the dependency line, and
+  `rust-toolchain.toml` pins the compiler — point at those instead of restating
+  them. `custom/no-stale-versions` enforces it; `STATUS.md` and the design log
+  are exempt, because a dated record should name the version that ran.
 - **Figures are one numbering space** (D110): a chapter's code listings,
   drawings, tables and transcripts all draw from the same sequence, in order of
   appearance, and every one of them is a "Figure". If Figure 1 is a drawing, the
@@ -145,6 +151,16 @@ or similar) and to nobody else:
 - **Never bulk-delete-and-recreate directories from the sandbox VM** —
   the desktop sync engine races and forks `dir 2/` duplicates. Build
   trees in `/tmp` and `cp` over; file deletion needs the permission tool.
+- **Request file-deletion permission for this folder before running `git`
+  here** — including `git status`. With deletion enabled git removes its own
+  `.git/index.lock` and leaves nothing behind. If you see `unable to unlink
+  '…/.git/index.lock': Operation not permitted`, grant deletion and
+  `rm -f .git/index.lock` in the same session; do not try to shift the file
+  with `mv` or truncation, which leaves two locks instead of one. `git log`,
+  `git diff` and `git branch --show-current` never take the lock and need none
+  of this. *Why it matters:* a leftover lock fails every later
+  `git add`/`commit`/`checkout` with `File exists`, and Ray does the commits,
+  so it breaks his machine, not yours.
 - The Cowork VM has no network: toolchain comes from `toolchain-drop/`
   (extract from a `/tmp` copy — extracting off the mount is ~15× slower).
   `mdbook` **is** in the drop and installs offline to `/tmp/rust/bin/mdbook` —
@@ -184,7 +200,7 @@ or similar) and to nobody else:
   branch named in a file is wrong within days. Ask git.
 - **Ending your session? Run the `close-out-thread` skill**
   (`.claude/skills/close-out-thread/SKILL.md`) — the checklist that keeps this
-  file honest and produces the next thread's prompt.
+  file true and produces the next thread's prompt.
 - `CLAUDE.md` has the standing rules; persistent memory notes point here.
   Deeper history: `STATUS.md`, newest at the bottom.
 

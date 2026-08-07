@@ -50,9 +50,9 @@ repository at ../rustdv-reference, so the repo carries only its own product.
 - /output/regression — regress.py, wired into the git pre-push hook.
 - /skills — AI verification skills (rtl-spec-analysis, rustdv-testbench,
   rustdv-verify-cover).
-- /.claude/skills — skills for working *on* this repo: `close-out-thread`
-  (run before your session ends), `cleanup-tmp`, `write-a-bfm`,
-  `debug-a-regression`, `new-rustdv-testbench`.
+- /.claude/skills — skills for working *on* this repo: `start-thread` (run as
+  your session begins), `close-out-thread` (run before it ends), `cleanup-tmp`,
+  `write-a-bfm`, `debug-a-regression`, `new-rustdv-testbench`.
 - STATUS.md — authoritative implementation history and deviations log.
 - TOUR.md — orientation for new readers and new threads (start there).
 
@@ -88,7 +88,7 @@ So, if you change:
 | `tinyalu_tb`'s code | the repository `README.md`, which walks it — both checks below cover it, so this one is enforced rather than remembered |
 
 **Prefer a check to a note.** A rule written down is a rule someone must
-remember; a rule in the regression is enforced. Two checks exist because the
+remember; a rule in the regression is enforced. These checks exist because the
 drift they catch went unnoticed for months while a full green regression ran
 over it every push:
 
@@ -96,11 +96,22 @@ over it every push:
 |---|---|
 | `custom/readme-transcripts` | every transcript in an example README, **in `book-pdf/src`, and in the repository `README.md`** is what the simulator prints (22 chapters) |
 | `custom/book-listings` | every Rust listing in ch15–40 **and in the repository `README.md`** (ids `chRM/N`) is real code from that chapter's crate |
+| `custom/no-stale-versions` | no reader-facing document hardcodes a rustdv version — the badge, `cargo add`, and `rust-toolchain.toml` carry those, and they update themselves |
 | `book-sync` (pre-existing) | ch1–14 listings, byte-for-byte |
 
 Run them directly while working — they are far cheaper than the full
-regression: `python3 output/regression/verify-book-listings.py` and
-`bash output/regression/verify-transcripts.sh`.
+regression: `python3 output/regression/verify-book-listings.py`,
+`python3 output/regression/verify-no-stale-versions.py` (instant, no toolchain)
+and `bash output/regression/verify-transcripts.sh`.
+
+`no-stale-versions` encodes Ray's rule that **a version written into a file is
+a staleness source**: it is right the day it is typed and wrong at the next
+release, and nothing about releasing reminds anyone to go and fix it. Reach for
+the mechanism that updates itself — the crates.io badge for the version,
+`cargo add rustdv` for a dependency line, `rust-toolchain.toml` for the
+compiler. Its `ALLOW` list is empty and is not a debt register; `STATUS.md` and
+the design log are out of scope because a dated record is *supposed* to name
+the version that ran.
 
 `book-listings` separates two things that look alike and are not.
 `QUOTED` holds listings that were never ours — the `Future` trait from the

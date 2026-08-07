@@ -6,16 +6,22 @@ from nothing to a running regression, step by step. It assumes you have
 never used rustdv before; it does not assume you know Rust well (the book
 *Rust for RTL Verification* teaches that part).
 
-There are two ways to get rustdv and two ways to write the testbench. All
-four combinations work; pick one from each column:
+Two things carry the name rustdv, and this guide uses both. They are not
+alternatives:
 
-| Get rustdv | Write the testbench |
-|---|---|
-| **A.** Clone this repository (available today) | **1.** Yourself, in an IDE |
-| **B.** `cargo add rustdv` from crates.io (once 0.1 is published) | **2.** Let Claude write it, using this repo's skills |
+- **The crate**, on crates.io. This is the framework your testbench compiles
+  against. Getting it is one line — `cargo add rustdv`, in Step 2 — and you
+  never think about it again.
+- **The repository**, cloned. This is everything the crate does not ship: the
+  TinyALU design and its worked testbench, the starter templates, the book's
+  runnable figures, the regression suite, and the skills that let Claude write
+  a testbench for you. Every step below draws on it, starting with Step 1,
+  where you run its known-good example to prove your tools work before writing
+  a line of your own.
 
-Today, use **A** — the crates.io package is still the 0.0.1 name
-reservation. When rustdv 0.1 ships, path B collapses to one `cargo add`.
+There is one real choice to make and it comes later: whether you write the
+testbench yourself or have Claude write it. Both are covered at the end, and
+they mix well.
 
 ---
 
@@ -24,22 +30,28 @@ reservation. When rustdv 0.1 ships, path B collapses to one `cargo add`.
 1. **Rust** — one command, from [rustup.rs](https://rustup.rs):
    ```sh
    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-   rustc --version    # expect 1.75 or newer
+   rustc --version
    ```
+   The repository pins its compiler in `rust-toolchain.toml`, so inside a
+   clone `rustup` fetches the right one on its own.
 2. **Icarus Verilog** — the simulator rustdv currently supports:
    ```sh
    sudo apt install iverilog     # Debian/Ubuntu
    brew install icarus-verilog   # macOS
    # or the prebuilt oss-cad-suite: github.com/YosysHQ/oss-cad-suite-build
-   iverilog -V | head -1         # expect version 11 or newer
+   iverilog -V | head -1
    ```
+   The run scripts compile with `-g2012`, so you need a build with
+   SystemVerilog-2012 support. Any current Icarus has it; the oss-cad-suite
+   build is the one this project is tested against.
 3. Optional but recommended: **VS Code + rust-analyzer** (use model 1) or
    **Claude Code / Cowork** (use model 2), and **GTKWave** for waveforms.
 
 > Platform note: rustdv's simulator backend is VPI-based and is developed
 > and tested on Linux with Icarus. macOS generally works; Windows users
-> should work inside WSL. Verilator and commercial simulators are on the
-> roadmap (see `/STATUS.md`).
+> should work inside WSL. Verilator is linted against but not yet run as a
+> simulator, and commercial simulators are not supported today. `STATUS.md`
+> in the repository records what has actually been run, and where.
 
 ## Step 1: Clone rustdv and prove your setup works
 
@@ -73,19 +85,26 @@ hobby/
         └── run.sh
 ```
 
-Ready-made starting files live in this repo at
+Ready-made starting files live in the repository at
 `.claude/skills/new-rustdv-testbench/templates/` — a `Cargo.toml`,
 `lib.rs`, `run.sh`, and `timescale.v`. Copy them and rename the
-placeholders. The only line that ties your project to the clone is the
-path dependency in `my_core_tb/Cargo.toml`:
+placeholders.
+
+Your testbench depends on rustdv the ordinary way, so let cargo write the
+line and keep it current:
+
+```sh
+cd my_core_tb && cargo add rustdv
+```
+
+If instead you want to build against your clone — to read the framework's
+source alongside your testbench, or to try a change to it — point the
+dependency at the clone's workspace directory rather than at crates.io:
 
 ```toml
 [dependencies]
 rustdv = { path = "../../rustdv/rustdv" }   # → the clone's rustdv/ workspace dir
 ```
-
-(When 0.1 is on crates.io, that line becomes `rustdv = "0.1"` and you can
-delete the clone.)
 
 ## Step 3: The five files of a first testbench
 
@@ -140,9 +159,9 @@ Work in this order, and don't skip step 1:
 2. The BFM (reset + one operation), exercised by a directed test.
 3. Monitors and a scoreboard; then sequences and random tests.
 
-The four `SKILL.md` files under `.claude/skills/` are written for AI
-agents but read perfectly well as human checklists — especially
-`write-a-bfm` (timing conventions) and `debug-a-regression`.
+The `SKILL.md` files under `.claude/skills/` are written for AI agents but
+read perfectly well as human checklists — especially `write-a-bfm` (timing
+conventions) and `debug-a-regression`.
 
 ## Use model 2: letting Claude write it
 
@@ -174,8 +193,11 @@ lives, and it's the part worth learning by hand.
 
 ## Where to go next
 
-- **The book** (`book-pdf/`): Part I teaches the Rust; the Interlude walks
-  the complete TinyALU testbench end to end.
+- **The book** (`book-pdf/`): chapters 1–14 teach the Rust; the Interlude
+  walks the complete TinyALU testbench end to end.
 - **`rustdv/tinyalu_tb/`**: the living reference — every pattern in the
   skills appears there in context.
-- **`/STATUS.md`**: what works today, known gaps, and the roadmap.
+- **The repository `README.md`**: the same testbench walked component by
+  component, with the UVM-concept map.
+- **`STATUS.md`**: the implementation history and the deviations log — what has
+  been run, on what, and what is still missing.
