@@ -26,7 +26,7 @@ well.
    ```
    The repository pins its compiler in `rust-toolchain.toml`, so inside a
    clone `rustup` fetches the right one on its own.
-2. **Icarus Verilog** — the simulator rustdv currently supports:
+2. **Icarus Verilog** — the four-state reference simulator:
    ```sh
    sudo apt install iverilog     # Debian/Ubuntu
    brew install icarus-verilog   # macOS
@@ -36,14 +36,22 @@ well.
    The run scripts compile with `-g2012`, so you need a build with
    SystemVerilog-2012 support. Any current Icarus has it; the oss-cad-suite
    build is the one this project is tested against.
-3. Optional but recommended: **VS Code + rust-analyzer** (use model 1) or
+3. **Verilator** — optional, and the fast two-state backend:
+   ```sh
+   sudo apt install verilator zlib1g-dev liblz4-dev   # Debian/Ubuntu
+   brew install verilator lz4                          # macOS
+   verilator --version
+   ```
+   **lz4 is not optional if you want waveforms.** Verilator's FST writer links
+   `liblz4`, so `RUSTDV_VERILATOR_MODE=debug` fails to build without it. Every
+   other Verilator mode runs fine.
+4. Optional but recommended: **VS Code + rust-analyzer** (use model 1) or
    **Claude Code / Cowork** (use model 2), and **GTKWave** for waveforms.
 
-> Platform note: rustdv's simulator backend is VPI-based and is developed
-> and tested on Linux with Icarus. macOS generally works; Windows users
-> should work inside WSL. Verilator is linted against but not yet run as a
-> simulator, and commercial simulators are not supported today. `STATUS.md`
-> in the repository records what has actually been run, and where.
+> Platform note: rustdv's simulator backend is VPI-based and is developed and
+> tested on Linux and macOS with Icarus and Verilator. Windows users should
+> work inside WSL, and commercial simulators are not supported today.
+> `STATUS.md` in the repository records what has actually been run, and where.
 
 ## Step 1: Clone rustdv and prove your setup works
 

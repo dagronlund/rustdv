@@ -91,18 +91,31 @@ case "$MODE" in
         fi
         INPUTS+=("$CONTROL")
         FLAGS+=(--trace-fst)
-        if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists liblz4; then
+        # Verilator's FST writer links liblz4. Ask Homebrew before pkg-config on
+        # macOS: a Mac that once ran Intel Homebrew keeps an x86_64 lz4 and its
+        # .pc file under /usr/local, pkg-config answers with that prefix, and the
+        # arm64 link fails on undefined _LZ4_compressBound after the linker
+        # reports "ignoring file ... found architecture 'x86_64'". `brew --prefix`
+        # is arch-correct by construction; pkg-config is not.
+        LZ4_CFLAGS=""
+        LZ4_LIBS=""
+        if [ "$(uname -s)" = "Darwin" ] && command -v brew >/dev/null 2>&1 \
+           && LZ4_PREFIX="$(brew --prefix lz4 2>/dev/null)" \
+           && [ -d "$LZ4_PREFIX/lib" ]; then
+            LZ4_CFLAGS="-I$LZ4_PREFIX/include"
+            LZ4_LIBS="-L$LZ4_PREFIX/lib -llz4"
+        elif command -v pkg-config >/dev/null 2>&1 && pkg-config --exists liblz4; then
             LZ4_CFLAGS="$(pkg-config --cflags liblz4)"
             LZ4_LIBS="$(pkg-config --libs liblz4)"
-            # pkg-config omits system include directories on Linux, so
-            # --cflags may legitimately be empty. Passing `-CFLAGS ""` makes
-            # Verilator consume the following option incorrectly.
-            if [ -n "$LZ4_CFLAGS" ]; then
-                FLAGS+=(-CFLAGS "$LZ4_CFLAGS")
-            fi
-            if [ -n "$LZ4_LIBS" ]; then
-                FLAGS+=(-LDFLAGS "$LZ4_LIBS")
-            fi
+        fi
+        # pkg-config omits system include directories on Linux, so --cflags may
+        # legitimately be empty. Passing `-CFLAGS ""` makes Verilator consume the
+        # following option incorrectly.
+        if [ -n "$LZ4_CFLAGS" ]; then
+            FLAGS+=(-CFLAGS "$LZ4_CFLAGS")
+        fi
+        if [ -n "$LZ4_LIBS" ]; then
+            FLAGS+=(-LDFLAGS "$LZ4_LIBS")
         fi
         export RUSTDV_FST="${RUSTDV_FST:-$BUILD/${TOP}.fst}"
         ;;

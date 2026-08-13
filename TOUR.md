@@ -26,10 +26,11 @@ pyuvm story retold with a compiler: a simulator-driven async executor,
 triggers, a UVM-style component methodology (ownership tree, typed
 configs, maker-closure factories, channels/analysis ports, the full
 sequencer handshake), running testbenches as native shared libraries
-loaded by Icarus Verilog over VPI. Zero external dependencies. **v0.1 is
+loaded over VPI by Icarus Verilog — the four-state reference — or by Verilator
+as the fast two-state backend. Zero external dependencies. **v0.1 is
 publicly live** (2026-08-06/07): `rustdv` 0.1.1 is published on crates.io,
-the `rustdv/rustdv` GitHub repo is public with Discussions on and
-Issues/PRs off, and the companion site is up at rustdv.org.
+the `rustdv/rustdv` GitHub repo is public with Discussions, Issues and pull
+requests all open, and the companion site is up at rustdv.org.
 
 **"Rust for RTL Verification"** is its book — the third in Ray Salemi's
 series after [*The UVM Primer*](https://www.uvmprimer.com) (SystemVerilog)
@@ -147,6 +148,16 @@ or similar) and to nobody else:
   script writes its `.vpi`/`.vvp` before running it. Source and documents into
   the repo, yes; `.vpi`, `.vvp`, `.so`, `.dylib`, object files and simulator
   output directories, no.
+- **`custom/sim-debug-verilator` cannot pass in the Cowork VM — this is not a
+  regression.** Verilator's FST writer compiles `verilated_fst_c.cpp`, which
+  includes `<lz4.h>`; the `oss-cad-suite` bundle in `toolchain-drop/` does not
+  ship the lz4 development header, the VM has no network, and `apt-get` has no
+  root. The failure is `fatal error: lz4.h: No such file or directory` at exit
+  2. Every other Verilator entry — `sim-tinyalu-tb-verilator`,
+  `sim-mutation-verilator`, `sim-scheduler-verilator`,
+  `sim-callback-lifecycle-verilator`, `sim-lint-verilator` — passes here, so a
+  single `sim-debug-verilator` failure alongside those means the header, not the
+  code. Confirm FST tracing on the Mac.
 - **A green sandbox run is evidence about the sandbox.** macOS/arm64 is a
   shipping platform for this project. Say "verified on Linux" when that is what
   happened, and ask Ray to confirm on the Mac before calling anything done. The

@@ -95,6 +95,19 @@ repeats the Verilator runtime, scheduler, DEBUG/FST, and mutation entries.
 Commercial simulators cannot run in public CI; license-holders run
 `sim/run_smoke.sh <sim>` locally.
 
+**`sim-debug-verilator` needs lz4 installed** — `liblz4-dev` on Debian/Ubuntu,
+`brew install lz4` on macOS. Verilator's FST writer links `liblz4`, and without
+it the DEBUG build stops at `fatal error: lz4.h: No such file or directory`.
+CI installs it on both platforms; a fresh developer machine may not have it.
+
+On macOS `sim/run_verilator.sh` takes the lz4 paths from `brew --prefix lz4`
+rather than `pkg-config`, because a Mac that once ran Intel Homebrew keeps an
+x86_64 `liblz4.pc` under `/usr/local` and pkg-config will hand Verilator that
+prefix — the compile succeeds, then the arm64 link fails on undefined
+`_LZ4_compressBound`. **No check covers this.** GitHub's macOS runners are
+arm64 with only arm64 Homebrew, so CI cannot reproduce a stale Intel prefix;
+this one is a comment in the script, not a test.
+
 The rule of thumb: **every new piece of functionality lands together with the
 test that would catch its removal.** The pre-push hook then makes it
 structurally hard to break something silently.
