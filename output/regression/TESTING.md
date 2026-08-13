@@ -62,7 +62,10 @@ today — gets an `examples/run/…` test and a golden, and is skipped by
 `book-sync`, whose byte-for-byte comparison covers Part I only
 (`BOOK_SYNC_MAX_CH` in `regress.py` filters both the book side and the manifest
 side). Part II+ listings are checked instead by `custom/book-listings`, which
-allows the splicing and elision a chapter-length listing needs.
+allows the splicing and elision a chapter-length listing needs, and their
+printed output by `custom/book-figure-output`, which compares the chapter's
+output blocks to the goldens. So an intended change to one of those figures is
+three steps: edit, `--bless --filter chNN`, paste the golden into the chapter.
 
 **Renumbered figures?** `book-sync/coverage` lists exactly which figure
 numbers no longer line up on each side.

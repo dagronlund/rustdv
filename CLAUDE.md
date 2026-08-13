@@ -115,6 +115,7 @@ over it every push:
 |---|---|
 | `custom/readme-transcripts` | every transcript in an example README, **in `book-pdf/src`, and in the repository `README.md`** is what the simulator prints (22 chapters) |
 | `custom/book-listings` | every Rust listing in ch15–40 **and in the repository `README.md`** (ids `chRM/N`) is real code from that chapter's crate |
+| `custom/book-figure-output` | every output block the manuscript prints for a goldened figure is what the program prints (ch35's standalone bins today) |
 | `custom/no-stale-versions` | no reader-facing document hardcodes a rustdv version — the badge, `cargo add`, and `rust-toolchain.toml` carry those, and they update themselves |
 | `book-sync` (pre-existing) | ch1–14 listings, byte-for-byte |
 
