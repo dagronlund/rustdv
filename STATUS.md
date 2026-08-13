@@ -1318,6 +1318,18 @@ check as it should, and restoring it passed. A mutation test that never mutated
 is the failure this project keeps meeting in another costume — check that the
 mutation landed, not just that the run came back green.
 
+**The goldens then exposed a second gap, and it got a check rather than a
+note.** A golden proves the *program* still prints what was blessed; nothing
+proved the *book* still quotes it. `custom/book-listings` compares code only and
+`verify-transcripts.sh` matches simulator lines shaped `12.34ns INFO …`, so a
+hand-edited `println!` output block in ch35 would have drifted silently between
+them. `output/regression/verify-figure-output.py` (`custom/book-figure-output`)
+compares each chapter output block — the ```text fence opening with `--` after a
+captioned listing — against the golden for that figure. Seven blocks, no drift.
+Mutation-checked both ways: editing the chapter fails it, editing a golden fails
+it. It reads the manifest, so any future chapter of standalone bins is covered
+without touching the script.
+
 `playground_links.py` was fixed in the same pass, before it could do damage. It
 widened a figure table's header row and then found the separator by counting
 `---` against a hardcoded five, so ch35's three-column table would have gained a
@@ -1326,4 +1338,4 @@ of a script nobody runs often. It now matches the separator by position. The
 script has not been run against the tree; ch35's README has no "Try it" column
 yet, and all seven figures are `std`-only, so they would work in the Playground.
 
-Full regression 247/0 on the Linux sandbox; not yet verified on macOS/arm64.
+Full regression 248/0 on the Linux sandbox; not yet verified on macOS/arm64.
