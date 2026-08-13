@@ -69,6 +69,10 @@ Linux"; macOS/arm64 ships too, and only Ray can confirm it.
 
 ## 5. Report once
 
+**Read CLAUDE.md's "How to report to Ray" first — it governs this step.** Every
+item in the report is something he must do or decide; if that is nothing, the
+first line says so.
+
 One message: what the orientation files claim about where the project stands,
 what the regression actually showed (pass/fail counts per suite as run, never
 a count copied from prose — `regress.py --list` or the run's own tally, not a

@@ -1277,3 +1277,53 @@ all of them would be ignored.
 
 Full regression 240/0, both drift checks and `index-decisions.py` green, **on
 the Linux sandbox; not yet verified on macOS/arm64.**
+
+## Chapter 35's figures join the regression (2026-08-13)
+
+**Run `regress.py --suite examples --filter ch35 --bless` after any intended
+change to a ch35 figure's output.** The seven figures are goldened now; a
+re-bless is how you accept a change, and a failure without one is a real
+finding.
+
+`ch35-transactions` was the one example crate whose figures nothing ran.
+`examples/run/*` entries come from `output/examples/manifest.json`, which held
+only Part I bins (chapters 1–14); Parts II–V are simulation chapters reached by
+`custom/sim-chNN`. ch35 is neither — it is a Part III chapter of standalone
+binaries, so `examples/workspace-build` compiled it and nothing executed it.
+Its expected output lived in a header comment per figure and in the chapter's
+output blocks, and no check compared either against a run. `custom/book-listings`
+covers the *code* in those listings, and `verify-transcripts.sh` matches only
+lines shaped `12.34ns INFO …`, so plain `println!` output fell between them.
+
+The seven bins are now manifest entries with goldens under
+`output/regression/goldens/`. They were verified against the header comments
+before being blessed — all seven already matched, so this closes a gap in
+coverage and fixes no drift. The examples suite goes 96 → 103.
+
+**Adding them to the manifest broke `book-sync` on contact**, which was the
+useful part. `book-sync` compares Part I figures byte-for-byte and filtered by
+chapter on the *book* side only (`parse_book` skips `ch > 14`); the manifest side
+was unfiltered and correct only for as long as the manifest held nothing past
+ch14. Seven new entries produced seven `figure vanished from the book —
+renumbering?` failures. Both sides now read one constant, `BOOK_SYNC_MAX_CH`,
+and `--list` applies it too. `book-sync` was re-mutation-tested afterwards — a
+one-character edit to a ch13 figure file still fails `book-sync/ch13_fig01` —
+because a filter added to silence a failure is exactly how a check loses its
+teeth.
+
+**Mutation-checked**, and the first attempt was a no-op that reported success:
+`sed s/true/false/` on `ch35_fig03`'s golden changed nothing, because that
+figure's output contains only `false`. Changing `ops seen: 4` to `5` failed the
+check as it should, and restoring it passed. A mutation test that never mutated
+is the failure this project keeps meeting in another costume — check that the
+mutation landed, not just that the run came back green.
+
+`playground_links.py` was fixed in the same pass, before it could do damage. It
+widened a figure table's header row and then found the separator by counting
+`---` against a hardcoded five, so ch35's three-column table would have gained a
+column in the header and not in the separator — a broken table on the next run
+of a script nobody runs often. It now matches the separator by position. The
+script has not been run against the tree; ch35's README has no "Try it" column
+yet, and all seven figures are `std`-only, so they would work in the Playground.
+
+Full regression 247/0 on the Linux sandbox; not yet verified on macOS/arm64.

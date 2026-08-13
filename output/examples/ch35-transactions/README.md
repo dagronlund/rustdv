@@ -16,10 +16,12 @@ cargo run --bin ch35_fig01_two_string_forms
 | 6 | `clone_from` is the UVM's `copy()` | `src/bin/ch35_fig06_clone_from_is_uvm_copy.rs` |
 | 7 | The TinyALU transactions, final form | `src/bin/ch35_fig07_the_tinyalu_transactions.rs` |
 
-Every figure carries its expected output in a header comment, checked against a
-real run. **Every figure is runnable** — the previous version of this chapter
-had two of its five figures marked "fragment", code printed in the book with
-nothing behind it.
+Every figure carries its expected output in a header comment. **Every figure is
+runnable** — the previous version of this chapter had two of its five figures
+marked "fragment", code printed in the book with nothing behind it — and each
+one runs in the regression as `examples/run/ch35_figNN_*`, compared against a
+golden in `output/regression/goldens/`. Re-bless after an intended change with
+`regress.py --suite examples --filter ch35 --bless`.
 
 ## Structure
 

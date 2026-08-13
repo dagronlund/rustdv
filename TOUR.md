@@ -133,6 +133,10 @@ pre-push hook:
 Context that matters to an AI working in this folder (via Claude Cowork
 or similar) and to nobody else:
 
+- **Before you write Ray anything, read CLAUDE.md's "How to report to Ray"** —
+  the first section in the file. Work silently, report once, and put nothing in
+  that report he does not have to act on.
+
 - **Never write a loadable binary or compiled design into the repo folder
   (D113).** This is the expensive one. The folder syncs to Ray's Mac, so a Linux
   `.so` copied to `sim/build/tinyalu_tb.vpi` is what his `vvp` then tries to

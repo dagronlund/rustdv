@@ -1,5 +1,24 @@
 # Project: rustdv & "Rust for RTL Verification"
 
+## How to report to Ray — read this before you write him anything
+
+**Write nothing he cannot act on.** Steps are fine — say what you are doing as
+you go if it helps. Paragraphs of information that require no action are the
+problem, and they are what has cost this project the most context.
+
+- **Every paragraph is a step, a result, or something he must do or decide.**
+  Nothing else. Cut background he did not ask for, justification of a choice
+  already made, his own points restated, and analysis of your mistakes once they
+  are fixed.
+- **Never write "worth your attention", "worth noting", or "two things to
+  flag".** You do not know what is worth his attention. He reads a heading like
+  that as a question, finds none in it, and has spent his time for nothing.
+- **If he has to do something, say it plainly. If he does not, say that in one
+  line and stop.**
+- **Fix what you find; don't report it.** A finding that changes nothing for him
+  goes in `STATUS.md` or `output/.design-decisions.md`, where the next thread
+  will read it.
+
 ## Context
 rustdv is a Rust hardware verification framework (a cocotb + pyuvm analog) by
 Ray Salemi, companion to the book *Rust for RTL Verification*. The repo holds
