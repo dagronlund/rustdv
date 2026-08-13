@@ -25,16 +25,19 @@ for ch, figs in sorted(by_chapter.items()):
     chdir = next(iter(figs.values()))["file"].split("/")[0]
     rd_path = os.path.join(HERE, chdir, "README.md")
     lines = open(rd_path, encoding="utf-8").read().splitlines(keepends=True)
-    out, changed = [], False
+    out, changed, need_sep = [], False, False
     for line in lines:
         # header row
         if line.startswith("| Figure | Title |") and "Try it" not in line:
             line = line.rstrip("\n").rstrip() + " Try it |\n"
-            changed = True
-        elif line.startswith("|---") and changed and not line.rstrip("\n").endswith("|---|"):
-            pass  # separator handled below
-        if line.startswith("|---|") and changed and line.count("---") == 5:
+            changed = need_sep = True
+        # the separator immediately under a header we just widened. Match it by
+        # position, not by column count: figure tables are five columns in
+        # Part I and three in the chapters whose figures are standalone bins,
+        # and counting `---` silently skipped the narrow ones.
+        elif need_sep and line.startswith("|---"):
             line = line.rstrip("\n") + "---|\n"
+            need_sep = False
         # data row: | N | title | behavior | file | how |
         m = re.match(r"^\| (\d+) \|", line)
         if m and changed:

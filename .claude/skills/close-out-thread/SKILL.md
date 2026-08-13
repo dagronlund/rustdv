@@ -186,6 +186,9 @@ Run the cleanup-tmp skill before handing off:
 This removes all `/tmp/rustdv-*/` directories and reports space freed.
 ## Report
 
+**CLAUDE.md's "How to report to Ray" governs this step.** Only actions and
+decisions; if he has none, say so in the first line.
+
 One message. What changed, what is verified and on what platform, what is left
 red and why, then the one-line handoff to `start-thread`. No recap of steps —
 Ray watched them go by.

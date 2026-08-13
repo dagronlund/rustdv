@@ -12,7 +12,7 @@ this order:
 | Suite | Question it answers | Needs Rust? |
 |---|---|---|
 | `unit` | Do the framework's own rules still hold? (`cargo test`, no simulator, ~2s) | yes |
-| `book-sync` | Does every book figure still have a matching, verbatim example file? | no |
+| `book-sync` | Does every Part I (ch1–14) book figure still have a matching, verbatim example file? | no |
 | `examples` | Does every example still build, run, print, panic, or fail-to-compile exactly as blessed? | yes |
 | `custom` | Do the simulator tests and the drop-in tests still pass? | per test |
 
@@ -56,6 +56,13 @@ output/regression/regress.py --bless --filter ch09_fig03
 (`chNN_figMM_slug`), add an entry to `output/examples/manifest.json`, add a
 row to the chapter README, then `--bless --filter chNN_figMM`. The book-sync
 coverage test fails until book and examples agree.
+
+**A manifest entry past chapter 14** — ch35's standalone bins are the only ones
+today — gets an `examples/run/…` test and a golden, and is skipped by
+`book-sync`, whose byte-for-byte comparison covers Part I only
+(`BOOK_SYNC_MAX_CH` in `regress.py` filters both the book side and the manifest
+side). Part II+ listings are checked instead by `custom/book-listings`, which
+allows the splicing and elision a chapter-length listing needs.
 
 **Renumbered figures?** `book-sync/coverage` lists exactly which figure
 numbers no longer line up on each side.

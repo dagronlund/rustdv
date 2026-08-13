@@ -1164,5 +1164,82 @@
   "bin": null,
   "package": null,
   "expected": null
+ },
+ {
+  "chapter": 35,
+  "figure": 1,
+  "title": "A transaction is a plain struct with two string forms",
+  "kind": "bin",
+  "file": "ch35-transactions/src/bin/ch35_fig01_two_string_forms.rs",
+  "error": null,
+  "bin": "ch35_fig01_two_string_forms",
+  "package": "ch35_transactions",
+  "expected": "Printing the record: Name: Joe Shmoe, ID: 37\nLogging the record:  Name: Joe Shmoe, ID: 37\nDebug form:          PersonRecord { name: \"Joe Shmoe\", id_number: 37 }\n"
+ },
+ {
+  "chapter": 35,
+  "figure": 2,
+  "title": "You decide what \"the same\" means",
+  "kind": "bin",
+  "file": "ch35-transactions/src/bin/ch35_fig02_you_decide_what_same_means.rs",
+  "error": null,
+  "bin": "ch35_fig02_you_decide_what_same_means",
+  "package": "ch35_transactions",
+  "expected": "-- derived: every field must match --\nbatman == bruce_wayne? false\n-- written by hand: only the ID counts --\nbatman == bruce_wayne? true\nBatman is really Bruce Wayne!\n"
+ },
+ {
+  "chapter": 35,
+  "figure": 3,
+  "title": "Why equality comes in two traits",
+  "kind": "bin",
+  "file": "ch35-transactions/src/bin/ch35_fig03_partialeq_versus_eq.rs",
+  "error": null,
+  "bin": "ch35_fig03_partialeq_versus_eq",
+  "package": "ch35_transactions",
+  "expected": "a measured delay is not equal to itself: NaN == NaN? false\nops seen: 4\n"
+ },
+ {
+  "chapter": 35,
+  "figure": 4,
+  "title": "Clone is deep for what you own",
+  "kind": "bin",
+  "file": "ch35-transactions/src/bin/ch35_fig04_clone_is_deep_for_what_you_own.rs",
+  "error": null,
+  "bin": "ch35_fig04_clone_is_deep_for_what_you_own",
+  "package": "ch35_transactions",
+  "expected": "mary:      Name: Mary, ID: 33 Grades: [97, 82]\nmary_copy: Name: Mary, ID: 33 Grades: [97, 82]\n-- add a grade to the copy --\nmary:      Name: Mary, ID: 33 Grades: [97, 82]\nmary_copy: Name: Mary, ID: 33 Grades: [97, 82, 100]\n"
+ },
+ {
+  "chapter": 35,
+  "figure": 5,
+  "title": "If you want the shallow copy, you ask for it",
+  "kind": "bin",
+  "file": "ch35-transactions/src/bin/ch35_fig05_sharing_is_asked_for.rs",
+  "error": null,
+  "bin": "ch35_fig05_sharing_is_asked_for",
+  "package": "ch35_transactions",
+  "expected": "before: Mary [97, 82] / Mary [97, 82]\n-- add a grade through the copy --\nafter:  Mary [97, 82, 100] / Mary [97, 82, 100]\nhandles to the one list: 2\n"
+ },
+ {
+  "chapter": 35,
+  "figure": 6,
+  "title": "`clone_from` is the UVM's `copy()`",
+  "kind": "bin",
+  "file": "ch35-transactions/src/bin/ch35_fig06_clone_from_is_uvm_copy.rs",
+  "error": null,
+  "bin": "ch35_fig06_clone_from_is_uvm_copy",
+  "package": "ch35_transactions",
+  "expected": "before: Name: , ID: 0 Grades: []\nafter:  Name: Mary, ID: 33 Grades: [97, 82]\n-- and clone() is clone(): a new one, returned --\nfresh:  Name: Mary, ID: 33 Grades: [97, 82]\n"
+ },
+ {
+  "chapter": 35,
+  "figure": 7,
+  "title": "The TinyALU transactions, final form",
+  "kind": "bin",
+  "file": "ch35-transactions/src/bin/ch35_fig07_the_tinyalu_transactions.rs",
+  "error": null,
+  "bin": "ch35_fig07_the_tinyalu_transactions",
+  "package": "ch35_transactions",
+  "expected": "cmd:        A: a5 Mul B: 75\ndebug:      AluCommand { a: 165, b: 117, op: Mul }\nclone == cmd? true\ntweaked == cmd? false\nops covered: 4 of 4\n"
  }
 ]

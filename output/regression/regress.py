@@ -123,14 +123,20 @@ def suite_unit(args):
 
 
 # ---------------------------------------------------------------- book-sync
+# book-sync covers Part I (chapters 1-14), whose figures are extracted verbatim
+# into per-figure files. Part II+ figures live inside chapter crates and are
+# checked by custom/book-listings, which allows the splicing and elision a
+# chapter-length listing needs. Both sides of book-sync are filtered by this
+# constant: the book side and the manifest side. Filtering only the book side
+# worked by accident for as long as the manifest held nothing past ch14, and
+# stopped the day ch35's standalone bins were added to it.
+BOOK_SYNC_MAX_CH = 14
+
 def parse_book():
-    # book-sync covers Part I (chapters 1-14), whose figures are extracted
-    # verbatim into per-figure files. Part II+ figures live inside chapter
-    # sim crates and are exercised end-to-end by the custom sim-ch* tests.
     figs = {}
     for f in sorted(glob.glob(os.path.join(BOOK, "chapter-*.md"))):
         ch = int(re.search(r"chapter-(\d+)", f).group(1))
-        if ch > 14:
+        if ch > BOOK_SYNC_MAX_CH:
             continue
         for m in FIG_RE.finditer(open(f, encoding="utf-8").read()):
             figs[(ch, int(m.group(3)))] = {
@@ -144,7 +150,8 @@ def suite_book_sync(args):
     print("== suite: book-sync ==")
     figs = parse_book()
     manifest = {(m["chapter"], m["figure"]): m
-                for m in json.load(open(os.path.join(EXAMPLES, "manifest.json")))}
+                for m in json.load(open(os.path.join(EXAMPLES, "manifest.json")))
+                if m["chapter"] <= BOOK_SYNC_MAX_CH}
     deviations = set(CFG["deviations"]["figures"])
 
     # every book figure is represented, and vice versa
@@ -392,7 +399,8 @@ def main():
         manifest = json.load(open(os.path.join(EXAMPLES, "manifest.json")))
         print("book-sync/coverage\nbook-sync/titles")
         for m in manifest:
-            print(f"book-sync/ch{m['chapter']:02d}_fig{m['figure']:02d}")
+            if m["chapter"] <= BOOK_SYNC_MAX_CH:
+                print(f"book-sync/ch{m['chapter']:02d}_fig{m['figure']:02d}")
             if m["kind"] in ("bin", "panic"):
                 print(f"examples/run/{m['bin']}")
             elif m["kind"] == "compile-fail":
