@@ -226,7 +226,7 @@ dependencies = [
 
 [[package]]
 name = "rustdv"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "rustdv-gpi",
  "rustdv-macros",
@@ -237,29 +237,29 @@ dependencies = [
 
 [[package]]
 name = "rustdv-gpi"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "rustdv-gpi-sys",
 ]
 
 [[package]]
 name = "rustdv-gpi-sys"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "rustdv-macros"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "rustdv-methodology"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "rustdv-sim",
 ]
 
 [[package]]
 name = "rustdv-runner"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "rustdv-gpi",
  "rustdv-methodology",
@@ -268,7 +268,7 @@ dependencies = [
 
 [[package]]
 name = "rustdv-sim"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "rustdv-gpi",
 ]
