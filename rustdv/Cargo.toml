@@ -33,7 +33,7 @@ exclude = [
 # ---------------------------------------------------------------------------
 [package]
 name = "rustdv"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 description = "A hardware verification framework in Rust: cocotb-style simulator coroutines plus a UVM-analog testbench library."
 license = "MIT OR Apache-2.0"
@@ -47,11 +47,11 @@ categories = ["development-tools::testing", "simulation"]
 path = "src/rustdv.rs"
 
 [dependencies]
-rustdv-gpi = { path = "rustdv-gpi", version = "0.1.0" }
-rustdv-sim = { path = "rustdv-sim", version = "0.1.0" }
-rustdv-methodology = { path = "rustdv-methodology", version = "0.1.0" }
-rustdv-macros = { path = "rustdv-macros", version = "0.1.0" }
-rustdv-runner = { path = "rustdv-runner", version = "0.1.0" }
+rustdv-gpi = { path = "rustdv-gpi", version = "0.2.0" }
+rustdv-sim = { path = "rustdv-sim", version = "0.2.0" }
+rustdv-methodology = { path = "rustdv-methodology", version = "0.2.0" }
+rustdv-macros = { path = "rustdv-macros", version = "0.2.0" }
+rustdv-runner = { path = "rustdv-runner", version = "0.2.0" }
 
 [profile.release]
 panic = "unwind"   # panics must be catchable at the task boundary (§0.6)
