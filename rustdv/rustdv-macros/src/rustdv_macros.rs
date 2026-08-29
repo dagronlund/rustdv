@@ -60,8 +60,10 @@ fn parse_test_opts(attr: TokenStream) -> Result<TestOpts, String> {
             "name" => opts.name = value.map(|v| strip_quotes(&v)),
             "timeout_time" => {
                 let v = value.ok_or("timeout_time needs a value")?;
-                opts.timeout_time =
-                    Some(v.parse::<u64>().map_err(|_| format!("bad timeout_time '{v}'"))?);
+                opts.timeout_time = Some(
+                    v.parse::<u64>()
+                        .map_err(|_| format!("bad timeout_time '{v}'"))?,
+                );
             }
             "timeout_unit" => opts.timeout_unit = value.map(|v| strip_quotes(&v)),
             "skip" => opts.skip = value.map(|v| v == "true").unwrap_or(true),
@@ -69,7 +71,9 @@ fn parse_test_opts(attr: TokenStream) -> Result<TestOpts, String> {
             // Pass only if the test fails with this cause — the port of
             // pyuvm's `expect_error=SomeException` (D68).
             "expect_error" => {
-                let v = value.ok_or("expect_error needs a value, e.g. expect_error = \"config_not_found\"")?;
+                let v = value.ok_or(
+                    "expect_error needs a value, e.g. expect_error = \"config_not_found\"",
+                )?;
                 opts.expect_error = Some(strip_quotes(&v));
             }
             other => return Err(format!("unknown #[rustdv::test] option '{other}'")),
@@ -194,7 +198,10 @@ const _: () = {{
     );
 
     let mut out = item;
-    out.extend(reg.parse::<TokenStream>().expect("rustdv-macros: generated code failed to parse"));
+    out.extend(
+        reg.parse::<TokenStream>()
+            .expect("rustdv-macros: generated code failed to parse"),
+    );
     out
 }
 
@@ -306,13 +313,17 @@ fn parse_struct(input: TokenStream) -> Result<(String, String, String, Vec<Field
                 _ => {}
             }
         }
-        if params.is_empty() { String::new() } else { format!("< {} >", params.join(" , ")) }
+        if params.is_empty() {
+            String::new()
+        } else {
+            format!("< {} >", params.join(" , "))
+        }
     };
     if unit_struct {
         return Ok((name, impl_generics, type_params, Vec::new()));
     }
-    let group = fields_group
-        .ok_or("#[derive(Component)] requires named fields, or a unit struct")?;
+    let group =
+        fields_group.ok_or("#[derive(Component)] requires named fields, or a unit struct")?;
 
     // Split the group's tokens into fields at top-level commas.
     let mut fields = Vec::new();
@@ -379,11 +390,7 @@ fn attr_arg(text: &str) -> Option<String> {
     }
 }
 
-fn make_field(
-    tokens: &[TokenTree],
-    is_child: bool,
-    port: Option<String>,
-) -> Result<Field, String> {
+fn make_field(tokens: &[TokenTree], is_child: bool, port: Option<String>) -> Result<Field, String> {
     let mut name = None;
     let mut colon_at = None;
     for (i, tt) in tokens.iter().enumerate() {
@@ -403,8 +410,17 @@ fn make_field(
         }
     }
     let name = name.ok_or("could not find field name")?;
-    let ty: String = tokens[colon + 1..].iter().map(|t| t.to_string()).collect::<Vec<_>>().join(" ");
-    Ok(Field { name, ty, is_child, port })
+    let ty: String = tokens[colon + 1..]
+        .iter()
+        .map(|t| t.to_string())
+        .collect::<Vec<_>>()
+        .join(" ");
+    Ok(Field {
+        name,
+        ty,
+        is_child,
+        port,
+    })
 }
 
 /// Generates the `ComponentNode` impl (design-doc §6.3, revised per R2):
@@ -470,8 +486,13 @@ pub fn derive_component(input: TokenStream) -> TokenStream {
     let mut port_items = String::new();
     let mut port_consts = String::new();
     for f in fields.iter() {
-        let Some(kind) = f.port.as_deref() else { continue };
-        if !matches!(kind, "put" | "get" | "peek" | "publish" | "subscribe" | "seq_item") {
+        let Some(kind) = f.port.as_deref() else {
+            continue;
+        };
+        if !matches!(
+            kind,
+            "put" | "get" | "peek" | "publish" | "subscribe" | "seq_item"
+        ) {
             return compile_error(&format!(
                 "#[port({kind})]: expected put, get, peek, peek, publish, subscribe or seq_item"
             ));
@@ -585,5 +606,6 @@ impl {impl_generics} ::rustdv::ComponentNode for {name} {type_params} {{
 {port_impl}{resolve_impl}{take_impl}}}
 {owner_impl}{const_impl}{registration}"#
     );
-    out.parse().expect("rustdv-macros: generated ComponentNode impl failed to parse")
+    out.parse()
+        .expect("rustdv-macros: generated ComponentNode impl failed to parse")
 }

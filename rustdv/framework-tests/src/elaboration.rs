@@ -12,7 +12,6 @@
 
 use rustdv::prelude::*;
 
-
 // A component that asks for an interface nobody gives it.
 #[derive(Component, Default)]
 struct Orphan {
@@ -137,7 +136,9 @@ impl Component for ElabConnectedTreeIsClean {
     }
 
     fn connect(&mut self, _ctx: &mut RustdvCtx) {
-        self.fifo.get_export().connect(&self.consumer, Consumer::ITEMS);
+        self.fifo
+            .get_export()
+            .connect(&self.consumer, Consumer::ITEMS);
     }
 
     async fn run(&mut self, _ctx: &mut RustdvCtx) -> Result<(), TestError> {

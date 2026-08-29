@@ -193,7 +193,11 @@ impl<T: 'static> TapExport<T> {
     pub fn connect(&self, owner: &dyn PortOwner, name: PortName<dyn SinkHandle<T>>) {
         match sink_of(owner, name) {
             Ok(sink) => {
-                let list = if self.on_put { &self.taps.put_taps } else { &self.taps.get_taps };
+                let list = if self.on_put {
+                    &self.taps.put_taps
+                } else {
+                    &self.taps.get_taps
+                };
                 list.borrow_mut().push(sink);
             }
             Err(e) => panic!("{e}"),
@@ -236,12 +240,16 @@ impl<T: 'static> TlmFifo<T> {
     /// A FIFO `size` items deep. Depth 1 is the UVM default and forces the
     /// producer to wait for the consumer.
     pub fn new(size: usize) -> TlmFifo<T> {
-        TlmFifo { inner: Rc::new(FifoInner::new(Some(size))) }
+        TlmFifo {
+            inner: Rc::new(FifoInner::new(Some(size))),
+        }
     }
 
     /// A FIFO with no depth limit: a put never blocks.
     pub fn unbounded() -> TlmFifo<T> {
-        TlmFifo { inner: Rc::new(FifoInner::new(None)) }
+        TlmFifo {
+            inner: Rc::new(FifoInner::new(None)),
+        }
     }
 
     /// The declared depth; `None` for an unbounded FIFO.
@@ -267,22 +275,32 @@ impl<T: 'static> TlmFifo<T> {
 
     /// The put side, to connect to a component's [`PutPort`](crate::PutPort).
     pub fn put_export(&self) -> PutExport<T> {
-        PutExport { iface: self.inner.clone() }
+        PutExport {
+            iface: self.inner.clone(),
+        }
     }
 
     /// The get side, to connect to a component's [`GetPort`](crate::GetPort).
     pub fn get_export(&self) -> GetExport<T> {
-        GetExport { iface: self.inner.clone() }
+        GetExport {
+            iface: self.inner.clone(),
+        }
     }
 
     /// The tap that fires as each item goes **in** (`uvm_tlm_fifo::put_ap`).
     pub fn put_ap(&self) -> TapExport<T> {
-        TapExport { taps: self.inner.clone(), on_put: true }
+        TapExport {
+            taps: self.inner.clone(),
+            on_put: true,
+        }
     }
 
     /// The tap that fires as each item comes **out** (`uvm_tlm_fifo::get_ap`).
     pub fn get_ap(&self) -> TapExport<T> {
-        TapExport { taps: self.inner.clone(), on_put: false }
+        TapExport {
+            taps: self.inner.clone(),
+            on_put: false,
+        }
     }
 
     // --- direct use, for the component that owns the FIFO -----------------
@@ -315,7 +333,9 @@ impl<T: 'static> TlmFifo<T> {
 
     /// A second handle to the *same* FIFO (for wiring at construction).
     pub fn handle(&self) -> TlmFifo<T> {
-        TlmFifo { inner: self.inner.clone() }
+        TlmFifo {
+            inner: self.inner.clone(),
+        }
     }
 }
 
@@ -323,7 +343,9 @@ impl<T: Clone + 'static> TlmFifo<T> {
     /// The peek side, to connect to a [`PeekPort`](crate::PeekPort). Peek
     /// copies rather than removes, which is why it needs `T: Clone`.
     pub fn peek_export(&self) -> PeekExport<T> {
-        PeekExport { iface: self.inner.clone() }
+        PeekExport {
+            iface: self.inner.clone(),
+        }
     }
 
     pub async fn peek(&self) -> T {
@@ -571,5 +593,4 @@ mod tests {
             assert_eq!(other.used(), 1, "two handles, one FIFO");
         });
     }
-
 }

@@ -67,7 +67,12 @@ pub enum ConfigError {
     NotFound { path: String, field: String },
     /// An entry was found, but it holds another type. Only reportable
     /// because the type is not part of the key (D65).
-    TypeMismatch { path: String, field: String, stored: &'static str, requested: &'static str },
+    TypeMismatch {
+        path: String,
+        field: String,
+        stored: &'static str,
+        requested: &'static str,
+    },
 }
 
 impl ConfigError {
@@ -249,15 +254,17 @@ impl ConfigDb {
                 })
                 .collect();
             // Most specific first; ties keep insertion order.
-            matches.sort_by(|(a, _), (b, _)| {
-                more_specific(a, b).cmp(&more_specific(b, a)).reverse()
-            });
+            matches
+                .sort_by(|(a, _), (b, _)| more_specific(a, b).cmp(&more_specific(b, a)).reverse());
             matches.first().map(|(_, e)| (*e).clone())
         });
 
         let Some(entry) = found else {
             trace("GET", ctx, offset, &path, field, "<not found>");
-            return Err(ConfigError::NotFound { path, field: field.to_string() });
+            return Err(ConfigError::NotFound {
+                path,
+                field: field.to_string(),
+            });
         };
 
         if entry.type_id != TypeId::of::<T>() {
@@ -271,16 +278,20 @@ impl ConfigDb {
         }
 
         trace("GET", ctx, offset, &path, field, &entry.rendered);
-        Ok(entry.value.downcast_ref::<T>().expect("type id checked above").clone())
+        Ok(entry
+            .value
+            .downcast_ref::<T>()
+            .expect("type id checked above")
+            .clone())
     }
 
     /// Is there a value for this field, without producing an error?
     pub fn exists(ctx: Option<&RustdvCtx>, offset: &str, field: &str) -> bool {
         let path = resolve(ctx, offset);
         STORE.with(|s| {
-            s.borrow().iter().any(|(pattern, fields)| {
-                glob_match(&path, pattern) && fields.contains_key(field)
-            })
+            s.borrow()
+                .iter()
+                .any(|(pattern, fields)| glob_match(&path, pattern) && fields.contains_key(field))
         })
     }
 
@@ -410,9 +421,14 @@ mod tests {
         ConfigDb::set(None, "env", "N", 1u32);
         let ctx = RustdvCtx::for_test("env");
         match ConfigDb::get::<String>(Some(&ctx), "", "N") {
-            Err(ConfigError::TypeMismatch { stored, requested, .. }) => {
+            Err(ConfigError::TypeMismatch {
+                stored, requested, ..
+            }) => {
                 assert!(stored.contains("u32"), "stored type named: {stored}");
-                assert!(requested.contains("String"), "requested type named: {requested}");
+                assert!(
+                    requested.contains("String"),
+                    "requested type named: {requested}"
+                );
             }
             other => panic!("expected TypeMismatch, got {other:?}"),
         }
@@ -439,8 +455,14 @@ mod tests {
         ConfigDb::set(None, "env.loga", "MSG", String::from("just me"));
         let loga = RustdvCtx::for_test("env.loga");
         let logb = RustdvCtx::for_test("env.logb");
-        assert_eq!(ConfigDb::get::<String>(Some(&loga), "", "MSG").unwrap(), "just me");
-        assert_eq!(ConfigDb::get::<String>(Some(&logb), "", "MSG").unwrap(), "everyone");
+        assert_eq!(
+            ConfigDb::get::<String>(Some(&loga), "", "MSG").unwrap(),
+            "just me"
+        );
+        assert_eq!(
+            ConfigDb::get::<String>(Some(&logb), "", "MSG").unwrap(),
+            "everyone"
+        );
     }
 
     /// The `ab`-under-`a` case: a glob must not match a longer sibling name.
@@ -472,14 +494,20 @@ mod tests {
         ConfigDb::set(None, "env.loga", "MSG", String::from("hello"));
         let env = RustdvCtx::for_test("env");
         // The env asks what its child will see.
-        assert_eq!(ConfigDb::get::<String>(Some(&env), "loga", "MSG").unwrap(), "hello");
+        assert_eq!(
+            ConfigDb::get::<String>(Some(&env), "loga", "MSG").unwrap(),
+            "hello"
+        );
     }
 
     #[test]
     fn a_null_context_addresses_from_the_top() {
         fresh();
         ConfigDb::set(None, "env.loga", "MSG", String::from("hello"));
-        assert_eq!(ConfigDb::get::<String>(None, "env.loga", "MSG").unwrap(), "hello");
+        assert_eq!(
+            ConfigDb::get::<String>(None, "env.loga", "MSG").unwrap(),
+            "hello"
+        );
     }
 
     /// The per-test guarantee the runner relies on — and, since D101, the one
@@ -515,6 +543,9 @@ mod tests {
         ConfigDb::set(None, "env.x", "B", String::from("two"));
         let dumped = ConfigDb::dump();
         assert!(dumped.contains("env"), "dump names the paths: {dumped}");
-        assert!(dumped.contains('A') && dumped.contains('B'), "and the fields");
+        assert!(
+            dumped.contains('A') && dumped.contains('B'),
+            "and the fields"
+        );
     }
 }

@@ -21,10 +21,11 @@ impl HierarchyHandle {
     /// than reading garbage, and its author learns it belongs in a `sim-*`
     /// case instead.
     pub fn null_for_test() -> HierarchyHandle {
-        HierarchyHandle { raw: gpi::HierarchyHandle::null_for_test() }
+        HierarchyHandle {
+            raw: gpi::HierarchyHandle::null_for_test(),
+        }
     }
 }
-
 
 impl HierarchyHandle {
     pub fn child(&self, name: &str) -> Result<AnyHandle, HandleError> {
@@ -33,7 +34,9 @@ impl HierarchyHandle {
 
     /// Child that must be a signal.
     pub fn signal(&self, name: &str) -> Result<LogicHandle, HandleError> {
-        Ok(LogicHandle { raw: self.raw.child(name)?.as_logic()? })
+        Ok(LogicHandle {
+            raw: self.raw.child(name)?.as_logic()?,
+        })
     }
 
     pub fn name(&self) -> String {
@@ -44,7 +47,11 @@ impl HierarchyHandle {
     }
 
     pub fn children(&self) -> Vec<AnyHandle> {
-        self.raw.children().into_iter().map(AnyHandle::wrap).collect()
+        self.raw
+            .children()
+            .into_iter()
+            .map(AnyHandle::wrap)
+            .collect()
     }
 }
 
@@ -167,5 +174,7 @@ impl LogicHandle {
 
 /// The first top-level module (the DUT in single-top designs).
 pub fn top_module() -> Result<HierarchyHandle, HandleError> {
-    Ok(HierarchyHandle { raw: gpi::top_module()? })
+    Ok(HierarchyHandle {
+        raw: gpi::top_module()?,
+    })
 }

@@ -44,8 +44,8 @@ use rustdv_vpi_stubs as _;
 
 pub mod component;
 pub mod config;
-pub mod factory;
 pub mod error;
+pub mod factory;
 pub mod fifo;
 pub mod objection;
 pub mod port;
@@ -53,26 +53,25 @@ pub mod sequence;
 pub mod shared;
 
 pub use analysis::{AnalysisBus, PublishExport, SubscribeExport};
-pub use shared::RustdvShared;
 pub use channel::{channel, Receiver, Sender, TlmEmpty, TlmError, TlmFull};
 pub use component::{
-    build_all, check_all, connect_all, end_of_elaboration_all, extract_all, final_all,
-    check_connections, print_hierarchy, report_all, run_all, run_component_test,
-    run_extract_check_report, unconnected_ports,
-    start_all, start_of_simulation_all, Active, CheckSink, Component, ComponentNode, DynPhases,
-    RustdvCtx,
+    build_all, check_all, check_connections, connect_all, end_of_elaboration_all, extract_all,
+    final_all, print_hierarchy, report_all, run_all, run_component_test, run_extract_check_report,
+    start_all, start_of_simulation_all, unconnected_ports, Active, CheckSink, Component,
+    ComponentNode, DynPhases, RustdvCtx,
 };
 pub use config::{ConfigDb, ConfigError};
 pub use error::TestError;
-pub use factory::{RustdvComp, ComponentReg, Factory, Maker};
+pub use factory::{ComponentReg, Factory, Maker, RustdvComp};
 pub use fifo::{GetExport, PeekExport, PutExport, TapExport, TlmFifo};
+pub use objection::{ObjectionGuard, ObjectionRegistry};
 pub use port::{
     bind, ConnectError, GetIf, GetPort, PeekIf, PeekPort, Port, PortField, PortInfo, PortName,
     PortOwner, PublishIf, PublishPort, PutIf, PutPort, SinkHandle, SubscribePort, Subscriber,
 };
-pub use objection::{ObjectionGuard, ObjectionRegistry};
 pub use sequence::{
     clear_seq_overrides, create_seq, set_seq_override, set_sequence_seed, DynSequence,
     ResponseQueue, RustdvSeq, SeqCtx, SeqError, SeqItem, SeqItemExport, SeqItemIf, SeqItemPort,
     Sequence, Sequencer, TxnId,
 };
+pub use shared::RustdvShared;

@@ -13,7 +13,10 @@ pub struct Clock {
 
 impl Clock {
     pub fn new(sig: &LogicHandle, period: SimDuration) -> Clock {
-        assert!(period.steps >= 2, "clock period must be at least 2 precision steps");
+        assert!(
+            period.steps >= 2,
+            "clock period must be at least 2 precision steps"
+        );
         Clock { sig: *sig, period }
     }
 

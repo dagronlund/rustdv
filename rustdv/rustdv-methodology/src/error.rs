@@ -33,13 +33,19 @@ pub struct TestError {
 impl TestError {
     /// An unclassified failure — the common case for a check that failed.
     pub fn new(msg: impl Into<String>) -> TestError {
-        TestError { msg: msg.into(), kind: None }
+        TestError {
+            msg: msg.into(),
+            kind: None,
+        }
     }
 
     /// A failure with a cause the runner can match against `expect_error`.
     /// Kinds are stable strings; see [`crate::config::ConfigError::kind`].
     pub fn with_kind(msg: impl Into<String>, kind: &'static str) -> TestError {
-        TestError { msg: msg.into(), kind: Some(kind) }
+        TestError {
+            msg: msg.into(),
+            kind: Some(kind),
+        }
     }
 
     pub fn message(&self) -> &str {

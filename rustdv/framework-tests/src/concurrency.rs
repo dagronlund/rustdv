@@ -15,7 +15,6 @@ use std::cell::{Cell, RefCell};
 
 use rustdv::prelude::*;
 
-
 thread_local! {
     /// What ran, in the order it ran. Cheaper and clearer than threading a
     /// shared handle through the ConfigDb, and these are tests: the coupling
@@ -99,7 +98,10 @@ async fn conc_join_all_preserves_order(_ctx: RustdvCtx) -> Result<(), TestError>
     let out = rustdv::sim::combinators::join_all(futs).await;
     let dt = sim_time_ns() - t0;
 
-    check!(out == vec![30, 10, 20], "join_all reordered its results: {out:?}");
+    check!(
+        out == vec![30, 10, 20],
+        "join_all reordered its results: {out:?}"
+    );
     check!(dt == 30.0, "join_all over 30/10/20 ns took {dt} ns, not 30");
     Ok(())
 }
@@ -122,7 +124,10 @@ async fn conc_first2_drops_the_loser(_ctx: RustdvCtx) -> Result<(), TestError> {
         }
     };
     let out = first2(winner, loser).await;
-    check!(matches!(out, Either::First("winner")), "the wrong future won");
+    check!(
+        matches!(out, Either::First("winner")),
+        "the wrong future won"
+    );
 
     let at_finish = TICKS.with(|t| t.get());
     Timer::ns(20).await;
@@ -191,7 +196,10 @@ impl Component for ConcParentAndChildrenRunTogether {
             return;
         }
         // Every entry carries the sim time its body began at.
-        let times: Vec<&str> = got.iter().map(|s| s.split('@').nth(1).unwrap_or("?")).collect();
+        let times: Vec<&str> = got
+            .iter()
+            .map(|s| s.split('@').nth(1).unwrap_or("?"))
+            .collect();
         if times.iter().any(|t| *t != times[0]) {
             errors.error(format!(
                 "run bodies started at different times, so they ran in sequence: {got:?}"

@@ -46,13 +46,21 @@ pub struct RustdvComp {
 impl RustdvComp {
     /// A fixed slot: `new_comp()`. Never overridden.
     pub fn fixed(node: Box<dyn ComponentNode>) -> RustdvComp {
-        RustdvComp { inner: Some(node), overridable: false, requested: None }
+        RustdvComp {
+            inner: Some(node),
+            overridable: false,
+            requested: None,
+        }
     }
 
     /// A factory slot: `create_comp()`. The default is built now and may be
     /// swapped for an override during the walk.
     pub fn overridable(node: Box<dyn ComponentNode>, requested: &'static str) -> RustdvComp {
-        RustdvComp { inner: Some(node), overridable: true, requested: Some(requested) }
+        RustdvComp {
+            inner: Some(node),
+            overridable: true,
+            requested: Some(requested),
+        }
     }
 
     /// The held component, shared, for asking it things — chiefly for one of
@@ -177,7 +185,10 @@ fn sentinel_make() -> Box<dyn ComponentNode> {
 #[used]
 #[cfg_attr(not(target_vendor = "apple"), link_section = "rustdv_comps")]
 #[cfg_attr(target_vendor = "apple", link_section = "__DATA,rustdv_comps")]
-static SENTINEL: &ComponentReg = &ComponentReg { name: sentinel_name, make: sentinel_make };
+static SENTINEL: &ComponentReg = &ComponentReg {
+    name: sentinel_name,
+    make: sentinel_make,
+};
 
 #[cfg(not(target_vendor = "apple"))]
 extern "C" {
@@ -269,9 +280,11 @@ impl Factory {
     /// The same, by string name (UVM `set_type_override_by_name`). Not
     /// compile-checked; an unregistered `to` panics at this call.
     pub fn set_type_override_by_name(from: &str, to: &str) {
-        let make = with_registry(|reg| reg.get(to).copied())
-            .unwrap_or_else(|| panic!("Factory::set_type_override_by_name: \"{to}\" is not registered"));
-        let to_static = with_registry(|reg| reg.keys().find(|k| **k == to).copied()).expect("just found it");
+        let make = with_registry(|reg| reg.get(to).copied()).unwrap_or_else(|| {
+            panic!("Factory::set_type_override_by_name: \"{to}\" is not registered")
+        });
+        let to_static =
+            with_registry(|reg| reg.keys().find(|k| **k == to).copied()).expect("just found it");
         Self::store_override(None, "*", from, to_static, make);
     }
 
@@ -296,7 +309,12 @@ impl Factory {
         to_name: &'static str,
         make: Maker,
     ) {
-        ConfigDb::set(ctx, offset, &override_key(from_name), Override { make, to: to_name });
+        ConfigDb::set(
+            ctx,
+            offset,
+            &override_key(from_name),
+            Override { make, to: to_name },
+        );
     }
 
     /// The override in force for `requested_name` at `abs_path`, if any.
@@ -400,7 +418,11 @@ mod tests {
 
         let mut fixed = RustdvComp::fixed(Box::new(Base));
         fixed.resolve(&ctx, "scoreboard");
-        assert_eq!(fixed.as_node().unwrap().node_name(), "Base", "new_comp is never swapped");
+        assert_eq!(
+            fixed.as_node().unwrap().node_name(),
+            "Base",
+            "new_comp is never swapped"
+        );
     }
 
     #[test]
@@ -477,14 +499,23 @@ mod tests {
         fresh();
         let mut slot = RustdvComp::fixed(Box::new(Base));
         let node = slot.take_node().expect("something to take");
-        assert!(slot.as_node().is_none(), "the slot is empty during the run phase");
+        assert!(
+            slot.as_node().is_none(),
+            "the slot is empty during the run phase"
+        );
         slot.put_node(node);
-        assert_eq!(slot.as_node().unwrap().node_name(), "Base", "and restored after");
+        assert_eq!(
+            slot.as_node().unwrap().node_name(),
+            "Base",
+            "and restored after"
+        );
     }
 
     // --- the sequence half of the factory (D80/D96) ----------------------
 
-    use crate::sequence::{clear_seq_overrides, create_seq, set_seq_override, SeqCtx, SeqError, Sequence};
+    use crate::sequence::{
+        clear_seq_overrides, create_seq, set_seq_override, SeqCtx, SeqError, Sequence,
+    };
 
     #[derive(Default)]
     struct BaseSeq;
@@ -524,7 +555,11 @@ mod tests {
         clear_seq_overrides();
         set_seq_override::<BaseSeq, RandomSeq>();
         let seq = create_seq::<BaseSeq>();
-        assert_eq!(seq.name(), "RandomSeq", "the test asked for Base and got Random");
+        assert_eq!(
+            seq.name(),
+            "RandomSeq",
+            "the test asked for Base and got Random"
+        );
     }
 
     #[test]

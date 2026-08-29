@@ -147,13 +147,18 @@ impl TinyAluBfm {
                         clk.falling_edge().await;
                         let st = start.is_high();
                         if st && !prev_start {
-                            let (Ok(av), Ok(bv), Ok(opv)) = (a.get_u64(), b.get_u64(), op.get_u64())
+                            let (Ok(av), Ok(bv), Ok(opv)) =
+                                (a.get_u64(), b.get_u64(), op.get_u64())
                             else {
                                 prev_start = st;
                                 continue; // x/z during reset: skip
                             };
                             if let Some(ops) = Ops::from_u64(opv) {
-                                let _ = q.try_put(AluCommand { a: av as u8, b: bv as u8, op: ops });
+                                let _ = q.try_put(AluCommand {
+                                    a: av as u8,
+                                    b: bv as u8,
+                                    op: ops,
+                                });
                             }
                         }
                         prev_start = st;

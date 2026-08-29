@@ -31,7 +31,10 @@ pub struct RustdvPath {
 impl RustdvPath {
     /// The root of a tree — the test's registered name (D49).
     pub fn root(name: &str) -> RustdvPath {
-        RustdvPath { segments: vec![name.to_string()], rendered: name.to_string() }
+        RustdvPath {
+            segments: vec![name.to_string()],
+            rendered: name.to_string(),
+        }
     }
 
     /// An empty path, for contexts with no position (a free `#[rustdv::test]`
@@ -44,8 +47,11 @@ impl RustdvPath {
     pub fn child(&self, name: &str) -> RustdvPath {
         let mut segments = self.segments.clone();
         segments.push(name.to_string());
-        let rendered =
-            if self.rendered.is_empty() { name.to_string() } else { format!("{}.{}", self.rendered, name) };
+        let rendered = if self.rendered.is_empty() {
+            name.to_string()
+        } else {
+            format!("{}.{}", self.rendered, name)
+        };
         RustdvPath { segments, rendered }
     }
 

@@ -27,8 +27,8 @@ use std::ffi::{CStr, CString};
 use std::os::raw::c_void;
 
 use rustdv_gpi_sys::{
-    t_cb_data, t_vpi_value, t_vpi_vecval, vpiBinStrVal, vpiHandle, vpiNet, vpiNoDelay,
-    vpiSize, vpiType, vpiVectorVal,
+    t_cb_data, t_vpi_value, t_vpi_vecval, vpiBinStrVal, vpiHandle, vpiNet, vpiNoDelay, vpiSize,
+    vpiType, vpiVectorVal,
 };
 
 struct StubCallback {
@@ -222,7 +222,10 @@ pub unsafe extern "C" fn vpi_put_value(
     flags: i32,
 ) -> vpiHandle {
     assert!(!value.is_null(), "vpi_put_value called with null value");
-    assert_eq!(flags, vpiNoDelay, "test stub only supports immediate writes");
+    assert_eq!(
+        flags, vpiNoDelay,
+        "test stub only supports immediate writes"
+    );
     SIGNAL.with(|signal| {
         let mut signal = signal.borrow_mut();
         let value = unsafe { &mut *value };
@@ -234,8 +237,8 @@ pub unsafe extern "C" fn vpi_put_value(
             }
             format if format == vpiBinStrVal => {
                 let text = unsafe { CStr::from_ptr(value.value.str_) };
-                signal.binstr = CString::new(text.to_bytes())
-                    .expect("written stub binary string contains NUL");
+                signal.binstr =
+                    CString::new(text.to_bytes()).expect("written stub binary string contains NUL");
             }
             format => panic!("unsupported vpi_put_value format {format} in test stub"),
         }

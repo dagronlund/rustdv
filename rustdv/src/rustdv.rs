@@ -41,29 +41,27 @@ pub use rustdv_sim::{first, join};
 // --- the curated surface ----------------------------------------------------
 pub use rustdv_runner::TestRegistration;
 
-pub use rustdv_sim::{
-    first2, join2, next_time_step, read_only, read_write, sim_time_ns, sim_time_steps, spawn,
-    spawn_named, with_timeout, AnyHandle, Clock, Either, Event, Executor, HandleError, RustdvPath,
-    HierarchyHandle, Lock, LockGuard, Logic, LogicArray, LogicHandle, NullTrigger, Queue, Rng,
-    SimDuration, TaskError, TaskHandle, TaskState, TimeoutError, Timer, ValueError,
-};
 pub use rustdv_sim::handle::top_module;
 pub use rustdv_sim::log;
+pub use rustdv_sim::{
+    first2, join2, next_time_step, read_only, read_write, sim_time_ns, sim_time_steps, spawn,
+    spawn_named, with_timeout, AnyHandle, Clock, Either, Event, Executor, HandleError,
+    HierarchyHandle, Lock, LockGuard, Logic, LogicArray, LogicHandle, NullTrigger, Queue, Rng,
+    RustdvPath, SimDuration, TaskError, TaskHandle, TaskState, TimeoutError, Timer, ValueError,
+};
 
 pub use rustdv_methodology::{
-    build_all, channel, check_all, check_connections, connect_all, end_of_elaboration_all,
-    extract_all, final_all, print_hierarchy, report_all, run_all, run_component_test,
-    run_extract_check_report, start_all, start_of_simulation_all, unconnected_ports,
-    Active, AnalysisBus, CheckSink,
-    Component as ComponentTrait, ComponentNode, DynPhases, ObjectionGuard, ObjectionRegistry,
-    create_seq, set_seq_override,
-    Receiver, ResponseQueue, RustdvSeq, Sender, SeqCtx, SeqError, SeqItem, SeqItemExport,
-    SeqItemIf, SeqItemPort, Sequence, Sequencer,
-    RustdvComp, ComponentReg, ConfigDb, ConfigError, Factory, Maker, TestError, TlmEmpty,
-    TlmError, TlmFifo, TlmFull, TxnId,
-    ConnectError, GetExport, GetIf, GetPort, PeekExport, PeekIf, PeekPort, Port, PortField,
-    PortInfo, PortName, PortOwner, PublishExport, PublishIf, PublishPort, PutExport, PutIf,
-    PutPort, RustdvShared, SinkHandle, SubscribeExport, SubscribePort, Subscriber, TapExport,
+    build_all, channel, check_all, check_connections, connect_all, create_seq,
+    end_of_elaboration_all, extract_all, final_all, print_hierarchy, report_all, run_all,
+    run_component_test, run_extract_check_report, set_seq_override, start_all,
+    start_of_simulation_all, unconnected_ports, Active, AnalysisBus, CheckSink,
+    Component as ComponentTrait, ComponentNode, ComponentReg, ConfigDb, ConfigError, ConnectError,
+    DynPhases, Factory, GetExport, GetIf, GetPort, Maker, ObjectionGuard, ObjectionRegistry,
+    PeekExport, PeekIf, PeekPort, Port, PortField, PortInfo, PortName, PortOwner, PublishExport,
+    PublishIf, PublishPort, PutExport, PutIf, PutPort, Receiver, ResponseQueue, RustdvComp,
+    RustdvSeq, RustdvShared, Sender, SeqCtx, SeqError, SeqItem, SeqItemExport, SeqItemIf,
+    SeqItemPort, Sequence, Sequencer, SinkHandle, SubscribeExport, SubscribePort, Subscriber,
+    TapExport, TestError, TlmEmpty, TlmError, TlmFifo, TlmFull, TxnId,
 };
 
 // The lifecycle trait under its design-doc name, in the type namespace.
@@ -73,22 +71,19 @@ pub use rustdv_methodology::Component;
 
 /// One-line import for testbenches (the `from pyuvm import *` analog).
 pub mod prelude {
-    pub use crate::{
-        build_all, channel, check_all, connect_all, end_of_elaboration_all, extract_all, final_all,
-        first2, join2, next_time_step, print_hierarchy, read_only, read_write, report_all,
-        run_component_test, run_extract_check_report, sim_time_ns, spawn, spawn_named, start_all,
-        start_of_simulation_all, with_timeout, Active, AnalysisBus, CheckSink, Clock,
-        RustdvComp, Component, ComponentNode, Either, Event, Factory, HandleError, HierarchyHandle,
-        Lock, Logic, LogicArray, LogicHandle, NullTrigger, ObjectionGuard, Queue, Receiver, Rng,
-        create_seq, set_seq_override,
-        RustdvCtx, RustdvSeq, Sender, SeqCtx, SeqError, SeqItem, SeqItemExport, SeqItemPort,
-        Sequence, Sequencer,
-        SimDuration,
-        ConfigDb, Subscriber, TaskHandle, TestError, Timer, TlmFifo, TxnId,
-        GetPort, PeekPort, PortName, PortOwner, PublishPort, PutPort, RustdvShared,
-        SubscribePort,
-    };
     pub use crate::log;
+    pub use crate::{
+        build_all, channel, check_all, connect_all, create_seq, end_of_elaboration_all,
+        extract_all, final_all, first2, join2, next_time_step, print_hierarchy, read_only,
+        read_write, report_all, run_component_test, run_extract_check_report, set_seq_override,
+        sim_time_ns, spawn, spawn_named, start_all, start_of_simulation_all, with_timeout, Active,
+        AnalysisBus, CheckSink, Clock, Component, ComponentNode, ConfigDb, Either, Event, Factory,
+        GetPort, HandleError, HierarchyHandle, Lock, Logic, LogicArray, LogicHandle, NullTrigger,
+        ObjectionGuard, PeekPort, PortName, PortOwner, PublishPort, PutPort, Queue, Receiver, Rng,
+        RustdvComp, RustdvCtx, RustdvSeq, RustdvShared, Sender, SeqCtx, SeqError, SeqItem,
+        SeqItemExport, SeqItemPort, Sequence, Sequencer, SimDuration, SubscribePort, Subscriber,
+        TaskHandle, TestError, Timer, TlmFifo, TxnId,
+    };
 }
 
 /// The one context every testbench is handed (D47: `TestCtx` and `RunCtx`
@@ -111,7 +106,9 @@ macro_rules! vpi_bootstrap {
 
         #[no_mangle]
         #[allow(non_upper_case_globals)]
-        pub static vlog_startup_routines: [::core::option::Option<extern "C" fn()>; 2] =
-            [::core::option::Option::Some(__rustdv_vpi_entry), ::core::option::Option::None];
+        pub static vlog_startup_routines: [::core::option::Option<extern "C" fn()>; 2] = [
+            ::core::option::Option::Some(__rustdv_vpi_entry),
+            ::core::option::Option::None,
+        ];
     };
 }

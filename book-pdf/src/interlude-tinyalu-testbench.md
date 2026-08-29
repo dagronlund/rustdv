@@ -270,17 +270,29 @@ impl Component for AluEnv {
 
     fn connect(&mut self, _ctx: &mut RustdvCtx) {
         if self.is_active {
-            self.seqr.seq_item_export().connect(&self.driver, Driver::SEQ_ITEM_PORT);
+            self.seqr
+                .seq_item_export()
+                .connect(&self.driver, Driver::SEQ_ITEM_PORT);
         }
 
-        self.cmd_bus.pub_export().connect(&self.cmd_mon, CmdMonitor::AP);
-        self.cmd_bus.sub_export().connect(&self.scoreboard, Scoreboard::CMD_IN);
+        self.cmd_bus
+            .pub_export()
+            .connect(&self.cmd_mon, CmdMonitor::AP);
+        self.cmd_bus
+            .sub_export()
+            .connect(&self.scoreboard, Scoreboard::CMD_IN);
         if self.with_coverage {
-            self.cmd_bus.sub_export().connect(&self.coverage, Coverage::CMD_IN);
+            self.cmd_bus
+                .sub_export()
+                .connect(&self.coverage, Coverage::CMD_IN);
         }
 
-        self.result_bus.pub_export().connect(&self.result_mon, ResultMonitor::AP);
-        self.result_bus.sub_export().connect(&self.scoreboard, Scoreboard::RESULT_IN);
+        self.result_bus
+            .pub_export()
+            .connect(&self.result_mon, ResultMonitor::AP);
+        self.result_bus
+            .sub_export()
+            .connect(&self.scoreboard, Scoreboard::RESULT_IN);
     }
 
     fn start_of_simulation(&mut self, ctx: &mut RustdvCtx) {

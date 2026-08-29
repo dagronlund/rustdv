@@ -26,7 +26,12 @@ pub struct Event {
 impl Event {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Event {
-        Event { inner: Rc::new(EventInner { is_set: Cell::new(false), waiters: RefCell::new(Vec::new()) }) }
+        Event {
+            inner: Rc::new(EventInner {
+                is_set: Cell::new(false),
+                waiters: RefCell::new(Vec::new()),
+            }),
+        }
     }
 
     pub fn set(&self) {
@@ -45,7 +50,9 @@ impl Event {
     }
 
     pub fn wait(&self) -> EventWait {
-        EventWait { inner: self.inner.clone() }
+        EventWait {
+            inner: self.inner.clone(),
+        }
     }
 }
 
@@ -110,7 +117,12 @@ pub struct Lock {
 impl Lock {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Lock {
-        Lock { inner: Rc::new(LockInner { locked: Cell::new(false), waiters: RefCell::new(VecDeque::new()) }) }
+        Lock {
+            inner: Rc::new(LockInner {
+                locked: Cell::new(false),
+                waiters: RefCell::new(VecDeque::new()),
+            }),
+        }
     }
 
     pub fn locked(&self) -> bool {
@@ -118,7 +130,11 @@ impl Lock {
     }
 
     pub fn acquire(&self) -> Acquire {
-        Acquire { inner: self.inner.clone(), waiter: None, acquired: false }
+        Acquire {
+            inner: self.inner.clone(),
+            waiter: None,
+            acquired: false,
+        }
     }
 }
 
@@ -136,7 +152,9 @@ impl Future for Acquire {
                 if !self.inner.locked.get() {
                     self.inner.locked.set(true);
                     self.acquired = true;
-                    Poll::Ready(LockGuard { inner: self.inner.clone() })
+                    Poll::Ready(LockGuard {
+                        inner: self.inner.clone(),
+                    })
                 } else {
                     let w = Rc::new(LockWaiter {
                         granted: Cell::new(false),
@@ -150,7 +168,9 @@ impl Future for Acquire {
             Some(w) => {
                 if w.granted.get() {
                     self.acquired = true;
-                    Poll::Ready(LockGuard { inner: self.inner.clone() })
+                    Poll::Ready(LockGuard {
+                        inner: self.inner.clone(),
+                    })
                 } else {
                     *w.waker.borrow_mut() = Some(cx.waker().clone());
                     Poll::Pending
@@ -171,7 +191,10 @@ impl Drop for Acquire {
                 self.inner.release();
             } else {
                 // Remove ourselves from the queue.
-                self.inner.waiters.borrow_mut().retain(|x| !Rc::ptr_eq(x, w));
+                self.inner
+                    .waiters
+                    .borrow_mut()
+                    .retain(|x| !Rc::ptr_eq(x, w));
             }
         }
     }

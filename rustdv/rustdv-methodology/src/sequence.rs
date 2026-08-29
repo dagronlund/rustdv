@@ -28,9 +28,9 @@ use std::pin::Pin;
 use std::rc::Rc;
 use std::task::{Context, Poll, Waker};
 
+use rustdv_sim::log::Logger;
 use rustdv_sim::queue::Queue;
 use rustdv_sim::sync::Event;
-use rustdv_sim::log::Logger;
 use rustdv_sim::{Rng, RustdvPath};
 
 use crate::component::{Component, ComponentNode};
@@ -129,7 +129,9 @@ pub struct ResponseQueue<RSP> {
 
 impl<RSP> Clone for ResponseQueue<RSP> {
     fn clone(&self) -> Self {
-        ResponseQueue { inner: self.inner.clone() }
+        ResponseQueue {
+            inner: self.inner.clone(),
+        }
     }
 }
 
@@ -153,7 +155,10 @@ impl<RSP> ResponseQueue<RSP> {
     /// `None` → whatever is next; `Some(id)` → that ticket's answer, however
     /// many others arrive first.
     pub fn get_response(&self, txn_id: Option<TxnId>) -> GetResponse<RSP> {
-        GetResponse { inner: self.inner.clone(), txn_id }
+        GetResponse {
+            inner: self.inner.clone(),
+            txn_id,
+        }
     }
 
     /// Is it ready **yet**? Returns `None` rather than waiting.
@@ -244,14 +249,20 @@ impl<REQ: 'static, RSP: 'static> SeqItemIf<REQ, RSP> for SeqrInner<REQ, RSP> {
                 .borrow_mut()
                 .take()
                 .expect("item ready but payload missing (rustdv bug)");
-            let item = SeqItem { id: slot.id, payload };
+            let item = SeqItem {
+                id: slot.id,
+                payload,
+            };
             *self.current.borrow_mut() = Some(slot);
             item
         })
     }
 
     fn try_next_item(&self) -> Option<SeqItem<REQ>> {
-        assert!(self.current.borrow().is_none(), "try_next_item called without item_done");
+        assert!(
+            self.current.borrow().is_none(),
+            "try_next_item called without item_done"
+        );
         // The sequence must already be waiting in `start_item` *and* have
         // filled the item in — otherwise there is nothing to hand over and we
         // must not block. `ready` is set by `finish_item`.
@@ -266,7 +277,10 @@ impl<REQ: 'static, RSP: 'static> SeqItemIf<REQ, RSP> for SeqrInner<REQ, RSP> {
                 return None;
             }
         };
-        let item = SeqItem { id: slot.id, payload };
+        let item = SeqItem {
+            id: slot.id,
+            payload,
+        };
         *self.current.borrow_mut() = Some(slot);
         Some(item)
     }
@@ -323,7 +337,9 @@ pub struct Sequencer<REQ: 'static, RSP: 'static = REQ> {
 
 impl<REQ, RSP> Clone for Sequencer<REQ, RSP> {
     fn clone(&self) -> Self {
-        Sequencer { inner: self.inner.clone() }
+        Sequencer {
+            inner: self.inner.clone(),
+        }
     }
 }
 
@@ -360,7 +376,9 @@ impl<REQ: 'static, RSP: 'static> Sequencer<REQ, RSP> {
 
     /// The driver-side endpoint, connected in the parent's `connect` phase.
     pub fn seq_item_export(&self) -> SeqItemExport<REQ, RSP> {
-        SeqItemExport { iface: self.inner.clone() }
+        SeqItemExport {
+            iface: self.inner.clone(),
+        }
     }
 }
 
@@ -438,7 +456,9 @@ impl<REQ: 'static, RSP: 'static> SeqCtx<REQ, RSP> {
     /// driver committed and waiting: set the fields **now**.
     pub async fn start_item(&mut self, _item: &mut REQ) -> Result<(), SeqError> {
         if self.current.is_some() {
-            return Err(SeqError("start_item called twice without finish_item".into()));
+            return Err(SeqError(
+                "start_item called twice without finish_item".into(),
+            ));
         }
         let inner = self.seqr()?.clone();
         let id = TxnId(inner.next_id.get());
@@ -483,7 +503,11 @@ impl<REQ: 'static, RSP: 'static> SeqCtx<REQ, RSP> {
     /// Wait for an answer. `None` takes whatever is next; `Some(id)` waits for
     /// that ticket however many others arrive first.
     pub async fn get_response(&mut self, txn_id: Option<TxnId>) -> RSP {
-        let responses = self.seqr().expect("get_response in a virtual sequence").responses.clone();
+        let responses = self
+            .seqr()
+            .expect("get_response in a virtual sequence")
+            .responses
+            .clone();
         responses.get_response(txn_id).await
     }
 }
@@ -600,11 +624,16 @@ impl<REQ: 'static, RSP: 'static> RustdvSeq<REQ, RSP> {
 
     /// What this slot holds, by name (D98). `"<empty>"` before it is filled.
     pub fn name(&self) -> &'static str {
-        self.inner.as_ref().map(|s| s.dyn_name()).unwrap_or("<empty>")
+        self.inner
+            .as_ref()
+            .map(|s| s.dyn_name())
+            .unwrap_or("<empty>")
     }
 
     fn get(&mut self) -> Result<&mut Box<dyn DynSequence<REQ, RSP>>, SeqError> {
-        self.inner.as_mut().ok_or_else(|| SeqError("an empty sequence slot".into()))
+        self.inner
+            .as_mut()
+            .ok_or_else(|| SeqError("an empty sequence slot".into()))
     }
 
     pub async fn start(&mut self, seqr: &Sequencer<REQ, RSP>) -> Result<(), SeqError> {
@@ -742,7 +771,10 @@ mod tests {
             });
 
             let mut ctx = SeqCtx::new(Some(inner), "T", 1);
-            let mut cmd = Cmd { a: 0, tag: "before" };
+            let mut cmd = Cmd {
+                a: 0,
+                tag: "before",
+            };
             ctx.start_item(&mut cmd).await.unwrap();
             // The driver is committed and waiting. Decide the stimulus now.
             cmd.a = 42;
@@ -940,10 +972,16 @@ mod tests {
             let seqr: Sequencer<Cmd, Rsp> = Sequencer::new();
             let inner = seqr.inner.clone();
             let mut ctx = SeqCtx::new(Some(inner.clone()), "T", 1);
-            assert!(ctx.try_get_response(Some(TxnId(1))).is_none(), "nothing yet");
+            assert!(
+                ctx.try_get_response(Some(TxnId(1))).is_none(),
+                "nothing yet"
+            );
             inner.responses.push(TxnId(1), Rsp { v: 9 });
             assert_eq!(ctx.try_get_response(Some(TxnId(1))).unwrap().v, 9);
-            assert!(ctx.try_get_response(Some(TxnId(1))).is_none(), "and it was taken");
+            assert!(
+                ctx.try_get_response(Some(TxnId(1))).is_none(),
+                "and it was taken"
+            );
         });
     }
 
@@ -967,7 +1005,10 @@ mod tests {
             match ctx.start_item(&mut cmd).await {
                 Err(SeqError(msg)) => {
                     assert!(msg.contains("virtual"), "the error explains: {msg}");
-                    assert!(msg.contains("MyVirtualSeq"), "and names the sequence: {msg}");
+                    assert!(
+                        msg.contains("MyVirtualSeq"),
+                        "and names the sequence: {msg}"
+                    );
                 }
                 Ok(()) => panic!("start_item should fail without a sequencer"),
             }

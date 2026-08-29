@@ -12,7 +12,6 @@
 
 use rustdv::prelude::*;
 
-
 // A test that hangs is reported as a timeout, not as a hang.
 //
 // Without the timeout attribute this test would run until vvp was killed and
@@ -74,7 +73,10 @@ async fn runner_background_panic_fails_the_test(_ctx: RustdvCtx) -> Result<(), T
 async fn runner_configdb_writer(_ctx: RustdvCtx) -> Result<(), TestError> {
     ConfigDb::set(None, "*", "FRESHNESS_CANARY", 1234u32);
     let back: u32 = ConfigDb::get(None, "", "FRESHNESS_CANARY")?;
-    check!(back == 1234, "the canary did not survive its own test: {back}");
+    check!(
+        back == 1234,
+        "the canary did not survive its own test: {back}"
+    );
     Ok(())
 }
 
@@ -108,7 +110,11 @@ fn canary_log(which: &str) -> String {
     // Process-unique so two regressions on one machine cannot read each
     // other's file, and under the temp dir so nothing lands in the repo.
     std::env::temp_dir()
-        .join(format!("rustdv-log-canary-{}-{}.log", std::process::id(), which))
+        .join(format!(
+            "rustdv-log-canary-{}-{}.log",
+            std::process::id(),
+            which
+        ))
         .to_string_lossy()
         .into_owned()
 }

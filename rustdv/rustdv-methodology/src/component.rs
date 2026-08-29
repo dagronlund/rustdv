@@ -66,7 +66,11 @@ impl CheckSink {
         if self.errors.is_empty() {
             Ok(())
         } else {
-            Err(format!("{} check failure(s): {}", self.errors.len(), self.errors.join("; ")))
+            Err(format!(
+                "{} check failure(s): {}",
+                self.errors.len(),
+                self.errors.join("; ")
+            ))
         }
     }
 }
@@ -114,7 +118,12 @@ impl RustdvCtx {
     /// Built by the runner, once per test, with `path` the test's
     /// registered name (D49 — UVM's fixed `uvm_test_top` is not ported).
     pub fn new(path: &str, dut: HierarchyHandle, seed: u64) -> RustdvCtx {
-        RustdvCtx { dut, seed, objections: ObjectionRegistry::new(), logger: Logger::new(path) }
+        RustdvCtx {
+            dut,
+            seed,
+            objections: ObjectionRegistry::new(),
+            logger: Logger::new(path),
+        }
     }
 
     /// A child context: same services, path extended by `name` (D9). The
@@ -509,7 +518,11 @@ pub fn unconnected_ports(node: &mut dyn ComponentNode, ctx: &mut RustdvCtx) -> V
     let path = ctx.path().to_string();
     for info in node.port_infos() {
         if info.required && !info.connected {
-            let owner = if path.is_empty() { String::from("(top)") } else { path.clone() };
+            let owner = if path.is_empty() {
+                String::from("(top)")
+            } else {
+                path.clone()
+            };
             out.push(format!("{owner}.{} ({})", info.name, info.kind));
         }
     }
@@ -522,7 +535,10 @@ pub fn unconnected_ports(node: &mut dyn ComponentNode, ctx: &mut RustdvCtx) -> V
 
 /// Run the connection sweep and turn any misses into one error listing them
 /// all. Called by the runner between `connect` and `end_of_elaboration`.
-pub fn check_connections(node: &mut dyn ComponentNode, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+pub fn check_connections(
+    node: &mut dyn ComponentNode,
+    ctx: &mut RustdvCtx,
+) -> Result<(), TestError> {
     let missing = unconnected_ports(node, ctx);
     if missing.is_empty() {
         return Ok(());
@@ -644,7 +660,8 @@ pub fn run_all<'a>(
                     Box::pin(async move {
                         let mut cctx = cctx;
                         run_all(child, &mut cctx).await
-                    }) as Pin<Box<dyn Future<Output = Result<(), TestError>> + '_>>
+                    })
+                        as Pin<Box<dyn Future<Output = Result<(), TestError>> + '_>>
                 })
                 .collect();
 
@@ -929,7 +946,10 @@ mod tests {
         build_all(&mut root, &mut ctx);
         reset();
         connect_all(&mut root, &mut ctx);
-        assert_eq!(trace(), vec!["connect top.first", "connect top.second", "connect top"]);
+        assert_eq!(
+            trace(),
+            vec!["connect top.first", "connect top.second", "connect top"]
+        );
     }
 
     /// D7: the path comes from the field name via the walk. Rename the field
@@ -948,7 +968,10 @@ mod tests {
     #[test]
     fn an_option_child_appears_only_once_some() {
         let mut root = Parent::default();
-        assert!(root.children_mut().is_empty(), "declared but not yet built (D6)");
+        assert!(
+            root.children_mut().is_empty(),
+            "declared but not yet built (D6)"
+        );
         let mut ctx = RustdvCtx::for_test("top");
         build_all(&mut root, &mut ctx);
         assert_eq!(root.children_mut().len(), 2);
@@ -1018,10 +1041,15 @@ mod tests {
 
     #[test]
     fn take_children_empties_the_slot_and_restore_refills_it() {
-        let mut p = FactoryParent { child: RustdvComp::fixed(Box::new(Leaf)) };
+        let mut p = FactoryParent {
+            child: RustdvComp::fixed(Box::new(Leaf)),
+        };
         let taken = p.take_children();
         assert_eq!(taken.len(), 1);
-        assert!(p.children_mut().is_empty(), "the slot is empty during the run phase");
+        assert!(
+            p.children_mut().is_empty(),
+            "the slot is empty during the run phase"
+        );
         p.restore_children(taken);
         assert_eq!(p.children_mut().len(), 1, "and full again for check/report");
     }
@@ -1048,7 +1076,9 @@ mod tests {
         }
 
         block_on(async {
-            let mut p = FactoryParent { child: RustdvComp::fixed(Box::new(Failing)) };
+            let mut p = FactoryParent {
+                child: RustdvComp::fixed(Box::new(Failing)),
+            };
             let mut ctx = RustdvCtx::for_test("top");
             let outcome = run_all(&mut p, &mut ctx).await;
             assert!(outcome.is_err(), "the child's run failed");

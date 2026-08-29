@@ -147,7 +147,10 @@ impl<I: ?Sized> PortName<I> {
     /// Called by the derive. Hand-writing one is allowed and harmless — it
     /// still has to match a real field name to connect.
     pub const fn new(name: &'static str) -> PortName<I> {
-        PortName { name, _marker: PhantomData }
+        PortName {
+            name,
+            _marker: PhantomData,
+        }
     }
 
     pub const fn as_str(&self) -> &'static str {
@@ -203,13 +206,17 @@ pub type SubscribePort<T> = Port<dyn SinkHandle<T>>;
 impl<I: ?Sized + 'static> Clone for Port<I> {
     /// Another handle to the *same* binding, not a second port.
     fn clone(&self) -> Self {
-        Port { slot: self.slot.clone() }
+        Port {
+            slot: self.slot.clone(),
+        }
     }
 }
 
 impl<I: ?Sized + 'static> Default for Port<I> {
     fn default() -> Self {
-        Port { slot: Rc::new(RefCell::new(None)) }
+        Port {
+            slot: Rc::new(RefCell::new(None)),
+        }
     }
 }
 
@@ -331,12 +338,21 @@ pub(crate) fn sink_of<T: 'static>(
     let label = owner.owner_label();
     let slot = owner
         .owner_port_slot(name.as_str())
-        .ok_or(ConnectError::NoSuchPort { owner: label, name: name.as_str() })?;
+        .ok_or(ConnectError::NoSuchPort {
+            owner: label,
+            name: name.as_str(),
+        })?;
     let slot = slot
         .downcast::<RefCell<Option<Rc<dyn SinkHandle<T>>>>>()
-        .map_err(|_| ConnectError::WrongInterface { owner: label, name: name.as_str() })?;
+        .map_err(|_| ConnectError::WrongInterface {
+            owner: label,
+            name: name.as_str(),
+        })?;
     let sink = slot.borrow().clone();
-    sink.ok_or(ConnectError::NoSubscriber { owner: label, name: name.as_str() })
+    sink.ok_or(ConnectError::NoSubscriber {
+        owner: label,
+        name: name.as_str(),
+    })
 }
 
 impl<REQ: 'static, RSP: 'static> Port<dyn crate::sequence::SeqItemIf<REQ, RSP>> {
@@ -430,13 +446,22 @@ pub trait PortOwner {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConnectError {
     /// No `#[port(..)]` field of that name on that component.
-    NoSuchPort { owner: &'static str, name: &'static str },
+    NoSuchPort {
+        owner: &'static str,
+        name: &'static str,
+    },
     /// The field exists but demands a different interface — a `get` export
     /// aimed at a `put` port, or a different transaction type.
-    WrongInterface { owner: &'static str, name: &'static str },
+    WrongInterface {
+        owner: &'static str,
+        name: &'static str,
+    },
     /// A subscribe port was connected but its component never said what to do
     /// with the items — no `subscribe` in its build phase.
-    NoSubscriber { owner: &'static str, name: &'static str },
+    NoSubscriber {
+        owner: &'static str,
+        name: &'static str,
+    },
 }
 
 impl fmt::Display for ConnectError {
@@ -472,10 +497,16 @@ pub fn bind<I: ?Sized + 'static>(
     let label = owner.owner_label();
     let slot = owner
         .owner_port_slot(name.as_str())
-        .ok_or(ConnectError::NoSuchPort { owner: label, name: name.as_str() })?;
-    let slot = slot
-        .downcast::<RefCell<Option<Rc<I>>>>()
-        .map_err(|_| ConnectError::WrongInterface { owner: label, name: name.as_str() })?;
+        .ok_or(ConnectError::NoSuchPort {
+            owner: label,
+            name: name.as_str(),
+        })?;
+    let slot =
+        slot.downcast::<RefCell<Option<Rc<I>>>>()
+            .map_err(|_| ConnectError::WrongInterface {
+                owner: label,
+                name: name.as_str(),
+            })?;
     *slot.borrow_mut() = Some(iface);
     Ok(())
 }

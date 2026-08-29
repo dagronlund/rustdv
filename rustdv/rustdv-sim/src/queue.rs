@@ -41,7 +41,9 @@ pub struct Queue<T> {
 
 impl<T> Clone for Queue<T> {
     fn clone(&self) -> Self {
-        Queue { inner: self.inner.clone() }
+        Queue {
+            inner: self.inner.clone(),
+        }
     }
 }
 
@@ -94,11 +96,16 @@ impl<T> Queue<T> {
     }
 
     pub fn put(&self, item: T) -> Put<T> {
-        Put { inner: self.inner.clone(), item: Some(item) }
+        Put {
+            inner: self.inner.clone(),
+            item: Some(item),
+        }
     }
 
     pub fn get(&self) -> Get<T> {
-        Get { inner: self.inner.clone() }
+        Get {
+            inner: self.inner.clone(),
+        }
     }
 
     /// Wait until the queue has room, **without** handing over an item.
@@ -114,7 +121,9 @@ impl<T> Queue<T> {
     /// let _ = q.try_put(item); // other task can take the space first
     /// ```
     pub fn wait_for_space(&self) -> Space<T> {
-        Space { inner: self.inner.clone() }
+        Space {
+            inner: self.inner.clone(),
+        }
     }
 }
 
@@ -147,7 +156,9 @@ impl<T: Clone> Queue<T> {
 
     /// Block until there is something to peek at, then copy it.
     pub fn peek(&self) -> Peek<T> {
-        Peek { inner: self.inner.clone() }
+        Peek {
+            inner: self.inner.clone(),
+        }
     }
 }
 

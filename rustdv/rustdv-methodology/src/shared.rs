@@ -29,7 +29,9 @@ pub struct RustdvShared<T> {
 
 impl<T> RustdvShared<T> {
     pub fn new(value: T) -> RustdvShared<T> {
-        RustdvShared { inner: Rc::new(RefCell::new(value)) }
+        RustdvShared {
+            inner: Rc::new(RefCell::new(value)),
+        }
     }
 
     /// Read the shared state.
@@ -56,7 +58,9 @@ impl<T> RustdvShared<T> {
 
 impl<T> Clone for RustdvShared<T> {
     fn clone(&self) -> Self {
-        RustdvShared { inner: self.inner.clone() }
+        RustdvShared {
+            inner: self.inner.clone(),
+        }
     }
 }
 
