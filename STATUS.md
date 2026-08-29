@@ -11,7 +11,7 @@ devel), both installed to the VM home directory.
 
 ```sh
 cd sim && ./run_rustdv.sh          # expect "REGRESSION: PASS"
-cd rustdv && cargo test            # pure-Rust unit tests, no simulator
+cargo test --workspace             # pure-Rust unit tests, no simulator
 ```
 
 - [x] `cargo build -p tinyalu_tb` (debug and release) — clean
@@ -112,7 +112,8 @@ defines panicking stubs so test binaries link. It is never linked into the
 `.vpi` module, where the real symbols come from the simulator process.
 (A first attempt via linker flags — `-z lazy` +
 `--unresolved-symbols=ignore-all` — corrupted aarch64 PLT relocations and
-was abandoned; `rustdv/.cargo/config.toml` is intentionally empty.)
+was abandoned; the root `.cargo/config.toml` intentionally has no Linux
+linker override.)
 
 ## Fix log (build/sim loop)
 
@@ -199,7 +200,7 @@ example code; both fixed, Linux sweep re-verified green:
 - **VPI cdylibs wouldn't link on Mach-O** (undefined `vpi_*` symbols are
   a load-time feature on Linux, an error on macOS). Added
   `-undefined dynamic_lookup` for the two Apple targets in
-  `output/examples/.cargo/config.toml` and `rustdv/.cargo/config.toml`
+  `output/examples/.cargo/config.toml` and `.cargo/config.toml`
   (target-scoped: Linux builds untouched, D9's caveat still respected).
   `sim-common/run_sim.sh` and `sim/run_rustdv.sh` now fall back from
   `lib*.so` to `lib*.dylib`.

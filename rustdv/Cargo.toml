@@ -1,32 +1,3 @@
-[workspace]
-resolver = "2"
-members = [
-    "rustdv-gpi-sys",
-    "rustdv-gpi",
-    "rustdv-sim",
-    "rustdv-methodology",
-    "rustdv-macros",
-    "rustdv-vpi-stubs",
-    "rustdv-runner",
-    "tinyalu_tb",
-    "framework-tests",
-]
-# Crates that must NOT compile. Each is built on its own by
-# framework-tests/compile-fail/run.sh, which requires the failure and checks
-# the error code; a workspace member would just break `cargo build`.
-#
-# Listed here so they are visible from the workspace root, but the listing is
-# not what keeps them out: they sit *inside* a member's directory, and for
-# that cargo wants an empty `[workspace]` table in each of their own
-# manifests. Both are present; the table is the one doing the work.
-exclude = [
-    "framework-tests/compile-fail/export_interface_mismatch",
-    "framework-tests/compile-fail/misspelled_port_name",
-    "framework-tests/compile-fail/use_after_finish_item",
-    "framework-tests/compile-fail/eq_on_a_float",
-    "framework-tests/compile-fail/port_attr_on_non_port",
-]
-
 # ---------------------------------------------------------------------------
 # The `rustdv` facade crate (design-doc D2.5): re-exports the public API so a
 # user writes `use rustdv::prelude::*;` and nothing else.
@@ -52,9 +23,3 @@ rustdv-sim = { path = "rustdv-sim", version = "0.2.0" }
 rustdv-methodology = { path = "rustdv-methodology", version = "0.2.0" }
 rustdv-macros = { path = "rustdv-macros", version = "0.2.0" }
 rustdv-runner = { path = "rustdv-runner", version = "0.2.0" }
-
-[profile.release]
-panic = "unwind"   # panics must be catchable at the task boundary (§0.6)
-
-[profile.dev]
-panic = "unwind"
