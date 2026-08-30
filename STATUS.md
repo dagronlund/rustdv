@@ -1340,3 +1340,15 @@ script has not been run against the tree; ch35's README has no "Try it" column
 yet, and all seven figures are `std`-only, so they would work in the Playground.
 
 Full regression 248/0 on the Linux sandbox; not yet verified on macOS/arm64.
+
+## Registries and procedural macros move to maintained crates (2026-08-29)
+
+Both link-time registries now use `linkme` distributed slices. The runner and
+factory no longer maintain sentinels, platform-specific section symbols, or
+unsafe pointer walkers. Chapter 21's runnable registration example uses the
+same abstraction and is no longer Linux-only.
+
+`rustdv-macros` now parses with `syn` and emits with `quote`/`proc-macro2`.
+The macro surface is unchanged; parsing now handles Rust fields, attributes,
+types, generics, and where clauses structurally. D119 records that the Path B
+zero-dependency constraint is retired.

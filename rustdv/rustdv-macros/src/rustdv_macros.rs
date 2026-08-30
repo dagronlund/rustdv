@@ -2,20 +2,22 @@
 //! principle — a macro is justified only where Python used runtime
 //! dynamism Rust lacks:
 //!
-//! - `#[rustdv::test]` (§6.1): registers the annotated `async fn` in the
-//!   link-time test registry (the `inventory`/`linkme` technique, hand
-//!   rolled for ELF: `#[link_section]` + `__start_`/`__stop_` symbols).
-//! - `#[derive(Component)]` (§6.3): generates the `ComponentNode`
-//!   traversal over `#[component]` fields (`T`, `Option<T>`,
-//!   `Vec<T>`).
+//! - `#[rustdv::test]` (§6.1): registers an `async fn` or component test in
+//!   the link-time test registry.
+//! - `#[derive(Component)]` (§6.3): generates component-tree traversal,
+//!   named-port access, and universal factory registration.
 //!
-//! **Implementation note (STATUS.md):** the zero-dependency constraint
-//! rules out syn/quote, so parsing walks raw token trees and code
-//! generation goes through string formatting + `.parse()`. Supported
-//! grammar is deliberately narrow (plain fns, non-generic structs with
-//! named fields); unsupported shapes produce compile errors.
+//! `syn` parses Rust syntax, `quote` generates Rust tokens, and `linkme`
+//! (re-exported by the facade crate) owns the cross-platform linker sections.
 
-use proc_macro::{Delimiter, TokenStream, TokenTree};
+use proc_macro::TokenStream;
+use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
+use quote::{format_ident, quote};
+use syn::parse::{Parse, ParseStream};
+use syn::{
+    parse_macro_input, Attribute, Data, DeriveInput, Expr, ExprLit, Field, Fields, Item, Lit,
+    LitStr, Result, Token, Type,
+};
 
 // ===========================================================================
 // #[rustdv::test]
@@ -31,581 +33,527 @@ struct TestOpts {
     expect_error: Option<String>,
 }
 
-fn strip_quotes(s: &str) -> String {
-    s.trim_matches('"').to_string()
-}
+impl Parse for TestOpts {
+    fn parse(input: ParseStream<'_>) -> Result<Self> {
+        let mut opts = TestOpts::default();
+        while !input.is_empty() {
+            let key: Ident = input.parse()?;
+            let value = if input.peek(Token![=]) {
+                input.parse::<Token![=]>()?;
+                Some(input.parse::<Expr>()?)
+            } else {
+                None
+            };
 
-fn parse_test_opts(attr: TokenStream) -> Result<TestOpts, String> {
-    let mut opts = TestOpts::default();
-    let mut iter = attr.into_iter().peekable();
-    while let Some(tt) = iter.next() {
-        let key = match &tt {
-            TokenTree::Ident(i) => i.to_string(),
-            TokenTree::Punct(p) if p.as_char() == ',' => continue,
-            other => return Err(format!("unexpected token in #[rustdv::test(...)]: {other}")),
-        };
-        // Optional `= value`
-        let mut value: Option<String> = None;
-        if let Some(TokenTree::Punct(p)) = iter.peek() {
-            if p.as_char() == '=' {
-                iter.next(); // consume '='
-                match iter.next() {
-                    Some(TokenTree::Literal(l)) => value = Some(l.to_string()),
-                    Some(TokenTree::Ident(i)) => value = Some(i.to_string()),
-                    other => return Err(format!("expected value after '{key} =', got {other:?}")),
+            match key.to_string().as_str() {
+                "name" => opts.name = Some(string_value(&key, value)?),
+                "timeout_time" => opts.timeout_time = Some(integer_value(&key, value)?),
+                "timeout_unit" => opts.timeout_unit = Some(string_value(&key, value)?),
+                "skip" => opts.skip = flag_value(&key, value)?,
+                "expect_fail" => opts.expect_fail = flag_value(&key, value)?,
+                "expect_error" => opts.expect_error = Some(string_value(&key, value)?),
+                _ => {
+                    return Err(syn::Error::new_spanned(
+                        key,
+                        "unknown #[rustdv::test] option",
+                    ));
                 }
             }
-        }
-        match key.as_str() {
-            "name" => opts.name = value.map(|v| strip_quotes(&v)),
-            "timeout_time" => {
-                let v = value.ok_or("timeout_time needs a value")?;
-                opts.timeout_time = Some(
-                    v.parse::<u64>()
-                        .map_err(|_| format!("bad timeout_time '{v}'"))?,
-                );
+
+            if input.is_empty() {
+                break;
             }
-            "timeout_unit" => opts.timeout_unit = value.map(|v| strip_quotes(&v)),
-            "skip" => opts.skip = value.map(|v| v == "true").unwrap_or(true),
-            "expect_fail" => opts.expect_fail = value.map(|v| v == "true").unwrap_or(true),
-            // Pass only if the test fails with this cause — the port of
-            // pyuvm's `expect_error=SomeException` (D68).
-            "expect_error" => {
-                let v = value.ok_or(
-                    "expect_error needs a value, e.g. expect_error = \"config_not_found\"",
-                )?;
-                opts.expect_error = Some(strip_quotes(&v));
-            }
-            other => return Err(format!("unknown #[rustdv::test] option '{other}'")),
+            input.parse::<Token![,]>()?;
         }
+        Ok(opts)
     }
-    Ok(opts)
 }
 
-/// Which of the two front doors this item is (D46).
-#[derive(Copy, Clone, PartialEq, Eq)]
+fn literal(key: &Ident, value: Option<Expr>) -> Result<Lit> {
+    match value {
+        Some(Expr::Lit(ExprLit { lit, .. })) => Ok(lit),
+        Some(other) => Err(syn::Error::new_spanned(
+            other,
+            format!("{} requires a literal value", key),
+        )),
+        None => Err(syn::Error::new_spanned(
+            key,
+            format!("{} requires a value", key),
+        )),
+    }
+}
+
+fn string_value(key: &Ident, value: Option<Expr>) -> Result<String> {
+    match literal(key, value)? {
+        Lit::Str(value) => Ok(value.value()),
+        other => Err(syn::Error::new_spanned(
+            other,
+            format!("{} requires a string literal", key),
+        )),
+    }
+}
+
+fn integer_value(key: &Ident, value: Option<Expr>) -> Result<u64> {
+    match literal(key, value)? {
+        Lit::Int(value) => value.base10_parse(),
+        other => Err(syn::Error::new_spanned(
+            other,
+            format!("{} requires an integer literal", key),
+        )),
+    }
+}
+
+fn flag_value(key: &Ident, value: Option<Expr>) -> Result<bool> {
+    match value {
+        None => Ok(true),
+        Some(value) => match literal(key, Some(value))? {
+            Lit::Bool(value) => Ok(value.value),
+            other => Err(syn::Error::new_spanned(
+                other,
+                format!("{} requires true or false", key),
+            )),
+        },
+    }
+}
+
 enum TestForm {
-    /// `async fn tb(ctx: RustdvCtx) -> Result<(), TestError>` — the
-    /// cocotb shape, `@cocotb.test()` on a coroutine function.
     Function,
-    /// `struct RandomTest;` or `type RandomTest = AluTest<RandomTester>;`
-    /// implementing `Component` — the pyuvm shape, `@pyuvm.test()` on a
-    /// class.
     Component,
 }
 
-/// The item's kind and name: the first top-level `fn` / `struct` / `type`
-/// keyword and the identifier after it. Attributes (`#[derive(..)]`) are
-/// bracket groups, not top-level idents, so they are skipped for free;
-/// `pub` and `async` are idents that simply are not the keyword.
-fn find_item(item: &TokenStream) -> Option<(TestForm, String)> {
-    let mut form: Option<TestForm> = None;
-    for tt in item.clone() {
-        if let TokenTree::Ident(i) = tt {
-            let s = i.to_string();
-            if let Some(f) = form {
-                return Some((f, s));
-            }
-            form = match s.as_str() {
-                "fn" => Some(TestForm::Function),
-                "struct" | "type" => Some(TestForm::Component),
-                _ => None,
-            };
+fn expand_test(attr: TokenStream2, item: TokenStream2) -> Result<TokenStream2> {
+    let opts = syn::parse2::<TestOpts>(attr)?;
+    let item = syn::parse2::<Item>(item)?;
+    let (form, item_name) = match &item {
+        Item::Fn(function) => (TestForm::Function, function.sig.ident.clone()),
+        Item::Struct(structure) => (TestForm::Component, structure.ident.clone()),
+        Item::Type(alias) => (TestForm::Component, alias.ident.clone()),
+        other => {
+            return Err(syn::Error::new_spanned(
+                other,
+                "#[rustdv::test] must be applied to an async fn, a struct, or a type alias",
+            ));
         }
-    }
-    None
-}
-
-fn compile_error(msg: &str) -> TokenStream {
-    format!("compile_error!({msg:?});").parse().unwrap()
-}
-
-/// Both front doors (design-doc §6.1, D46). Registers at link time either
-///
-/// - `async fn name(ctx: RustdvCtx) -> Result<(), TestError>` — the port of
-///   `@cocotb.test()`, decorating a coroutine *function*; or
-/// - `struct Name;` / `type Name = ..;` implementing `Component + Default`
-///   — the port of `@pyuvm.test()`, decorating a *class*.
-///
-/// Both expand to the same erased shim, so there is one registry and one
-/// execution path behind the two syntaxes.
-#[proc_macro_attribute]
-pub fn test(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let opts = match parse_test_opts(attr) {
-        Ok(o) => o,
-        Err(e) => return compile_error(&e),
     };
-    let Some((form, item_name)) = find_item(&item) else {
-        return compile_error(
-            "#[rustdv::test] must be applied to an async fn, a struct, or a type alias",
-        );
-    };
-    let fn_name = item_name;
-    let test_name = opts.name.unwrap_or_else(|| fn_name.clone());
-    let timeout = match (opts.timeout_time, opts.timeout_unit) {
-        (Some(t), Some(u)) => format!("::core::option::Option::Some(({t}u64, \"{u}\"))"),
-        (Some(t), None) => format!("::core::option::Option::Some(({t}u64, \"ns\"))"),
-        _ => "::core::option::Option::None".to_string(),
+
+    let test_name = LitStr::new(
+        opts.name.as_deref().unwrap_or(&item_name.to_string()),
+        item_name.span(),
+    );
+    let timeout = match opts.timeout_time {
+        Some(time) => {
+            let unit = LitStr::new(
+                opts.timeout_unit.as_deref().unwrap_or("ns"),
+                Span::call_site(),
+            );
+            quote!(::core::option::Option::Some((#time, #unit)))
+        }
+        None => quote!(::core::option::Option::None),
     };
     let skip = opts.skip;
     let expect_fail = opts.expect_fail;
-    let expect_error = match &opts.expect_error {
-        Some(k) => format!("::core::option::Option::Some(\"{k}\")"),
-        None => "::core::option::Option::None".to_string(),
+    let expect_error = match opts.expect_error {
+        Some(value) => {
+            let value = LitStr::new(&value, Span::call_site());
+            quote!(::core::option::Option::Some(#value))
+        }
+        None => quote!(::core::option::Option::None),
     };
-
-    // The two forms differ only in this body: call the function, or build
-    // the component and let the phaser drive its whole lifecycle (D51). The
-    // struct form no longer calls `run` directly — `run_component_test`
-    // runs build → connect → … → run → extract → check → report → final.
     let body = match form {
-        TestForm::Function => format!("::std::boxed::Box::pin({fn_name}(ctx))"),
-        TestForm::Component => format!(
-            r#"::std::boxed::Box::pin(async move {{
-            let mut __ctx = ctx;
-            let mut __test = <{fn_name} as ::core::default::Default>::default();
-            ::rustdv::run_component_test(&mut __test, &mut __ctx).await
-        }})"#
-        ),
+        TestForm::Function => quote!(::std::boxed::Box::pin(super::#item_name(ctx))),
+        TestForm::Component => quote! {
+            ::std::boxed::Box::pin(async move {
+                let mut __ctx = ctx;
+                let mut __test = <super::#item_name as ::core::default::Default>::default();
+                ::rustdv::run_component_test(&mut __test, &mut __ctx).await
+            })
+        },
     };
+    let registration_module = format_ident!("__rustdv_test_registration_{}", item_name);
+    let module_path_constant = format_ident!("__RUSTDV_TEST_MODULE_{}", item_name);
 
-    let reg = format!(
-        r#"
-const _: () = {{
-    fn __rustdv_shim(
-        ctx: ::rustdv::RustdvCtx,
-    ) -> ::std::pin::Pin<::std::boxed::Box<
-        dyn ::std::future::Future<Output = ::core::result::Result<(), ::rustdv::TestError>>,
-    >> {{
-        {body}
-    }}
-    #[used]
-    #[cfg_attr(not(target_vendor = "apple"), link_section = "rustdv_tests")]
-    #[cfg_attr(target_vendor = "apple", link_section = "__DATA,rustdv_tests")]
-    static __RUSTDV_TEST_REG: &'static ::rustdv::TestRegistration = &::rustdv::TestRegistration {{
-        name: "{test_name}",
-        module: ::core::module_path!(),
-        file: ::core::file!(),
-        line: ::core::line!(),
-        run: __rustdv_shim,
-        timeout: {timeout},
-        skip: {skip},
-        expect_fail: {expect_fail},
-        expect_error: {expect_error},
-    }};
-}};
-"#
-    );
+    Ok(quote! {
+        #item
 
-    let mut out = item;
-    out.extend(
-        reg.parse::<TokenStream>()
-            .expect("rustdv-macros: generated code failed to parse"),
-    );
-    out
+        #[doc(hidden)]
+        #[allow(non_upper_case_globals)]
+        const #module_path_constant: &str = ::core::module_path!();
+
+        #[doc(hidden)]
+        #[allow(non_snake_case)]
+        mod #registration_module {
+            fn shim(
+                ctx: ::rustdv::RustdvCtx,
+            ) -> ::std::pin::Pin<::std::boxed::Box<
+                dyn ::std::future::Future<
+                    Output = ::core::result::Result<(), ::rustdv::TestError>
+                >,
+            >> {
+                #body
+            }
+
+            #[::rustdv::__private::linkme::distributed_slice(::rustdv::TEST_REGISTRATIONS)]
+            #[linkme(crate = ::rustdv::__private::linkme)]
+            static REGISTRATION: ::rustdv::TestRegistration = ::rustdv::TestRegistration {
+                name: #test_name,
+                module: super::#module_path_constant,
+                file: ::core::file!(),
+                line: ::core::line!(),
+                run: shim,
+                timeout: #timeout,
+                skip: #skip,
+                expect_fail: #expect_fail,
+                expect_error: #expect_error,
+            };
+        }
+    })
+}
+
+/// Both test front doors: an async function or a component/type alias.
+#[proc_macro_attribute]
+pub fn test(attr: TokenStream, item: TokenStream) -> TokenStream {
+    match expand_test(attr.into(), item.into()) {
+        Ok(output) => output.into(),
+        Err(error) => error.into_compile_error().into(),
+    }
 }
 
 // ===========================================================================
 // #[derive(Component)]
 // ===========================================================================
 
-struct Field {
-    name: String,
-    ty: String,
-    is_child: bool,
-    /// `Some("put")` for `#[port(put)]`, etc. A port field is never a child:
-    /// it is a request for an interface, not a component in the tree.
-    port: Option<String>,
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ChildKind {
+    RustdvComp,
+    Option,
+    Vec,
+    Plain,
 }
 
-/// Parse `struct Name { ... }` from the derive input token stream.
-/// Supported: structs with named fields, including simple generics
-/// (`struct Env<T: Tester + 'static> { ... }`).
-fn parse_struct(input: TokenStream) -> Result<(String, String, String, Vec<Field>), String> {
-    let mut iter = input.into_iter().peekable();
-    let mut struct_name: Option<String> = None;
+struct FieldInfo {
+    name: Ident,
+    ty: Type,
+    child: Option<ChildKind>,
+    port: Option<Ident>,
+}
 
-    // Find `struct` then its name, then the brace group.
-    while let Some(tt) = iter.next() {
-        if let TokenTree::Ident(i) = &tt {
-            if i.to_string() == "struct" {
-                match iter.next() {
-                    Some(TokenTree::Ident(n)) => {
-                        struct_name = Some(n.to_string());
-                        break;
-                    }
-                    _ => return Err("expected struct name".into()),
-                }
-            }
-        }
+fn type_name(ty: &Type) -> Option<&Ident> {
+    let Type::Path(path) = ty else { return None };
+    if path.qself.is_some() {
+        return None;
     }
-    let name = struct_name.ok_or("#[derive(Component)] supports only structs")?;
+    path.path.segments.last().map(|segment| &segment.ident)
+}
 
-    // Capture optional generics `<...>` (with bounds), then the brace group.
-    // A unit struct (`struct HelloWorldTest;`) has no brace group at all —
-    // ch23's tests are unit structs, since a test with no children has no
-    // fields to declare.
-    let mut fields_group = None;
-    let mut unit_struct = false;
-    let mut generics_tokens: Vec<TokenTree> = Vec::new();
-    let mut depth = 0i32;
-    for tt in iter {
-        match &tt {
-            TokenTree::Group(g) if g.delimiter() == Delimiter::Brace && depth == 0 => {
-                fields_group = Some(g.clone());
-                break;
-            }
-            TokenTree::Punct(p) if p.as_char() == ';' && depth == 0 => {
-                unit_struct = true;
-                break;
-            }
-            TokenTree::Punct(p) if p.as_char() == '<' => {
-                depth += 1;
-                generics_tokens.push(tt.clone());
-                continue;
-            }
-            TokenTree::Punct(p) if p.as_char() == '>' => {
-                depth -= 1;
-                generics_tokens.push(tt.clone());
-                continue;
-            }
-            _ => {}
-        }
-        if depth > 0 {
-            generics_tokens.push(tt.clone());
-        }
+fn child_kind(ty: &Type) -> ChildKind {
+    match type_name(ty).map(ToString::to_string).as_deref() {
+        Some("RustdvComp") => ChildKind::RustdvComp,
+        Some("Option") => ChildKind::Option,
+        Some("Vec") => ChildKind::Vec,
+        _ => ChildKind::Plain,
     }
-    // impl generics: verbatim (`<T: Tester + 'static>`); type params: names only.
-    let impl_generics: String = {
-        let mut out = String::new();
-        for t in &generics_tokens {
-            let text = t.to_string();
-            if !out.is_empty() && !out.ends_with('\'') {
-                out.push(' ');
-            }
-            out.push_str(&text);
-        }
-        out
+}
+
+fn has_attr(attrs: &[Attribute], name: &str) -> bool {
+    attrs.iter().any(|attr| attr.path().is_ident(name))
+}
+
+fn port_attr(field: &Field) -> Result<Option<Ident>> {
+    let mut ports = field
+        .attrs
+        .iter()
+        .filter(|attr| attr.path().is_ident("port"));
+    let Some(attr) = ports.next() else {
+        return Ok(None);
     };
-    let type_params = {
-        // First ident (or lifetime) of each comma-separated part at depth 1.
-        let mut params: Vec<String> = Vec::new();
-        let mut d = 0i32;
-        let mut take_next_ident = true;
-        let mut lifetime = false;
-        for t in &generics_tokens {
-            match t {
-                TokenTree::Punct(p) if p.as_char() == '<' => d += 1,
-                TokenTree::Punct(p) if p.as_char() == '>' => d -= 1,
-                TokenTree::Punct(p) if p.as_char() == ',' && d == 1 => take_next_ident = true,
-                TokenTree::Punct(p) if p.as_char() == '\'' && d == 1 && take_next_ident => {
-                    lifetime = true
-                }
-                TokenTree::Ident(i) if d == 1 && take_next_ident => {
-                    let word = i.to_string();
-                    if word == "const" {
-                        continue; // the const param's name is the next ident
-                    }
-                    params.push(if lifetime { format!("'{word}") } else { word });
-                    take_next_ident = false;
-                    lifetime = false;
-                }
-                _ => {}
+    if let Some(duplicate) = ports.next() {
+        return Err(syn::Error::new_spanned(
+            duplicate,
+            "a field may have only one #[port(...)] attribute",
+        ));
+    }
+    attr.parse_args::<Ident>().map(Some)
+}
+
+fn fields(input: &DeriveInput) -> Result<Vec<FieldInfo>> {
+    let fields = match &input.data {
+        Data::Struct(structure) => match &structure.fields {
+            Fields::Named(fields) => &fields.named,
+            Fields::Unit => return Ok(Vec::new()),
+            Fields::Unnamed(fields) => {
+                return Err(syn::Error::new_spanned(
+                    fields,
+                    "#[derive(Component)] requires named fields, or a unit struct",
+                ));
             }
-        }
-        if params.is_empty() {
-            String::new()
-        } else {
-            format!("< {} >", params.join(" , "))
+        },
+        _ => {
+            return Err(syn::Error::new(
+                input.ident.span(),
+                "#[derive(Component)] supports only structs",
+            ));
         }
     };
-    if unit_struct {
-        return Ok((name, impl_generics, type_params, Vec::new()));
-    }
-    let group =
-        fields_group.ok_or("#[derive(Component)] requires named fields, or a unit struct")?;
 
-    // Split the group's tokens into fields at top-level commas.
-    let mut fields = Vec::new();
-    let mut pending_child = false;
-    let mut pending_port: Option<String> = None;
-    let mut current: Vec<TokenTree> = Vec::new();
+    fields
+        .iter()
+        .map(|field| {
+            let name = field.ident.clone().expect("named fields have identifiers");
+            let port = port_attr(field)?;
+            let is_child = has_attr(&field.attrs, "component");
+            if is_child && port.is_some() {
+                return Err(syn::Error::new_spanned(
+                    field,
+                    "a field cannot be both #[component] and #[port(...)]",
+                ));
+            }
+            Ok(FieldInfo {
+                name,
+                ty: field.ty.clone(),
+                child: is_child.then(|| child_kind(&field.ty)),
+                port,
+            })
+        })
+        .collect()
+}
 
-    let mut toks = group.stream().into_iter().peekable();
-    let mut angle_depth = 0i32;
-    while let Some(tt) = toks.next() {
-        match &tt {
-            TokenTree::Punct(p) if p.as_char() == '<' => angle_depth += 1,
-            TokenTree::Punct(p) if p.as_char() == '>' => angle_depth -= 1,
-            TokenTree::Punct(p) if p.as_char() == '#' => {
-                // attribute: #[ ... ]
-                if let Some(TokenTree::Group(g)) = toks.peek() {
-                    if g.delimiter() == Delimiter::Bracket {
-                        let text = g.stream().to_string();
-                        if text.starts_with("component") {
-                            // A `#[component]` FIFO or `#[component]`
-                            // sequencer is a child like any
-                            // other — it is a component, and it belongs in the
-                            // hierarchy. We now also allow a bare `#[component]`
-                            // for brevity.
-                            pending_child = true;
-                        }
-                        if text.starts_with("port") {
-                            pending_port = attr_arg(&text);
-                        }
-                        toks.next(); // consume the bracket group
+fn expand_component(input: DeriveInput) -> Result<TokenStream2> {
+    let fields = fields(&input)?;
+    let name = &input.ident;
+    let generics = &input.generics;
+    let (impl_generics, type_generics, where_clause) = generics.split_for_impl();
+
+    let mut visits = Vec::new();
+    let mut resolves = Vec::new();
+    let mut takes = Vec::new();
+    let mut restores = Vec::new();
+    for field in fields.iter().filter(|field| field.child.is_some()) {
+        let field_name = &field.name;
+        let field_label = LitStr::new(&field_name.to_string(), field_name.span());
+        match field.child.expect("filtered above") {
+            ChildKind::RustdvComp => {
+                visits.push(quote! {
+                    if let ::core::option::Option::Some(__c) = self.#field_name.as_node_mut() {
+                        __out.push((::std::string::String::from(#field_label), __c));
+                    }
+                });
+                resolves.push(quote!(self.#field_name.resolve(__ctx, #field_label);));
+                takes.push(quote! {
+                    if let ::core::option::Option::Some(__c) = self.#field_name.take_node() {
+                        __out.push((::std::string::String::from(#field_label), __c));
+                    }
+                });
+                restores.push(quote! {
+                    if __name == #field_label {
+                        self.#field_name.put_node(__node);
                         continue;
                     }
+                });
+            }
+            ChildKind::Option => visits.push(quote! {
+                if let ::core::option::Option::Some(__c) = &mut self.#field_name {
+                    __out.push((
+                        ::std::string::String::from(#field_label),
+                        __c as &mut (dyn ::rustdv::ComponentNode + 'static),
+                    ));
+                }
+            }),
+            ChildKind::Vec => visits.push(quote! {
+                for (__i, __c) in self.#field_name.iter_mut().enumerate() {
+                    __out.push((
+                        ::std::format!("{}[{}]", #field_label, __i),
+                        __c as &mut (dyn ::rustdv::ComponentNode + 'static),
+                    ));
+                }
+            }),
+            ChildKind::Plain => visits.push(quote! {
+                __out.push((
+                    ::std::string::String::from(#field_label),
+                    &mut self.#field_name as &mut (dyn ::rustdv::ComponentNode + 'static),
+                ));
+            }),
+        }
+    }
+
+    let mut port_arms = Vec::new();
+    let mut port_items = Vec::new();
+    let mut port_consts = Vec::new();
+    for field in fields.iter().filter(|field| field.port.is_some()) {
+        let field_name = &field.name;
+        let field_label = LitStr::new(&field_name.to_string(), field_name.span());
+        let kind = field.port.as_ref().expect("filtered above");
+        let kind_name = kind.to_string();
+        if !matches!(
+            kind_name.as_str(),
+            "put" | "get" | "peek" | "publish" | "subscribe" | "seq_item"
+        ) {
+            return Err(syn::Error::new_spanned(
+                kind,
+                "expected put, get, peek, publish, subscribe, or seq_item",
+            ));
+        }
+        let kind_label = LitStr::new(&kind_name, kind.span());
+        let required = !matches!(kind_name.as_str(), "publish" | "subscribe");
+        let ty = &field.ty;
+        let constant = format_ident!("{}", field_name.to_string().to_uppercase());
+        let doc = LitStr::new(
+            &format!("The `{}` port, for `connect`.", field_name),
+            field_name.span(),
+        );
+
+        port_arms.push(quote! {
+            #field_label => ::core::option::Option::Some(
+                ::rustdv::PortField::slot_any(&self.#field_name)
+            ),
+        });
+        port_items.push(quote! {
+            ::rustdv::PortInfo {
+                name: #field_label,
+                kind: #kind_label,
+                required: #required,
+                connected: ::rustdv::PortField::bound(&self.#field_name),
+            },
+        });
+        port_consts.push(quote! {
+            #[doc = #doc]
+            pub const #constant: ::rustdv::PortName<<#ty as ::rustdv::PortField>::Iface> =
+                ::rustdv::PortName::new(#field_label);
+        });
+    }
+
+    let port_impl = (!port_arms.is_empty()).then(|| {
+        quote! {
+            fn port_slot(
+                &self,
+                __name: &str,
+            ) -> ::core::option::Option<::std::rc::Rc<dyn ::std::any::Any>> {
+                match __name {
+                    #(#port_arms)*
+                    _ => ::core::option::Option::None,
                 }
             }
-            TokenTree::Punct(p) if p.as_char() == ',' && angle_depth == 0 => {
-                if !current.is_empty() {
-                    fields.push(make_field(&current, pending_child, pending_port.take())?);
-                    current.clear();
-                    pending_child = false;
+
+            fn port_infos(&self) -> ::std::vec::Vec<::rustdv::PortInfo> {
+                ::std::vec![#(#port_items)*]
+            }
+        }
+    });
+    let resolve_impl = (!resolves.is_empty()).then(|| {
+        quote! {
+            fn resolve_children(&mut self, __ctx: &::rustdv::RustdvCtx) {
+                #(#resolves)*
+            }
+        }
+    });
+    let take_impl = (!takes.is_empty()).then(|| {
+        quote! {
+            fn take_children(
+                &mut self,
+            ) -> ::std::vec::Vec<(
+                ::std::string::String,
+                ::std::boxed::Box<dyn ::rustdv::ComponentNode>,
+            )> {
+                let mut __out = ::std::vec::Vec::new();
+                #(#takes)*
+                __out
+            }
+
+            fn restore_children(
+                &mut self,
+                __taken: ::std::vec::Vec<(
+                    ::std::string::String,
+                    ::std::boxed::Box<dyn ::rustdv::ComponentNode>,
+                )>,
+            ) {
+                for (__name, __node) in __taken {
+                    let __name: &str = &__name;
+                    #(#restores)*
                 }
-                continue;
-            }
-            _ => {}
-        }
-        current.push(tt);
-    }
-    if !current.is_empty() {
-        fields.push(make_field(&current, pending_child, pending_port.take())?);
-    }
-
-    Ok((name, impl_generics, type_params, fields))
-}
-
-/// From tokens like `pub name : Type ...` extract name and type text.
-/// The single argument of an attribute like `port (put)`, if there is one.
-fn attr_arg(text: &str) -> Option<String> {
-    let open = text.find('(')?;
-    let close = text.rfind(')')?;
-    let arg = text[open + 1..close].trim();
-    if arg.is_empty() {
-        None
-    } else {
-        Some(arg.to_string())
-    }
-}
-
-fn make_field(tokens: &[TokenTree], is_child: bool, port: Option<String>) -> Result<Field, String> {
-    let mut name = None;
-    let mut colon_at = None;
-    for (i, tt) in tokens.iter().enumerate() {
-        if let TokenTree::Punct(p) = tt {
-            if p.as_char() == ':' && colon_at.is_none() {
-                colon_at = Some(i);
-                break;
             }
         }
-    }
-    let colon = colon_at.ok_or("field without ':' (tuple structs unsupported)")?;
-    // The ident immediately before ':' is the field name (skips pub/pub(..)).
-    for tt in tokens[..colon].iter().rev() {
-        if let TokenTree::Ident(i) = tt {
-            name = Some(i.to_string());
-            break;
+    });
+    let constants = (!port_consts.is_empty()).then(|| {
+        quote! {
+            impl #impl_generics #name #type_generics #where_clause {
+                #(#port_consts)*
+            }
         }
-    }
-    let name = name.ok_or("could not find field name")?;
-    let ty: String = tokens[colon + 1..]
-        .iter()
-        .map(|t| t.to_string())
-        .collect::<Vec<_>>()
-        .join(" ");
-    Ok(Field {
-        name,
-        ty,
-        is_child,
-        port,
+    });
+
+    let registration = generics.params.is_empty().then(|| {
+        let module = format_ident!("__rustdv_component_registration_{}", name);
+        quote! {
+            #[doc(hidden)]
+            #[allow(non_snake_case)]
+            mod #module {
+                fn component_name() -> &'static str {
+                    ::core::stringify!(#name)
+                }
+
+                fn make() -> ::std::boxed::Box<dyn ::rustdv::ComponentNode> {
+                    ::std::boxed::Box::new(
+                        <super::#name as ::core::default::Default>::default()
+                    )
+                }
+
+                #[::rustdv::__private::linkme::distributed_slice(
+                    ::rustdv::COMPONENT_REGISTRATIONS
+                )]
+                #[linkme(crate = ::rustdv::__private::linkme)]
+                static REGISTRATION: ::rustdv::ComponentReg = ::rustdv::ComponentReg {
+                    name: component_name,
+                    make,
+                };
+            }
+        }
+    });
+
+    Ok(quote! {
+        impl #impl_generics ::rustdv::ComponentNode for #name #type_generics #where_clause {
+            fn node_name(&self) -> &'static str {
+                ::core::stringify!(#name)
+            }
+
+            fn children_mut(
+                &mut self,
+            ) -> ::std::vec::Vec<(
+                ::std::string::String,
+                &mut (dyn ::rustdv::ComponentNode + 'static),
+            )> {
+                let mut __out = ::std::vec::Vec::new();
+                #(#visits)*
+                __out
+            }
+
+            #port_impl
+            #resolve_impl
+            #take_impl
+        }
+
+        impl #impl_generics ::rustdv::PortOwner for #name #type_generics #where_clause {
+            fn owner_port_slot(
+                &self,
+                __name: &str,
+            ) -> ::core::option::Option<::std::rc::Rc<dyn ::std::any::Any>> {
+                ::rustdv::ComponentNode::port_slot(self, __name)
+            }
+
+            fn owner_label(&self) -> &'static str {
+                ::core::stringify!(#name)
+            }
+        }
+
+        #constants
+        #registration
     })
 }
 
-/// Generates the `ComponentNode` impl (design-doc §6.3, revised per R2):
-/// traversal of `#[component]` fields, including `Option<T>` and
-/// `Vec<T>`; names synthesized from field names. Emits **no** factory
-/// registration (R5) — but R5 is reversed: the factory returns in ch29,
-/// and this derive is where its registration will land. The impl is
-/// hand-writable; the derive is convenience.
+/// Generates `ComponentNode`, `PortOwner`, port constants, and registration.
 #[proc_macro_derive(Component, attributes(component, port))]
 pub fn derive_component(input: TokenStream) -> TokenStream {
-    let (name, impl_generics, type_params, fields) = match parse_struct(input) {
-        Ok(v) => v,
-        Err(e) => return compile_error(&e),
-    };
-
-    let mut visits = String::new();
-    let mut resolves = String::new();
-    let mut takes = String::new();
-    let mut restores = String::new();
-    for f in fields.iter().filter(|f| f.is_child) {
-        let fname = &f.name;
-        let ty = f.ty.trim_start();
-        if ty.starts_with("RustdvComp") {
-            // A factory slot (D75): reach through to the held component if
-            // present, and let it resolve its override during the walk.
-            visits.push_str(&format!(
-                "if let ::core::option::Option::Some(__c) = self.{fname}.as_node_mut() {{ __out.push((::std::string::String::from(\"{fname}\"), __c)); }}\n"
-            ));
-            resolves.push_str(&format!("self.{fname}.resolve(__ctx, \"{fname}\");\n"));
-            // D82b: move the box out for the run phase, and put it back after.
-            // Taken and restored in field order, so slots land where they came
-            // from.
-            takes.push_str(&format!(
-                "if let ::core::option::Option::Some(__c) = self.{fname}.take_node() {{ __out.push((::std::string::String::from(\"{fname}\"), __c)); }}\n"
-            ));
-            restores.push_str(&format!(
-                "if __name == \"{fname}\" {{ self.{fname}.put_node(__node); continue; }}\n"
-            ));
-        } else if ty.starts_with("Option") {
-            // "declared but not yet built": a child created during `build`
-            // (D6) appears here only once it is `Some`.
-            visits.push_str(&format!(
-                "if let ::core::option::Option::Some(__c) = &mut self.{fname} {{ __out.push((::std::string::String::from(\"{fname}\"), __c as &mut (dyn ::rustdv::ComponentNode + 'static))); }}\n"
-            ));
-        } else if ty.starts_with("Vec") {
-            visits.push_str(&format!(
-                "for (__i, __c) in self.{fname}.iter_mut().enumerate() {{ __out.push((::std::format!(\"{fname}[{{}}]\", __i), __c as &mut (dyn ::rustdv::ComponentNode + 'static))); }}\n"
-            ));
-        } else {
-            visits.push_str(&format!(
-                "__out.push((::std::string::String::from(\"{fname}\"), &mut self.{fname} as &mut (dyn ::rustdv::ComponentNode + 'static)));\n"
-            ));
-        }
+    let input = parse_macro_input!(input as DeriveInput);
+    match expand_component(input) {
+        Ok(output) => output.into(),
+        Err(error) => error.into_compile_error().into(),
     }
-
-    // ----- ports (D83) -------------------------------------------------
-    //
-    // Each `#[port(kind)]` field contributes three things: a match arm so the
-    // port can be reached by name through `dyn ComponentNode` (the cast Rust
-    // does not have), a line in the elaboration report, and a typed constant
-    // so the parent names the port without spelling a string.
-    let mut port_arms = String::new();
-    let mut port_items = String::new();
-    let mut port_consts = String::new();
-    for f in fields.iter() {
-        let Some(kind) = f.port.as_deref() else {
-            continue;
-        };
-        if !matches!(
-            kind,
-            "put" | "get" | "peek" | "publish" | "subscribe" | "seq_item"
-        ) {
-            return compile_error(&format!(
-                "#[port({kind})]: expected put, get, peek, peek, publish, subscribe or seq_item"
-            ));
-        }
-        // An analysis port may be left unconnected — a monitor nobody listens
-        // to is a legitimate testbench (D85). Every other port must be wired.
-        let required = !matches!(kind, "publish" | "subscribe");
-        let fname = &f.name;
-        let ty = f.ty.trim();
-        let konst = fname.to_uppercase();
-        port_arms.push_str(&format!(
-            "\"{fname}\" => ::core::option::Option::Some(::rustdv::PortField::slot_any(&self.{fname})),\n            "
-        ));
-        port_items.push_str(&format!(
-            "::rustdv::PortInfo {{ name: \"{fname}\", kind: \"{kind}\", required: {required}, connected: ::rustdv::PortField::bound(&self.{fname}) }},\n            "
-        ));
-        port_consts.push_str(&format!(
-            "    /// The `{fname}` port, for `connect`.\n    pub const {konst}: ::rustdv::PortName<<{ty} as ::rustdv::PortField>::Iface> = ::rustdv::PortName::new(\"{fname}\");\n"
-        ));
-    }
-
-    let port_impl = if port_arms.is_empty() {
-        String::new()
-    } else {
-        format!(
-            "    fn port_slot(&self, __name: &str) -> ::core::option::Option<::std::rc::Rc<dyn ::std::any::Any>> {{\n        \
-             match __name {{\n            {port_arms}_ => ::core::option::Option::None,\n        }}\n    }}\n\
-             \n    fn port_infos(&self) -> ::std::vec::Vec<::rustdv::PortInfo> {{\n        \
-             ::std::vec![\n            {port_items}]\n    }}\n"
-        )
-    };
-
-    // Every component is a `PortOwner`, ports or not: that uniformity is what
-    // lets `connect(self, ..)` and `connect(&self.child, ..)` be one call.
-    let owner_impl = format!(
-        r#"
-impl {impl_generics} ::rustdv::PortOwner for {name} {type_params} {{
-    fn owner_port_slot(&self, __name: &str) -> ::core::option::Option<::std::rc::Rc<dyn ::std::any::Any>> {{
-        ::rustdv::ComponentNode::port_slot(self, __name)
-    }}
-    fn owner_label(&self) -> &'static str {{ "{name}" }}
-}}
-"#
-    );
-
-    let const_impl = if port_consts.is_empty() {
-        String::new()
-    } else {
-        format!("\nimpl {impl_generics} {name} {type_params} {{\n{port_consts}}}\n")
-    };
-
-    // A resolver only if there is at least one factory slot.
-    let resolve_impl = if resolves.is_empty() {
-        String::new()
-    } else {
-        format!(
-            "    fn resolve_children(&mut self, __ctx: &::rustdv::RustdvCtx) {{\n        {resolves}    }}\n"
-        )
-    };
-
-    // take/restore only if there is at least one `RustdvComp` slot; otherwise
-    // the trait defaults (empty) keep the old in-place behaviour.
-    let take_impl = if takes.is_empty() {
-        String::new()
-    } else {
-        format!(
-            "    fn take_children(&mut self) -> ::std::vec::Vec<(::std::string::String, ::std::boxed::Box<dyn ::rustdv::ComponentNode>)> {{\n        \
-             let mut __out: ::std::vec::Vec<(::std::string::String, ::std::boxed::Box<dyn ::rustdv::ComponentNode>)> = ::std::vec::Vec::new();\n        \
-             {takes}        __out\n    }}\n\
-             \n    fn restore_children(&mut self, __taken: ::std::vec::Vec<(::std::string::String, ::std::boxed::Box<dyn ::rustdv::ComponentNode>)>) {{\n        \
-             for (__name, __node) in __taken {{\n            \
-             let __name: &str = &__name;\n            {restores}        }}\n    }}\n"
-        )
-    };
-
-    // Universal registration (D73): enrol non-generic components by name so
-    // the factory can build them by string. Generic components are skipped —
-    // a `static` cannot be generic, and their monomorphs are not by-name
-    // targets.
-    let registration = if type_params.is_empty() {
-        format!(
-            r#"
-const _: () = {{
-    fn __rustdv_comp_name() -> &'static str {{ "{name}" }}
-    fn __rustdv_comp_make() -> ::std::boxed::Box<dyn ::rustdv::ComponentNode> {{
-        ::std::boxed::Box::new(<{name} as ::core::default::Default>::default())
-    }}
-    #[used]
-    #[cfg_attr(not(target_vendor = "apple"), link_section = "rustdv_comps")]
-    #[cfg_attr(target_vendor = "apple", link_section = "__DATA,rustdv_comps")]
-    static __RUSTDV_COMP_REG: &::rustdv::ComponentReg = &::rustdv::ComponentReg {{
-        name: __rustdv_comp_name,
-        make: __rustdv_comp_make,
-    }};
-}};
-"#
-        )
-    } else {
-        String::new()
-    };
-
-    let out = format!(
-        r#"
-impl {impl_generics} ::rustdv::ComponentNode for {name} {type_params} {{
-    fn node_name(&self) -> &'static str {{ "{name}" }}
-    fn children_mut(&mut self) -> ::std::vec::Vec<(::std::string::String, &mut (dyn ::rustdv::ComponentNode + 'static))> {{
-        let mut __out: ::std::vec::Vec<(::std::string::String, &mut (dyn ::rustdv::ComponentNode + 'static))> = ::std::vec::Vec::new();
-        {visits}
-        __out
-    }}
-{port_impl}{resolve_impl}{take_impl}}}
-{owner_impl}{const_impl}{registration}"#
-    );
-    out.parse()
-        .expect("rustdv-macros: generated ComponentNode impl failed to parse")
 }

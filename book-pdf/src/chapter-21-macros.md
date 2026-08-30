@@ -96,10 +96,9 @@ fn __rustdv_shim(ctx: RustdvCtx) -> Pin<Box<dyn Future<Output = Result<(), TestE
     Box::pin(hello_world(ctx))
 }
 
-// 3. The registration, planted in a named linker section:
-#[used]
-#[link_section = "rustdv_tests"]
-static __RUSTDV_TEST_REG: &TestRegistration = &TestRegistration {
+// 3. The registration, contributed to a distributed slice:
+#[linkme::distributed_slice(TEST_REGISTRATIONS)]
+static __RUSTDV_TEST_REG: TestRegistration = TestRegistration {
     name: "hello_world",
     module: module_path!(),
     file: file!(),
@@ -111,16 +110,18 @@ static __RUSTDV_TEST_REG: &TestRegistration = &TestRegistration {
 };
 ```
 
-Parts 1 and 2 are the decorator's *wrapping* job, done with types: your `async fn` stays exactly as you wrote it, and the shim adapts it to the one shape the regression runner stores. The attribute's arguments — `timeout_time`, `timeout_unit`, `expect_fail`, `skip`, `name` — are cocotb's `Test` options, parsed at compile time into that struct literal; a typo'd option is a compile error pointing at the attribute. `file!()` and `line!()` capture the source location the runner prints in `running hello_world (1/2) [ch15-.../src/ch15_async_await_executor.rs:12]` — you have been reading this macro's output in every transcript since Chapter 15.
+Parts 1 and 2 are the decorator's *wrapping* job, done with types: your `async fn` stays exactly as you wrote it, and the shim adapts it to the one shape the regression runner stores. The attribute's arguments — `timeout_time`, `timeout_unit`, `expect_fail`, `skip`, `name` — are cocotb's `Test` options, parsed by `syn` into Rust syntax and emitted with `quote`; a typo'd option is a compile error pointing at the attribute. `file!()` and `line!()` capture the source location the runner prints in `running hello_world (1/2) [ch15-.../src/ch15_async_await_executor.rs:12]` — you have been reading this macro's output in every transcript since Chapter 15.
 
 Part 3 is the *registering* job, and it needs its own section, because there is no global list and no import time to fill one.
 
 ## Registration without a runtime: the linker as registry
 
-The trick is old, standard, and delightful: **let the linker build the array.** Every static marked `#[link_section = "rustdv_tests"]` — from every file, every crate in the build — is placed by the linker into one contiguous section of the binary, and the linker helpfully defines start/stop symbols bracketing it. Collecting the tests is then just walking that memory. In miniature, and runnable:
+The trick is old, standard, and delightful: **let the linker build the array.** The `linkme` crate packages it as a *distributed slice*: declare the slice once, then contribute static values from any file or crate in the build. `linkme` places those values into the platform's linker sections and presents the result as an ordinary shared slice. In miniature, and runnable:
 
 ```rust
 // Figure 4: Link-time registration in miniature
+
+use linkme::distributed_slice;
 
 /// What a registration carries: a name and a function to run.
 struct Registration {
@@ -128,34 +129,23 @@ struct Registration {
     run: fn(),
 }
 
+#[distributed_slice]
+static TESTS: [Registration];
+
 fn hello() {
     println!("Hello, world.");
 }
-#[cfg(target_os = "linux")]
-#[used]
-#[link_section = "demo_tests"]
+#[distributed_slice(TESTS)]
 static REG_HELLO: Registration = Registration { name: "hello", run: hello };
 
 fn goodbye() {
     println!("Goodbye, world.");
 }
-#[cfg(target_os = "linux")]
-#[used]
-#[link_section = "demo_tests"]
+#[distributed_slice(TESTS)]
 static REG_GOODBYE: Registration = Registration { name: "goodbye", run: goodbye };
 
-// The linker defines __start_<section> and __stop_<section> for us.
-extern "C" {
-    static __start_demo_tests: u8;
-    static __stop_demo_tests: u8;
-}
-
 fn collect() -> &'static [Registration] {
-    unsafe {
-        let start = std::ptr::addr_of!(__start_demo_tests) as *const Registration;
-        let stop = std::ptr::addr_of!(__stop_demo_tests) as *const Registration;
-        std::slice::from_raw_parts(start, stop.offset_from(start) as usize)
-    }
+    &TESTS
 }
 
 fn main() {
@@ -175,11 +165,11 @@ found 2 registered tests:
   hello -> Hello, world.
 ```
 
-Read the output closely: `goodbye` came out *first*. Link order is the linker's business, not yours — which is why the real rustdv runner sorts its collected registrations by `(file, line)` before running, so a regression's order is the order tests appear in your source. The `#[used]` attribute forbids the optimizer from discarding a static nobody names (nobody *does* name it; being in the section is its whole career), and the `unsafe` block is the honest cost of reading memory the linker laid out — rustdv keeps that block in one audited function, and your testbench never sees it.¹
+Read the output closely: `goodbye` came out *first*. Link order is the linker's business, not yours — which is why the real rustdv runner sorts its collected registrations by `(file, line)` before running, so a regression's order is the order tests appear in your source. `linkme` owns the platform-specific section names, retention attributes, boundary symbols and pointer work; rustdv iterates the resulting slice through safe Rust.¹
 
 This is the moment to bank a comparison the rest of the book builds on. cocotb discovers tests because importing your module *runs* registration code. rustdv discovers tests because compiling your crate *emits* registrations into the binary. Both are "the framework finds your tests by name" — same user experience, and command-line selection by test name works the same way — but the Rust version happens entirely before execution, cannot be affected by import order, and works in a `cdylib` the simulator loads, where "import time" would be a meaningless phrase.
 
-> ¹ The technique has platform texture — ELF section symbols on Linux differ from Mach-O and Windows spellings — which is the sort of thing a framework absorbs so testbenches don't. It is also exactly what the community crates `linkme` and `inventory` package up, if you want it for your own projects with the portability handled.
+> ¹ The technique has platform texture — ELF section symbols on Linux differ from Mach-O and Windows spellings — which is precisely why rustdv delegates it to `linkme` instead of maintaining those spellings itself.
 
 ## Derive macros: field lists instead of `__dict__`
 
@@ -209,14 +199,14 @@ impl ComponentNode for AluEnv {
 }
 ```
 
-Three things to notice, all previews of Chapter 24. The hierarchy's names come from your *field names* — `driver`, `scoreboard` — synthesized at compile time, where pyuvm passed name strings to every constructor. `Option<Driver>` is understood: a `None` child (the passive agent's missing driver) is simply skipped, and `Vec<T>` children get indexed names like `drivers[0]`. And the tidied expansion above shows the traversal only — the full one *also registers the component by name*, riding the same link-section trick you just saw for tests. That is pyuvm's factory metaclass, kept: every component can be created by name or overridden with no separate registration step, and Chapter 29 collects on it. Both metaclass jobs — test discovery and component registration — turned out to be the linker's.
+Three things to notice, all previews of Chapter 24. The hierarchy's names come from your *field names* — `driver`, `scoreboard` — synthesized at compile time, where pyuvm passed name strings to every constructor. `Option<Driver>` is understood: a `None` child (the passive agent's missing driver) is simply skipped, and `Vec<T>` children get indexed names like `drivers[0]`. And the tidied expansion above shows the traversal only — the full one *also registers the component by name*, contributing to a second `linkme` distributed slice. That is pyuvm's factory metaclass, kept: every component can be created by name or overridden with no separate registration step, and Chapter 29 collects on it. Both metaclass jobs — test discovery and component registration — turned out to be the linker's.
 
 ## When not to write a macro
 
-A chapter that hands you power tools owes you the safety lecture. Macro-generated code is code you didn't write and can't click into; error messages inside a macro expansion point at generated text; and every macro is a small language your teammates must learn. The bar this book applies — and applied to rustdv itself — is: a macro must delete user-visible boilerplate *and* be explainable in one paragraph. `#[rustdv::test]` clears the bar (it deletes a shim, a static, and a linker section you should never hand-write). `#[derive(Component)]` clears it (field-walking is the machine's job — as true here as it was for the `uvm_field_*` macros and pyuvm's `__dict__` walk). Everything else in rustdv — the lifecycle, the ConfigDb, TLM, sequences — is plain code, on purpose, so that when you read the UVM chapters you are reading Rust, not incantations.
+A chapter that hands you power tools owes you the safety lecture. Macro-generated code is code you didn't write and can't click into; error messages inside a macro expansion point at generated text; and every macro is a small language your teammates must learn. The bar this book applies — and applied to rustdv itself — is: a macro must delete user-visible boilerplate *and* be explainable in one paragraph. `#[rustdv::test]` clears the bar (it deletes a shim and a registration you should never hand-write). `#[derive(Component)]` clears it (field-walking is the machine's job — as true here as it was for the `uvm_field_*` macros and pyuvm's `__dict__` walk). Everything else in rustdv — the lifecycle, the ConfigDb, TLM, sequences — is plain code, on purpose, so that when you read the UVM chapters you are reading Rust, not incantations.
 
 ## Summary
 
-Python organized testbenches at import time: decorators wrapped and registered functions; metaclasses registered classes; `__dict__` introspection copied and compared objects. Rust has no import time, and this chapter met its replacements. Declarative macros (`macro_rules!`) rewrite patterns into code — the `!` family you have used all book. Procedural macros run inside the compiler: the `#[rustdv::test]` attribute leaves your function intact and emits a uniform shim plus a registration; `#[derive(...)]` reads field lists at compile time and writes the member-wise code pyuvm wrote by runtime reflection, including rustdv's own `#[derive(Component)]` — hierarchy traversal plus by-name registration. Registration without a runtime rides in the linker: section-placed statics, bracketing symbols, one careful collection function, sorted by source location — import-order bugs structurally impossible. And the governing taste: macros where dynamism used to be, plain code everywhere else.
+Python organized testbenches at import time: decorators wrapped and registered functions; metaclasses registered classes; `__dict__` introspection copied and compared objects. Rust has no import time, and this chapter met its replacements. Declarative macros (`macro_rules!`) rewrite patterns into code — the `!` family you have used all book. Procedural macros run inside the compiler: the `#[rustdv::test]` attribute leaves your function intact and emits a uniform shim plus a registration; `#[derive(...)]` reads field lists at compile time and writes the member-wise code pyuvm wrote by runtime reflection, including rustdv's own `#[derive(Component)]` — hierarchy traversal plus by-name registration. Registration without a runtime rides in the linker: `linkme` gathers distributed statics into slices, and rustdv sorts tests by source location — import-order bugs structurally impossible. And the governing taste: macros where dynamism used to be, plain code everywhere else.
 
 That closes the language's account, and it was the last debt outstanding. You now know how tests are found and how hierarchies will be walked and registered. The chapters ahead can finally ask this series' biggest question in its new language: what is the UVM *for*? Chapter 22: Why UVM?

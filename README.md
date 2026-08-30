@@ -14,8 +14,9 @@ and sequences.
 
 It talks to simulators over VPI. Your testbench compiles to a native shared
 library that the simulator loads; there is no interpreter in the loop and no
-Verilog wrapper to write. rustdv has **zero external dependencies** — the
-whole framework is `std` and the crates in this repository.
+Verilog wrapper to write. The runtime is otherwise built on `std`; `linkme`
+provides portable link-time registries, and the procedural macros use
+`proc-macro2`, `quote`, and `syn`.
 
 This repository also holds **"Rust for RTL Verification"**, the book that
 teaches it — 40 chapters, an interlude, and four appendices — plus every
