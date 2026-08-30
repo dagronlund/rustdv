@@ -478,7 +478,7 @@ mod tests {
     // --- the sequence half of the factory (D80/D96) ----------------------
 
     use crate::sequence::{
-        clear_seq_overrides, create_seq, set_seq_override, SeqCtx, SeqError, Sequence,
+        SeqCtx, SeqError, Sequence, clear_seq_overrides, create_seq, set_seq_override,
     };
 
     #[derive(Default)]

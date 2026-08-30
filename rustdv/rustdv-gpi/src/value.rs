@@ -39,11 +39,7 @@ impl Logic {
 
 impl From<bool> for Logic {
     fn from(b: bool) -> Logic {
-        if b {
-            Logic::One
-        } else {
-            Logic::Zero
-        }
+        if b { Logic::One } else { Logic::Zero }
     }
 }
 

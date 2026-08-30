@@ -19,10 +19,10 @@ use std::rc::Rc;
 
 use linkme::distributed_slice;
 use rustdv_gpi as gpi;
-use rustdv_sim::combinators::{first2, Either};
+use rustdv_sim::combinators::{Either, first2};
 use rustdv_sim::handle::top_module;
 use rustdv_sim::log;
-use rustdv_sim::time::{sim_time_ns, SimDuration};
+use rustdv_sim::time::{SimDuration, sim_time_ns};
 use rustdv_sim::triggers::Timer;
 
 // ===========================================================================

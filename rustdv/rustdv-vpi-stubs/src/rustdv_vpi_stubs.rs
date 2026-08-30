@@ -161,7 +161,7 @@ pub fn live_callback_handles() -> usize {
 macro_rules! stub {
     ($($name:ident ( $($arg:ident : $ty:ty),* ) -> $ret:ty;)*) => {
         $(
-            #[no_mangle]
+            #[unsafe(no_mangle)]
             pub extern "C" fn $name($(_: $ty),*) -> $ret {
                 panic!(concat!(
                     stringify!($name),
@@ -184,7 +184,7 @@ stub! {
     vpi_printf(a: *const i8) -> i32;
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn vpi_get(property: i32, _handle: *mut c_void) -> i32 {
     PROPERTY_GETS.with(|gets| gets.borrow_mut().push(property));
     if property == vpiType {
@@ -196,7 +196,7 @@ pub extern "C" fn vpi_get(property: i32, _handle: *mut c_void) -> i32 {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn vpi_get_value(_handle: vpiHandle, value: *mut t_vpi_value) {
     assert!(!value.is_null(), "vpi_get_value called with null value");
     SIGNAL.with(|signal| {
@@ -214,7 +214,7 @@ pub unsafe extern "C" fn vpi_get_value(_handle: vpiHandle, value: *mut t_vpi_val
     });
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn vpi_put_value(
     handle: vpiHandle,
     value: *mut t_vpi_value,
@@ -246,7 +246,7 @@ pub unsafe extern "C" fn vpi_put_value(
     handle
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn vpi_register_cb(data: *mut t_cb_data) -> vpiHandle {
     assert!(!data.is_null(), "vpi_register_cb called with null data");
     let callback = Box::new(StubCallback {
@@ -269,7 +269,7 @@ pub unsafe extern "C" fn vpi_register_cb(data: *mut t_cb_data) -> vpiHandle {
     callback.cast::<c_void>()
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn vpi_remove_cb(handle: vpiHandle) -> i32 {
     assert!(!handle.is_null(), "vpi_remove_cb called with null handle");
     let callback = handle.cast::<StubCallback>();

@@ -1,7 +1,7 @@
 [package]
 name = "rustdv-methodology"
 version = "0.2.0"
-edition = "2021"
+edition = "2024"
 description = "The verification methodology layer: component lifecycle and phases, ConfigDb, factory, objections, channels, analysis broadcast, TLM FIFOs, and the sequencer handshake (design-doc §5)."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rustdv/rustdv"

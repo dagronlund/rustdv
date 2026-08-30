@@ -18,7 +18,7 @@ use std::rc::Rc;
 use rustdv::prelude::*;
 
 use crate::alu_bfm::TinyAluBfm;
-use crate::alu_item::{predict, AluCommand, AluResult, Ops};
+use crate::alu_item::{AluCommand, AluResult, Ops, predict};
 
 // ===========================================================================
 // Driver

@@ -22,7 +22,7 @@
 use std::cell::{Cell, RefCell};
 use std::ffi::{CStr, CString};
 use std::fmt;
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::rc::Rc;
 
 use rustdv_gpi_sys as sys;

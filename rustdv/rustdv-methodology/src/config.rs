@@ -93,7 +93,12 @@ impl fmt::Display for ConfigError {
                 "ConfigDb: no value for \"{field}\" at \"{path}\" \
                  (never set, path does not match, or the key is misspelled)"
             ),
-            ConfigError::TypeMismatch { path, field, stored, requested } => write!(
+            ConfigError::TypeMismatch {
+                path,
+                field,
+                stored,
+                requested,
+            } => write!(
                 f,
                 "ConfigDb: \"{field}\" at \"{path}\" holds a {stored}, but a {requested} was requested"
             ),

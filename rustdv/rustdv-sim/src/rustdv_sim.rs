@@ -29,15 +29,15 @@ pub mod time;
 pub mod triggers;
 
 pub use clock::Clock;
-pub use combinators::{first2, join2, join_all, with_timeout, Either, TimeoutError};
-pub use executor::{spawn, spawn_named, Executor, TaskError, TaskHandle, TaskId, TaskState};
+pub use combinators::{Either, TimeoutError, first2, join_all, join2, with_timeout};
+pub use executor::{Executor, TaskError, TaskHandle, TaskId, TaskState, spawn, spawn_named};
 pub use handle::{AnyHandle, HierarchyHandle, LogicHandle};
 pub use path::RustdvPath;
 pub use phase::{next_time_step, read_only, read_write};
 pub use queue::Queue;
 pub use rng::Rng;
 pub use sync::{Event, Lock, LockGuard};
-pub use time::{sim_time_ns, sim_time_steps, SimDuration};
+pub use time::{SimDuration, sim_time_ns, sim_time_steps};
 pub use triggers::{NullTrigger, Timer};
 
 pub use rustdv_gpi::{HandleError, Logic, LogicArray, ValueError};

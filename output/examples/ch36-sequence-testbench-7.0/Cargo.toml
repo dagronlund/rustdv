@@ -1,7 +1,7 @@
 [package]
 name = "ch36_sequence_testbench_7_0"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [lib]
 path = "src/ch36_sequence_testbench_7_0.rs"

@@ -175,7 +175,7 @@ pub struct t_cb_data {
 // Functions. Resolved at load time against the simulator (vvp exports them
 // to dlopen'ed VPI modules).
 // ---------------------------------------------------------------------------
-extern "C" {
+unsafe extern "C" {
     pub fn vpi_handle_by_name(name: *const PLI_BYTE8, scope: vpiHandle) -> vpiHandle;
     pub fn vpi_handle_by_index(object: vpiHandle, index: PLI_INT32) -> vpiHandle;
     pub fn vpi_iterate(type_: PLI_INT32, ref_: vpiHandle) -> vpiHandle;

@@ -1,7 +1,7 @@
 [package]
 name = "rustdv-sim"
 version = "0.2.0"
-edition = "2021"
+edition = "2024"
 description = "The cocotb-analog core: simulator-driven async executor, tasks, triggers, typed handles, clock, sim-aware queues (design-doc §4)."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rustdv/rustdv"

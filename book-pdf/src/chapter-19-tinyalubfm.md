@@ -99,7 +99,7 @@ The BFM's loops all share the classic skeleton — `loop { clk.falling_edge().aw
 ```rust
 // Figure 5: Monitoring the result bus
 
-    fn result_mon(&self) -> impl std::future::Future<Output = ()> {
+    fn result_mon(&self) -> impl std::future::Future<Output = ()> + use<> {
         let (clk, done, result) = (self.clk, self.done, self.result);
         let queue = self.result_mon_queue.clone();
         async move {
@@ -116,12 +116,12 @@ The BFM's loops all share the classic skeleton — `loop { clk.falling_edge().aw
     }
 ```
 
-The protocol logic is the classic monitor's exactly: remember `prev_done`, and when `done` goes 0→1 across two falling edges, `result` is valid — capture it, publish it nonblockingly. The Rust texture is in the two lines before `async move`. A spawned task must own what it uses (`'static`, Chapter 12's `move` closures), and it cannot borrow `self`, which the executor might outlive. So the method *copies out* what the loop needs: `LogicHandle`s are cheap `Copy` types (they are IDs into the simulator), and cloning a `Queue` clones a handle to the shared queue (Chapter 16). The loop owns its working set outright — which is also why no other task can race it for `prev_done`.
+The protocol logic is the classic monitor's exactly: remember `prev_done`, and when `done` goes 0→1 across two falling edges, `result` is valid — capture it, publish it nonblockingly. The Rust texture is in the two lines before `async move`. A spawned task must own what it uses (`'static`, Chapter 12's `move` closures), and it cannot borrow `self`, which the executor might outlive. The `+ use<>` bound says that the returned future captures none of the method's input lifetimes. The method *copies out* what the loop needs instead: `LogicHandle`s are cheap `Copy` types (they are IDs into the simulator), and cloning a `Queue` clones a handle to the shared queue (Chapter 16). The loop owns its working set outright — which is also why no other task can race it for `prev_done`.
 
 ```rust
 // Figure 6: Monitoring the command signals
 
-    fn cmd_mon(&self) -> impl std::future::Future<Output = ()> {
+    fn cmd_mon(&self) -> impl std::future::Future<Output = ()> + use<> {
         let (clk, start, a, b, op) = (self.clk, self.start, self.a, self.b, self.op);
         let queue = self.cmd_mon_queue.clone();
         async move {
@@ -146,7 +146,7 @@ The driver is the 1.0 loop's send-side, verbatim in spirit:
 ```rust
 // Figure 7: Driving commands on the falling edge of clk
 
-    fn cmd_driver(&self) -> impl std::future::Future<Output = ()> {
+    fn cmd_driver(&self) -> impl std::future::Future<Output = ()> + use<> {
         let (clk, start, done) = (self.clk, self.start, self.done);
         let (a, b, op) = (self.a, self.b, self.op);
         let queue = self.driver_queue.clone();
