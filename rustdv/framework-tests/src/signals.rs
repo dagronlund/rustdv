@@ -14,6 +14,10 @@ async fn sig_widths_match_the_design(ctx: RustdvCtx) -> Result<(), TestError> {
     for (name, want) in [
         ("byte_sig", 8u32),
         ("word_sig", 16),
+        ("dword_sig", 32),
+        ("qword_sig", 64),
+        ("u128_sig", 128),
+        ("bigint_sig", 160),
         ("nibble", 4),
         ("flag", 1),
     ] {
@@ -42,6 +46,53 @@ async fn sig_round_trips(ctx: RustdvCtx) -> Result<(), TestError> {
             "{name} read back {got:#x} after writing {value:#x}"
         );
     }
+    Ok(())
+}
+
+// Every typed scheduled-write path reaches VPI, and every matching getter
+// reconstructs the same value from the simulator.
+#[rustdv::test]
+async fn sig_typed_values_round_trip(ctx: RustdvCtx) -> Result<(), TestError> {
+    let dut = ctx.dut();
+    let flag = dut.signal("flag")?;
+    let byte = dut.signal("byte_sig")?;
+    let word = dut.signal("word_sig")?;
+    let dword = dut.signal("dword_sig")?;
+    let qword = dut.signal("qword_sig")?;
+    let wide = dut.signal("u128_sig")?;
+    let arbitrary = dut.signal("bigint_sig")?;
+
+    let bigint = BigUint::from_slice(&[
+        0x7654_3210,
+        0xfedc_ba98,
+        0x89ab_cdef,
+        0x0123_4567,
+        0xa5a5_5a5a,
+    ]);
+    let u128_value = 0x0123_4567_89ab_cdef_fedc_ba98_7654_3210;
+
+    flag.set_bool(true);
+    byte.set_u8(0xa5);
+    word.set_u16(0xa5b6);
+    dword.set_u32(0xa5b6_c7d8);
+    qword.set_u64(0x0123_4567_89ab_cdef);
+    wide.set_u128(u128_value);
+    arbitrary.set_bigint(&bigint);
+    read_write().await;
+
+    check!(flag.get_bool() == Ok(true), "bool did not round-trip");
+    check!(byte.get_u8() == Ok(0xa5), "u8 did not round-trip");
+    check!(word.get_u16() == Ok(0xa5b6), "u16 did not round-trip");
+    check!(dword.get_u32() == Ok(0xa5b6_c7d8), "u32 did not round-trip");
+    check!(
+        qword.get_u64() == Ok(0x0123_4567_89ab_cdef),
+        "u64 did not round-trip"
+    );
+    check!(wide.get_u128() == Ok(u128_value), "u128 did not round-trip");
+    check!(
+        arbitrary.get_bigint() == Ok(bigint),
+        "BigUint did not round-trip"
+    );
     Ok(())
 }
 
@@ -76,10 +127,11 @@ async fn sig_x_is_an_error_not_a_zero(ctx: RustdvCtx) -> Result<(), TestError> {
         x.get_u64().is_err(),
         "an undriven bit converted to an integer"
     );
+    let x_binstr = x.get_binstr()?;
     check!(
-        x.get_binstr().contains('x'),
+        x_binstr.contains('x'),
         "an undriven bit reads as {:?}",
-        x.get_binstr()
+        x_binstr
     );
     check!(
         !x.is_high() && !x.is_low(),
@@ -91,10 +143,11 @@ async fn sig_x_is_an_error_not_a_zero(ctx: RustdvCtx) -> Result<(), TestError> {
         bus.get_u64().is_err(),
         "an undriven bus converted to an integer"
     );
+    let bus_binstr = bus.get_binstr()?;
     check!(
-        bus.get_binstr().chars().all(|c| c == 'x'),
+        bus_binstr.chars().all(|c| c == 'x'),
         "an undriven bus reads as {:?}",
-        bus.get_binstr()
+        bus_binstr
     );
 
     // And the escape hatch the book teaches still works.
@@ -126,17 +179,18 @@ async fn sig_partial_x_is_still_an_error(ctx: RustdvCtx) -> Result<(), TestError
         !arr.is_resolvable(),
         "a pattern containing x claimed to be resolvable"
     );
-    sig.set(&arr);
+    sig.set_logic(&arr);
     read_write().await;
     check!(
         sig.get_u64().is_err(),
         "a byte with one x bit converted to {:?}",
         sig.get_u64()
     );
+    let sig_binstr = sig.get_binstr()?;
     check!(
-        sig.get_binstr().contains('x'),
+        sig_binstr.contains('x'),
         "the x bit vanished: {:?}",
-        sig.get_binstr()
+        sig_binstr
     );
     Ok(())
 }

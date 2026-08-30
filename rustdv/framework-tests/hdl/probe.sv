@@ -15,6 +15,10 @@ module probe;
    // read-back that differs from the write is the framework's doing.
    logic [7:0]  byte_sig;
    logic [15:0] word_sig;
+   logic [31:0] dword_sig;
+   logic [63:0] qword_sig;
+   logic [127:0] u128_sig;
+   logic [159:0] bigint_sig;
    logic [3:0]  nibble;
    logic        flag;
 
@@ -46,7 +50,8 @@ module probe;
    // "no object named 'byte_sig' in scope 'probe'". Reading them all into one
    // wire nobody uses keeps them alive without driving them, which is the
    // whole point of declaring them.
-   wire keep_alive = ^{byte_sig, word_sig, nibble, flag, comb_in, comb_out,
+   wire keep_alive = ^{byte_sig, word_sig, dword_sig, qword_sig, u128_sig,
+                       bigint_sig, nibble, flag, comb_in, comb_out,
                        rtl_event_request, rtl_event_done,
                        never_driven, never_driven_bus};
 

@@ -135,7 +135,7 @@ explain, and explaining one would import a history the book does not have.
 |---|---|---|
 | 15 | `ch15-async-await-executor` | 2 listings. **The prelude debt lands here or just before** — this is where rustdv's surface first appears (`FABLE.md`, "Two writing debts"). |
 | 16 | `ch16-tasks-queues` | 15 listings. |
-| 17 | `ch17-simulating-with-rustdv-sim` | 6 listings. Candidate home for the rustdv catalogue if you fold it in rather than adding a chapter. |
+| 17 | `ch17-simulating-with-rustdv-sim` | 6 listings. Candidate home for the rustdv catalogue if you fold it in rather than adding a chapter. Signal-API audit (2026-08-30): logic-specific access is `get_logic` / `set_logic` / `set_logic_now`; no manuscript or README example used the retired `get` / `set` / `set_now` spellings, and the documented `get_u64` / `set_u64` names are unchanged. |
 | 18 | `ch18-basic-testbench-1.0` | 11 listings. |
 | 19 | `ch19-tinyalubfm` | 6 listings. **There is no software clock.** The RTL self-clocks and the BFM only waits on edges. `Clock` is taught once, as a cocotb feature; chapters must stop opening with `Clock::new(...)`. The reason is emulation: a BFM that waits on edges ports to a transactor unchanged, one that drives them does not. |
 | 20 | `ch20-struct-based-testbench-2.0` | 11 listings. TB 2.0. **This is a destination, not a stepping stone** — a reader must be able to write a complete, useful testbench with a DUT handle and signals and no components at all. If Part II reads as training wheels for Part III, the learning-curve objection wins. |
@@ -372,3 +372,5 @@ traits because `PartialEq` does not promise `a == a` — IEEE 754 says NaN equal
 nothing — and `Eq` adds that promise. It bites a verification engineer in one
 specific place: `HashSet` requires `Eq`, so a transaction carrying a *measured*
 value like a float delay cannot be a coverage key.
+
+- API maintenance: `LogicArray::bit(index)` is replaced by `array[index]`, preserving `Option<Logic>` and `None` for out-of-bounds access. No manuscript call sites required updates.

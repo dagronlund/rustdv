@@ -118,8 +118,12 @@ impl TinyAluBfm {
                 async move {
                     loop {
                         clk.falling_edge().await;
-                        let st = start.get_binstr();
-                        let dn = done.get_binstr();
+                        let st = start
+                            .get_binstr()
+                            .expect("start signal did not return a VPI vector value");
+                        let dn = done
+                            .get_binstr()
+                            .expect("done signal did not return a VPI vector value");
                         if st == "0" && dn == "0" {
                             if let Some(cmd) = q.try_get() {
                                 a.set_u64(cmd.a as u64);

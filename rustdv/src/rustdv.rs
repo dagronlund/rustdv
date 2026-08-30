@@ -44,10 +44,11 @@ pub use rustdv_runner::{TEST_REGISTRATIONS, TestRegistration};
 pub use rustdv_sim::handle::top_module;
 pub use rustdv_sim::log;
 pub use rustdv_sim::{
-    AnyHandle, Clock, Either, Event, Executor, HandleError, HierarchyHandle, Lock, LockGuard,
-    Logic, LogicArray, LogicHandle, NullTrigger, Queue, Rng, RustdvPath, SimDuration, TaskError,
-    TaskHandle, TaskState, TimeoutError, Timer, ValueError, first2, join2, next_time_step,
-    read_only, read_write, sim_time_ns, sim_time_steps, spawn, spawn_named, with_timeout,
+    AnyHandle, BigUint, Clock, Either, Event, Executor, HandleError, HierarchyHandle, Lock,
+    LockGuard, Logic, LogicArray, LogicHandle, NullTrigger, Queue, Rng, RustdvPath, SimDuration,
+    TaskError, TaskHandle, TaskState, TimeoutError, Timer, ValueError, first2, join2,
+    next_time_step, read_only, read_write, sim_time_ns, sim_time_steps, spawn, spawn_named,
+    with_timeout,
 };
 
 pub use rustdv_methodology::{
@@ -79,16 +80,16 @@ pub use rustdv_methodology::Component;
 pub mod prelude {
     pub use crate::log;
     pub use crate::{
-        Active, AnalysisBus, CheckSink, Clock, Component, ComponentNode, ConfigDb, Either, Event,
-        Factory, GetPort, HandleError, HierarchyHandle, Lock, Logic, LogicArray, LogicHandle,
-        NullTrigger, ObjectionGuard, PeekPort, PortName, PortOwner, PublishPort, PutPort, Queue,
-        Receiver, Rng, RustdvComp, RustdvCtx, RustdvSeq, RustdvShared, Sender, SeqCtx, SeqError,
-        SeqItem, SeqItemExport, SeqItemPort, Sequence, Sequencer, SimDuration, SubscribePort,
-        Subscriber, TaskHandle, TestError, Timer, TlmFifo, TxnId, build_all, channel, check_all,
-        connect_all, create_seq, end_of_elaboration_all, extract_all, final_all, first2, join2,
-        next_time_step, print_hierarchy, read_only, read_write, report_all, run_component_test,
-        run_extract_check_report, set_seq_override, sim_time_ns, spawn, spawn_named, start_all,
-        start_of_simulation_all, with_timeout,
+        Active, AnalysisBus, BigUint, CheckSink, Clock, Component, ComponentNode, ConfigDb, Either,
+        Event, Factory, GetPort, HandleError, HierarchyHandle, Lock, Logic, LogicArray,
+        LogicHandle, NullTrigger, ObjectionGuard, PeekPort, PortName, PortOwner, PublishPort,
+        PutPort, Queue, Receiver, Rng, RustdvComp, RustdvCtx, RustdvSeq, RustdvShared, Sender,
+        SeqCtx, SeqError, SeqItem, SeqItemExport, SeqItemPort, Sequence, Sequencer, SimDuration,
+        SubscribePort, Subscriber, TaskHandle, TestError, Timer, TlmFifo, TxnId, build_all,
+        channel, check_all, connect_all, create_seq, end_of_elaboration_all, extract_all,
+        final_all, first2, join2, next_time_step, print_hierarchy, read_only, read_write,
+        report_all, run_component_test, run_extract_check_report, set_seq_override, sim_time_ns,
+        spawn, spawn_named, start_all, start_of_simulation_all, with_timeout,
     };
 }
 

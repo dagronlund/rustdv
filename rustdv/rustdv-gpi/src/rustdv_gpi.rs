@@ -25,7 +25,8 @@ use std::fmt;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::rc::Rc;
 
-use rustdv_gpi_sys as sys;
+pub use num_bigint::BigUint;
+use rustdv_gpi_sys::{self as sys, t_vpi_vecval};
 
 // Test executables need vpi_* symbol definitions (the simulator provides
 // them for the real cdylib) — see rustdv-vpi-stubs.
@@ -34,6 +35,8 @@ use rustdv_vpi_stubs as _;
 
 pub mod value;
 pub use value::{Logic, LogicArray};
+pub mod util;
+pub use util::ToVpiWords;
 
 // ===========================================================================
 // Errors
@@ -79,6 +82,8 @@ impl std::error::Error for HandleError {}
 pub enum ValueError {
     /// Value contains x/z bits and was asked for as an integer.
     FourState(String),
+    /// The simulator did not supply the requested value representation.
+    Unavailable,
     Width {
         want: u32,
         have: usize,
@@ -89,6 +94,7 @@ impl fmt::Display for ValueError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ValueError::FourState(s) => write!(f, "value '{s}' has x/z bits"),
+            ValueError::Unavailable => write!(f, "simulator did not return a vector value"),
             ValueError::Width { want, have } => {
                 write!(f, "width mismatch: want {want}, have {have}")
             }
@@ -285,38 +291,11 @@ impl LogicHandle {
         self.width
     }
 
-    /// Current value as a binary string, e.g. "0101", "xxxx".
-    pub fn get_binstr(&self) -> String {
-        let mut val = sys::t_vpi_value {
-            format: sys::vpiBinStrVal,
-            value: sys::u_vpi_value_union { integer: 0 },
-        };
-        unsafe {
-            sys::vpi_get_value(self.h.0, &mut val);
-            let p = val.value.str_;
-            if p.is_null() {
-                String::new()
-            } else {
-                CStr::from_ptr(p).to_string_lossy().into_owned()
-            }
-        }
-    }
-
-    /// Current value as a LogicArray (4-state).
-    pub fn get(&self) -> LogicArray {
-        LogicArray::from_binstr(&self.get_binstr())
-    }
-
-    /// Current value as u64; `Err` if any bit is x/z (design-doc §0.6:
-    /// conversion failures are Results, not exceptions).
-    pub fn get_u64(&self) -> Result<u64, ValueError> {
-        let width = self.size().max(1);
-        if width > 64 {
-            return Err(ValueError::Width {
-                want: width,
-                have: 64,
-            });
-        }
+    /// Current value as a slice of VPI vector words. `Err` if the simulator
+    /// did not supply a vector representation (design-doc §0.6: conversion
+    /// failures are Results, not exceptions). Handles `unsafe` and null pointer
+    /// checks internally.
+    fn get_vpi_words(&self) -> Result<&[sys::t_vpi_vecval], ValueError> {
         let mut val = sys::t_vpi_value {
             format: sys::vpiVectorVal,
             value: sys::u_vpi_value_union {
@@ -327,92 +306,276 @@ impl LogicHandle {
             sys::vpi_get_value(self.h.0, &mut val);
             let words = val.value.vector;
             if words.is_null() {
-                return Ok(0);
+                return Err(ValueError::Unavailable);
             }
-            let word_count = width.div_ceil(32) as usize;
-            let mut result = 0u64;
-            for index in 0..word_count {
-                let word = *words.add(index);
-                let used_bits = if index + 1 == word_count && !width.is_multiple_of(32) {
-                    width % 32
-                } else {
-                    32
-                };
-                let mask = if used_bits == 32 {
-                    u32::MAX
-                } else {
-                    (1u32 << used_bits) - 1
-                };
-                if word.bval & mask != 0 {
-                    return Err(ValueError::FourState(self.get_binstr()));
-                }
-                result |= ((word.aval & mask) as u64) << (index * 32);
-            }
-            Ok(result)
+            let word_count = self.size().div_ceil(32) as usize;
+            Ok(std::slice::from_raw_parts(words, word_count))
         }
     }
 
-    fn put_binstr_flags(&self, bin: &str, flags: i32) {
-        let c = CString::new(bin).expect("NUL in binstr");
-        let mut val = sys::t_vpi_value {
-            format: sys::vpiBinStrVal,
-            value: sys::u_vpi_value_union {
-                str_: c.as_ptr() as *mut _,
-            },
-        };
-        unsafe {
-            sys::vpi_put_value(self.h.0, &mut val, std::ptr::null_mut(), flags);
-        }
-    }
-
-    fn put_vector_words(&self, words: &mut [sys::t_vpi_vecval]) {
-        let mut val = sys::t_vpi_value {
-            format: sys::vpiVectorVal,
-            value: sys::u_vpi_value_union {
-                vector: words.as_mut_ptr(),
-            },
-        };
-        unsafe {
-            sys::vpi_put_value(self.h.0, &mut val, std::ptr::null_mut(), sys::vpiNoDelay);
-        }
-    }
-
-    /// Immediate (NoDelay) write of an integer value, zero-extended /
-    /// truncated to the signal width. This is the "setimmediatevalue"
-    /// analog; scheduled writes are layered above (design-doc §4.1(4)).
-    pub fn set_u64_now(&self, v: u64) {
-        let width = self.size().max(1);
-        let word_count = width.div_ceil(32) as usize;
-        let mut words = if word_count <= 2 {
-            let words = [
-                sys::t_vpi_vecval {
-                    aval: v as u32,
-                    bval: 0,
-                },
-                sys::t_vpi_vecval {
-                    aval: (v >> 32) as u32,
-                    bval: 0,
-                },
-            ];
-            words[..word_count].to_vec()
+    /// Masks one VPI vector word to the signal width. `Err` if any used bit is
+    /// x/z (design-doc §0.6: conversion failures are Results, not exceptions).
+    ///
+    /// # Arguments
+    ///
+    /// * `word` - Individual VPI vector word from [`Self::get_vpi_words`].
+    /// * `width` - Width of the entire signal in bits.
+    /// * `last` - Whether `word` is the signal's final VPI vector word.
+    fn get_vpi_word(&self, word: &t_vpi_vecval, width: u32, last: bool) -> Result<u32, ValueError> {
+        let used_bits = if last && !width.is_multiple_of(32) {
+            width % 32
         } else {
-            let mut words = vec![sys::t_vpi_vecval::default(); word_count];
-            words[0].aval = v as u32;
-            words[1].aval = (v >> 32) as u32;
-            words
+            32
         };
-        if !width.is_multiple_of(32) {
-            let mask = (1u32 << (width % 32)) - 1;
-            let last = words.last_mut().expect("positive width has a vector word");
+        let mask = if used_bits == 32 {
+            u32::MAX
+        } else {
+            (1u32 << used_bits) - 1
+        };
+        if word.bval & mask != 0 {
+            return Err(ValueError::FourState(self.get_logic()?.to_binstr()));
+        }
+        Ok(word.aval & mask)
+    }
+
+    /// Check that the signal width is at most `want` bits. Returns `Err` if
+    /// the signal is wider than `want` (design-doc §0.6: conversion failures
+    /// are Results, not exceptions).
+    fn check_size(&self, want: u32) -> Result<(), ValueError> {
+        if self.size() > want {
+            return Err(ValueError::Width {
+                want,
+                have: self.size() as usize,
+            });
+        }
+        Ok(())
+    }
+
+    /// Current value as bool; `Err` if the signal is wider than one bit or its
+    /// value is x/z (design-doc §0.6: conversion failures are Results, not
+    /// exceptions).
+    pub fn get_bool(&self) -> Result<bool, ValueError> {
+        self.check_size(1)?;
+        Ok(self.get_vpi_word(&self.get_vpi_words()?[0], self.size(), true)? != 0)
+    }
+
+    /// Current value as u8; `Err` if any bit is x/z (design-doc §0.6:
+    /// conversion failures are Results, not exceptions).
+    pub fn get_u8(&self) -> Result<u8, ValueError> {
+        self.check_size(u8::BITS)?;
+        Ok(self.get_vpi_word(&self.get_vpi_words()?[0], self.size(), true)? as u8)
+    }
+
+    /// Current value as u16; `Err` if any bit is x/z (design-doc §0.6:
+    /// conversion failures are Results, not exceptions).
+    pub fn get_u16(&self) -> Result<u16, ValueError> {
+        self.check_size(u16::BITS)?;
+        Ok(self.get_vpi_word(&self.get_vpi_words()?[0], self.size(), true)? as u16)
+    }
+
+    /// Current value as u32; `Err` if any bit is x/z (design-doc §0.6:
+    /// conversion failures are Results, not exceptions).
+    pub fn get_u32(&self) -> Result<u32, ValueError> {
+        self.check_size(u32::BITS)?;
+        self.get_vpi_word(&self.get_vpi_words()?[0], self.size(), true)
+    }
+
+    /// Current value as u64; `Err` if any bit is x/z (design-doc §0.6:
+    /// conversion failures are Results, not exceptions).
+    pub fn get_u64(&self) -> Result<u64, ValueError> {
+        self.check_size(u64::BITS)?;
+        let words = self.get_vpi_words()?;
+        let mut result = 0;
+        for (index, word) in words.iter().enumerate() {
+            let word = self.get_vpi_word(word, self.size(), index + 1 == words.len())?;
+            result |= (word as u64) << (index * 32);
+        }
+        Ok(result)
+    }
+
+    /// Current value as u128; `Err` if any bit is x/z (design-doc §0.6:
+    /// conversion failures are Results, not exceptions).
+    pub fn get_u128(&self) -> Result<u128, ValueError> {
+        self.check_size(u128::BITS)?;
+        let words = self.get_vpi_words()?;
+        let mut result = 0;
+        for (index, word) in words.iter().enumerate() {
+            let word = self.get_vpi_word(word, self.size(), index + 1 == words.len())?;
+            result |= (word as u128) << (index * 32);
+        }
+        Ok(result)
+    }
+
+    /// Current value as an unsigned arbitrary-precision integer; `Err` if
+    /// any bit is x/z.
+    pub fn get_bigint(&self) -> Result<BigUint, ValueError> {
+        let words = self.get_vpi_words()?;
+        let mut digits = Vec::with_capacity(words.len());
+        for (index, word) in words.iter().enumerate() {
+            digits.push(self.get_vpi_word(word, self.size(), index + 1 == words.len())?);
+        }
+        Ok(BigUint::from_slice(&digits))
+    }
+
+    /// Current value as a LogicArray (4-state). `Err` if the simulator does
+    /// not supply a VPI vector representation.
+    pub fn get_logic(&self) -> Result<LogicArray, ValueError> {
+        let words = self.get_vpi_words()?;
+        let words: Vec<(u32, u32)> = words.iter().map(|word| (word.aval, word.bval)).collect();
+        Ok(LogicArray::from_vpi_words(&words, self.size() as usize))
+    }
+
+    /// Mask unused bits in the final VPI vector word to the signal width.
+    fn mask_vector_words(&self, words: &mut [sys::t_vpi_vecval]) {
+        if !self.size().is_multiple_of(32) {
+            let mask = (1u32 << (self.size() % 32)) - 1;
+            let last = words.last_mut().expect("partial width has a vector word");
             last.aval &= mask;
             last.bval &= mask;
         }
-        self.put_vector_words(&mut words);
     }
 
-    /// Immediate write of a 4-state value.
-    pub fn set_now(&self, v: &LogicArray) {
-        self.put_binstr_flags(&v.to_binstr(), sys::vpiNoDelay);
+    /// Resize vector words to the signal width and pass them to
+    /// `vpi_put_value`. Handles unsafe usage internally, i.e. words can be any
+    /// length and the vpi call is still safe.
+    fn set_vector_words(&self, words: &mut [sys::t_vpi_vecval], flags: i32) {
+        let word_count = self.size().div_ceil(32) as usize;
+        if words.len() == word_count {
+            // Word length matches, just mask the final word to the signal width
+            self.mask_vector_words(words);
+            unsafe {
+                let mut vpi_value = sys::t_vpi_value {
+                    format: sys::vpiVectorVal,
+                    value: sys::u_vpi_value_union {
+                        vector: words.as_mut_ptr(),
+                    },
+                };
+                sys::vpi_put_value(self.h.0, &mut vpi_value, std::ptr::null_mut(), flags);
+            }
+        } else if words.len() > word_count {
+            // Word length is greater, truncate to the signal width and mask the
+            // final word
+            let words = &mut words[..word_count];
+            self.mask_vector_words(words);
+            unsafe {
+                let mut vpi_value = sys::t_vpi_value {
+                    format: sys::vpiVectorVal,
+                    value: sys::u_vpi_value_union {
+                        vector: words.as_mut_ptr(),
+                    },
+                };
+                sys::vpi_put_value(self.h.0, &mut vpi_value, std::ptr::null_mut(), flags);
+            }
+        } else {
+            // Word length is less, pad with zeros to the signal width
+            let mut words = words.to_vec();
+            words.resize(word_count, sys::t_vpi_vecval::default());
+            unsafe {
+                let mut vpi_value = sys::t_vpi_value {
+                    format: sys::vpiVectorVal,
+                    value: sys::u_vpi_value_union {
+                        vector: words.as_mut_ptr(),
+                    },
+                };
+                sys::vpi_put_value(self.h.0, &mut vpi_value, std::ptr::null_mut(), flags);
+            }
+        }
+    }
+
+    /// Write a bool with the supplied VPI flag, zero-extended to the signal
+    /// width.
+    pub fn set_bool(&self, v: bool, flags: i32) {
+        self.set_vector_words(&mut v.to_vpi_words(), flags);
+    }
+
+    /// Immediate (NoDelay) write of a bool.
+    pub fn set_bool_now(&self, v: bool) {
+        self.set_bool(v, sys::vpiNoDelay);
+    }
+
+    /// Write a u8 with the supplied VPI flag, zero-extended / truncated to the
+    /// signal width.
+    pub fn set_u8(&self, v: u8, flags: i32) {
+        self.set_vector_words(&mut v.to_vpi_words(), flags);
+    }
+
+    /// Immediate (NoDelay) write of a u8.
+    pub fn set_u8_now(&self, v: u8) {
+        self.set_u8(v, sys::vpiNoDelay);
+    }
+
+    /// Write a u16 with the supplied VPI flag, zero-extended / truncated to
+    /// the signal width.
+    pub fn set_u16(&self, v: u16, flags: i32) {
+        self.set_vector_words(&mut v.to_vpi_words(), flags);
+    }
+
+    /// Immediate (NoDelay) write of a u16.
+    pub fn set_u16_now(&self, v: u16) {
+        self.set_u16(v, sys::vpiNoDelay);
+    }
+
+    /// Write a u32 with the supplied VPI flag, zero-extended / truncated to
+    /// the signal width.
+    pub fn set_u32(&self, v: u32, flags: i32) {
+        self.set_vector_words(&mut v.to_vpi_words(), flags);
+    }
+
+    /// Immediate (NoDelay) write of a u32.
+    pub fn set_u32_now(&self, v: u32) {
+        self.set_u32(v, sys::vpiNoDelay);
+    }
+
+    /// Write a u64 with the supplied VPI flag, zero-extended / truncated to
+    /// the signal width.
+    pub fn set_u64(&self, v: u64, flags: i32) {
+        self.set_vector_words(&mut v.to_vpi_words(), flags);
+    }
+
+    /// Immediate (NoDelay) write of a u64.
+    pub fn set_u64_now(&self, v: u64) {
+        self.set_u64(v, sys::vpiNoDelay);
+    }
+
+    /// Write a u128 with the supplied VPI flag, zero-extended / truncated to
+    /// the signal width.
+    pub fn set_u128(&self, v: u128, flags: i32) {
+        self.set_vector_words(&mut v.to_vpi_words(), flags);
+    }
+
+    /// Immediate (NoDelay) write of a u128.
+    pub fn set_u128_now(&self, v: u128) {
+        self.set_u128(v, sys::vpiNoDelay);
+    }
+
+    /// Write an arbitrary-precision integer with the supplied VPI flag,
+    /// zero-extended / truncated to the signal width.
+    pub fn set_bigint(&self, v: &BigUint, flags: i32) {
+        let mut words: Vec<sys::t_vpi_vecval> = v
+            .iter_u32_digits()
+            .map(|aval| sys::t_vpi_vecval { aval, bval: 0 })
+            .collect();
+        self.set_vector_words(&mut words, flags);
+    }
+
+    /// Immediate (NoDelay) write of an arbitrary-precision integer.
+    pub fn set_bigint_now(&self, v: &BigUint) {
+        self.set_bigint(v, sys::vpiNoDelay);
+    }
+
+    /// Write a 4-state value with the supplied VPI flag.
+    pub fn set_logic(&self, v: &LogicArray, flags: i32) {
+        let mut words: Vec<sys::t_vpi_vecval> = v
+            .to_vpi_words()
+            .into_iter()
+            .map(|(aval, bval)| sys::t_vpi_vecval { aval, bval })
+            .collect();
+        self.set_vector_words(&mut words, flags);
+    }
+
+    /// Immediate (NoDelay) write of a 4-state value.
+    pub fn set_logic_now(&self, v: &LogicArray) {
+        self.set_logic(v, sys::vpiNoDelay);
     }
 }
 
@@ -768,6 +931,40 @@ pub fn register_end_of_simulation(f: Box<dyn FnOnce()>) -> CallbackHandle {
 }
 
 #[cfg(test)]
+mod vpi_word_tests {
+    use super::*;
+
+    fn assert_single_word<T: ToVpiWords<1>>(value: T, expected: u32) {
+        let words = value.to_vpi_words();
+        assert_eq!(words[0].aval, expected);
+        assert_eq!(words[0].bval, 0);
+    }
+
+    #[test]
+    fn scalar_values_convert_to_one_vpi_word() {
+        assert_single_word(false, 0);
+        assert_single_word(true, 1);
+        assert_single_word(0xa5u8, 0xa5);
+        assert_single_word(0xa5b6u16, 0xa5b6);
+        assert_single_word(0xa5b6_c7d8u32, 0xa5b6_c7d8);
+    }
+
+    #[test]
+    fn wide_values_convert_in_least_significant_word_first_order() {
+        let words = 0x0123_4567_89ab_cdefu64.to_vpi_words();
+        assert_eq!(words.map(|word| word.aval), [0x89ab_cdef, 0x0123_4567]);
+        assert!(words.iter().all(|word| word.bval == 0));
+
+        let words = 0x0123_4567_89ab_cdef_fedc_ba98_7654_3210u128.to_vpi_words();
+        assert_eq!(
+            words.map(|word| word.aval),
+            [0x7654_3210, 0xfedc_ba98, 0x89ab_cdef, 0x0123_4567]
+        );
+        assert!(words.iter().all(|word| word.bval == 0));
+    }
+}
+
+#[cfg(test)]
 mod callback_tests {
     use super::*;
     use std::cell::Cell;
@@ -867,7 +1064,7 @@ mod handle_tests {
         let signal = make_signal(
             8,
             &[sys::t_vpi_vecval {
-                aval: 0x5a,
+                aval: 0x5e,
                 bval: 0x04,
             }],
             "01011x10",
@@ -880,7 +1077,111 @@ mod handle_tests {
     }
 
     #[test]
+    fn logic_array_read_uses_vpi_vector_words() {
+        let signal = make_signal(
+            4,
+            &[sys::t_vpi_vecval {
+                aval: 0b0110,
+                bval: 0b0011,
+            }],
+            "0000",
+        );
+
+        assert_eq!(signal.get_logic().unwrap().to_binstr(), "01xz");
+    }
+
+    #[test]
+    fn vector_read_returns_numeric_zero_from_a_vector_word() {
+        let signal = make_signal(8, &[sys::t_vpi_vecval { aval: 0, bval: 0 }], "00000000");
+
+        assert_eq!(signal.get_u64(), Ok(0));
+    }
+
+    #[test]
+    fn bool_read_converts_single_bit_values() {
+        let low = make_signal(1, &[sys::t_vpi_vecval { aval: 0, bval: 0 }], "0");
+        assert_eq!(low.get_bool(), Ok(false));
+
+        let high = make_signal(1, &[sys::t_vpi_vecval { aval: 1, bval: 0 }], "1");
+        assert_eq!(high.get_bool(), Ok(true));
+    }
+
+    #[test]
+    fn bool_read_rejects_wide_and_four_state_values() {
+        let wide = make_signal(2, &[sys::t_vpi_vecval { aval: 1, bval: 0 }], "01");
+        assert_eq!(wide.get_bool(), Err(ValueError::Width { want: 1, have: 2 }));
+
+        let unknown = make_signal(1, &[sys::t_vpi_vecval { aval: 1, bval: 1 }], "x");
+        assert_eq!(
+            unknown.get_bool(),
+            Err(ValueError::FourState("x".to_owned()))
+        );
+    }
+
+    #[test]
+    fn vector_read_reports_an_unavailable_vpi_result() {
+        let signal = make_signal(8, &[sys::t_vpi_vecval { aval: 0, bval: 0 }], "00000000");
+        rustdv_vpi_stubs::make_vector_value_unavailable();
+
+        assert_eq!(signal.get_u64(), Err(ValueError::Unavailable));
+        assert_eq!(signal.get_bigint(), Err(ValueError::Unavailable));
+        assert_eq!(signal.get_logic(), Err(ValueError::Unavailable));
+    }
+
+    #[test]
+    fn bigint_read_supports_values_wider_than_u64() {
+        let signal = make_signal(
+            70,
+            &[
+                sys::t_vpi_vecval {
+                    aval: 0x89ab_cdef,
+                    bval: 0,
+                },
+                sys::t_vpi_vecval {
+                    aval: 0x0123_4567,
+                    bval: 0,
+                },
+                sys::t_vpi_vecval {
+                    aval: 0xffff_ffea,
+                    bval: 0xffff_ffc0,
+                },
+            ],
+            "1010100000000100100011010001010110011110001001101010111100110111101111",
+        );
+
+        assert_eq!(
+            signal.get_bigint().map(|value| value.to_str_radix(16)),
+            Ok("2a0123456789abcdef".to_owned())
+        );
+    }
+
+    #[test]
+    fn bigint_read_reports_xz_in_used_bits() {
+        let signal = make_signal(
+            65,
+            &[
+                sys::t_vpi_vecval::default(),
+                sys::t_vpi_vecval::default(),
+                sys::t_vpi_vecval { aval: 1, bval: 1 },
+            ],
+            &format!("x{}", "0".repeat(64)),
+        );
+
+        assert_eq!(
+            signal.get_bigint(),
+            Err(ValueError::FourState(format!("x{}", "0".repeat(64))))
+        );
+    }
+
+    #[test]
     fn vector_write_truncates_and_zero_extends_to_signal_width() {
+        let narrow = make_signal(8, &[sys::t_vpi_vecval::default()], "00000000");
+        narrow.set_u64_now(0xffff_ffff_ffff_ffa5);
+        let words = rustdv_vpi_stubs::last_put_vector();
+        assert_eq!(words.len(), 1);
+        assert_eq!(words[0].aval, 0xa5);
+        assert_eq!(words[0].bval, 0);
+
         let signal = make_signal(37, &[sys::t_vpi_vecval::default(); 2], &"0".repeat(37));
         signal.set_u64_now(0xffff_fff5_89ab_cdef);
         let words = rustdv_vpi_stubs::last_put_vector();
@@ -898,5 +1199,98 @@ mod handle_tests {
         assert_eq!(words[0].aval, 0x89ab_cdef);
         assert_eq!(words[1].aval, 0x0123_4567);
         assert_eq!(words[2].aval, 0);
+    }
+
+    #[test]
+    fn typed_integer_setters_write_vpi_words() {
+        let signal = make_signal(1, &[sys::t_vpi_vecval::default()], "0");
+        signal.set_bool_now(true);
+        assert_eq!(rustdv_vpi_stubs::last_put_vector()[0].aval, 1);
+
+        let signal = make_signal(8, &[sys::t_vpi_vecval::default()], "00000000");
+        signal.set_u8(0xa5, sys::vpiNoDelay);
+        assert_eq!(rustdv_vpi_stubs::last_put_vector()[0].aval, 0xa5);
+
+        let signal = make_signal(16, &[sys::t_vpi_vecval::default()], &"0".repeat(16));
+        signal.set_u16_now(0xa5b6);
+        assert_eq!(rustdv_vpi_stubs::last_put_vector()[0].aval, 0xa5b6);
+
+        let signal = make_signal(32, &[sys::t_vpi_vecval::default()], &"0".repeat(32));
+        signal.set_u32_now(0xa5b6_c7d8);
+        assert_eq!(rustdv_vpi_stubs::last_put_vector()[0].aval, 0xa5b6_c7d8);
+
+        let signal = make_signal(128, &[sys::t_vpi_vecval::default(); 4], &"0".repeat(128));
+        signal.set_u128_now(0x0123_4567_89ab_cdef_fedc_ba98_7654_3210);
+        let words = rustdv_vpi_stubs::last_put_vector();
+        assert_eq!(
+            words.iter().map(|word| word.aval).collect::<Vec<_>>(),
+            [0x7654_3210, 0xfedc_ba98, 0x89ab_cdef, 0x0123_4567]
+        );
+        assert!(words.iter().all(|word| word.bval == 0));
+    }
+
+    #[test]
+    fn bigint_setter_writes_and_zero_extends_vpi_words() {
+        let signal = make_signal(192, &[sys::t_vpi_vecval::default(); 6], &"0".repeat(192));
+        let value = BigUint::from_slice(&[
+            0x7654_3210,
+            0xfedc_ba98,
+            0x89ab_cdef,
+            0x0123_4567,
+            0xa5a5_5a5a,
+        ]);
+
+        signal.set_bigint_now(&value);
+
+        let words = rustdv_vpi_stubs::last_put_vector();
+        assert_eq!(
+            words.iter().map(|word| word.aval).collect::<Vec<_>>(),
+            [
+                0x7654_3210,
+                0xfedc_ba98,
+                0x89ab_cdef,
+                0x0123_4567,
+                0xa5a5_5a5a,
+                0,
+            ]
+        );
+        assert!(words.iter().all(|word| word.bval == 0));
+    }
+
+    #[test]
+    fn vector_word_mask_clears_unused_aval_and_bval_bits() {
+        let signal = make_signal(37, &[sys::t_vpi_vecval::default(); 2], &"0".repeat(37));
+        let mut words = [
+            sys::t_vpi_vecval {
+                aval: u32::MAX,
+                bval: u32::MAX,
+            },
+            sys::t_vpi_vecval {
+                aval: u32::MAX,
+                bval: u32::MAX,
+            },
+        ];
+
+        signal.mask_vector_words(&mut words);
+
+        assert_eq!(words[0].aval, u32::MAX);
+        assert_eq!(words[0].bval, u32::MAX);
+        assert_eq!(words[1].aval, 0x1f);
+        assert_eq!(words[1].bval, 0x1f);
+    }
+
+    #[test]
+    fn logic_array_write_uses_vpi_vector_words() {
+        let signal = make_signal(
+            4,
+            &[sys::t_vpi_vecval::default()],
+            "binary-string path must not be used",
+        );
+        signal.set_logic_now(&LogicArray::from_binstr("01xz"));
+
+        let words = rustdv_vpi_stubs::last_put_vector();
+        assert_eq!(words.len(), 1);
+        assert_eq!(words[0].aval, 0b0110);
+        assert_eq!(words[0].bval, 0b0011);
     }
 }
