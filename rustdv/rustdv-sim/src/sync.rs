@@ -89,21 +89,16 @@ struct LockInner {
 impl LockInner {
     /// Pass ownership to the next waiter, or unlock.
     fn release(&self) {
-        loop {
-            let next = self.waiters.borrow_mut().pop_front();
-            match next {
-                Some(w) => {
-                    w.granted.set(true);
-                    if let Some(waker) = w.waker.borrow_mut().take() {
-                        waker.wake();
-                    }
-                    // Ownership transferred (still locked).
-                    return;
+        match self.waiters.borrow_mut().pop_front() {
+            Some(w) => {
+                w.granted.set(true);
+                if let Some(waker) = w.waker.borrow_mut().take() {
+                    waker.wake();
                 }
-                None => {
-                    self.locked.set(false);
-                    return;
-                }
+                // Ownership transferred (still locked).
+            }
+            None => {
+                self.locked.set(false);
             }
         }
     }

@@ -77,15 +77,15 @@ impl<A, B> Future for Join2<'_, A, B> {
         // Sound: the inner futures are boxed (their pinning is their own),
         // and ra/rb are plain values we intentionally move on completion.
         let this = unsafe { self.get_unchecked_mut() };
-        if this.ra.is_none() {
-            if let Poll::Ready(v) = this.a.as_mut().poll(cx) {
-                this.ra = Some(v);
-            }
+        if this.ra.is_none()
+            && let Poll::Ready(v) = this.a.as_mut().poll(cx)
+        {
+            this.ra = Some(v);
         }
-        if this.rb.is_none() {
-            if let Poll::Ready(v) = this.b.as_mut().poll(cx) {
-                this.rb = Some(v);
-            }
+        if this.rb.is_none()
+            && let Poll::Ready(v) = this.b.as_mut().poll(cx)
+        {
+            this.rb = Some(v);
         }
         if this.ra.is_some() && this.rb.is_some() {
             Poll::Ready((this.ra.take().unwrap(), this.rb.take().unwrap()))

@@ -18,6 +18,78 @@ on:
 # the pin has exactly one home and CI cannot drift from a developer's machine.
 
 jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read the pinned toolchain
+        id: pin
+        run: |
+          channel=$(sed -n 's/^[[:space:]]*channel[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' rust-toolchain.toml)
+          if [ -z "$channel" ]; then
+            echo "::error::could not read [toolchain] channel from rust-toolchain.toml"
+            exit 1
+          fi
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          echo "pinned toolchain: $channel"
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.pin.outputs.channel }}
+          components: rustfmt
+
+      - name: Confirm the pin took effect
+        run: |
+          want='${{ steps.pin.outputs.channel }}'
+          got=$(rustc --version | awk '{print $2}')
+          echo "rust-toolchain.toml wants $want; rustc reports $got"
+          if [ "$got" != "$want" ]; then
+            echo "::error::CI is running rustc $got but the repository pins $want."
+            echo "::error::Compile-fail error codes and book-sync listings are compared exactly, so they will drift."
+            exit 1
+          fi
+
+      - name: Check Rust formatting
+        run: cargo fmt --all -- --check
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read the pinned toolchain
+        id: pin
+        run: |
+          channel=$(sed -n 's/^[[:space:]]*channel[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' rust-toolchain.toml)
+          if [ -z "$channel" ]; then
+            echo "::error::could not read [toolchain] channel from rust-toolchain.toml"
+            exit 1
+          fi
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          echo "pinned toolchain: $channel"
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.pin.outputs.channel }}
+          components: clippy
+
+      - name: Confirm the pin took effect
+        run: |
+          want='${{ steps.pin.outputs.channel }}'
+          got=$(rustc --version | awk '{print $2}')
+          echo "rust-toolchain.toml wants $want; rustc reports $got"
+          if [ "$got" != "$want" ]; then
+            echo "::error::CI is running rustc $got but the repository pins $want."
+            echo "::error::Compile-fail error codes and book-sync listings are compared exactly, so they will drift."
+            exit 1
+          fi
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run Clippy
+        run: cargo clippy --workspace --all-targets
+
   # Book-sync + all figure examples (build, run vs goldens, compile-fail,
   # unit tests). Simulator tests auto-skip here (no iverilog installed).
   regress:

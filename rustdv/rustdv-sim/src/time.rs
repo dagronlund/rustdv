@@ -22,7 +22,7 @@ impl SimDuration {
         } else {
             let div = 10u64.pow((prec - exp) as u32);
             assert!(
-                n % div == 0,
+                n.is_multiple_of(div),
                 "duration {n}e{exp} is below simulator precision 1e{prec}"
             );
             SimDuration { steps: n / div }
