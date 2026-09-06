@@ -13,6 +13,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 SIM="${SIM:-icarus}"
 REPO_ROOT="$(cd ../.. && pwd)"
+export RUSTDV_TOP=probe
 
 # Scratch under one per-user root; see output/examples/sim-common/run_sim.sh
 # for why the uid is in the path.

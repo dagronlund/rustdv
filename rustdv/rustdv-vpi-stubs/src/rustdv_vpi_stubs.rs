@@ -27,9 +27,11 @@ use std::ffi::{CStr, CString};
 use std::os::raw::c_void;
 
 use rustdv_gpi_sys::{
-    t_cb_data, t_vpi_value, t_vpi_vecval, vpiBinStrVal, vpiHandle, vpiNet, vpiNoDelay, vpiSize,
-    vpiType, vpiVectorVal,
+    t_cb_data, t_vpi_value, t_vpi_vecval, vpiBinStrVal, vpiFullName, vpiHandle, vpiModule, vpiName,
+    vpiNet, vpiNoDelay, vpiSize, vpiType, vpiVectorVal,
 };
+
+const TOP_HANDLE_BASE: usize = 0x1000;
 
 struct StubCallback {
     data: t_cb_data,
@@ -43,6 +45,11 @@ struct StubSignal {
     vector_value_available: bool,
     binstr: CString,
     last_put: Vec<t_vpi_vecval>,
+}
+
+struct StubTopIterator {
+    next: usize,
+    len: usize,
 }
 
 impl Default for StubSignal {
@@ -61,6 +68,17 @@ thread_local! {
     static CALLBACKS: RefCell<Vec<*mut StubCallback>> = const { RefCell::new(Vec::new()) };
     static PROPERTY_GETS: RefCell<Vec<i32>> = const { RefCell::new(Vec::new()) };
     static SIGNAL: RefCell<StubSignal> = RefCell::new(StubSignal::default());
+    static TOP_MODULES: RefCell<Vec<CString>> = const { RefCell::new(Vec::new()) };
+}
+
+/// Configure the top-level module names returned by the unit-test VPI double.
+pub fn configure_top_modules(names: &[&str]) {
+    TOP_MODULES.with(|modules| {
+        *modules.borrow_mut() = names
+            .iter()
+            .map(|name| CString::new(*name).expect("stub top name contains NUL"))
+            .collect();
+    });
 }
 
 /// Configure the signal value returned by the unit-test VPI double.
@@ -181,21 +199,93 @@ macro_rules! stub {
 }
 
 stub! {
-    vpi_handle_by_name(a: *const i8, b: *mut c_void) -> *mut c_void;
     vpi_handle_by_index(a: *mut c_void, b: i32) -> *mut c_void;
-    vpi_iterate(a: i32, b: *mut c_void) -> *mut c_void;
-    vpi_scan(a: *mut c_void) -> *mut c_void;
-    vpi_get_str(a: i32, b: *mut c_void) -> *mut i8;
     vpi_get_time(a: *mut c_void, b: *mut c_void) -> ();
     vpi_free_object(a: *mut c_void) -> i32;
     vpi_control(a: i32) -> i32;
     vpi_printf(a: *const i8) -> i32;
 }
 
+fn top_handle(index: usize) -> vpiHandle {
+    (TOP_HANDLE_BASE + index) as vpiHandle
+}
+
+fn top_index(handle: vpiHandle) -> Option<usize> {
+    let address = handle as usize;
+    if address >= TOP_HANDLE_BASE {
+        Some(address - TOP_HANDLE_BASE)
+    } else {
+        None
+    }
+}
+
 #[unsafe(no_mangle)]
-pub extern "C" fn vpi_get(property: i32, _handle: *mut c_void) -> i32 {
+pub unsafe extern "C" fn vpi_handle_by_name(name: *const i8, scope: vpiHandle) -> vpiHandle {
+    assert!(!name.is_null(), "vpi_handle_by_name called with null name");
+    assert!(scope.is_null(), "test stub only supports root lookup");
+    let name = unsafe { CStr::from_ptr(name) };
+    TOP_MODULES.with(|modules| {
+        modules
+            .borrow()
+            .iter()
+            .position(|module| module.as_c_str() == name)
+            .map_or(std::ptr::null_mut(), top_handle)
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn vpi_iterate(type_: i32, object: vpiHandle) -> vpiHandle {
+    assert_eq!(type_, vpiModule, "test stub only supports module iteration");
+    assert!(object.is_null(), "test stub only supports root iteration");
+    TOP_MODULES.with(|modules| {
+        let len = modules.borrow().len();
+        if len == 0 {
+            std::ptr::null_mut()
+        } else {
+            Box::into_raw(Box::new(StubTopIterator { next: 0, len })).cast::<c_void>()
+        }
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn vpi_scan(iterator: vpiHandle) -> vpiHandle {
+    assert!(!iterator.is_null(), "vpi_scan called with null iterator");
+    let iterator = iterator.cast::<StubTopIterator>();
+    unsafe {
+        if (*iterator).next == (*iterator).len {
+            drop(Box::from_raw(iterator));
+            std::ptr::null_mut()
+        } else {
+            let handle = top_handle((*iterator).next);
+            (*iterator).next += 1;
+            handle
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn vpi_get_str(property: i32, handle: vpiHandle) -> *mut i8 {
+    assert!(
+        property == vpiName || property == vpiFullName,
+        "test stub only supports name properties"
+    );
+    let index = top_index(handle).expect("vpi_get_str called with a non-top handle");
+    TOP_MODULES.with(|modules| {
+        modules
+            .borrow()
+            .get(index)
+            .expect("vpi_get_str called with an unknown top handle")
+            .as_ptr()
+            .cast_mut()
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn vpi_get(property: i32, handle: *mut c_void) -> i32 {
     PROPERTY_GETS.with(|gets| gets.borrow_mut().push(property));
-    if property == vpiType {
+    if property == vpiType && top_index(handle).is_some() {
+        vpiModule
+    } else if property == vpiType {
         vpiNet
     } else if property == vpiSize {
         SIGNAL.with(|signal| signal.borrow().width)

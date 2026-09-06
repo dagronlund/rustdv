@@ -119,7 +119,9 @@ no Verilog testbench at all. The minimum is one crate with:
    defaults to 1-second precision and your nanosecond clock goes wrong.
 4. **`sim/run.sh`** — builds the crate, renames the `.so` to `.vpi`,
    compiles your RTL, runs `vvp`. Adapt the template's three variables:
-   crate name, top module name, RTL file list.
+   crate name, top module name, RTL file list. Export the selected module as
+   `RUSTDV_TOP` before starting the simulator; when it is unset, rustdv uses
+   the first top-level module returned by VPI.
 5. **Your RTL**, unmodified, in `hdl/`.
 
 Run `sim/run.sh`. When you see your smoke test pass, you have a live
