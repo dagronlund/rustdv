@@ -5,9 +5,17 @@
 //! tests fail one at a time, with the mechanism in the test's name.
 
 use std::cell::Cell;
+use std::future::{Future, poll_fn};
+use std::pin::Pin;
 use std::rc::Rc;
+use std::sync::{
+    Arc,
+    atomic::{AtomicUsize, Ordering},
+};
+use std::task::{Context, Poll, Wake, Waker};
 
 use rustdv::prelude::*;
+use rustdv::sim::phase::{PhaseFut, SimPhase, current_phase};
 
 use crate::steps_per_ns;
 
@@ -370,5 +378,207 @@ async fn trig_phase_order_within_a_step(ctx: RustdvCtx) -> Result<(), TestError>
 
     next_time_step().await;
     check!(sim_time_ns() > t0, "NextTimeStep did not advance past {t0}");
+    Ok(())
+}
+
+// Phase registrations must survive unrelated parent polls without completing.
+async fn poll_twice_then_wait(mut phase: PhaseFut) {
+    poll_fn(|cx| {
+        assert!(
+            Pin::new(&mut phase).poll(cx).is_pending(),
+            "first phase poll"
+        );
+        assert!(
+            Pin::new(&mut phase).poll(cx).is_pending(),
+            "phase completed before callback"
+        );
+        Poll::Ready(())
+    })
+    .await;
+    phase.await;
+}
+
+#[rustdv::test]
+async fn trig_phase_repoll_requires_callback(ctx: RustdvCtx) -> Result<(), TestError> {
+    Clock::new(&ctx.dut().signal("clk")?, SimDuration::ns(2)).start();
+    poll_twice_then_wait(read_write()).await;
+    assert_eq!(current_phase(), SimPhase::ReadWrite);
+    // Registered during the first callback's drain: requires a new callback.
+    poll_twice_then_wait(read_write()).await;
+    assert_eq!(current_phase(), SimPhase::ReadWrite);
+    poll_twice_then_wait(read_only()).await;
+    assert_eq!(current_phase(), SimPhase::ReadOnly);
+    for _ in 0..2 {
+        let before = rustdv::sim_time_steps();
+        poll_twice_then_wait(next_time_step()).await;
+        assert!(rustdv::sim_time_steps() > before);
+    }
+    Ok(())
+}
+
+async fn sibling_yields() {
+    for _ in 0..4 {
+        NullTrigger::new().await;
+    }
+}
+
+#[rustdv::test]
+async fn trig_phase_join_all_sibling_wakeup(ctx: RustdvCtx) -> Result<(), TestError> {
+    Clock::new(&ctx.dut().signal("clk")?, SimDuration::ns(2)).start();
+    for make in [read_write, read_only, next_time_step] {
+        let done = Cell::new(false);
+        let before = rustdv::sim_time_steps();
+        let futures: Vec<Pin<Box<dyn Future<Output = ()> + '_>>> = vec![
+            Box::pin(async {
+                make().await;
+                done.set(true);
+            }),
+            Box::pin(async {
+                sibling_yields().await;
+                assert!(!done.get(), "sibling polls completed a phase wait");
+                assert_eq!(rustdv::sim_time_steps(), before);
+            }),
+        ];
+        rustdv::sim::combinators::join_all(futures).await;
+        assert!(done.get());
+    }
+    Ok(())
+}
+
+#[derive(Default)]
+struct WakeCount(AtomicUsize);
+impl Wake for WakeCount {
+    fn wake(self: Arc<Self>) {
+        self.0.fetch_add(1, Ordering::SeqCst);
+    }
+}
+
+#[rustdv::test]
+async fn trig_phase_batch_cancellation_and_latest_waker(ctx: RustdvCtx) -> Result<(), TestError> {
+    Clock::new(&ctx.dut().signal("clk")?, SimDuration::ns(2)).start();
+    for make in [read_write, read_only, next_time_step] {
+        let old = Arc::new(WakeCount::default());
+        let latest = Arc::new(WakeCount::default());
+        let cancelled = Arc::new(WakeCount::default());
+        let old_waker = Waker::from(old.clone());
+        let latest_waker = Waker::from(latest.clone());
+        let mut survivor = make();
+        let mut second = make();
+        assert!(
+            Pin::new(&mut survivor)
+                .poll(&mut Context::from_waker(&old_waker))
+                .is_pending()
+        );
+        assert!(
+            Pin::new(&mut survivor)
+                .poll(&mut Context::from_waker(&latest_waker))
+                .is_pending()
+        );
+        assert!(
+            Pin::new(&mut second)
+                .poll(&mut Context::from_waker(&latest_waker))
+                .is_pending()
+        );
+        {
+            let waker = Waker::from(cancelled.clone());
+            let mut doomed = make();
+            assert!(
+                Pin::new(&mut doomed)
+                    .poll(&mut Context::from_waker(&waker))
+                    .is_pending()
+            );
+        }
+        assert_eq!(Arc::strong_count(&cancelled), 1, "cancelled waker retained");
+        make().await; // A live task waker drives the same callback batch.
+        assert_eq!(old.0.load(Ordering::SeqCst), 0);
+        assert_eq!(latest.0.load(Ordering::SeqCst), 2);
+        assert_eq!(cancelled.0.load(Ordering::SeqCst), 0);
+        assert!(
+            Pin::new(&mut survivor)
+                .poll(&mut Context::from_waker(&latest_waker))
+                .is_ready()
+        );
+        assert!(
+            Pin::new(&mut second)
+                .poll(&mut Context::from_waker(&latest_waker))
+                .is_ready()
+        );
+    }
+    Ok(())
+}
+
+#[derive(Component, Default)]
+struct PhaseWakeSibling;
+impl Component for PhaseWakeSibling {
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let clk = ctx.dut().signal("clk")?;
+        clk.falling_edge().await;
+        sibling_yields().await;
+        Ok(())
+    }
+}
+
+#[rustdv::test]
+#[derive(Component, Default)]
+struct TrigPhaseComponentSettledData {
+    #[component]
+    sibling: RustdvComp,
+}
+impl Component for TrigPhaseComponentSettledData {
+    fn build(&mut self, _ctx: &mut RustdvCtx) {
+        self.sibling = PhaseWakeSibling::new_comp();
+    }
+    async fn run(&mut self, ctx: &mut RustdvCtx) -> Result<(), TestError> {
+        let _objection = ctx.raise_objection("phase sampling");
+        let clk = ctx.dut().signal("clk")?;
+        let input = ctx.dut().signal("comb_in")?;
+        let output = ctx.dut().signal("comb_out")?;
+        Clock::new(&clk, SimDuration::ns(2)).start();
+        clk.falling_edge().await;
+        input.set_u64(0x69);
+        read_write().await;
+        assert_eq!(current_phase(), SimPhase::ReadWrite);
+        assert_eq!(
+            input.get_u64().unwrap(),
+            0x69,
+            "writes must precede waiters"
+        );
+        read_only().await;
+        assert_eq!(current_phase(), SimPhase::ReadOnly);
+        assert_eq!(output.get_u64().unwrap(), 0x69 ^ 0xA5);
+        Ok(())
+    }
+}
+
+#[rustdv::test]
+async fn trig_phase_cancel_preserves_scheduled_write(ctx: RustdvCtx) -> Result<(), TestError> {
+    let sig = ctx.dut().signal("byte_sig")?;
+    sig.set_u64(0x42);
+    let mut doomed = read_write();
+    poll_fn(|cx| {
+        assert!(Pin::new(&mut doomed).poll(cx).is_pending());
+        Poll::Ready(())
+    })
+    .await;
+    drop(doomed);
+    read_only().await;
+    assert_eq!(sig.get_u64().unwrap(), 0x42);
+    Ok(())
+}
+
+#[rustdv::test]
+async fn trig_phase_read_only_rejects_illegal_operations(ctx: RustdvCtx) -> Result<(), TestError> {
+    let sig = ctx.dut().signal("byte_sig")?;
+    read_only().await;
+    for make in [read_write, read_only] {
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let mut future = make();
+            let _ = Pin::new(&mut future).poll(&mut Context::from_waker(Waker::noop()));
+        }));
+        assert!(result.is_err(), "illegal phase transition accepted");
+    }
+    assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| sig.set_u64(1))).is_err());
+    assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| sig.set_u64_now(1))).is_err());
+    assert_eq!(current_phase(), SimPhase::ReadOnly);
     Ok(())
 }

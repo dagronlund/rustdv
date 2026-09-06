@@ -5,5 +5,5 @@
   "env": { "RUSTDV_TESTCASE": "trig" },
   "skip_if_missing": "iverilog",
   "expect_exit": 0,
-  "expect_in_output": ["REGRESSION: PASS"]
+  "expect_in_output": ["REGRESSION: PASS", "TrigPhaseComponentSettledData PASSED", "trig_phase_repoll_requires_callback PASSED", "trig_phase_join_all_sibling_wakeup PASSED", "trig_phase_batch_cancellation_and_latest_waker PASSED", "trig_phase_cancel_preserves_scheduled_write PASSED", "trig_phase_read_only_rejects_illegal_operations PASSED"]
 }

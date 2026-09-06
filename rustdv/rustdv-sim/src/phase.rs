@@ -11,13 +11,13 @@
 use std::cell::{Cell, RefCell};
 use std::future::Future;
 use std::pin::Pin;
-use std::rc::Rc;
-use std::task::{Context, Poll, Waker};
+use std::rc::{Rc, Weak};
+use std::task::{Context, Poll};
 
 use rustdv_gpi as gpi;
 use rustdv_gpi::{BigUint, LogicArray};
 
-use crate::executor;
+use crate::{executor, triggers::TrigShared};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum SimPhase {
@@ -39,11 +39,11 @@ pub(crate) enum WriteVal {
 
 struct Hub {
     phase: Cell<SimPhase>,
-    rw_waiters: RefCell<Vec<Waker>>,
+    rw_waiters: RefCell<Vec<Weak<TrigShared>>>,
     rw_cb: RefCell<Option<gpi::CallbackHandle>>,
-    ro_waiters: RefCell<Vec<Waker>>,
+    ro_waiters: RefCell<Vec<Weak<TrigShared>>>,
     ro_cb: RefCell<Option<gpi::CallbackHandle>>,
-    nt_waiters: RefCell<Vec<Waker>>,
+    nt_waiters: RefCell<Vec<Weak<TrigShared>>>,
     nt_cb: RefCell<Option<gpi::CallbackHandle>>,
     writes: RefCell<Vec<(gpi::LogicHandle, WriteVal)>>,
 }
@@ -160,6 +160,17 @@ pub(crate) fn schedule(h: gpi::LogicHandle, v: WriteVal) {
 // Priming and firing
 // ---------------------------------------------------------------------------
 
+// Detach the batch before waking tasks: waits created during the executor
+// drain belong to a subsequent callback. Weak entries do not retain cancelled
+// futures or their task wakers, and cancellation never removes shared work.
+fn fire_waiters(waiters: &RefCell<Vec<Weak<TrigShared>>>) {
+    for waiter in std::mem::take(&mut *waiters.borrow_mut()) {
+        if let Some(shared) = waiter.upgrade() {
+            shared.fire();
+        }
+    }
+}
+
 fn prime_rw(hub: &Rc<Hub>) {
     if hub.rw_cb.borrow().is_some() {
         return;
@@ -173,9 +184,7 @@ fn prime_rw(hub: &Rc<Hub>) {
         for (sig, val) in &writes {
             apply_write(*sig, val);
         }
-        for w in h.rw_waiters.borrow_mut().drain(..) {
-            w.wake();
-        }
+        fire_waiters(&h.rw_waiters);
         executor::current().run_until_idle();
         h.phase.set(SimPhase::Normal);
     }));
@@ -190,9 +199,7 @@ fn prime_ro(hub: &Rc<Hub>) {
     let cb = gpi::register_read_only(Box::new(move || {
         h.ro_cb.borrow_mut().take();
         h.phase.set(SimPhase::ReadOnly);
-        for w in h.ro_waiters.borrow_mut().drain(..) {
-            w.wake();
-        }
+        fire_waiters(&h.ro_waiters);
         executor::current().run_until_idle();
         h.phase.set(SimPhase::Normal);
     }));
@@ -206,9 +213,7 @@ fn prime_nt(hub: &Rc<Hub>) {
     let h = hub.clone();
     let cb = gpi::register_next_sim_time(Box::new(move || {
         h.nt_cb.borrow_mut().take();
-        for w in h.nt_waiters.borrow_mut().drain(..) {
-            w.wake();
-        }
+        fire_waiters(&h.nt_waiters);
         executor::current().run_until_idle();
     }));
     *hub.nt_cb.borrow_mut() = Some(cb);
@@ -227,37 +232,43 @@ enum PhaseKind {
 
 pub struct PhaseFut {
     kind: PhaseKind,
-    registered: bool,
+    shared: Option<Rc<TrigShared>>,
 }
 
 impl Future for PhaseFut {
     type Output = ();
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
-        if self.registered {
-            return Poll::Ready(());
+        if let Some(shared) = &self.shared {
+            if shared.fired() {
+                return Poll::Ready(());
+            }
+            shared.set_waker(cx.waker().clone());
+            return Poll::Pending;
         }
         let hub = hub();
+        let shared = TrigShared::new();
+        shared.set_waker(cx.waker().clone());
         match self.kind {
             PhaseKind::ReadWrite => {
                 if hub.phase.get() == SimPhase::ReadOnly {
                     panic!("awaiting ReadWrite from the ReadOnly phase is illegal (cocotb rule)");
                 }
-                hub.rw_waiters.borrow_mut().push(cx.waker().clone());
+                hub.rw_waiters.borrow_mut().push(Rc::downgrade(&shared));
                 prime_rw(&hub);
             }
             PhaseKind::ReadOnly => {
                 if hub.phase.get() == SimPhase::ReadOnly {
                     panic!("awaiting ReadOnly from the ReadOnly phase is illegal (cocotb rule)");
                 }
-                hub.ro_waiters.borrow_mut().push(cx.waker().clone());
+                hub.ro_waiters.borrow_mut().push(Rc::downgrade(&shared));
                 prime_ro(&hub);
             }
             PhaseKind::NextTimeStep => {
-                hub.nt_waiters.borrow_mut().push(cx.waker().clone());
+                hub.nt_waiters.borrow_mut().push(Rc::downgrade(&shared));
                 prime_nt(&hub);
             }
         }
-        self.registered = true;
+        self.shared = Some(shared);
         Poll::Pending
     }
 }
@@ -266,7 +277,7 @@ impl Future for PhaseFut {
 pub fn read_write() -> PhaseFut {
     PhaseFut {
         kind: PhaseKind::ReadWrite,
-        registered: false,
+        shared: None,
     }
 }
 
@@ -274,7 +285,7 @@ pub fn read_write() -> PhaseFut {
 pub fn read_only() -> PhaseFut {
     PhaseFut {
         kind: PhaseKind::ReadOnly,
-        registered: false,
+        shared: None,
     }
 }
 
@@ -282,6 +293,6 @@ pub fn read_only() -> PhaseFut {
 pub fn next_time_step() -> PhaseFut {
     PhaseFut {
         kind: PhaseKind::NextTimeStep,
-        registered: false,
+        shared: None,
     }
 }
