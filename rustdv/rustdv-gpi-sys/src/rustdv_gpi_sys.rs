@@ -40,6 +40,7 @@ pub const vpiTimePrecision: PLI_INT32 = 12;
 // ---------------------------------------------------------------------------
 // Object type codes (vpi_get(vpiType, ...) results / vpi_iterate types)
 // ---------------------------------------------------------------------------
+// Verilog variable types (vpi_user.h)
 pub const vpiConstant: PLI_INT32 = 7;
 pub const vpiIntegerVar: PLI_INT32 = 25;
 pub const vpiMemory: PLI_INT32 = 29;
@@ -54,7 +55,12 @@ pub const vpiLongIntVar: PLI_INT32 = 610;
 pub const vpiShortIntVar: PLI_INT32 = 611;
 pub const vpiIntVar: PLI_INT32 = 612;
 pub const vpiByteVar: PLI_INT32 = 614;
+pub const vpiStringVar: PLI_INT32 = 616;
 pub const vpiEnumVar: PLI_INT32 = 617;
+pub const vpiStructVar: PLI_INT32 = 618;
+pub const vpiUnionVar: PLI_INT32 = 619;
+/// Iterate members of a struct or union.
+pub const vpiMember: PLI_INT32 = 742;
 pub const vpiBitVar: PLI_INT32 = 620;
 
 // ---------------------------------------------------------------------------

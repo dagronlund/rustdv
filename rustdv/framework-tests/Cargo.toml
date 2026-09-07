@@ -18,3 +18,7 @@ rustdv = { path = ".." }
 
 [dev-dependencies]
 rustdv-vpi-stubs = { path = "../rustdv-vpi-stubs" }
+
+[features]
+# Enabled by run.sh only for Verilator's unpacked aggregate VPI tests.
+verilator-types = []

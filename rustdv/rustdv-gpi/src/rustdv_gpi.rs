@@ -84,6 +84,8 @@ pub enum ValueError {
     FourState(String),
     /// The simulator did not supply the requested value representation.
     Unavailable,
+    /// VPI strings cannot contain embedded NUL bytes.
+    InteriorNul,
     Width {
         want: u32,
         have: usize,
@@ -94,7 +96,8 @@ impl fmt::Display for ValueError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ValueError::FourState(s) => write!(f, "value '{s}' has x/z bits"),
-            ValueError::Unavailable => write!(f, "simulator did not return a vector value"),
+            ValueError::Unavailable => write!(f, "simulator did not return the requested value"),
+            ValueError::InteriorNul => write!(f, "VPI string contains an embedded NUL byte"),
             ValueError::Width { want, have } => {
                 write!(f, "width mismatch: want {want}, have {have}")
             }
@@ -141,6 +144,10 @@ impl ObjHandle {
 pub enum AnyHandle {
     Hierarchy(HierarchyHandle),
     Logic(LogicHandle),
+    Real(RealHandle),
+    String(StringHandle),
+    Struct(AggregateHandle),
+    Union(AggregateHandle),
     Other(ObjHandle),
 }
 
@@ -148,6 +155,10 @@ impl AnyHandle {
     pub fn classify(h: ObjHandle) -> AnyHandle {
         match h.get(sys::vpiType) {
             sys::vpiModule => AnyHandle::Hierarchy(HierarchyHandle { h }),
+            sys::vpiRealVar => AnyHandle::Real(RealHandle { h }),
+            sys::vpiStringVar => AnyHandle::String(StringHandle { h }),
+            sys::vpiStructVar => AnyHandle::Struct(AggregateHandle { h }),
+            sys::vpiUnionVar => AnyHandle::Union(AggregateHandle { h }),
             sys::vpiNet
             | sys::vpiReg
             | sys::vpiIntegerVar
@@ -169,35 +180,58 @@ impl AnyHandle {
         }
     }
 
+    fn object(self) -> ObjHandle {
+        match self {
+            Self::Hierarchy(h) => h.h,
+            Self::Logic(h) => h.h,
+            Self::Real(h) => h.h,
+            Self::String(h) => h.h,
+            Self::Struct(h) | Self::Union(h) => h.h,
+            Self::Other(h) => h,
+        }
+    }
+
+    fn wrong_kind(self, expected: &'static str) -> HandleError {
+        let h = self.object();
+        HandleError::WrongKind {
+            name: h.get_str(sys::vpiFullName),
+            expected,
+            actual: format!("vpiType {}", h.get(sys::vpiType)),
+        }
+    }
+
     pub fn as_logic(self) -> Result<LogicHandle, HandleError> {
         match self {
-            AnyHandle::Logic(l) => Ok(l),
-            AnyHandle::Hierarchy(h) => Err(HandleError::WrongKind {
-                name: h.full_name(),
-                expected: "signal",
-                actual: "module".into(),
-            }),
-            AnyHandle::Other(o) => Err(HandleError::WrongKind {
-                name: o.get_str(sys::vpiFullName),
-                expected: "signal",
-                actual: format!("vpiType {}", o.get(sys::vpiType)),
-            }),
+            Self::Logic(h) => Ok(h),
+            other => Err(other.wrong_kind("signal")),
         }
     }
 
     pub fn as_hierarchy(self) -> Result<HierarchyHandle, HandleError> {
         match self {
-            AnyHandle::Hierarchy(h) => Ok(h),
-            AnyHandle::Logic(l) => Err(HandleError::WrongKind {
-                name: l.full_name(),
-                expected: "module",
-                actual: "signal".into(),
-            }),
-            AnyHandle::Other(o) => Err(HandleError::WrongKind {
-                name: o.get_str(sys::vpiFullName),
-                expected: "module",
-                actual: format!("vpiType {}", o.get(sys::vpiType)),
-            }),
+            Self::Hierarchy(h) => Ok(h),
+            other => Err(other.wrong_kind("module")),
+        }
+    }
+
+    pub fn as_real(self) -> Result<RealHandle, HandleError> {
+        match self {
+            Self::Real(h) => Ok(h),
+            other => Err(other.wrong_kind("real")),
+        }
+    }
+
+    pub fn as_string(self) -> Result<StringHandle, HandleError> {
+        match self {
+            Self::String(h) => Ok(h),
+            other => Err(other.wrong_kind("string")),
+        }
+    }
+
+    pub fn as_aggregate(self) -> Result<AggregateHandle, HandleError> {
+        match self {
+            Self::Struct(h) | Self::Union(h) => Ok(h),
+            other => Err(other.wrong_kind("struct or union")),
         }
     }
 }
@@ -267,6 +301,154 @@ impl HierarchyHandle {
             }
         }
         out
+    }
+
+    pub fn real(&self, name: &str) -> Result<RealHandle, HandleError> {
+        self.child(name)?.as_real()
+    }
+    pub fn string(&self, name: &str) -> Result<StringHandle, HandleError> {
+        self.child(name)?.as_string()
+    }
+    pub fn aggregate(&self, name: &str) -> Result<AggregateHandle, HandleError> {
+        self.child(name)?.as_aggregate()
+    }
+}
+
+/// A simulator real variable.
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct RealHandle {
+    h: ObjHandle,
+}
+
+impl RealHandle {
+    pub fn name(&self) -> String {
+        self.h.get_str(sys::vpiName)
+    }
+    pub fn full_name(&self) -> String {
+        self.h.get_str(sys::vpiFullName)
+    }
+    pub fn get(&self) -> Result<f64, ValueError> {
+        let mut value = sys::t_vpi_value {
+            format: sys::vpiRealVal,
+            value: sys::u_vpi_value_union { real: 0.0 },
+        };
+        unsafe {
+            sys::vpi_get_value(self.h.0, &mut value);
+            if value.format != sys::vpiRealVal {
+                return Err(ValueError::Unavailable);
+            }
+            Ok(value.value.real)
+        }
+    }
+    pub fn set_now(&self, value: f64) {
+        let mut value = sys::t_vpi_value {
+            format: sys::vpiRealVal,
+            value: sys::u_vpi_value_union { real: value },
+        };
+        unsafe {
+            sys::vpi_put_value(self.h.0, &mut value, std::ptr::null_mut(), sys::vpiNoDelay);
+        }
+    }
+}
+
+/// A simulator string variable.
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct StringHandle {
+    h: ObjHandle,
+}
+
+impl StringHandle {
+    pub fn name(&self) -> String {
+        self.h.get_str(sys::vpiName)
+    }
+    pub fn full_name(&self) -> String {
+        self.h.get_str(sys::vpiFullName)
+    }
+    pub fn get(&self) -> Result<String, ValueError> {
+        let mut value = sys::t_vpi_value {
+            format: sys::vpiStringVal,
+            value: sys::u_vpi_value_union {
+                str_: std::ptr::null_mut(),
+            },
+        };
+        unsafe {
+            sys::vpi_get_value(self.h.0, &mut value);
+            if value.format != sys::vpiStringVal {
+                return Err(ValueError::Unavailable);
+            }
+            if value.value.str_.is_null() {
+                return Err(ValueError::Unavailable);
+            }
+            Ok(CStr::from_ptr(value.value.str_)
+                .to_string_lossy()
+                .into_owned())
+        }
+    }
+    pub fn set_now(&self, value: &str) -> Result<(), ValueError> {
+        let text = CString::new(value).map_err(|_| ValueError::InteriorNul)?;
+        let mut value = sys::t_vpi_value {
+            format: sys::vpiStringVal,
+            value: sys::u_vpi_value_union {
+                str_: text.as_ptr().cast_mut(),
+            },
+        };
+        unsafe {
+            sys::vpi_put_value(self.h.0, &mut value, std::ptr::null_mut(), sys::vpiNoDelay);
+        }
+        Ok(())
+    }
+}
+
+/// An unpacked struct or union. Read and write through its typed members.
+#[derive(Copy, Clone)]
+pub struct AggregateHandle {
+    h: ObjHandle,
+}
+
+impl AggregateHandle {
+    pub fn name(&self) -> String {
+        self.h.get_str(sys::vpiName)
+    }
+    pub fn full_name(&self) -> String {
+        self.h.get_str(sys::vpiFullName)
+    }
+    pub fn child(&self, name: &str) -> Result<AnyHandle, HandleError> {
+        let path =
+            CString::new(format!("{}.{}", self.full_name(), name)).expect("NUL in member name");
+        let raw = unsafe { sys::vpi_handle_by_name(path.as_ptr(), std::ptr::null_mut()) };
+        ObjHandle::new(raw)
+            .map(AnyHandle::classify)
+            .ok_or_else(|| HandleError::NotFound {
+                name: name.into(),
+                scope: self.full_name(),
+            })
+    }
+    pub fn children(&self) -> Vec<AnyHandle> {
+        let mut out = Vec::new();
+        unsafe {
+            let it = sys::vpi_iterate(sys::vpiMember, self.h.0);
+            if !it.is_null() {
+                while let Some(h) = ObjHandle::new(sys::vpi_scan(it)) {
+                    out.push(AnyHandle::classify(h));
+                }
+            }
+        }
+        out
+    }
+    pub fn signal(&self, name: &str) -> Result<LogicHandle, HandleError> {
+        self.child(name)?.as_logic()
+    }
+}
+
+impl AggregateHandle {
+    pub fn real(&self, name: &str) -> Result<RealHandle, HandleError> {
+        self.child(name)?.as_real()
+    }
+    pub fn string(&self, name: &str) -> Result<StringHandle, HandleError> {
+        self.child(name)?.as_string()
+    }
+    pub fn aggregate(&self, name: &str) -> Result<AggregateHandle, HandleError> {
+        self.child(name)?.as_aggregate()
     }
 }
 
@@ -1041,6 +1223,64 @@ mod callback_tests {
 #[cfg(test)]
 mod handle_tests {
     use super::*;
+
+    #[test]
+    fn sv_integral_variables_support_vector_access() {
+        for object_type in [
+            sys::vpiLongIntVar,
+            sys::vpiShortIntVar,
+            sys::vpiIntVar,
+            sys::vpiByteVar,
+            sys::vpiEnumVar,
+            sys::vpiBitVar,
+        ] {
+            rustdv_vpi_stubs::configure_signal(
+                64,
+                &[
+                    sys::t_vpi_vecval {
+                        aval: 0x89ab_cdef,
+                        bval: 0,
+                    },
+                    sys::t_vpi_vecval {
+                        aval: 0x1234_5678,
+                        bval: 0,
+                    },
+                ],
+                "0",
+            );
+            rustdv_vpi_stubs::configure_signal_type(object_type);
+            let signal = AnyHandle::classify(ObjHandle(1usize as sys::vpiHandle))
+                .as_logic()
+                .unwrap();
+            assert_eq!(signal.size(), 64);
+            assert_eq!(signal.get_u64(), Ok(0x1234_5678_89ab_cdef));
+            signal.set_u64_now(0xfedc_ba98_7654_3210);
+            let words = rustdv_vpi_stubs::last_put_vector();
+            assert_eq!(words[0].aval, 0x7654_3210);
+            assert_eq!(words[1].aval, 0xfedc_ba98);
+        }
+        rustdv_vpi_stubs::configure_signal_type(sys::vpiNet);
+    }
+
+    #[test]
+    fn non_logic_variables_have_typed_handles() {
+        for object_type in [
+            sys::vpiRealVar,
+            sys::vpiStringVar,
+            sys::vpiStructVar,
+            sys::vpiUnionVar,
+        ] {
+            rustdv_vpi_stubs::configure_signal_type(object_type);
+            assert!(matches!(
+                AnyHandle::classify(ObjHandle(1usize as sys::vpiHandle)),
+                AnyHandle::Real(_)
+                    | AnyHandle::String(_)
+                    | AnyHandle::Struct(_)
+                    | AnyHandle::Union(_)
+            ));
+        }
+        rustdv_vpi_stubs::configure_signal_type(sys::vpiNet);
+    }
 
     #[test]
     fn top_selection_prefers_explicit_name_and_otherwise_uses_first_root() {

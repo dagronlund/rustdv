@@ -31,7 +31,9 @@ pub mod triggers;
 pub use clock::Clock;
 pub use combinators::{Either, TimeoutError, first2, join_all, join2, with_timeout};
 pub use executor::{Executor, TaskError, TaskHandle, TaskId, TaskState, spawn, spawn_named};
-pub use handle::{AnyHandle, HierarchyHandle, LogicHandle};
+pub use handle::{
+    AggregateHandle, HierarchyHandle, LogicHandle, RealHandle, SimHandle, StringHandle,
+};
 pub use path::RustdvPath;
 pub use phase::{next_time_step, read_only, read_write};
 pub use queue::Queue;

@@ -1412,3 +1412,40 @@ installer, verified its already-installed path, and passed `custom/sim-triggers`
 with the original phase implementation. Workflow YAML and shell syntax checks
 pass. The macOS build supplies the Apple executable-path header through CFLAGS
 because the release driver does not include its declaration.
+
+## 2026-09-06 — typed VPI real/string and aggregate handles
+
+Added `RealHandle` and `StringHandle` with immediate reads, scheduled writes,
+and immediate writes. The shared write scheduler preserves ReadOnly guards for
+all value types; strings own their data and reject embedded NUL bytes.
+`AggregateHandle` exposes named and iterated members of unpacked structs/unions,
+including nested aggregates. The facade exports these handles, and wrong-kind
+lookups return `HandleError`.
+
+Six `sv_types_` simulator tests run through the Verilator-only feature and
+`custom/sim-sv-types-verilator` regression entry. Verified on the active macOS
+Verilator development build: real precision, string round trips, scheduling,
+ReadOnly guards, mixed/nested struct members, and union aliasing. Existing
+Verilator scheduler regression and Icarus signal tests also passed, along with
+workspace unit/doc tests, Clippy (existing warnings), and book-listing checks.
+API examples and the unpacked-aggregate VPI requirement are documented in
+`rustdv/framework-tests/README.md`.
+
+## 2026-09-06 — simulator handle modules
+
+Moved `HierarchyHandle`, `LogicHandle`, `RealHandle`, `StringHandle`, and
+`AggregateHandle` into individual modules under `rustdv-sim/src/handle/`.
+`AnyHandle` remains in `handle.rs`, which re-exports all concrete handles and
+`top_module` so existing imports keep working. Preserved the logic-handle
+`From` conversion and lookup behavior. Workspace tests and Clippy pass
+(existing warnings only).
+
+## 2026-09-06 — fallible simulator handle conversions
+
+Changed the five `SimHandle::as_*` conversions from `Option` to `Result`.
+Wrong-kind errors include the object name and expected/actual kinds; the
+metadata-free `Other` variant reports an unknown name. Updated the SV tests
+and API examples for the `SimHandle` rename and aggregate child conversions.
+Added simulator assertions for all five wrong-kind conversion paths, successful
+conversions, and `Other` rejection. Workspace tests, Clippy (existing warnings),
+and book-listing checks pass.

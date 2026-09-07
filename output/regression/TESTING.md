@@ -218,3 +218,12 @@ transcripts**?" — useful when editing the manuscript. `regress.py` answers
 "did anything change since the **last blessed state**?" — that's the
 regression guard. check.sh compares against prose that may contain errata;
 regress.py compares against reality you approved.
+
+### Verilator typed variables
+
+`custom/sim-sv-types-verilator` runs `sv_types_` with the runner's
+`verilator-types` feature. It exercises real/string VPI reads and writes,
+scheduled-write timing, ReadOnly rejection, unpacked struct/union member
+iteration, nested lookup, and union aliasing. See
+[`rustdv/framework-tests/README.md`](../../rustdv/framework-tests/README.md)
+for the API and simulator capability requirement.

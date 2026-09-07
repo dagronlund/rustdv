@@ -35,6 +35,7 @@
 //! | `conc_` | [`concurrency`] | the D82 family, against real time |
 //! | `elab_` | [`elaboration`] | unconnected ports fail before the run phase |
 //! | `runner_` | [`runner`] | timeouts, `expect_error`, per-test freshness |
+//! | `sv_types_` | `sv_types` (Verilator feature) | real/string writes and aggregate members |
 //! | `callback_stress_` | [`callback_lifecycle`] | fired one-shot handles reach an RSS plateau |
 //!
 //! The DUT is `hdl/probe.sv`: a clock, signals of known widths that nothing
@@ -77,6 +78,8 @@ pub mod concurrency;
 pub mod elaboration;
 pub mod runner;
 pub mod signals;
+#[cfg(feature = "verilator-types")]
+pub mod sv_types;
 pub mod triggers;
 
 #[cfg(test)]
