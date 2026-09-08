@@ -64,7 +64,7 @@ git clone https://github.com/rustdv/rustdv.git
 cd rustdv
 sim/run_smoke.sh icarus      # checks the simulator alone   → SMOKE: PASS
 sim/run_rustdv.sh            # full Rust testbench on TinyALU → REGRESSION: PASS
-cd rustdv && cargo test      # unit tests, no simulator      → all green
+cargo test --workspace       # unit tests, no simulator      → all green
 ```
 
 If all three pass, everything you need works. If one fails, fix it now —

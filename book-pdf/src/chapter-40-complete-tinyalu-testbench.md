@@ -141,7 +141,7 @@ The comparison loop zips commands against results, and a zip cannot complain abo
 # Figure 6: The shipped testbench running
 
       0.00ns INFO     rustdv: found 2 test(s), RUSTDV_RANDOM_SEED=1
-      0.00ns INFO     running RandomTest (1/2)  [tinyalu_tb/src/tinyalu_tb.rs:77]
+      0.00ns INFO     running RandomTest (1/2)  [rustdv/tinyalu_tb/src/tinyalu_tb.rs:77]
      70.00ns INFO     [RandomTest.inner.env.result_mon]: result_monitor: AluResult { result: 296 }
      70.00ns INFO     [RandomTest.inner.env.cmd_mon]: cmd_monitor: AluCommand { a: 193, b: 103, op: Add }
      90.00ns INFO     [RandomTest.inner.env.result_mon]: result_monitor: AluResult { result: 10 }
@@ -206,7 +206,7 @@ The comparison loop zips commands against results, and a zip cannot complain abo
     630.00ns INFO     [RandomTest.inner.env.scoreboard]: scoreboard: 20 compared, 0 mismatches
     630.00ns INFO     [RandomTest.inner.env.coverage]: coverage: Add=5 And=5 Mul=5 Xor=5
     630.00ns INFO     RandomTest PASSED
-    630.00ns INFO     running MaxTest (2/2)  [tinyalu_tb/src/tinyalu_tb.rs:92]
+    630.00ns INFO     running MaxTest (2/2)  [rustdv/tinyalu_tb/src/tinyalu_tb.rs:92]
     700.00ns INFO     [MaxTest.inner.env.result_mon]: result_monitor: AluResult { result: 510 }
     700.00ns INFO     [MaxTest.inner.env.cmd_mon]: cmd_monitor: AluCommand { a: 255, b: 255, op: Add }
     720.00ns INFO     [MaxTest.inner.env.result_mon]: result_monitor: AluResult { result: 255 }
