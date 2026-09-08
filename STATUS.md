@@ -1352,3 +1352,21 @@ same abstraction and is no longer Linux-only.
 The macro surface is unchanged; parsing now handles Rust fields, attributes,
 types, generics, and where clauses structurally. D119 records that the Path B
 zero-dependency constraint is retired.
+
+## All crates use Rust edition 2024 (2026-08-29)
+
+Every framework, example, and compile-fail package manifest now declares
+edition 2024. The migration makes foreign blocks explicitly `unsafe`, wraps
+`no_mangle` in `unsafe(...)`, and uses `+ use<>` on the three TinyALU BFM task
+factories so their spawned futures capture no borrowed input lifetime.
+
+The chapter 19 listings and explanation match the migrated BFM. Generated Rust
+Playground links now select edition 2024, and their generator refreshes existing
+links as well as creating the column. Rustfmt remains on its 2021 *style*
+edition so a language-edition change does not rewrite the book's source figures.
+
+Framework tests: 118/0. Compile-fail tests: 21/0. The full available regression
+reported 221 passes; Icarus entries were skipped because `iverilog` is absent.
+The lone sandbox failure, callback RSS sampling, passed outside the sandbox at
+48 KiB growth over one million callbacks (16 MiB limit). Other available
+Verilator regressions passed.

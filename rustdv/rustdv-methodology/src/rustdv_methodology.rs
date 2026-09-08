@@ -53,25 +53,25 @@ pub mod sequence;
 pub mod shared;
 
 pub use analysis::{AnalysisBus, PublishExport, SubscribeExport};
-pub use channel::{channel, Receiver, Sender, TlmEmpty, TlmError, TlmFull};
+pub use channel::{Receiver, Sender, TlmEmpty, TlmError, TlmFull, channel};
 pub use component::{
-    build_all, check_all, check_connections, connect_all, end_of_elaboration_all, extract_all,
-    final_all, print_hierarchy, report_all, run_all, run_component_test, run_extract_check_report,
-    start_all, start_of_simulation_all, unconnected_ports, Active, CheckSink, Component,
-    ComponentNode, DynPhases, RustdvCtx,
+    Active, CheckSink, Component, ComponentNode, DynPhases, RustdvCtx, build_all, check_all,
+    check_connections, connect_all, end_of_elaboration_all, extract_all, final_all,
+    print_hierarchy, report_all, run_all, run_component_test, run_extract_check_report, start_all,
+    start_of_simulation_all, unconnected_ports,
 };
 pub use config::{ConfigDb, ConfigError};
 pub use error::TestError;
-pub use factory::{ComponentReg, Factory, Maker, RustdvComp, COMPONENT_REGISTRATIONS};
+pub use factory::{COMPONENT_REGISTRATIONS, ComponentReg, Factory, Maker, RustdvComp};
 pub use fifo::{GetExport, PeekExport, PutExport, TapExport, TlmFifo};
 pub use objection::{ObjectionGuard, ObjectionRegistry};
 pub use port::{
-    bind, ConnectError, GetIf, GetPort, PeekIf, PeekPort, Port, PortField, PortInfo, PortName,
-    PortOwner, PublishIf, PublishPort, PutIf, PutPort, SinkHandle, SubscribePort, Subscriber,
+    ConnectError, GetIf, GetPort, PeekIf, PeekPort, Port, PortField, PortInfo, PortName, PortOwner,
+    PublishIf, PublishPort, PutIf, PutPort, SinkHandle, SubscribePort, Subscriber, bind,
 };
 pub use sequence::{
-    clear_seq_overrides, create_seq, set_seq_override, set_sequence_seed, DynSequence,
-    ResponseQueue, RustdvSeq, SeqCtx, SeqError, SeqItem, SeqItemExport, SeqItemIf, SeqItemPort,
-    Sequence, Sequencer, TxnId,
+    DynSequence, ResponseQueue, RustdvSeq, SeqCtx, SeqError, SeqItem, SeqItemExport, SeqItemIf,
+    SeqItemPort, Sequence, Sequencer, TxnId, clear_seq_overrides, create_seq, set_seq_override,
+    set_sequence_seed,
 };
 pub use shared::RustdvShared;

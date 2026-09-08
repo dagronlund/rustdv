@@ -52,7 +52,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::component::{Component, ComponentNode};
-use crate::port::{bind_or_panic, sink_of, PortName, PortOwner, PublishIf, SinkHandle};
+use crate::port::{PortName, PortOwner, PublishIf, SinkHandle, bind_or_panic, sink_of};
 
 // ===========================================================================
 // The hub

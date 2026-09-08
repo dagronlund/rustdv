@@ -1,7 +1,7 @@
 [package]
 name = "tinyalu_tb"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 description = "The worked example (design-doc §7): full rustdv testbench for the book's TinyALU."
 license = "MIT OR Apache-2.0"
 

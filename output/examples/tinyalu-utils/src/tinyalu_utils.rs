@@ -130,7 +130,7 @@ impl TinyAluBfm {
     }
 
     // Chapter 19, Figure 5: Monitoring the result bus
-    fn result_mon(&self) -> impl std::future::Future<Output = ()> {
+    fn result_mon(&self) -> impl std::future::Future<Output = ()> + use<> {
         let (clk, done, result) = (self.clk, self.done, self.result);
         let queue = self.result_mon_queue.clone();
         async move {
@@ -147,7 +147,7 @@ impl TinyAluBfm {
     }
 
     // Chapter 19, Figure 6: Monitoring the command signals
-    fn cmd_mon(&self) -> impl std::future::Future<Output = ()> {
+    fn cmd_mon(&self) -> impl std::future::Future<Output = ()> + use<> {
         let (clk, start, a, b, op) = (self.clk, self.start, self.a, self.b, self.op);
         let queue = self.cmd_mon_queue.clone();
         async move {
@@ -165,7 +165,7 @@ impl TinyAluBfm {
     }
 
     // Chapter 19, Figure 7: Driving commands on the falling edge of clk
-    fn cmd_driver(&self) -> impl std::future::Future<Output = ()> {
+    fn cmd_driver(&self) -> impl std::future::Future<Output = ()> + use<> {
         let (clk, start, done) = (self.clk, self.start, self.done);
         let (a, b, op) = (self.a, self.b, self.op);
         let queue = self.driver_queue.clone();

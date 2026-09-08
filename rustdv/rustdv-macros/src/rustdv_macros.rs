@@ -15,8 +15,8 @@ use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
 use syn::parse::{Parse, ParseStream};
 use syn::{
-    parse_macro_input, Attribute, Data, DeriveInput, Expr, ExprLit, Field, Fields, Item, Lit,
-    LitStr, Result, Token, Type,
+    Attribute, Data, DeriveInput, Expr, ExprLit, Field, Fields, Item, Lit, LitStr, Result, Token,
+    Type, parse_macro_input,
 };
 
 // ===========================================================================

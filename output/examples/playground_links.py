@@ -13,7 +13,7 @@ import urllib.parse
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 def playground_url(code):
-    return ("https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&code="
+    return ("https://play.rust-lang.org/?version=stable&mode=debug&edition=2024&code="
             + urllib.parse.quote(code))
 
 manifest = json.load(open(os.path.join(HERE, "manifest.json")))
@@ -25,12 +25,14 @@ for ch, figs in sorted(by_chapter.items()):
     chdir = next(iter(figs.values()))["file"].split("/")[0]
     rd_path = os.path.join(HERE, chdir, "README.md")
     lines = open(rd_path, encoding="utf-8").read().splitlines(keepends=True)
-    out, changed, need_sep = [], False, False
+    out, in_table, need_sep = [], False, False
     for line in lines:
         # header row
-        if line.startswith("| Figure | Title |") and "Try it" not in line:
-            line = line.rstrip("\n").rstrip() + " Try it |\n"
-            changed = need_sep = True
+        if line.startswith("| Figure | Title |"):
+            in_table = True
+            if "Try it" not in line:
+                line = line.rstrip("\n").rstrip() + " Try it |\n"
+                need_sep = True
         # the separator immediately under a header we just widened. Match it by
         # position, not by column count: figure tables are five columns in
         # Part I and three in the chapters whose figures are standalone bins,
@@ -40,7 +42,7 @@ for ch, figs in sorted(by_chapter.items()):
             need_sep = False
         # data row: | N | title | behavior | file | how |
         m = re.match(r"^\| (\d+) \|", line)
-        if m and changed:
+        if m and in_table:
             num = int(m.group(1))
             fig = figs.get(num)
             cell = "—"

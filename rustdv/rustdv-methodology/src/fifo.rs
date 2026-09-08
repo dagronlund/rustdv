@@ -29,7 +29,7 @@ use std::rc::Rc;
 use rustdv_sim::queue::Queue;
 
 use crate::component::{Component, ComponentNode};
-use crate::port::{bind_or_panic, sink_of, GetIf, PeekIf, PortName, PortOwner, PutIf, SinkHandle};
+use crate::port::{GetIf, PeekIf, PortName, PortOwner, PutIf, SinkHandle, bind_or_panic, sink_of};
 
 // ===========================================================================
 // The shared inside

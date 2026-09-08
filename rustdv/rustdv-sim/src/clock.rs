@@ -1,6 +1,6 @@
 //! Clock generator (port of cocotb `Clock`, mapping row 24).
 
-use crate::executor::{spawn_named, TaskHandle};
+use crate::executor::{TaskHandle, spawn_named};
 use crate::handle::LogicHandle;
 use crate::time::SimDuration;
 use crate::triggers::Timer;

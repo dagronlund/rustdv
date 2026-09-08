@@ -9,7 +9,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::future::Future;
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::pin::Pin;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};

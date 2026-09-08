@@ -34,7 +34,7 @@ use rustdv_sim::sync::Event;
 use rustdv_sim::{Rng, RustdvPath};
 
 use crate::component::{Component, ComponentNode};
-use crate::port::{bind_or_panic, PortName, PortOwner};
+use crate::port::{PortName, PortOwner, bind_or_panic};
 
 // ===========================================================================
 // Identity
