@@ -17,6 +17,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::rc::Rc;
 
+use linkme::distributed_slice;
 use rustdv_gpi as gpi;
 use rustdv_sim::combinators::{first2, Either};
 use rustdv_sim::handle::top_module;
@@ -57,65 +58,20 @@ pub struct TestRegistration {
 }
 
 // ===========================================================================
-// Link-time registry (design-doc §0.5/§6.1; OQ-4 — ELF section technique,
-// with the sentinel guaranteeing the section exists)
+// Link-time registry (design-doc §0.5/§6.1), implemented as a linkme
+// distributed slice so the platform-specific linker work stays encapsulated.
 // ===========================================================================
 
-fn sentinel_shim(_ctx: RustdvCtx) -> Pin<Box<dyn Future<Output = Result<(), TestError>>>> {
-    Box::pin(async { Ok(()) })
-}
-
-#[used]
-// ELF (Linux) names sections freely; Mach-O (macOS) wants segment,section.
-#[cfg_attr(not(target_vendor = "apple"), link_section = "rustdv_tests")]
-#[cfg_attr(target_vendor = "apple", link_section = "__DATA,rustdv_tests")]
-static SENTINEL: &TestRegistration = &TestRegistration {
-    name: "__rustdv_sentinel",
-    module: "rustdv_runner",
-    file: file!(),
-    line: line!(),
-    run: sentinel_shim,
-    timeout: None,
-    skip: true,
-    expect_fail: false,
-    expect_error: None,
-};
-
-// The linker-provided section bounds. ELF defines __start_/__stop_
-// symbols automatically; Mach-O spells them section$start$/section$end$
-// (reached via link_name — the \x01 prefix suppresses mangling).
-#[cfg(not(target_vendor = "apple"))]
-extern "C" {
-    static __start_rustdv_tests: u8;
-    static __stop_rustdv_tests: u8;
-}
-
-#[cfg(target_vendor = "apple")]
-extern "C" {
-    #[link_name = "\x01section$start$__DATA$rustdv_tests"]
-    static __start_rustdv_tests: u8;
-    #[link_name = "\x01section$end$__DATA$rustdv_tests"]
-    static __stop_rustdv_tests: u8;
-}
+/// All test registrations contributed by `#[rustdv::test]`.
+///
+/// Public only so the attribute macro can name it from a downstream crate.
+#[doc(hidden)]
+#[distributed_slice]
+pub static TEST_REGISTRATIONS: [TestRegistration];
 
 /// All registered tests, in (file, line) order.
 pub fn collect_tests() -> Vec<&'static TestRegistration> {
-    // Force the sentinel's object file into the link.
-    std::hint::black_box(SENTINEL.name);
-    let mut out: Vec<&'static TestRegistration> = Vec::new();
-    unsafe {
-        let start = std::ptr::addr_of!(__start_rustdv_tests) as usize;
-        let stop = std::ptr::addr_of!(__stop_rustdv_tests) as usize;
-        let entry = std::mem::size_of::<&TestRegistration>();
-        let count = (stop - start) / entry;
-        let base = start as *const &'static TestRegistration;
-        for i in 0..count {
-            let reg = *base.add(i);
-            if reg.name != "__rustdv_sentinel" {
-                out.push(reg);
-            }
-        }
-    }
+    let mut out: Vec<&'static TestRegistration> = TEST_REGISTRATIONS.iter().collect();
     out.sort_by_key(|r| (r.file, r.line));
     out
 }

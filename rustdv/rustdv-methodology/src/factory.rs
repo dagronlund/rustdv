@@ -2,8 +2,8 @@
 //!
 //! rustdv has a factory, and it works as the UVM factory works (D74). It is
 //! not a separate subsystem: a "maker" is an ordinary Rust value, so the
-//! override table is the [`ConfigDb`](crate::config) and registration is a
-//! link-time section like the test registry. From the user's chair there are
+//! override table is the [`ConfigDb`](crate::config) and registration uses a
+//! `linkme` distributed slice like the test registry. From the user's chair there are
 //! two constructors — `Foo::new_comp()` (fixed) and `Foo::create_comp()`
 //! (overridable) — and `Factory::…` to install and inspect overrides.
 //!
@@ -21,6 +21,7 @@ use std::fmt;
 use crate::component::{Component, ComponentNode, RustdvCtx};
 use crate::config::ConfigDb;
 use crate::port::PortOwner;
+use linkme::distributed_slice;
 
 /// A maker: builds a component with no arguments (its name and parent come
 /// from the tree, D7). Non-capturing, so it is an ordinary `fn` pointer.
@@ -157,13 +158,8 @@ fn override_key(requested_name: &str) -> String {
 }
 
 // ===========================================================================
-// Universal registration (D73) — a link-time section, like the test registry
-//
-// The section name `rustdv_comps` must be **≤ 16 bytes**: Mach-O caps section
-// names at 16 characters, and rustc rejects a longer one only on Apple
-// targets (ELF has no such limit, so Linux never complains). The original
-// `rustdv_components` was 17 and broke the macOS build while the Linux VM
-// stayed green. Keep any future section name short.
+// Universal registration (D73) — a linkme distributed slice, like the test
+// registry. linkme owns the platform-specific linker section implementation.
 // ===========================================================================
 
 /// One registered component: its name and its maker. Emitted by
@@ -175,49 +171,17 @@ pub struct ComponentReg {
     pub make: Maker,
 }
 
-fn sentinel_name() -> &'static str {
-    "__rustdv_component_sentinel"
-}
-fn sentinel_make() -> Box<dyn ComponentNode> {
-    panic!("the component-registry sentinel must never be built")
-}
-
-#[used]
-#[cfg_attr(not(target_vendor = "apple"), link_section = "rustdv_comps")]
-#[cfg_attr(target_vendor = "apple", link_section = "__DATA,rustdv_comps")]
-static SENTINEL: &ComponentReg = &ComponentReg {
-    name: sentinel_name,
-    make: sentinel_make,
-};
-
-#[cfg(not(target_vendor = "apple"))]
-extern "C" {
-    static __start_rustdv_comps: u8;
-    static __stop_rustdv_comps: u8;
-}
-#[cfg(target_vendor = "apple")]
-extern "C" {
-    #[link_name = "\x01section$start$__DATA$rustdv_comps"]
-    static __start_rustdv_comps: u8;
-    #[link_name = "\x01section$end$__DATA$rustdv_comps"]
-    static __stop_rustdv_comps: u8;
-}
+/// All component registrations contributed by `#[derive(Component)]`.
+///
+/// Public only so the derive macro can name it from a downstream crate.
+#[doc(hidden)]
+#[distributed_slice]
+pub static COMPONENT_REGISTRATIONS: [ComponentReg];
 
 fn collect_registry() -> HashMap<&'static str, Maker> {
-    std::hint::black_box(SENTINEL.name);
     let mut map = HashMap::new();
-    unsafe {
-        let start = std::ptr::addr_of!(__start_rustdv_comps) as usize;
-        let stop = std::ptr::addr_of!(__stop_rustdv_comps) as usize;
-        let step = std::mem::size_of::<&ComponentReg>();
-        let base = start as *const &'static ComponentReg;
-        for i in 0..((stop - start) / step) {
-            let reg = *base.add(i);
-            let name = (reg.name)();
-            if name != sentinel_name() {
-                map.insert(name, reg.make);
-            }
-        }
+    for reg in COMPONENT_REGISTRATIONS {
+        map.insert((reg.name)(), reg.make);
     }
     map
 }

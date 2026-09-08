@@ -62,7 +62,7 @@ pub use component::{
 };
 pub use config::{ConfigDb, ConfigError};
 pub use error::TestError;
-pub use factory::{ComponentReg, Factory, Maker, RustdvComp};
+pub use factory::{ComponentReg, Factory, Maker, RustdvComp, COMPONENT_REGISTRATIONS};
 pub use fifo::{GetExport, PeekExport, PutExport, TapExport, TlmFifo};
 pub use objection::{ObjectionGuard, ObjectionRegistry};
 pub use port::{

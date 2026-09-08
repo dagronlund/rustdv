@@ -20,9 +20,8 @@ stage compiles and is testable before the next begins.
 - **Platform traps** (all previously hit and fixed — check they're in the
   tree you're using): macOS needs `-undefined dynamic_lookup` rustflags in
   `.cargo/config.toml` (apple targets only) and produces `.dylib` not
-  `.so`; the test-registry link sections have separate ELF and Mach-O
-  spellings; ELF `__start_/__stop_` demos don't build on Mach-O at all.
-  Also confirm vvp and the dylib are the same architecture — an x86_64
+  `.so`; `linkme` handles the test-registry linker sections across ELF and
+  Mach-O. Also confirm vvp and the dylib are the same architecture — an x86_64
   Icarus silently ignores an arm64 module and exits 0.
 
 ## Stage 1: Transactions + golden model (no simulator)

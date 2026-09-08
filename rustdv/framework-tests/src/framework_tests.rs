@@ -43,8 +43,7 @@
 use rustdv::prelude::*;
 
 // The `cargo test` binary links this crate's rlib and so needs the `vpi_*`
-// symbols defined, even though there are no `#[test]` functions in here and
-// nothing will ever call them. The simulator provides them for the real
+// symbols defined, even though the registry smoke test never calls them. The simulator provides them for the real
 // cdylib; `rustdv-vpi-stubs` provides panicking placeholders for the test
 // build, which is what turns "this test secretly needed a simulator" into a
 // loud failure instead of a silent one.
@@ -79,6 +78,27 @@ pub mod elaboration;
 pub mod runner;
 pub mod signals;
 pub mod triggers;
+
+#[cfg(test)]
+mod registry_tests {
+    #[test]
+    fn macros_contribute_to_both_linkme_registries() {
+        let test = rustdv::runner::collect_tests()
+            .into_iter()
+            .find(|registration| registration.name == "runner_rng_is_reproducible")
+            .expect("#[rustdv::test] contributed to the test registry");
+        assert_eq!(test.module, "framework_tests::runner");
+
+        let component = rustdv::Factory::create_by_name("ElabConnectedTreeIsClean");
+        assert_eq!(
+            component
+                .as_node()
+                .expect("the factory returned a component")
+                .node_name(),
+            "ElabConnectedTreeIsClean"
+        );
+    }
+}
 
 /// How many simulator time steps make one nanosecond, measured rather than
 /// assumed.

@@ -2,3 +2,6 @@
 name = "ch21_macros"
 version = "0.1.0"
 edition = "2021"
+
+[dependencies]
+linkme = "0.3"

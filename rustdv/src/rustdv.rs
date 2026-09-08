@@ -39,7 +39,7 @@ pub use rustdv_macros::Component;
 pub use rustdv_sim::{first, join};
 
 // --- the curated surface ----------------------------------------------------
-pub use rustdv_runner::TestRegistration;
+pub use rustdv_runner::{TestRegistration, TEST_REGISTRATIONS};
 
 pub use rustdv_sim::handle::top_module;
 pub use rustdv_sim::log;
@@ -61,8 +61,14 @@ pub use rustdv_methodology::{
     PublishIf, PublishPort, PutExport, PutIf, PutPort, Receiver, ResponseQueue, RustdvComp,
     RustdvSeq, RustdvShared, Sender, SeqCtx, SeqError, SeqItem, SeqItemExport, SeqItemIf,
     SeqItemPort, Sequence, Sequencer, SinkHandle, SubscribeExport, SubscribePort, Subscriber,
-    TapExport, TestError, TlmEmpty, TlmError, TlmFifo, TlmFull, TxnId,
+    TapExport, TestError, TlmEmpty, TlmError, TlmFifo, TlmFull, TxnId, COMPONENT_REGISTRATIONS,
 };
+
+/// Implementation details used by rustdv's procedural-macro expansions.
+#[doc(hidden)]
+pub mod __private {
+    pub use linkme;
+}
 
 // The lifecycle trait under its design-doc name, in the type namespace.
 // (The derive macro of the same name lives in the macro namespace; Rust

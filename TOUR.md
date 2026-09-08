@@ -27,7 +27,8 @@ triggers, a UVM-style component methodology (ownership tree, typed
 configs, maker-closure factories, channels/analysis ports, the full
 sequencer handshake), running testbenches as native shared libraries
 loaded over VPI by Icarus Verilog — the four-state reference — or by Verilator
-as the fast two-state backend. Zero external dependencies. **v0.1 is
+as the fast two-state backend. Its link-time registries use `linkme`, and its
+procedural macros use `proc-macro2`, `quote`, and `syn`. **v0.1 is
 publicly live** (2026-08-06/07): `rustdv` 0.1.1 is published on crates.io,
 the `rustdv/rustdv` GitHub repo is public with Discussions, Issues and pull
 requests all open, and the companion site is up at rustdv.org.
