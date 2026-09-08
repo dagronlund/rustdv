@@ -22,7 +22,10 @@ pub(crate) struct TrigShared {
 
 impl TrigShared {
     pub(crate) fn new() -> Rc<TrigShared> {
-        Rc::new(TrigShared { fired: Cell::new(false), waker: RefCell::new(None) })
+        Rc::new(TrigShared {
+            fired: Cell::new(false),
+            waker: RefCell::new(None),
+        })
     }
     pub(crate) fn fire(&self) {
         self.fired.set(true);
@@ -54,7 +57,11 @@ pub struct Timer {
 impl Timer {
     pub fn new(d: SimDuration) -> Timer {
         assert!(d.steps > 0, "Timer duration must be positive (cocotb rule)");
-        Timer { steps: d.steps, shared: None, _cb: None }
+        Timer {
+            steps: d.steps,
+            shared: None,
+            _cb: None,
+        }
     }
     pub fn steps(steps: u64) -> Timer {
         Self::new(SimDuration::steps(steps))
@@ -124,7 +131,12 @@ pub struct Edge {
 
 impl Edge {
     pub(crate) fn new(sig: gpi::LogicHandle, kind: EdgeKind) -> Edge {
-        Edge { sig, kind, shared: None, _cb: None }
+        Edge {
+            sig,
+            kind,
+            shared: None,
+            _cb: None,
+        }
     }
 }
 

@@ -38,8 +38,7 @@ pub use rustdv_methodology::TestError;
 /// lives in `rustdv-methodology` beside the `Component` trait that receives it.
 pub use rustdv_methodology::RustdvCtx;
 
-type TestFn =
-    fn(RustdvCtx) -> Pin<Box<dyn Future<Output = Result<(), TestError>>>>;
+type TestFn = fn(RustdvCtx) -> Pin<Box<dyn Future<Output = Result<(), TestError>>>>;
 
 /// One registered test (design-doc §6.1: the cocotb `Test` option set).
 pub struct TestRegistration {
@@ -130,12 +129,18 @@ enum Outcome {
     Pass,
     /// `kind` is the machine-readable cause, when the failure had one, so
     /// `expect_error` can insist a test failed for the *right* reason.
-    Fail { msg: String, kind: Option<&'static str> },
+    Fail {
+        msg: String,
+        kind: Option<&'static str>,
+    },
     Skip,
 }
 
 fn fail(msg: impl Into<String>) -> Outcome {
-    Outcome::Fail { msg: msg.into(), kind: None }
+    Outcome::Fail {
+        msg: msg.into(),
+        kind: None,
+    }
 }
 
 struct TestResult {
@@ -238,7 +243,10 @@ async fn run_one(reg: &'static TestRegistration, seed: u64) -> Outcome {
             reg.timeout.unwrap().1
         )),
         Some(Err(e)) => fail(format!("test task: {e}")),
-        Some(Ok(Err(e))) => Outcome::Fail { msg: e.to_string(), kind: e.kind() },
+        Some(Ok(Err(e))) => Outcome::Fail {
+            msg: e.to_string(),
+            kind: e.kind(),
+        },
         Some(Ok(Ok(()))) => Outcome::Pass,
     };
 
@@ -286,7 +294,9 @@ async fn run_one(reg: &'static TestRegistration, seed: u64) -> Outcome {
 fn apply_testcase_filter(
     tests: Vec<&'static TestRegistration>,
 ) -> Result<Vec<&'static TestRegistration>, String> {
-    let Ok(raw) = std::env::var("RUSTDV_TESTCASE") else { return Ok(tests) };
+    let Ok(raw) = std::env::var("RUSTDV_TESTCASE") else {
+        return Ok(tests);
+    };
     let pats: Vec<String> = raw
         .split(',')
         .map(|s| s.trim().to_ascii_lowercase())
@@ -330,7 +340,11 @@ async fn regression() {
     for (i, reg) in tests.iter().enumerate() {
         if reg.skip {
             log::info(&format!("skipping {} ({}/{})", reg.name, i + 1, total));
-            results.push(TestResult { name: reg.name, outcome: Outcome::Skip, sim_ns: 0.0 });
+            results.push(TestResult {
+                name: reg.name,
+                outcome: Outcome::Skip,
+                sim_ns: 0.0,
+            });
             continue;
         }
         log::info(&format!(
@@ -349,13 +363,19 @@ async fn regression() {
             Outcome::Fail { msg, .. } => log::error(&format!("{} FAILED: {msg}", reg.name)),
             Outcome::Skip => {}
         }
-        results.push(TestResult { name: reg.name, outcome, sim_ns: dt });
+        results.push(TestResult {
+            name: reg.name,
+            outcome,
+            sim_ns: dt,
+        });
     }
 
     print_summary(&results);
     write_xunit(&results);
 
-    let failed = results.iter().any(|r| matches!(r.outcome, Outcome::Fail { .. }));
+    let failed = results
+        .iter()
+        .any(|r| matches!(r.outcome, Outcome::Fail { .. }));
     println!("REGRESSION: {}", if failed { "FAIL" } else { "PASS" });
     gpi::finish();
 }
@@ -363,7 +383,10 @@ async fn regression() {
 fn print_summary(results: &[TestResult]) {
     // Port of cocotb's summary table shape (regression.py _log_test_summary).
     println!("{}", "*".repeat(78));
-    println!("** {:<40} {:>8} {:>14}      **", "TEST", "STATUS", "SIM TIME (ns)");
+    println!(
+        "** {:<40} {:>8} {:>14}      **",
+        "TEST", "STATUS", "SIM TIME (ns)"
+    );
     println!("{}", "*".repeat(78));
     for r in results {
         let status = match &r.outcome {
@@ -379,10 +402,18 @@ fn print_summary(results: &[TestResult]) {
 /// xUnit XML (cocotb: _xunit_reporter.py) — written only if
 /// RUSTDV_RESULTS_XML names a path.
 fn write_xunit(results: &[TestResult]) {
-    let Ok(path) = std::env::var("RUSTDV_RESULTS_XML") else { return };
+    let Ok(path) = std::env::var("RUSTDV_RESULTS_XML") else {
+        return;
+    };
     let mut xml = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-    let failures = results.iter().filter(|r| matches!(r.outcome, Outcome::Fail { .. })).count();
-    let skipped = results.iter().filter(|r| matches!(r.outcome, Outcome::Skip)).count();
+    let failures = results
+        .iter()
+        .filter(|r| matches!(r.outcome, Outcome::Fail { .. }))
+        .count();
+    let skipped = results
+        .iter()
+        .filter(|r| matches!(r.outcome, Outcome::Skip))
+        .count();
     xml.push_str(&format!(
         "<testsuites>\n<testsuite name=\"rustdv\" tests=\"{}\" failures=\"{}\" skipped=\"{}\">\n",
         results.len(),

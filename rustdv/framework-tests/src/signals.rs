@@ -11,9 +11,17 @@ use rustdv::prelude::*;
 #[rustdv::test]
 async fn sig_widths_match_the_design(ctx: RustdvCtx) -> Result<(), TestError> {
     let dut = ctx.dut();
-    for (name, want) in [("byte_sig", 8u32), ("word_sig", 16), ("nibble", 4), ("flag", 1)] {
+    for (name, want) in [
+        ("byte_sig", 8u32),
+        ("word_sig", 16),
+        ("nibble", 4),
+        ("flag", 1),
+    ] {
         let size = dut.signal(name)?.size();
-        check!(size == want, "{name} reports {size} bits, the design declares {want}");
+        check!(
+            size == want,
+            "{name} reports {size} bits, the design declares {want}"
+        );
     }
     Ok(())
 }
@@ -26,8 +34,13 @@ async fn sig_round_trips(ctx: RustdvCtx) -> Result<(), TestError> {
         let sig = dut.signal(name)?;
         sig.set_u64(value);
         read_write().await;
-        let got = sig.get_u64().map_err(|e| TestError::new(format!("{name}: {e}")))?;
-        check!(got == value, "{name} read back {got:#x} after writing {value:#x}");
+        let got = sig
+            .get_u64()
+            .map_err(|e| TestError::new(format!("{name}: {e}")))?;
+        check!(
+            got == value,
+            "{name} read back {got:#x} after writing {value:#x}"
+        );
     }
     Ok(())
 }
@@ -42,7 +55,10 @@ async fn sig_truncates_to_width(ctx: RustdvCtx) -> Result<(), TestError> {
     nibble.set_u64(0xFF);
     read_write().await;
     let got = nibble.get_u64().unwrap_or(0xDEAD);
-    check!(got == 0xF, "writing 0xFF to a 4-bit signal read back {got:#x}, not 0xf");
+    check!(
+        got == 0xF,
+        "writing 0xFF to a 4-bit signal read back {got:#x}, not 0xf"
+    );
     Ok(())
 }
 
@@ -56,12 +72,25 @@ async fn sig_x_is_an_error_not_a_zero(ctx: RustdvCtx) -> Result<(), TestError> {
     let dut = ctx.dut();
 
     let x = dut.signal("never_driven")?;
-    check!(x.get_u64().is_err(), "an undriven bit converted to an integer");
-    check!(x.get_binstr().contains('x'), "an undriven bit reads as {:?}", x.get_binstr());
-    check!(!x.is_high() && !x.is_low(), "an undriven bit claimed to be high or low");
+    check!(
+        x.get_u64().is_err(),
+        "an undriven bit converted to an integer"
+    );
+    check!(
+        x.get_binstr().contains('x'),
+        "an undriven bit reads as {:?}",
+        x.get_binstr()
+    );
+    check!(
+        !x.is_high() && !x.is_low(),
+        "an undriven bit claimed to be high or low"
+    );
 
     let bus = dut.signal("never_driven_bus")?;
-    check!(bus.get_u64().is_err(), "an undriven bus converted to an integer");
+    check!(
+        bus.get_u64().is_err(),
+        "an undriven bus converted to an integer"
+    );
     check!(
         bus.get_binstr().chars().all(|c| c == 'x'),
         "an undriven bus reads as {:?}",
@@ -69,7 +98,10 @@ async fn sig_x_is_an_error_not_a_zero(ctx: RustdvCtx) -> Result<(), TestError> {
     );
 
     // And the escape hatch the book teaches still works.
-    check!(x.get_u64().unwrap_or(0) == 0, "unwrap_or(0) did not yield 0");
+    check!(
+        x.get_u64().unwrap_or(0) == 0,
+        "unwrap_or(0) did not yield 0"
+    );
     Ok(())
 }
 
@@ -85,8 +117,15 @@ async fn sig_partial_x_is_still_an_error(ctx: RustdvCtx) -> Result<(), TestError
     check!(sig.get_u64().is_ok(), "a fully driven byte did not convert");
 
     let arr = LogicArray::from_binstr("0000x000");
-    check!(arr.len() == 8, "the pattern is {} bits wide, not 8", arr.len());
-    check!(!arr.is_resolvable(), "a pattern containing x claimed to be resolvable");
+    check!(
+        arr.len() == 8,
+        "the pattern is {} bits wide, not 8",
+        arr.len()
+    );
+    check!(
+        !arr.is_resolvable(),
+        "a pattern containing x claimed to be resolvable"
+    );
     sig.set(&arr);
     read_write().await;
     check!(
@@ -94,7 +133,11 @@ async fn sig_partial_x_is_still_an_error(ctx: RustdvCtx) -> Result<(), TestError
         "a byte with one x bit converted to {:?}",
         sig.get_u64()
     );
-    check!(sig.get_binstr().contains('x'), "the x bit vanished: {:?}", sig.get_binstr());
+    check!(
+        sig.get_binstr().contains('x'),
+        "the x bit vanished: {:?}",
+        sig.get_binstr()
+    );
     Ok(())
 }
 
@@ -112,7 +155,10 @@ async fn sig_reads_track_the_design(ctx: RustdvCtx) -> Result<(), TestError> {
     read_only().await;
     let b = counted.get_u64().unwrap_or(0);
 
-    check!(b.wrapping_sub(a) == 1, "the counter went {a} -> {b} across one clock");
+    check!(
+        b.wrapping_sub(a) == 1,
+        "the counter went {a} -> {b} across one clock"
+    );
     Ok(())
 }
 
@@ -120,10 +166,16 @@ async fn sig_reads_track_the_design(ctx: RustdvCtx) -> Result<(), TestError> {
 #[rustdv::test]
 async fn sig_missing_name_is_an_error(ctx: RustdvCtx) -> Result<(), TestError> {
     let dut = ctx.dut();
-    check!(dut.signal("byte_sig").is_ok(), "the control signal is missing from probe.sv");
+    check!(
+        dut.signal("byte_sig").is_ok(),
+        "the control signal is missing from probe.sv"
+    );
 
     let bad = dut.signal("byte_sgi"); // the classic transposition
-    check!(bad.is_err(), "a signal that does not exist was found anyway");
+    check!(
+        bad.is_err(),
+        "a signal that does not exist was found anyway"
+    );
     let msg = format!("{:?}", bad.err().unwrap());
     check!(
         msg.contains("byte_sgi"),

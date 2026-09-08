@@ -76,7 +76,12 @@ pub fn channel<T>(capacity: usize) -> (Sender<T>, Receiver<T>) {
         send_waiters: RefCell::new(Vec::new()),
         recv_waiters: RefCell::new(Vec::new()),
     });
-    (Sender { inner: inner.clone() }, Receiver { inner })
+    (
+        Sender {
+            inner: inner.clone(),
+        },
+        Receiver { inner },
+    )
 }
 
 /// The put family (pyuvm: _s12, 12.2.5).
@@ -87,7 +92,9 @@ pub struct Sender<T> {
 impl<T> Clone for Sender<T> {
     fn clone(&self) -> Self {
         self.inner.senders.set(self.inner.senders.get() + 1);
-        Sender { inner: self.inner.clone() }
+        Sender {
+            inner: self.inner.clone(),
+        }
     }
 }
 
@@ -104,7 +111,10 @@ impl<T> Drop for Sender<T> {
 impl<T> Sender<T> {
     /// Blocking put.
     pub fn send(&self, item: T) -> Send_<T> {
-        Send_ { inner: self.inner.clone(), item: Some(item) }
+        Send_ {
+            inner: self.inner.clone(),
+            item: Some(item),
+        }
     }
 
     /// Nonblocking put; returns the item on full.
@@ -144,7 +154,10 @@ impl<T> Future for Send_<T> {
             this.inner.wake_receivers();
             Poll::Ready(Ok(()))
         } else {
-            this.inner.send_waiters.borrow_mut().push(cx.waker().clone());
+            this.inner
+                .send_waiters
+                .borrow_mut()
+                .push(cx.waker().clone());
             Poll::Pending
         }
     }
@@ -158,7 +171,9 @@ pub struct Receiver<T> {
 impl<T> Clone for Receiver<T> {
     fn clone(&self) -> Self {
         self.inner.receivers.set(self.inner.receivers.get() + 1);
-        Receiver { inner: self.inner.clone() }
+        Receiver {
+            inner: self.inner.clone(),
+        }
     }
 }
 
@@ -175,7 +190,9 @@ impl<T> Drop for Receiver<T> {
 impl<T> Receiver<T> {
     /// Blocking get.
     pub fn recv(&self) -> Recv<T> {
-        Recv { inner: self.inner.clone() }
+        Recv {
+            inner: self.inner.clone(),
+        }
     }
 
     pub fn try_recv(&self) -> Result<T, TlmEmpty> {
@@ -199,7 +216,9 @@ impl<T> Receiver<T> {
 impl<T: Clone> Receiver<T> {
     /// Blocking peek: waits for an item, returns a copy without removing.
     pub fn peek(&self) -> Peek<T> {
-        Peek { inner: self.inner.clone() }
+        Peek {
+            inner: self.inner.clone(),
+        }
     }
 
     pub fn try_peek(&self) -> Result<T, TlmEmpty> {
@@ -224,7 +243,10 @@ impl<T> Future for Recv<T> {
                 if self.inner.senders.get() == 0 {
                     return Poll::Ready(Err(TlmError::Disconnected));
                 }
-                self.inner.recv_waiters.borrow_mut().push(cx.waker().clone());
+                self.inner
+                    .recv_waiters
+                    .borrow_mut()
+                    .push(cx.waker().clone());
                 Poll::Pending
             }
         }
@@ -245,7 +267,10 @@ impl<T: Clone> Future for Peek<T> {
                 if self.inner.senders.get() == 0 {
                     return Poll::Ready(Err(TlmError::Disconnected));
                 }
-                self.inner.recv_waiters.borrow_mut().push(cx.waker().clone());
+                self.inner
+                    .recv_waiters
+                    .borrow_mut()
+                    .push(cx.waker().clone());
                 Poll::Pending
             }
         }

@@ -39,7 +39,11 @@ impl Logic {
 
 impl From<bool> for Logic {
     fn from(b: bool) -> Logic {
-        if b { Logic::One } else { Logic::Zero }
+        if b {
+            Logic::One
+        } else {
+            Logic::Zero
+        }
     }
 }
 
@@ -57,7 +61,9 @@ pub struct LogicArray {
 
 impl LogicArray {
     pub fn from_binstr(s: &str) -> LogicArray {
-        LogicArray { bits: s.chars().map(Logic::from_char).collect() }
+        LogicArray {
+            bits: s.chars().map(Logic::from_char).collect(),
+        }
     }
 
     pub fn from_u64(v: u64, width: usize) -> LogicArray {

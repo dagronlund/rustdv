@@ -166,7 +166,9 @@ impl Executor {
     {
         let id = self.inner.next_id.get();
         self.inner.next_id.set(id + 1);
-        let name = name.map(|s| s.to_string()).unwrap_or_else(|| format!("task_{id}"));
+        let name = name
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| format!("task_{id}"));
 
         let shared = Rc::new(TaskShared::<F::Output> {
             state: Cell::new(TaskState::Unstarted),
@@ -206,7 +208,11 @@ impl Executor {
         );
         self.inner.run_queue.borrow_mut().push_back(id);
 
-        TaskHandle { id, shared, exec: self.clone() }
+        TaskHandle {
+            id,
+            shared,
+            exec: self.clone(),
+        }
     }
 
     /// Drain the run queue to exhaustion, then return to the simulator.
@@ -256,7 +262,10 @@ impl Executor {
             (fut, t.on_abort.clone(), t.state_cell.clone())
         };
 
-        let waker = Waker::from(Arc::new(TaskWaker { id, woken: self.inner.woken.clone() }));
+        let waker = Waker::from(Arc::new(TaskWaker {
+            id,
+            woken: self.inner.woken.clone(),
+        }));
         let mut cx = Context::from_waker(&waker);
 
         self.inner.currently_polling.set(Some(id));
@@ -277,7 +286,8 @@ impl Executor {
                 }
                 drop(tasks);
                 // Deferred self-cancellation?
-                let pending: Vec<TaskId> = self.inner.cancel_pending.borrow_mut().drain(..).collect();
+                let pending: Vec<TaskId> =
+                    self.inner.cancel_pending.borrow_mut().drain(..).collect();
                 for cid in pending {
                     self.cancel(cid);
                 }
@@ -373,7 +383,11 @@ pub struct TaskHandle<T> {
 
 impl<T> Clone for TaskHandle<T> {
     fn clone(&self) -> Self {
-        TaskHandle { id: self.id, shared: self.shared.clone(), exec: self.exec.clone() }
+        TaskHandle {
+            id: self.id,
+            shared: self.shared.clone(),
+            exec: self.exec.clone(),
+        }
     }
 }
 

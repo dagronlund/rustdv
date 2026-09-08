@@ -39,7 +39,10 @@ impl ObjectionRegistry {
         inner.raised_ever.set(true);
         inner.drained.clear();
         inner.active.borrow_mut().push(description.to_string());
-        ObjectionGuard { inner, description: description.to_string() }
+        ObjectionGuard {
+            inner,
+            description: description.to_string(),
+        }
     }
 
     pub fn count(&self) -> usize {

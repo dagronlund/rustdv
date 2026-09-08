@@ -62,7 +62,11 @@ pub(crate) fn init_hub() {
 }
 
 fn hub() -> Rc<Hub> {
-    HUB.with(|h| h.borrow().clone().expect("rustdv sim context not initialized"))
+    HUB.with(|h| {
+        h.borrow()
+            .clone()
+            .expect("rustdv sim context not initialized")
+    })
 }
 
 pub fn current_phase() -> SimPhase {
@@ -256,15 +260,24 @@ impl Future for PhaseFut {
 
 /// Await the next ReadWrite phase (port of `ReadWrite()`).
 pub fn read_write() -> PhaseFut {
-    PhaseFut { kind: PhaseKind::ReadWrite, registered: false }
+    PhaseFut {
+        kind: PhaseKind::ReadWrite,
+        registered: false,
+    }
 }
 
 /// Await the next ReadOnly phase (port of `ReadOnly()`).
 pub fn read_only() -> PhaseFut {
-    PhaseFut { kind: PhaseKind::ReadOnly, registered: false }
+    PhaseFut {
+        kind: PhaseKind::ReadOnly,
+        registered: false,
+    }
 }
 
 /// Await the next simulator time step (port of `NextTimeStep()`).
 pub fn next_time_step() -> PhaseFut {
-    PhaseFut { kind: PhaseKind::NextTimeStep, registered: false }
+    PhaseFut {
+        kind: PhaseKind::NextTimeStep,
+        registered: false,
+    }
 }

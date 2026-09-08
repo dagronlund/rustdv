@@ -80,7 +80,10 @@ async fn trig_edges_fire_on_the_right_transition(ctx: RustdvCtx) -> Result<(), T
     let t1 = sim_time_ns();
     clk.falling_edge().await;
     let dt = sim_time_ns() - t1;
-    check!(dt == 1.0, "the falling edge came {dt} ns after the rising edge");
+    check!(
+        dt == 1.0,
+        "the falling edge came {dt} ns after the rising edge"
+    );
     check!(clk.is_low(), "falling_edge returned with the clock high");
     Ok(())
 }
@@ -98,7 +101,10 @@ async fn trig_value_change_sees_both_edges(ctx: RustdvCtx) -> Result<(), TestErr
         clk.value_change().await;
     }
     let dt = sim_time_ns() - t0;
-    check!(dt == 4.0, "four value changes on a 2ns clock took {dt} ns, not 4");
+    check!(
+        dt == 4.0,
+        "four value changes on a 2ns clock took {dt} ns, not 4"
+    );
     Ok(())
 }
 
@@ -115,7 +121,10 @@ async fn trig_no_edge_without_a_change(ctx: RustdvCtx) -> Result<(), TestError> 
     // The clock is running, so the simulator is busy; `never_driven` is not
     // part of that traffic and must stay silent through all of it.
     let r = with_timeout(quiet.value_change(), SimDuration::ns(50)).await;
-    check!(r.is_err(), "a signal nothing assigns reported a value change");
+    check!(
+        r.is_err(),
+        "a signal nothing assigns reported a value change"
+    );
     Ok(())
 }
 
@@ -141,24 +150,26 @@ async fn trig_dropped_callback_deregisters(_ctx: RustdvCtx) -> Result<(), TestEr
     let dropped = Rc::new(Cell::new(0u32));
 
     let k = kept.clone();
-    let _live = rustdv::gpi::register_timer(
-        5 * per_ns,
-        Box::new(move || k.set(k.get() + 1)),
-    );
+    let _live = rustdv::gpi::register_timer(5 * per_ns, Box::new(move || k.set(k.get() + 1)));
 
     let d = dropped.clone();
-    let doomed = rustdv::gpi::register_timer(
-        5 * per_ns,
-        Box::new(move || d.set(d.get() + 1)),
-    );
+    let doomed = rustdv::gpi::register_timer(5 * per_ns, Box::new(move || d.set(d.get() + 1)));
     drop(doomed);
 
     Timer::ns(20).await;
 
     // The control matters as much as the assertion: if neither fired, the
     // test would pass while proving nothing at all.
-    check!(kept.get() == 1, "the live callback fired {} time(s), not once", kept.get());
-    check!(dropped.get() == 0, "a deregistered callback fired {} time(s)", dropped.get());
+    check!(
+        kept.get() == 1,
+        "the live callback fired {} time(s), not once",
+        kept.get()
+    );
+    check!(
+        dropped.get() == 0,
+        "a deregistered callback fired {} time(s)",
+        dropped.get()
+    );
     Ok(())
 }
 
@@ -189,7 +200,10 @@ async fn trig_with_timeout_inner_wins(_ctx: RustdvCtx) -> Result<(), TestError> 
         SimDuration::ns(100),
     )
     .await;
-    check!(r == Ok(42), "the inner future's value did not come back: {r:?}");
+    check!(
+        r == Ok(42),
+        "the inner future's value did not come back: {r:?}"
+    );
     let dt = sim_time_ns() - t0;
     check!(dt == 3.0, "the inner future finished at {dt} ns, not 3");
     Ok(())
@@ -208,12 +222,24 @@ async fn trig_earliest_rtl_or_vpi_deadline_wins(ctx: RustdvCtx) -> Result<(), Te
 
     let t0 = sim_time_ns();
     Timer::ns(3).await;
-    check!(sim_time_ns() - t0 == 3.0, "the earlier VPI deadline did not win");
-    check!(!done.is_high(), "the 7ns RTL event fired before the 3ns VPI timer");
+    check!(
+        sim_time_ns() - t0 == 3.0,
+        "the earlier VPI deadline did not win"
+    );
+    check!(
+        !done.is_high(),
+        "the 7ns RTL event fired before the 3ns VPI timer"
+    );
 
     let edge = with_timeout(done.rising_edge(), SimDuration::ns(5)).await;
-    check!(edge.is_ok(), "the earlier RTL event lost to a later VPI timeout");
-    check!(sim_time_ns() - t0 == 7.0, "the RTL event did not fire after 7ns");
+    check!(
+        edge.is_ok(),
+        "the earlier RTL event lost to a later VPI timeout"
+    );
+    check!(
+        sim_time_ns() - t0 == 7.0,
+        "the RTL event did not fire after 7ns"
+    );
     Ok(())
 }
 
@@ -234,16 +260,17 @@ async fn trig_at_end_write_settles_before_read_only(ctx: RustdvCtx) -> Result<()
     read_only().await;
 
     let got = output.get_u64().unwrap_or(0);
-    check!(got == (0x5A ^ 0xA5), "ReadOnly saw {got:#x} before the AtEnd write settled");
+    check!(
+        got == (0x5A ^ 0xA5),
+        "ReadOnly saw {got:#x} before the AtEnd write settled"
+    );
     Ok(())
 }
 
 // The test itself passes before simulation shutdown. The marker printed by
 // this detached callback proves the host delivered cbEndOfSimulation.
 #[rustdv::test]
-async fn trig_end_of_simulation_callback_is_delivered(
-    _ctx: RustdvCtx,
-) -> Result<(), TestError> {
+async fn trig_end_of_simulation_callback_is_delivered(_ctx: RustdvCtx) -> Result<(), TestError> {
     rustdv::gpi::register_end_of_simulation(Box::new(|| {
         println!("END OF SIMULATION CALLBACK: PASS");
     }))
@@ -267,19 +294,28 @@ async fn trig_writes_are_scheduled_not_immediate(ctx: RustdvCtx) -> Result<(), T
 
     sig.set_u64(0xA5);
     let immediate = sig.get_u64().unwrap_or(0);
-    check!(immediate == 0, "a scheduled write landed immediately ({immediate:#x})");
+    check!(
+        immediate == 0,
+        "a scheduled write landed immediately ({immediate:#x})"
+    );
 
     // The buffer drains at the *start* of the next ReadWrite phase, before
     // any ReadWrite callback runs — so this is the first moment the write is
     // visible, and it is still the same time step.
     read_write().await;
     let settled = sig.get_u64().unwrap_or(0);
-    check!(settled == 0xA5, "the scheduled write never landed (read {settled:#x})");
+    check!(
+        settled == 0xA5,
+        "the scheduled write never landed (read {settled:#x})"
+    );
 
     // The immediate form skips the buffer entirely.
     sig.set_u64_now(0x5A);
     let now = sig.get_u64().unwrap_or(0);
-    check!(now == 0x5A, "set_u64_now did not take effect immediately (read {now:#x})");
+    check!(
+        now == 0x5A,
+        "set_u64_now did not take effect immediately (read {now:#x})"
+    );
     Ok(())
 }
 
@@ -296,7 +332,10 @@ async fn trig_read_only_sees_settled_rtl(ctx: RustdvCtx) -> Result<(), TestError
     read_only().await;
 
     let got = output.get_u64().unwrap_or(0);
-    check!(got == (0x3C ^ 0xA5), "ReadOnly saw comb_out={got:#x} before RTL settled");
+    check!(
+        got == (0x3C ^ 0xA5),
+        "ReadOnly saw comb_out={got:#x} before RTL settled"
+    );
     Ok(())
 }
 
@@ -316,10 +355,18 @@ async fn trig_phase_order_within_a_step(ctx: RustdvCtx) -> Result<(), TestError>
     let t0 = sim_time_ns();
 
     read_write().await;
-    check!(sim_time_ns() == t0, "ReadWrite advanced time from {t0} to {}", sim_time_ns());
+    check!(
+        sim_time_ns() == t0,
+        "ReadWrite advanced time from {t0} to {}",
+        sim_time_ns()
+    );
 
     read_only().await;
-    check!(sim_time_ns() == t0, "ReadOnly advanced time from {t0} to {}", sim_time_ns());
+    check!(
+        sim_time_ns() == t0,
+        "ReadOnly advanced time from {t0} to {}",
+        sim_time_ns()
+    );
 
     next_time_step().await;
     check!(sim_time_ns() > t0, "NextTimeStep did not advance past {t0}");

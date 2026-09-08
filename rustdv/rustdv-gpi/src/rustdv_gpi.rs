@@ -43,9 +43,16 @@ pub use value::{Logic, LogicArray};
 pub enum HandleError {
     /// Name did not resolve (cocotb raises AttributeError here; rustdv
     /// returns this — design-doc §0.6).
-    NotFound { name: String, scope: String },
+    NotFound {
+        name: String,
+        scope: String,
+    },
     /// Handle exists but is not the requested kind.
-    WrongKind { name: String, expected: &'static str, actual: String },
+    WrongKind {
+        name: String,
+        expected: &'static str,
+        actual: String,
+    },
     NoTopModule,
 }
 
@@ -55,7 +62,11 @@ impl fmt::Display for HandleError {
             HandleError::NotFound { name, scope } => {
                 write!(f, "no object named '{name}' in scope '{scope}'")
             }
-            HandleError::WrongKind { name, expected, actual } => {
+            HandleError::WrongKind {
+                name,
+                expected,
+                actual,
+            } => {
                 write!(f, "'{name}' is a {actual}, expected {expected}")
             }
             HandleError::NoTopModule => write!(f, "no top-level module found"),
@@ -68,14 +79,19 @@ impl std::error::Error for HandleError {}
 pub enum ValueError {
     /// Value contains x/z bits and was asked for as an integer.
     FourState(String),
-    Width { want: u32, have: usize },
+    Width {
+        want: u32,
+        have: usize,
+    },
 }
 
 impl fmt::Display for ValueError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ValueError::FourState(s) => write!(f, "value '{s}' has x/z bits"),
-            ValueError::Width { want, have } => write!(f, "width mismatch: want {want}, have {have}"),
+            ValueError::Width { want, have } => {
+                write!(f, "width mismatch: want {want}, have {have}")
+            }
         }
     }
 }
@@ -92,7 +108,11 @@ pub struct ObjHandle(sys::vpiHandle);
 
 impl ObjHandle {
     fn new(h: sys::vpiHandle) -> Option<Self> {
-        if h.is_null() { None } else { Some(ObjHandle(h)) }
+        if h.is_null() {
+            None
+        } else {
+            Some(ObjHandle(h))
+        }
     }
     fn get(self, prop: i32) -> i32 {
         unsafe { sys::vpi_get(prop, self.0) }
@@ -122,9 +142,17 @@ impl AnyHandle {
     pub fn classify(h: ObjHandle) -> AnyHandle {
         match h.get(sys::vpiType) {
             sys::vpiModule => AnyHandle::Hierarchy(HierarchyHandle { h }),
-            sys::vpiNet | sys::vpiReg | sys::vpiIntegerVar | sys::vpiPort | sys::vpiMemory
-            | sys::vpiLongIntVar | sys::vpiShortIntVar | sys::vpiIntVar | sys::vpiByteVar
-            | sys::vpiEnumVar | sys::vpiBitVar => {
+            sys::vpiNet
+            | sys::vpiReg
+            | sys::vpiIntegerVar
+            | sys::vpiPort
+            | sys::vpiMemory
+            | sys::vpiLongIntVar
+            | sys::vpiShortIntVar
+            | sys::vpiIntVar
+            | sys::vpiByteVar
+            | sys::vpiEnumVar
+            | sys::vpiBitVar => {
                 // Signal width is immutable for the lifetime of a VPI
                 // object. Cache it at discovery so every value read/write
                 // does not pay for another vpi_get(vpiSize) crossing.
@@ -181,7 +209,9 @@ impl HierarchyHandle {
     /// which panics — so a test that *does* touch the DUT fails loudly
     /// instead of reading garbage.
     pub fn null_for_test() -> HierarchyHandle {
-        HierarchyHandle { h: ObjHandle(std::ptr::null_mut()) }
+        HierarchyHandle {
+            h: ObjHandle(std::ptr::null_mut()),
+        }
     }
 
     /// Dynamic child lookup: `dut.child("clk")?` (design-doc OQ-6 lean).
@@ -190,7 +220,10 @@ impl HierarchyHandle {
         let h = unsafe { sys::vpi_handle_by_name(cname.as_ptr(), self.h.0) };
         match ObjHandle::new(h) {
             Some(h) => Ok(AnyHandle::classify(h)),
-            None => Err(HandleError::NotFound { name: name.into(), scope: self.full_name() }),
+            None => Err(HandleError::NotFound {
+                name: name.into(),
+                scope: self.full_name(),
+            }),
         }
     }
 
@@ -323,7 +356,9 @@ impl LogicHandle {
         let c = CString::new(bin).expect("NUL in binstr");
         let mut val = sys::t_vpi_value {
             format: sys::vpiBinStrVal,
-            value: sys::u_vpi_value_union { str_: c.as_ptr() as *mut _ },
+            value: sys::u_vpi_value_union {
+                str_: c.as_ptr() as *mut _,
+            },
         };
         unsafe {
             sys::vpi_put_value(self.h.0, &mut val, std::ptr::null_mut(), flags);
@@ -404,7 +439,10 @@ pub fn top_modules() -> Vec<HierarchyHandle> {
 
 /// The first top-level module (the DUT in single-top designs).
 pub fn top_module() -> Result<HierarchyHandle, HandleError> {
-    top_modules().into_iter().next().ok_or(HandleError::NoTopModule)
+    top_modules()
+        .into_iter()
+        .next()
+        .ok_or(HandleError::NoTopModule)
 }
 
 // ===========================================================================
@@ -413,7 +451,12 @@ pub fn top_module() -> Result<HierarchyHandle, HandleError> {
 
 /// Current simulation time in simulator precision steps.
 pub fn sim_time_steps() -> u64 {
-    let mut t = sys::t_vpi_time { type_: sys::vpiSimTime, high: 0, low: 0, real: 0.0 };
+    let mut t = sys::t_vpi_time {
+        type_: sys::vpiSimTime,
+        high: 0,
+        low: 0,
+        real: 0.0,
+    };
     unsafe { sys::vpi_get_time(std::ptr::null_mut(), &mut t) };
     ((t.high as u64) << 32) | (t.low as u64)
 }
@@ -611,7 +654,11 @@ fn register(
     let vpi_h = unsafe { sys::vpi_register_cb(&mut cb) };
     assert!(!vpi_h.is_null(), "vpi_register_cb failed (reason {reason})");
     shared.vpi_h.set(vpi_h);
-    CallbackHandle { shared, raw, detached: false }
+    CallbackHandle {
+        shared,
+        raw,
+        detached: false,
+    }
 }
 
 fn simtime(steps: u64) -> sys::t_vpi_time {
@@ -625,7 +672,14 @@ fn simtime(steps: u64) -> sys::t_vpi_time {
 
 /// One-shot callback after `steps` precision units (cbAfterDelay).
 pub fn register_timer(steps: u64, f: Box<dyn FnOnce()>) -> CallbackHandle {
-    register(CbKind::OneShot, Some(f), None, sys::cbAfterDelay, std::ptr::null_mut(), Some(simtime(steps)))
+    register(
+        CbKind::OneShot,
+        Some(f),
+        None,
+        sys::cbAfterDelay,
+        std::ptr::null_mut(),
+        Some(simtime(steps)),
+    )
 }
 
 /// Recurring callback on any value change of `sig` (cbValueChange). The
@@ -643,17 +697,38 @@ pub fn register_value_change(sig: LogicHandle, f: Box<dyn FnMut()>) -> CallbackH
 
 /// One-shot callback at the next ReadWrite synch point.
 pub fn register_read_write(f: Box<dyn FnOnce()>) -> CallbackHandle {
-    register(CbKind::OneShot, Some(f), None, sys::cbReadWriteSynch, std::ptr::null_mut(), Some(simtime(0)))
+    register(
+        CbKind::OneShot,
+        Some(f),
+        None,
+        sys::cbReadWriteSynch,
+        std::ptr::null_mut(),
+        Some(simtime(0)),
+    )
 }
 
 /// One-shot callback at the next ReadOnly synch point.
 pub fn register_read_only(f: Box<dyn FnOnce()>) -> CallbackHandle {
-    register(CbKind::OneShot, Some(f), None, sys::cbReadOnlySynch, std::ptr::null_mut(), Some(simtime(0)))
+    register(
+        CbKind::OneShot,
+        Some(f),
+        None,
+        sys::cbReadOnlySynch,
+        std::ptr::null_mut(),
+        Some(simtime(0)),
+    )
 }
 
 /// One-shot callback at the next simulation time step.
 pub fn register_next_sim_time(f: Box<dyn FnOnce()>) -> CallbackHandle {
-    register(CbKind::OneShot, Some(f), None, sys::cbNextSimTime, std::ptr::null_mut(), None)
+    register(
+        CbKind::OneShot,
+        Some(f),
+        None,
+        sys::cbNextSimTime,
+        std::ptr::null_mut(),
+        None,
+    )
 }
 
 /// One-shot callback at the end of the current simulation time step.
@@ -670,12 +745,26 @@ pub fn register_at_end_of_sim_time(f: Box<dyn FnOnce()>) -> CallbackHandle {
 
 /// One-shot callback at start of simulation (the bootstrap hook).
 pub fn register_start_of_simulation(f: Box<dyn FnOnce()>) -> CallbackHandle {
-    register(CbKind::OneShot, Some(f), None, sys::cbStartOfSimulation, std::ptr::null_mut(), None)
+    register(
+        CbKind::OneShot,
+        Some(f),
+        None,
+        sys::cbStartOfSimulation,
+        std::ptr::null_mut(),
+        None,
+    )
 }
 
 /// One-shot callback at end of simulation.
 pub fn register_end_of_simulation(f: Box<dyn FnOnce()>) -> CallbackHandle {
-    register(CbKind::OneShot, Some(f), None, sys::cbEndOfSimulation, std::ptr::null_mut(), None)
+    register(
+        CbKind::OneShot,
+        Some(f),
+        None,
+        sys::cbEndOfSimulation,
+        std::ptr::null_mut(),
+        None,
+    )
 }
 
 #[cfg(test)]

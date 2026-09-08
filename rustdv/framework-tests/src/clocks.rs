@@ -7,7 +7,6 @@
 
 use rustdv::prelude::*;
 
-
 // The stated period is the period you get.
 #[rustdv::test]
 async fn clock_period_is_what_was_asked_for(ctx: RustdvCtx) -> Result<(), TestError> {

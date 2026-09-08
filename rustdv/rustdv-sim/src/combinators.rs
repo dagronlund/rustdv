@@ -31,7 +31,10 @@ where
     FA: Future + 'a,
     FB: Future + 'a,
 {
-    First2 { a: Box::pin(a), b: Box::pin(b) }
+    First2 {
+        a: Box::pin(a),
+        b: Box::pin(b),
+    }
 }
 
 impl<A, B> Future for First2<'_, A, B> {
@@ -60,7 +63,12 @@ where
     FA: Future + 'a,
     FB: Future + 'a,
 {
-    Join2 { a: Box::pin(a), b: Box::pin(b), ra: None, rb: None }
+    Join2 {
+        a: Box::pin(a),
+        b: Box::pin(b),
+        ra: None,
+        rb: None,
+    }
 }
 
 impl<A, B> Future for Join2<'_, A, B> {
@@ -122,7 +130,10 @@ pub struct JoinAll<'a, T> {
 
 pub fn join_all<'a, T>(futs: Vec<Pin<Box<dyn Future<Output = T> + 'a>>>) -> JoinAll<'a, T> {
     let n = futs.len();
-    JoinAll { futs: futs.into_iter().map(Some).collect(), out: (0..n).map(|_| None).collect() }
+    JoinAll {
+        futs: futs.into_iter().map(Some).collect(),
+        out: (0..n).map(|_| None).collect(),
+    }
 }
 
 impl<T> Future for JoinAll<'_, T> {
@@ -196,8 +207,11 @@ mod tests {
     #[test]
     fn join_all_preserves_input_order() {
         block_on(async {
-            let futs: Vec<Pin<Box<dyn Future<Output = u8>>>> =
-                vec![Box::pin(async { 1 }), Box::pin(async { 2 }), Box::pin(async { 3 })];
+            let futs: Vec<Pin<Box<dyn Future<Output = u8>>>> = vec![
+                Box::pin(async { 1 }),
+                Box::pin(async { 2 }),
+                Box::pin(async { 3 }),
+            ];
             assert_eq!(join_all(futs).await, vec![1, 2, 3]);
         });
     }
@@ -243,7 +257,10 @@ mod tests {
             };
             let _ = first2(async { 1u8 }, loser).await;
         });
-        assert!(*dropped.borrow(), "the losing future was dropped, not left running");
+        assert!(
+            *dropped.borrow(),
+            "the losing future was dropped, not left running"
+        );
     }
 
     /// The whole point of D82: a joined future may **borrow**, so a

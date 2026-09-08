@@ -134,7 +134,9 @@ pub struct AnalysisBus<T: 'static> {
 impl<T: 'static> Clone for AnalysisBus<T> {
     /// Another handle to the *same* hub.
     fn clone(&self) -> Self {
-        AnalysisBus { inner: self.inner.clone() }
+        AnalysisBus {
+            inner: self.inner.clone(),
+        }
     }
 }
 
@@ -146,18 +148,26 @@ impl<T: 'static> Default for AnalysisBus<T> {
 
 impl<T: 'static> AnalysisBus<T> {
     pub fn new() -> AnalysisBus<T> {
-        AnalysisBus { inner: Rc::new(HubInner { subs: RefCell::new(Vec::new()) }) }
+        AnalysisBus {
+            inner: Rc::new(HubInner {
+                subs: RefCell::new(Vec::new()),
+            }),
+        }
     }
 
     /// The publish side, for a source's `PublishPort`.
     pub fn pub_export(&self) -> PublishExport<T> {
-        PublishExport { inner: self.inner.clone() }
+        PublishExport {
+            inner: self.inner.clone(),
+        }
     }
 
     /// The subscribe side, for a subscriber's `SubscribePort`. Connect
     /// several; each one sees every item.
     pub fn sub_export(&self) -> SubscribeExport<T> {
-        SubscribeExport { inner: self.inner.clone() }
+        SubscribeExport {
+            inner: self.inner.clone(),
+        }
     }
 
     /// Broadcast an item, as the owner of the hub rather than through a port.
@@ -228,7 +238,10 @@ mod tests {
     impl Listener {
         const INPUT: PortName<dyn SinkHandle<u8>> = PortName::new("input");
         fn new() -> Listener {
-            let l = Listener { input: SubscribePort::default(), tally: RustdvShared::default() };
+            let l = Listener {
+                input: SubscribePort::default(),
+                tally: RustdvShared::default(),
+            };
             l.input.subscribe(l.tally.clone());
             l
         }
@@ -245,7 +258,9 @@ mod tests {
     #[test]
     fn one_write_reaches_every_subscriber() {
         let bus: AnalysisBus<u8> = AnalysisBus::new();
-        let src = Source { ap: PublishPort::default() };
+        let src = Source {
+            ap: PublishPort::default(),
+        };
         let a = Listener::new();
         let b = Listener::new();
 
@@ -256,13 +271,19 @@ mod tests {
 
         src.ap.write(&7);
         assert_eq!(a.tally.get().seen, vec![7]);
-        assert_eq!(b.tally.get().seen, vec![7], "several subscribers is what makes it a broadcast");
+        assert_eq!(
+            b.tally.get().seen,
+            vec![7],
+            "several subscribers is what makes it a broadcast"
+        );
     }
 
     #[test]
     fn subscribers_are_called_in_connection_order() {
         let bus: AnalysisBus<u8> = AnalysisBus::new();
-        let src = Source { ap: PublishPort::default() };
+        let src = Source {
+            ap: PublishPort::default(),
+        };
         let first = Listener::new();
         let second = Listener::new();
         bus.pub_export().connect(&src, Source::AP);
@@ -281,7 +302,9 @@ mod tests {
     #[test]
     fn the_bus_stores_nothing() {
         let bus: AnalysisBus<u8> = AnalysisBus::new();
-        let src = Source { ap: PublishPort::default() };
+        let src = Source {
+            ap: PublishPort::default(),
+        };
         bus.pub_export().connect(&src, Source::AP);
 
         src.ap.write(&1); // nobody is listening
@@ -289,10 +312,17 @@ mod tests {
 
         let late = Listener::new();
         bus.sub_export().connect(&late, Listener::INPUT);
-        assert!(late.tally.get().seen.is_empty(), "nothing was buffered for a late subscriber");
+        assert!(
+            late.tally.get().seen.is_empty(),
+            "nothing was buffered for a late subscriber"
+        );
 
         src.ap.write(&3);
-        assert_eq!(late.tally.get().seen, vec![3], "only what arrives after it connects");
+        assert_eq!(
+            late.tally.get().seen,
+            vec![3],
+            "only what arrives after it connects"
+        );
     }
 
     /// D85: analysis has min cardinality 0 — a monitor nobody listens to is a
@@ -300,7 +330,9 @@ mod tests {
     #[test]
     fn writing_with_no_subscribers_is_legal() {
         let bus: AnalysisBus<u8> = AnalysisBus::new();
-        let src = Source { ap: PublishPort::default() };
+        let src = Source {
+            ap: PublishPort::default(),
+        };
         bus.pub_export().connect(&src, Source::AP);
         assert_eq!(bus.subscriber_count(), 0);
         src.ap.write(&1); // must not panic
@@ -308,7 +340,9 @@ mod tests {
 
     #[test]
     fn an_unconnected_publish_port_does_not_panic() {
-        let src = Source { ap: PublishPort::default() };
+        let src = Source {
+            ap: PublishPort::default(),
+        };
         assert!(!src.ap.has_subscribers());
         src.ap.write(&1); // a source nobody wired is still a valid testbench
     }
@@ -318,13 +352,19 @@ mod tests {
     #[test]
     fn delivery_happens_before_write_returns() {
         let bus: AnalysisBus<u8> = AnalysisBus::new();
-        let src = Source { ap: PublishPort::default() };
+        let src = Source {
+            ap: PublishPort::default(),
+        };
         let sub = Listener::new();
         bus.pub_export().connect(&src, Source::AP);
         bus.sub_export().connect(&sub, Listener::INPUT);
 
         src.ap.write(&5);
-        assert_eq!(sub.tally.get().seen, vec![5], "already delivered, no scheduling in between");
+        assert_eq!(
+            sub.tally.get().seen,
+            vec![5],
+            "already delivered, no scheduling in between"
+        );
     }
 
     /// A component that never called `subscribe` has nothing to receive with,
@@ -333,7 +373,10 @@ mod tests {
     #[should_panic(expected = "has no subscriber")]
     fn connecting_a_subscriber_with_no_sink_is_a_named_error() {
         let bus: AnalysisBus<u8> = AnalysisBus::new();
-        let bare = Listener { input: SubscribePort::default(), tally: RustdvShared::default() };
+        let bare = Listener {
+            input: SubscribePort::default(),
+            tally: RustdvShared::default(),
+        };
         bus.sub_export().connect(&bare, Listener::INPUT);
     }
 
@@ -343,7 +386,11 @@ mod tests {
         let other = bus.clone();
         let sub = Listener::new();
         other.sub_export().connect(&sub, Listener::INPUT);
-        assert_eq!(bus.subscriber_count(), 1, "two handles, one subscriber list");
+        assert_eq!(
+            bus.subscriber_count(),
+            1,
+            "two handles, one subscriber list"
+        );
         bus.write(&4);
         assert_eq!(sub.tally.get().seen, vec![4]);
     }

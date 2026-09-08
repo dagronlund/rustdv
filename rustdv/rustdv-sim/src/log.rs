@@ -44,7 +44,12 @@ pub fn log(level: Level, msg: &str) {
     if enabled {
         // Through `emit`, so a global log file captures un-pathed messages
         // too. Subtree handlers do not apply: this message has no path.
-        emit(&format!("{:>10.2}ns {:<8} {}", sim_time_ns(), level.as_str(), msg));
+        emit(&format!(
+            "{:>10.2}ns {:<8} {}",
+            sim_time_ns(),
+            level.as_str(),
+            msg
+        ));
     }
 }
 

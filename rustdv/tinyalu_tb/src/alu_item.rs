@@ -64,21 +64,61 @@ mod tests {
 
     #[test]
     fn predict_add_carries_into_bit8() {
-        let r = predict(&AluCommand { a: 0xFF, b: 0xFF, op: Ops::Add });
+        let r = predict(&AluCommand {
+            a: 0xFF,
+            b: 0xFF,
+            op: Ops::Add,
+        });
         assert_eq!(r.result, 0x01FE);
     }
 
     #[test]
     fn predict_all_ops() {
-        assert_eq!(predict(&AluCommand { a: 2, b: 3, op: Ops::Add }).result, 5);
-        assert_eq!(predict(&AluCommand { a: 0xF0, b: 0x3C, op: Ops::And }).result, 0x0030);
-        assert_eq!(predict(&AluCommand { a: 0xF0, b: 0x3C, op: Ops::Xor }).result, 0x00CC);
-        assert_eq!(predict(&AluCommand { a: 4, b: 5, op: Ops::Mul }).result, 20);
+        assert_eq!(
+            predict(&AluCommand {
+                a: 2,
+                b: 3,
+                op: Ops::Add
+            })
+            .result,
+            5
+        );
+        assert_eq!(
+            predict(&AluCommand {
+                a: 0xF0,
+                b: 0x3C,
+                op: Ops::And
+            })
+            .result,
+            0x0030
+        );
+        assert_eq!(
+            predict(&AluCommand {
+                a: 0xF0,
+                b: 0x3C,
+                op: Ops::Xor
+            })
+            .result,
+            0x00CC
+        );
+        assert_eq!(
+            predict(&AluCommand {
+                a: 4,
+                b: 5,
+                op: Ops::Mul
+            })
+            .result,
+            20
+        );
     }
 
     #[test]
     fn transaction_derives_do_the_uvm_object_jobs() {
-        let t = AluCommand { a: 1, b: 2, op: Ops::Xor };
+        let t = AluCommand {
+            a: 1,
+            b: 2,
+            op: Ops::Xor,
+        };
         let copy = t.clone(); // do_copy
         assert_eq!(t, copy); // do_compare
         let s = format!("{t:?}"); // convert2string
