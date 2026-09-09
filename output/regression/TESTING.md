@@ -94,8 +94,8 @@ simulator assertion is visible in CI.
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs the full no-simulator regression plus a
-free-simulator matrix. Linux runs the Icarus and Verilator entries; macOS
-repeats the Verilator runtime, scheduler, DEBUG/FST, and mutation entries.
+free-simulator matrix. Linux and macOS both run all Icarus and Verilator
+entries, including scheduler, DEBUG/FST, and mutation checks.
 Both simulator jobs build and cache Icarus 13.0 via `ci/install-iverilog.sh`.
 Icarus 12 has a next-time callback re-registration bug exercised by the phase
 regression; CI verifies the selected version before running tests.

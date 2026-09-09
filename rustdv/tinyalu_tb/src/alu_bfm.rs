@@ -180,10 +180,11 @@ impl TinyAluBfm {
                 async move {
                     loop {
                         clk.falling_edge().await;
-                        if start.is_high() && done.is_high() {
-                            if let Ok(r) = result.get_u64() {
-                                let _ = q.try_put(AluResult { result: r as u16 });
-                            }
+                        if start.is_high()
+                            && done.is_high()
+                            && let Ok(r) = result.get_u64()
+                        {
+                            let _ = q.try_put(AluResult { result: r as u16 });
                         }
                     }
                 },
