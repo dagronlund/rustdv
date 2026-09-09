@@ -97,6 +97,8 @@ struct TaskEntry {
     state_cell: Rc<dyn Fn(TaskState)>,
 }
 
+type FailureSink = Box<dyn Fn(&str)>;
+
 struct ExecInner {
     tasks: RefCell<HashMap<TaskId, TaskEntry>>,
     next_id: Cell<TaskId>,
@@ -108,7 +110,7 @@ struct ExecInner {
     cancel_pending: RefCell<Vec<TaskId>>,
     /// Called whenever any task panics — the runner points this at
     /// "fail the current test" (cocotb: TestManager._task_done_callback).
-    failure_sink: RefCell<Option<Box<dyn Fn(&str)>>>,
+    failure_sink: RefCell<Option<FailureSink>>,
 }
 
 /// The executor (design-doc §4.3). `!Send` — it never leaves the sim thread.
@@ -235,12 +237,12 @@ impl Executor {
         let ids: Vec<TaskId> = self.inner.woken.0.lock().unwrap().drain(..).collect();
         for id in ids {
             let mut tasks = self.inner.tasks.borrow_mut();
-            if let Some(t) = tasks.get_mut(&id) {
-                if t.state == TaskState::Pending {
-                    t.state = TaskState::Scheduled;
-                    (t.state_cell)(TaskState::Scheduled);
-                    self.inner.run_queue.borrow_mut().push_back(id);
-                }
+            if let Some(t) = tasks.get_mut(&id)
+                && t.state == TaskState::Pending
+            {
+                t.state = TaskState::Scheduled;
+                (t.state_cell)(TaskState::Scheduled);
+                self.inner.run_queue.borrow_mut().push_back(id);
             }
         }
     }

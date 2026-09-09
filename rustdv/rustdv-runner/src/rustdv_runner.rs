@@ -207,10 +207,10 @@ async fn run_one(reg: &'static TestRegistration, seed: u64) -> Outcome {
     };
 
     // A panic in a child task fails the test even if the body passed.
-    if let Some(bg) = take_background_failure() {
-        if outcome == Outcome::Pass {
-            outcome = fail(bg);
-        }
+    if let Some(bg) = take_background_failure()
+        && outcome == Outcome::Pass
+    {
+        outcome = fail(bg);
     }
 
     if let Some(expected) = reg.expect_error {

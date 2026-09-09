@@ -79,7 +79,8 @@ repository at ../rustdv-reference, so the repo carries only its own product.
 - The pre-push hook runs the full regression; keep it green. Verify claims
   by running things — transcripts in the book/README files are real output
   and must stay in sync with reruns.
-- After editing Rust code, run `cargo fmt` from the repository root before
+- After editing Rust code, run `cargo fmt` and
+  `cargo clippy --workspace --all-targets` from the repository root before
   handing off the change.
 
 ### Leave no documentation debt — the rule that costs the most when ignored

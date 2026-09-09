@@ -650,8 +650,10 @@ pub fn finish() {
 // Panic sink (invariant 4)
 // ===========================================================================
 
+type PanicSink = RefCell<Option<Box<dyn Fn(String)>>>;
+
 thread_local! {
-    static PANIC_SINK: RefCell<Option<Box<dyn Fn(String)>>> = const { RefCell::new(None) };
+    static PANIC_SINK: PanicSink = const { RefCell::new(None) };
 }
 
 /// Install the handler invoked when a callback closure panics (the runner
@@ -758,19 +760,19 @@ extern "C" fn trampoline(cb: *mut sys::t_cb_data) -> i32 {
                     sys::vpi_remove_cb(shared.vpi_h.get());
                     // Reclaim the C-side reference before running user code.
                     drop(Rc::from_raw(ud));
-                    if let Some(f) = f {
-                        if let Err(p) = catch_unwind(AssertUnwindSafe(f)) {
-                            report_panic(p);
-                        }
+                    if let Some(f) = f
+                        && let Err(p) = catch_unwind(AssertUnwindSafe(f))
+                    {
+                        report_panic(p);
                     }
                 }
             }
             CbKind::Recurring => {
                 let mut guard = shared.repeat.borrow_mut();
-                if let Some(f) = guard.as_mut() {
-                    if let Err(p) = catch_unwind(AssertUnwindSafe(|| f())) {
-                        report_panic(p);
-                    }
+                if let Some(f) = guard.as_mut()
+                    && let Err(p) = catch_unwind(AssertUnwindSafe(f))
+                {
+                    report_panic(p);
                 }
             }
         }

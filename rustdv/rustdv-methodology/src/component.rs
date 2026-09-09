@@ -33,6 +33,8 @@ use rustdv_sim::rng::Rng;
 use crate::error::TestError;
 use crate::objection::{ObjectionGuard, ObjectionRegistry};
 
+type RunFuture<'a> = Pin<Box<dyn Future<Output = Result<(), TestError>> + 'a>>;
+
 /// Agent activity (pyuvm's ConfigDB `is_active` int becomes an enum —
 /// mapping row 42; illegal values are unrepresentable).
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -259,8 +261,8 @@ impl RustdvCtx {
 /// phase by hand.
 pub trait Component {
     /// 1. `build` — top-down. Where a component constructs its children
-    /// (D6); the gap between "a component exists" and "its children exist"
-    /// that all late binding lives in.
+    ///    (D6); the gap between "a component exists" and "its children exist"
+    ///    that all late binding lives in.
     fn build(&mut self, ctx: &mut RustdvCtx) {
         let _ = ctx;
     }
@@ -277,7 +279,7 @@ pub trait Component {
         let _ = ctx;
     }
     /// 5. `run` — bottom-up, async, objection-gated. The test body; `Err`
-    /// fails the test.
+    ///    fails the test.
     ///
     /// `async fn` in a trait costs dyn-compatibility, which is why the sync
     /// phases are mirrored onto [`DynPhases`] for traversal (D48).
@@ -652,7 +654,7 @@ pub fn run_all<'a>(
         // below reborrows. Each child's context clone carries its derived path
         // (D9) and is moved into the future that uses it, so no borrows overlap.
         {
-            let children: Vec<Pin<Box<dyn Future<Output = Result<(), TestError>> + '_>>> = node
+            let children: Vec<RunFuture<'_>> = node
                 .children_mut()
                 .into_iter()
                 .map(|(name, child)| {
@@ -660,8 +662,7 @@ pub fn run_all<'a>(
                     Box::pin(async move {
                         let mut cctx = cctx;
                         run_all(child, &mut cctx).await
-                    })
-                        as Pin<Box<dyn Future<Output = Result<(), TestError>> + '_>>
+                    }) as RunFuture<'_>
                 })
                 .collect();
 
@@ -682,8 +683,7 @@ pub fn run_all<'a>(
         }
 
         let outcome = {
-            let mut futs: Vec<Pin<Box<dyn Future<Output = Result<(), TestError>> + '_>>> =
-                Vec::new();
+            let mut futs: Vec<RunFuture<'_>> = Vec::new();
             for (name, child) in taken.iter_mut() {
                 let cctx = ctx.child(name);
                 futs.push(Box::pin(async move {

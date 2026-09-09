@@ -89,7 +89,7 @@ pub fn assert_pending<F: Future>(fut: F) {
     let mut cx = Context::from_waker(&waker);
 
     for _ in 0..64 {
-        if let Poll::Ready(_) = fut.as_mut().poll(&mut cx) {
+        if fut.as_mut().poll(&mut cx).is_ready() {
             panic!("assert_pending: the future completed, but the test expected it to wait");
         }
         ex.run_until_idle();

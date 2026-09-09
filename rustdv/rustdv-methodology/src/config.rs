@@ -143,7 +143,7 @@ impl Clone for Entry {
 type Store = BTreeMap<String, BTreeMap<String, BTreeMap<i32, Entry>>>;
 
 thread_local! {
-    static STORE: RefCell<Store> = RefCell::new(Store::new());
+    static STORE: RefCell<Store> = const {RefCell::new(Store::new())};
     static TRACING: Cell<bool> = const { Cell::new(false) };
     /// True while the build phase is walking, so writes take depth-scaled
     /// precedence (D13, tier 2).
@@ -348,11 +348,11 @@ impl ConfigDb {
         STORE.with(|s| {
             for (path, fields) in s.borrow().iter() {
                 for (field, by_prec) in fields.iter() {
-                    if let Some(from) = field.strip_prefix("__factory_override__") {
-                        if let Some((_, e)) = by_prec.iter().next_back() {
-                            let to = e.rendered.trim_start_matches("-> ").to_string();
-                            out.push((path.clone(), from.to_string(), to));
-                        }
+                    if let Some(from) = field.strip_prefix("__factory_override__")
+                        && let Some((_, e)) = by_prec.iter().next_back()
+                    {
+                        let to = e.rendered.trim_start_matches("-> ").to_string();
+                        out.push((path.clone(), from.to_string(), to));
                     }
                 }
             }
