@@ -40,6 +40,7 @@ struct StubCallback {
 }
 
 struct StubSignal {
+    object_type: i32,
     width: i32,
     words: Vec<t_vpi_vecval>,
     vector_value_available: bool,
@@ -55,6 +56,7 @@ struct StubTopIterator {
 impl Default for StubSignal {
     fn default() -> Self {
         Self {
+            object_type: vpiNet,
             width: 37,
             words: vec![t_vpi_vecval::default(); 2],
             vector_value_available: true,
@@ -92,12 +94,21 @@ pub fn configure_signal(width: i32, words: &[t_vpi_vecval], binstr: &str) {
     );
     SIGNAL.with(|signal| {
         *signal.borrow_mut() = StubSignal {
+            object_type: vpiNet,
             width,
             words: words[..word_count].to_vec(),
             vector_value_available: true,
             binstr: CString::new(binstr).expect("stub binary string contains NUL"),
             last_put: Vec::new(),
         };
+    });
+}
+
+/// Configure the type of the unit-test signal.
+pub fn configure_signal_type(object_type: i32) {
+    SIGNAL.with(|signal| {
+        let mut signal = signal.borrow_mut();
+        signal.object_type = object_type;
     });
 }
 
@@ -286,7 +297,7 @@ pub extern "C" fn vpi_get(property: i32, handle: *mut c_void) -> i32 {
     if property == vpiType && top_index(handle).is_some() {
         vpiModule
     } else if property == vpiType {
-        vpiNet
+        SIGNAL.with(|signal| signal.borrow().object_type)
     } else if property == vpiSize {
         SIGNAL.with(|signal| signal.borrow().width)
     } else {

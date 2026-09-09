@@ -55,6 +55,17 @@ module probe;
                        rtl_event_request, rtl_event_done,
                        never_driven, never_driven_bus};
 
+`ifdef VERILATOR
+   real real_sig;
+   string string_sig;
+   typedef struct { int number; real fraction; string text; } record_t;
+   typedef struct { record_t inner; int tail; } nested_t;
+   typedef union { int unsigned first; int unsigned second; } overlay_t;
+   record_t record_sig;
+   nested_t nested_sig;
+   overlay_t union_sig;
+`endif
+
    final $display("RTL FINAL: PASS");
 
 endmodule

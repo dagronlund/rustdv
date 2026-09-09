@@ -373,4 +373,17 @@ nothing — and `Eq` adds that promise. It bites a verification engineer in one
 specific place: `HashSet` requires `Eq`, so a transaction carrying a *measured*
 value like a float delay cannot be a coverage key.
 
+## Framework addition: typed VPI variables (2026-09-06)
+
+The framework now exposes `RealHandle`, `StringHandle`, and `AggregateHandle`
+through `dut.real()`, `dut.string()`, and `dut.aggregate()`. Real/string writes
+follow the existing scheduled/immediate phase rules. Unpacked structs/unions
+are accessed by typed members, including nested aggregates. Existing logic-only
+book listings are unchanged; API examples and Verilator coverage are in
+`rustdv/framework-tests/README.md`.
+
+The simulator handle enum is now `SimHandle`. Its `as_hierarchy`, `as_signal`,
+`as_real`, `as_string`, and `as_aggregate` conversions return `Result` with
+`HandleError::WrongKind`; aggregate access uses `child(name)?.as_*()?`.
+
 - API maintenance: `LogicArray::bit(index)` is replaced by `array[index]`, preserving `Option<Logic>` and `None` for out-of-bounds access. No manuscript call sites required updates.

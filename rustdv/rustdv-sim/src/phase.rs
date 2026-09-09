@@ -35,6 +35,39 @@ pub(crate) enum WriteVal {
     U128(u128),
     BigInt(BigUint),
     Logic(LogicArray),
+    Real(f64),
+    String(String),
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub(crate) enum WriteTarget {
+    Logic(gpi::LogicHandle),
+    Real(gpi::RealHandle),
+    String(gpi::StringHandle),
+}
+impl WriteTarget {
+    fn full_name(self) -> String {
+        match self {
+            Self::Logic(h) => h.full_name(),
+            Self::Real(h) => h.full_name(),
+            Self::String(h) => h.full_name(),
+        }
+    }
+}
+impl From<gpi::LogicHandle> for WriteTarget {
+    fn from(h: gpi::LogicHandle) -> Self {
+        Self::Logic(h)
+    }
+}
+impl From<gpi::RealHandle> for WriteTarget {
+    fn from(h: gpi::RealHandle) -> Self {
+        Self::Real(h)
+    }
+}
+impl From<gpi::StringHandle> for WriteTarget {
+    fn from(h: gpi::StringHandle) -> Self {
+        Self::String(h)
+    }
 }
 
 struct Hub {
@@ -45,7 +78,7 @@ struct Hub {
     ro_cb: RefCell<Option<gpi::CallbackHandle>>,
     nt_waiters: RefCell<Vec<Weak<TrigShared>>>,
     nt_cb: RefCell<Option<gpi::CallbackHandle>>,
-    writes: RefCell<Vec<(gpi::LogicHandle, WriteVal)>>,
+    writes: RefCell<Vec<(WriteTarget, WriteVal)>>,
 }
 
 thread_local! {
@@ -113,7 +146,21 @@ pub async fn leave_read_only() {
 // Write scheduling
 // ---------------------------------------------------------------------------
 
-fn apply_write(h: gpi::LogicHandle, v: &WriteVal) {
+fn apply_write(target: WriteTarget, v: &WriteVal) {
+    match (target, v) {
+        (WriteTarget::Real(h), WriteVal::Real(x)) => {
+            h.set_now(*x);
+            return;
+        }
+        (WriteTarget::String(h), WriteVal::String(x)) => {
+            h.set_now(x).expect("scheduled string was validated");
+            return;
+        }
+        _ => {}
+    }
+    let WriteTarget::Logic(h) = target else {
+        unreachable!("write target/value mismatch")
+    };
     match v {
         WriteVal::Bool(x) => h.set_bool_now(*x),
         WriteVal::U8(x) => h.set_u8_now(*x),
@@ -123,12 +170,14 @@ fn apply_write(h: gpi::LogicHandle, v: &WriteVal) {
         WriteVal::U128(x) => h.set_u128_now(*x),
         WriteVal::BigInt(x) => h.set_bigint_now(x),
         WriteVal::Logic(x) => h.set_logic_now(x),
+        _ => unreachable!("write target/value mismatch"),
     }
 }
 
 /// The ReadOnly rule, in one place because both write paths owe it: the
-/// scheduled one below and the immediate one in `handle.rs` (D108).
-pub(crate) fn deny_write_in_read_only(h: gpi::LogicHandle) {
+/// scheduled one below and the immediate methods in the `handle` submodules (D108).
+pub(crate) fn deny_write_in_read_only(h: impl Into<WriteTarget>) {
+    let h = h.into();
     if hub().phase.get() == SimPhase::ReadOnly {
         panic!(
             "illegal write to '{}' during the ReadOnly phase (cocotb rule, design-doc §4.4)",
@@ -137,7 +186,8 @@ pub(crate) fn deny_write_in_read_only(h: gpi::LogicHandle) {
     }
 }
 
-pub(crate) fn schedule(h: gpi::LogicHandle, v: WriteVal) {
+pub(crate) fn schedule(h: impl Into<WriteTarget>, v: WriteVal) {
+    let h = h.into();
     let hub = hub();
     match hub.phase.get() {
         SimPhase::ReadOnly => deny_write_in_read_only(h),

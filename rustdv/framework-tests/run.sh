@@ -5,7 +5,7 @@
 #
 # With no argument every test in the crate runs. With one, RUSTDV_TESTCASE
 # selects a group by name prefix — `trig_`, `clock_`, `sig_`, `conc_`,
-# `elab_`, `runner_`, `callback_stress_` — which is how the regression gets
+# `elab_`, `runner_`, `callback_stress_`, `sv_types_` (Verilator only) — which is how the regression gets
 # one entry per mechanism off a single build.
 #
 # Success criterion: prints "REGRESSION: PASS".
@@ -20,7 +20,9 @@ export RUSTDV_TOP=probe
 RUSTDV_TMP="/tmp/rustdv-$(id -u)"
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$RUSTDV_TMP/target}"
 
-(cd .. && cargo build --release -p framework_tests --quiet)
+BUILD_ARGS=(--release -p framework_tests --quiet)
+if [ "$SIM" = verilator ]; then BUILD_ARGS+=(--features verilator-types); fi
+(cd .. && cargo build "${BUILD_ARGS[@]}")
 
 BUILD="${SIM_BUILD_DIR:-$RUSTDV_TMP/framework-tests}"; mkdir -p "$BUILD"
 LIB="$CARGO_TARGET_DIR/release/libframework_tests.so"            # Linux
