@@ -269,7 +269,7 @@ mod tests {
     #[test]
     fn joined_futures_may_borrow() {
         block_on(async {
-            let owned = vec![1u8, 2, 3];
+            let owned = [1u8, 2, 3];
             let borrow_a = async { owned.len() };
             let borrow_b = async { owned[0] as usize };
             let (a, b) = join2(borrow_a, borrow_b).await;

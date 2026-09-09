@@ -377,7 +377,8 @@ async fn trig_phase_order_within_a_step(ctx: RustdvCtx) -> Result<(), TestError>
     );
 
     next_time_step().await;
-    check!(sim_time_ns() > t0, "NextTimeStep did not advance past {t0}");
+    let advanced = sim_time_ns() > t0;
+    check!(advanced, "NextTimeStep did not advance past {t0}");
     Ok(())
 }
 

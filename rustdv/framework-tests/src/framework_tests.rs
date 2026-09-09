@@ -82,6 +82,14 @@ pub mod signals;
 pub mod sv_types;
 pub mod triggers;
 
+/// Measures how many simulator time steps make one nanosecond
+pub async fn steps_per_ns() -> u64 {
+    let (t0_steps, t0_ns) = (rustdv::sim_time_steps(), sim_time_ns());
+    Timer::ns(1).await;
+    let _ = t0_ns;
+    rustdv::sim_time_steps() - t0_steps
+}
+
 #[cfg(test)]
 mod registry_tests {
     #[test]
@@ -101,18 +109,4 @@ mod registry_tests {
             "ElabConnectedTreeIsClean"
         );
     }
-}
-
-/// How many simulator time steps make one nanosecond, measured rather than
-/// assumed.
-///
-/// `probe.sv` says `1ns/1ns`, but a test that hard-codes the ratio breaks
-/// silently the day someone changes the timescale — it would still pass, on
-/// the wrong numbers. Advancing a known 1ns and reading both clocks gives the
-/// ratio and proves the two time functions agree on the way past.
-pub async fn steps_per_ns() -> u64 {
-    let (t0_steps, t0_ns) = (rustdv::sim_time_steps(), sim_time_ns());
-    Timer::ns(1).await;
-    let _ = t0_ns;
-    rustdv::sim_time_steps() - t0_steps
 }

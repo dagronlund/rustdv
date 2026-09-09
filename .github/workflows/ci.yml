@@ -88,7 +88,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Run Clippy
-        run: cargo clippy --workspace --all-targets
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
   # Book-sync + all figure examples (build, run vs goldens, compile-fail,
   # unit tests). Simulator tests auto-skip here (no iverilog installed).
@@ -149,10 +149,8 @@ jobs:
           path: regress.log
           if-no-files-found: ignore
 
-  # Free-simulator validation. Linux runs every simulator entry; macOS runs
-  # the Verilator entries that exercise runtime loading, scheduling, callback
-  # ownership and the mutation check. Commercial simulators cannot run in
-  # public CI.
+  # Free-simulator validation. Linux and macOS run every Icarus and Verilator
+  # simulator entry. Commercial simulators cannot run in public CI.
   sim-smoke:
     strategy:
       fail-fast: false
@@ -161,7 +159,7 @@ jobs:
           - os: ubuntu-latest
             filter: sim
           - os: macos-latest
-            filter: verilator
+            filter: sim
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
