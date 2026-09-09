@@ -600,12 +600,34 @@ pub fn top_modules() -> Vec<HierarchyHandle> {
     out
 }
 
-/// The first top-level module (the DUT in single-top designs).
-pub fn top_module() -> Result<HierarchyHandle, HandleError> {
+fn select_top_module(explicit_name: Option<&str>) -> Result<HierarchyHandle, HandleError> {
+    if let Some(name) = explicit_name {
+        let cname = CString::new(name).expect("NUL in RUSTDV_TOP");
+        let raw = unsafe { sys::vpi_handle_by_name(cname.as_ptr(), std::ptr::null_mut()) };
+        let h = ObjHandle::new(raw).ok_or_else(|| HandleError::NotFound {
+            name: name.to_owned(),
+            scope: "<top-level>".to_owned(),
+        })?;
+        return AnyHandle::classify(h).as_hierarchy();
+    }
+
     top_modules()
         .into_iter()
         .next()
         .ok_or(HandleError::NoTopModule)
+}
+
+/// The configured top-level module, or the first simulator root when no top
+/// was configured.
+///
+/// `RUSTDV_TOP` selects an exact root by name. Without it, the first top-level
+/// module returned by VPI is used.
+pub fn top_module() -> Result<HierarchyHandle, HandleError> {
+    let explicit_name = std::env::var("RUSTDV_TOP")
+        .ok()
+        .map(|name| name.trim().to_owned())
+        .filter(|name| !name.is_empty());
+    select_top_module(explicit_name.as_deref())
 }
 
 // ===========================================================================
@@ -1019,6 +1041,22 @@ mod callback_tests {
 #[cfg(test)]
 mod handle_tests {
     use super::*;
+
+    #[test]
+    fn top_selection_prefers_explicit_name_and_otherwise_uses_first_root() {
+        rustdv_vpi_stubs::configure_top_modules(&["first", "dut"]);
+        assert_eq!(select_top_module(Some("dut")).unwrap().name(), "dut");
+        assert_eq!(select_top_module(None).unwrap().name(), "first");
+        assert!(matches!(
+            select_top_module(Some("missing")),
+            Err(HandleError::NotFound { .. })
+        ));
+        rustdv_vpi_stubs::configure_top_modules(&[]);
+        assert!(matches!(
+            select_top_module(None),
+            Err(HandleError::NoTopModule)
+        ));
+    }
 
     fn make_signal(width: i32, words: &[sys::t_vpi_vecval], binstr: &str) -> LogicHandle {
         rustdv_vpi_stubs::configure_signal(width, words, binstr);

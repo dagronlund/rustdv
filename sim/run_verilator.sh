@@ -17,6 +17,7 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LIB="$1"
 TOP="$2"
+export RUSTDV_TOP="$TOP"
 BUILD="$3"
 shift 3
 HDL=("$@")

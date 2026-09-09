@@ -44,19 +44,20 @@ LIB="$CARGO_TARGET_DIR/$PROFDIR/libtinyalu_tb.so"          # Linux
 [ -f "$LIB" ] || LIB="$CARGO_TARGET_DIR/$PROFDIR/libtinyalu_tb.dylib"  # macOS
 export RUSTDV_RANDOM_SEED="${RUSTDV_RANDOM_SEED:-1}"
 export RUSTDV_RESULTS_XML="${RUSTDV_RESULTS_XML:-$BUILD/results.xml}"
+export RUSTDV_TOP=tinyalu
 
 case "$SIM" in
   icarus)
     cp "$LIB" "$BUILD/tinyalu_tb.vpi"
     # timescale.v first: it sets 1ns/1ns for everything after it.
-    iverilog -g2012 -o "$BUILD/tinyalu_rustdv.vvp" -s tinyalu hdl/timescale.v hdl/tinyalu.sv
+    iverilog -g2012 -o "$BUILD/tinyalu_rustdv.vvp" -s "$RUSTDV_TOP" hdl/timescale.v hdl/tinyalu.sv
     vvp -M "$BUILD" -m tinyalu_tb "$BUILD/tinyalu_rustdv.vvp"
     ;;
   verilator)
     if [ "${RUSTDV_VERILATOR_MODE:-fast}" = debug ]; then
       export RUSTDV_VERILATOR_CONTROL_FILE="${RUSTDV_VERILATOR_CONTROL_FILE:-$REPO_ROOT/sim/verilator-debug.vlt}"
     fi
-    "$REPO_ROOT/sim/run_verilator.sh" "$LIB" tinyalu "$BUILD/verilator" \
+    "$REPO_ROOT/sim/run_verilator.sh" "$LIB" "$RUSTDV_TOP" "$BUILD/verilator" \
       "$REPO_ROOT/sim/hdl/timescale.v" "$REPO_ROOT/sim/hdl/tinyalu.sv"
     ;;
   *)

@@ -310,7 +310,7 @@ impl LogicHandle {
     }
 }
 
-/// The first top-level module (the DUT in single-top designs).
+/// The `RUSTDV_TOP` module, or the first top-level module when it is unset.
 pub fn top_module() -> Result<HierarchyHandle, HandleError> {
     Ok(HierarchyHandle {
         raw: gpi::top_module()?,

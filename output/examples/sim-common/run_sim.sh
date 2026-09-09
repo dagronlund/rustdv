@@ -7,6 +7,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 CRATE="$1"; TOP="$2"; shift 2
+export RUSTDV_TOP="$TOP"
 SIM="${SIM:-icarus}"
 HDL=("$@"); [ ${#HDL[@]} -eq 0 ] && HDL=(sim-common/hdl/timescale.v "sim-common/hdl/${TOP}.sv")
 REPO_ROOT="$(cd ../.. && pwd)"
