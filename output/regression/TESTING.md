@@ -87,11 +87,18 @@ regression.
   The simulator smoke tests (`tests/sim-*`) use this: they run where
   Icarus/Verilator are installed (including CI) and skip elsewhere.
 
+When a custom test is missing an expected output marker, the runner prints
+the captured command output after the failure summary so the underlying
+simulator assertion is visible in CI.
+
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs the full no-simulator regression plus a
 free-simulator matrix. Linux runs the Icarus and Verilator entries; macOS
 repeats the Verilator runtime, scheduler, DEBUG/FST, and mutation entries.
+Both simulator jobs build and cache Icarus 13.0 via `ci/install-iverilog.sh`.
+Icarus 12 has a next-time callback re-registration bug exercised by the phase
+regression; CI verifies the selected version before running tests.
 Commercial simulators cannot run in public CI; license-holders run
 `sim/run_smoke.sh <sim>` locally.
 
@@ -160,6 +167,14 @@ rustdv/framework-tests/run.sh conc     # one group
 TinyALU's XOR to an OR, requires two testbenches to **fail**, then requires
 both to pass again on the real RTL. A scoreboard that cannot fail is not a
 scoreboard.
+
+The trigger group also checks that phase futures complete only after their own
+callback: repeated polls, sibling wakeups through `join_all` and the component
+runner, settled combinational data, ReadWrite write ordering, next-timestep
+advancement, cancellation, latest-waker replacement, consecutive callback
+batches, and illegal ReadOnly operations. These tests run on both Icarus and
+Verilator. Restoring the old registration-as-completion behavior must fail
+`custom/sim-triggers`.
 
 The Verilator entries add a host-scheduler contract, the full TinyALU Rust
 testbench, selected-internal DEBUG/FST output, and the same mutation check.

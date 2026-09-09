@@ -332,6 +332,8 @@ def suite_custom(args):
             missing = [s for s in spec["expect_in_output"] if s not in hay]
             if missing:
                 record(tid, False, f"output missing: {missing}")
+                print("    captured simulator/command output:")
+                print(hay.rstrip())
                 continue
         if spec.get("golden"):
             gp = os.path.join(os.path.dirname(spec_path), spec["golden"])

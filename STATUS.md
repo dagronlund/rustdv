@@ -1370,3 +1370,45 @@ reported 221 passes; Icarus entries were skipped because `iverilog` is absent.
 The lone sandbox failure, callback RSS sampling, passed outside the sandbox at
 48 KiB growth over one million callbacks (16 MiB limit). Other available
 Verilator regressions passed.
+
+## Phase waits complete on callback delivery (2026-09-06)
+
+`PhaseFut` now keeps per-registration `TrigShared` completion state. Unrelated
+parent polls remain pending and replace the waker until the simulator services
+that registration. The hub holds weak registrations, releases each callback's
+batch before waking/draining tasks, and retains shared callbacks for surviving
+waiters and scheduled writes. ReadWrite flushing and ReadOnly restrictions are
+unchanged.
+
+Six new simulator tests cover repeated polls, sibling wakeups in `join_all` and
+the component runner, settled combinational data, scheduled-write ordering,
+next-timestep advancement, cancellation and waker release/replacement,
+consecutive callbacks, and illegal ReadOnly operations. All pass on macOS with
+Icarus and Verilator. Restoring the original phase implementation made the
+regression runner reject `custom/sim-triggers`, including the component case.
+
+Workspace unit/doc tests, formatting, Clippy (existing warnings), book listings,
+and the no-stale-versions check pass. The Reptilia dependency update and removal
+of its local workaround are outside this repository change.
+
+Full regression: 252 passed in the sandbox; the sole failure was callback
+stress RSS sampling (`ps` is prohibited there). The same million-cycle stress
+entry passed when rerun outside the sandbox, completing all 253 enabled checks.
+Transcript verification and both simulator scheduler regressions passed.
+
+## CI pins Icarus 13 (2026-09-08)
+
+Icarus 12 delivers next-time callbacks registered from an active callback batch
+at the same timestamp. Reproduced the phase-wait regression failure with that
+release; Icarus 13 passes with the existing phase implementation. CI now builds
+and caches Icarus 13.0 from a checksum-verified release archive on both simulator
+platforms. No runtime compatibility workaround is added.
+
+Missing-output failures now include captured command output so simulator
+assertions are visible in CI logs.
+
+Validation: built Icarus 13.0 from the pinned archive on macOS using the new
+installer, verified its already-installed path, and passed `custom/sim-triggers`
+with the original phase implementation. Workflow YAML and shell syntax checks
+pass. The macOS build supplies the Apple executable-path header through CFLAGS
+because the release driver does not include its declaration.

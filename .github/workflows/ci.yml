@@ -187,13 +187,33 @@ jobs:
           if [ "$RUNNER_OS" = Linux ]; then
             sudo apt-get update
             sudo apt-get install -y --no-install-recommends \
-              iverilog autoconf flex bison help2man pkg-config libfl-dev \
+              autoconf flex bison gperf help2man pkg-config libfl-dev \
               zlib1g-dev liblz4-dev curl ca-certificates
           else
-            brew install icarus-verilog autoconf flex bison help2man pkg-config lz4
+            brew install autoconf flex bison gperf help2man pkg-config lz4
             echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
             echo "$(brew --prefix flex)/bin" >> "$GITHUB_PATH"
           fi
+
+      - name: Cache Icarus 13.0
+        id: icarus-cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/iverilog-13.0
+          key: iverilog-13.0-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Build pinned Icarus
+        if: steps.icarus-cache.outputs.cache-hit != 'true'
+        run: bash ci/install-iverilog.sh "$RUNNER_TEMP/iverilog-13.0"
+
+      - name: Select and verify pinned Icarus
+        run: |
+          echo "$RUNNER_TEMP/iverilog-13.0/bin" >> "$GITHUB_PATH"
+          got="$("$RUNNER_TEMP/iverilog-13.0/bin/iverilog" -V 2>/dev/null | sed -n 's/^Icarus Verilog version \([^ ]*\).*/\1/p')"
+          test "$got" = 13.0 || {
+            echo "::error::expected Icarus 13.0, got $got"
+            exit 1
+          }
 
       - name: Cache Verilator 5.050
         id: verilator-cache
