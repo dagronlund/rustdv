@@ -11,6 +11,7 @@ repository = "https://github.com/rustdv/rustdv"
 path = "src/rustdv_gpi.rs"
 
 [dependencies]
+num-bigint = "0.5.1"
 rustdv-gpi-sys = { path = "../rustdv-gpi-sys", version = "0.2.0" }
 
 [dev-dependencies]

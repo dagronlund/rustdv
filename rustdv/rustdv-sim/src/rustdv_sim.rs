@@ -40,7 +40,7 @@ pub use sync::{Event, Lock, LockGuard};
 pub use time::{SimDuration, sim_time_ns, sim_time_steps};
 pub use triggers::{NullTrigger, Timer};
 
-pub use rustdv_gpi::{HandleError, Logic, LogicArray, ValueError};
+pub use rustdv_gpi::{BigUint, HandleError, Logic, LogicArray, ValueError};
 
 /// Initialize the sim context: install a fresh executor and phase hub on
 /// this thread. Called once by the runner at start-of-simulation.

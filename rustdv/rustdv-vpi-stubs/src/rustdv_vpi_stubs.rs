@@ -40,6 +40,7 @@ struct StubCallback {
 struct StubSignal {
     width: i32,
     words: Vec<t_vpi_vecval>,
+    vector_value_available: bool,
     binstr: CString,
     last_put: Vec<t_vpi_vecval>,
 }
@@ -49,6 +50,7 @@ impl Default for StubSignal {
         Self {
             width: 37,
             words: vec![t_vpi_vecval::default(); 2],
+            vector_value_available: true,
             binstr: CString::new("0".repeat(37)).expect("static binary string contains no NUL"),
             last_put: Vec::new(),
         }
@@ -74,10 +76,16 @@ pub fn configure_signal(width: i32, words: &[t_vpi_vecval], binstr: &str) {
         *signal.borrow_mut() = StubSignal {
             width,
             words: words[..word_count].to_vec(),
+            vector_value_available: true,
             binstr: CString::new(binstr).expect("stub binary string contains NUL"),
             last_put: Vec::new(),
         };
     });
+}
+
+/// Make the next configured signal return no `vpiVectorVal` storage.
+pub fn make_vector_value_unavailable() {
+    SIGNAL.with(|signal| signal.borrow_mut().vector_value_available = false);
 }
 
 /// Return the vector words most recently written by `vpi_put_value`.
@@ -204,7 +212,11 @@ pub unsafe extern "C" fn vpi_get_value(_handle: vpiHandle, value: *mut t_vpi_val
         let value = unsafe { &mut *value };
         match value.format {
             format if format == vpiVectorVal => {
-                value.value.vector = signal.words.as_ptr().cast_mut();
+                value.value.vector = if signal.vector_value_available {
+                    signal.words.as_ptr().cast_mut()
+                } else {
+                    std::ptr::null_mut()
+                };
             }
             format if format == vpiBinStrVal => {
                 value.value.str_ = signal.binstr.as_ptr().cast_mut();

@@ -15,7 +15,7 @@ use std::rc::Rc;
 use std::task::{Context, Poll, Waker};
 
 use rustdv_gpi as gpi;
-use rustdv_gpi::LogicArray;
+use rustdv_gpi::{BigUint, LogicArray};
 
 use crate::executor;
 
@@ -26,9 +26,15 @@ pub enum SimPhase {
     ReadOnly,
 }
 
-enum WriteVal {
+pub(crate) enum WriteVal {
+    Bool(bool),
+    U8(u8),
+    U16(u16),
+    U32(u32),
     U64(u64),
-    Arr(LogicArray),
+    U128(u128),
+    BigInt(BigUint),
+    Logic(LogicArray),
 }
 
 struct Hub {
@@ -109,8 +115,14 @@ pub async fn leave_read_only() {
 
 fn apply_write(h: gpi::LogicHandle, v: &WriteVal) {
     match v {
+        WriteVal::Bool(x) => h.set_bool_now(*x),
+        WriteVal::U8(x) => h.set_u8_now(*x),
+        WriteVal::U16(x) => h.set_u16_now(*x),
+        WriteVal::U32(x) => h.set_u32_now(*x),
         WriteVal::U64(x) => h.set_u64_now(*x),
-        WriteVal::Arr(a) => h.set_now(a),
+        WriteVal::U128(x) => h.set_u128_now(*x),
+        WriteVal::BigInt(x) => h.set_bigint_now(x),
+        WriteVal::Logic(x) => h.set_logic_now(x),
     }
 }
 
@@ -125,7 +137,7 @@ pub(crate) fn deny_write_in_read_only(h: gpi::LogicHandle) {
     }
 }
 
-fn schedule(h: gpi::LogicHandle, v: WriteVal) {
+pub(crate) fn schedule(h: gpi::LogicHandle, v: WriteVal) {
     let hub = hub();
     match hub.phase.get() {
         SimPhase::ReadOnly => deny_write_in_read_only(h),
@@ -142,14 +154,6 @@ fn schedule(h: gpi::LogicHandle, v: WriteVal) {
             prime_rw(&hub);
         }
     }
-}
-
-pub(crate) fn schedule_write_u64(h: gpi::LogicHandle, v: u64) {
-    schedule(h, WriteVal::U64(v));
-}
-
-pub(crate) fn schedule_write_arr(h: gpi::LogicHandle, v: LogicArray) {
-    schedule(h, WriteVal::Arr(v));
 }
 
 // ---------------------------------------------------------------------------
